@@ -4,34 +4,84 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3D models &middot; Charpai</title>
-<meta name="robots" content="noindex">
+<meta name="robots" content="noindex, nofollow">
 <style>
   :root { --ink:#1b1a18; --line:#d8d3cc; }
+  html, body { height:100%; }
   body { margin:0; background:#fff; color:var(--ink);
          font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-         padding:24px; max-width:520px; margin-inline:auto; }
-  a.back { font-size:14px; color:var(--ink); opacity:.55; text-decoration:none; }
-  h1 { font-size:20px; font-weight:600; margin:18px 0 4px; }
+         display:flex; flex-direction:column; align-items:center; justify-content:center;
+         padding:24px; box-sizing:border-box; }
+  form { width:100%; max-width:320px; }
+  h1 { font-size:20px; font-weight:600; margin:0 0 4px; }
   p.sub { margin:0 0 22px; font-size:14px; opacity:.6; }
-  a.card { display:flex; gap:14px; align-items:center; padding:12px;
-           border:1px solid var(--line); border-radius:12px; text-decoration:none;
-           color:var(--ink); margin-bottom:12px; }
-  a.card img { width:96px; height:72px; object-fit:cover; border-radius:8px; background:#f2efec; }
-  a.card .t { font-weight:500; }
-  a.card .d { font-size:13px; opacity:.6; }
+  input { width:100%; padding:14px 16px; font:inherit; color:var(--ink);
+          border:1px solid var(--line); border-radius:12px; background:#fff;
+          -webkit-appearance:none; appearance:none; }
+  input:focus { outline:none; border-color:var(--ink); }
+  button { width:100%; margin-top:10px; padding:16px 20px; font:inherit; font-weight:500;
+           border:1px solid var(--ink); border-radius:12px; background:var(--ink); color:#fff;
+           cursor:pointer; }
+  button[disabled] { opacity:.5; cursor:default; }
+  p.err { min-height:20px; margin:12px 0 0; font-size:13px; color:#a3392c; }
+  a.back { display:block; margin-top:22px; font-size:14px; color:var(--ink);
+           opacity:.55; text-decoration:none; text-align:center; }
 </style>
 </head>
 <body>
-  <a class="back" href="../">&larr; Back</a>
-  <h1>3D models</h1>
-  <p class="sub">Newest first. Pick a room, then tap <b>View in your space</b>.
-     Works on iPhone and on Android.</p>
-  <a class="card" href="kitchen/">
-    <img src="kitchen/previews/Kitchen-Tabletop.png" alt="">
-    <span>
-      <span class="t">Kitchen</span><br>
-      <span class="d">4.60 &times; 3.30 &times; 4.54 m &middot; 17 Sep 2026</span>
-    </span>
-  </a>
+  <form id="gate" autocomplete="on">
+    <h1>3D models</h1>
+    <p class="sub">Charpai designs. Enter the password to continue.</p>
+    <input id="pw" type="password" name="password" placeholder="Password"
+           autocomplete="current-password" autocapitalize="off" autocorrect="off"
+           spellcheck="false" required>
+    <button id="go" type="submit">Open</button>
+    <p class="err" id="err"></p>
+    <a class="back" href="../">&larr; Back</a>
+  </form>
+
+<script>
+  // The models live in a directory whose name is derived from the password itself.
+  // Nothing here reveals it: a wrong password simply derives a path that does not exist.
+  var KEY = 'charpai_ar_path';
+  var form = document.getElementById('gate'), pw = document.getElementById('pw'),
+      go = document.getElementById('go'), err = document.getElementById('err');
+
+  function derive(pass) {
+    var data = new TextEncoder().encode('charpai-ar-v1:' + pass);
+    return crypto.subtle.digest('SHA-256', data).then(function (buf) {
+      return Array.from(new Uint8Array(buf))
+                  .map(function (b) { return b.toString(16).padStart(2, '0'); })
+                  .join('').slice(0, 24);
+    });
+  }
+
+  function enter(path) { location.replace(path + '/'); }
+
+  // Skip the gate for the rest of the session, but never when the user pressed Back
+  // (otherwise Back from the list bounces straight back into it).
+  try {
+    var nav = performance.getEntriesByType('navigation')[0];
+    var saved = sessionStorage.getItem(KEY);
+    if (saved && (!nav || nav.type !== 'back_forward')) enter(saved);
+  } catch (e) {}
+
+  form.onsubmit = function (ev) {
+    ev.preventDefault();
+    err.textContent = ''; go.disabled = true; go.textContent = 'Checking…';
+    derive(pw.value.trim()).then(function (path) {
+      return fetch(path + '/index.html', { method: 'HEAD', cache: 'no-store' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('bad');
+          try { sessionStorage.setItem(KEY, path); } catch (e) {}
+          enter(path);
+        });
+    }).catch(function () {
+      go.disabled = false; go.textContent = 'Open';
+      err.textContent = 'That password is not right.';
+      pw.value = ''; pw.focus();
+    });
+  };
+</script>
 </body>
 </html>
