@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kitchen &middot; AR</title>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+  :root { --bg:#f6f4f1; --ink:#1b1a18; --line:#d8d3cc; --accent:#1b1a18; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--ink); }
+  header { padding:20px 16px 12px; }
+  a.back { font-size:14px; color:var(--ink); opacity:.55; text-decoration:none; display:inline-block; margin-bottom:10px; }
+  h1 { margin:0; font-size:19px; font-weight:600; letter-spacing:-0.01em; }
+  p.sub { margin:4px 0 0; font-size:13px; opacity:.6; }
+  .tabs { display:flex; gap:8px; padding:12px 16px 0; }
+  .tabs button { flex:1; padding:11px 8px; font:inherit; font-size:14px; border:1px solid var(--line);
+                 background:transparent; color:var(--ink); border-radius:10px; cursor:pointer; }
+  .tabs button[aria-selected="true"] { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+  model-viewer { width:100%; height:62vh; min-height:340px; margin-top:12px;
+                 background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .note { padding:14px 16px 32px; font-size:13px; opacity:.7; }
+  button[slot="ar-button"] { position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+      padding:12px 22px; border:0; border-radius:999px; background:var(--accent); color:var(--bg);
+      font:inherit; font-size:14px; font-weight:500; cursor:pointer; white-space:nowrap; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../">&larr; Back</a>
+  <h1>Kitchen</h1>
+  <p class="sub">4.60 x 3.30 x 4.54 m &middot; tap <b>View in your space</b> for AR</p>
+</header>
+
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true"  data-v="Tabletop">Tabletop</button>
+  <button role="tab" aria-selected="false" data-v="Walkin">Walk-in (1:1)</button>
+</div>
+
+<model-viewer id="mv"
+  src="Kitchen-Tabletop-Android.glb"
+  ios-src="Kitchen-Tabletop.usdz"
+  poster="previews/Kitchen-Tabletop.png"
+  ar ar-modes="scene-viewer quick-look webxr" ar-scale="fixed"
+  camera-controls touch-action="pan-y" shadow-intensity="1"
+  camera-orbit="30deg 45deg auto" min-camera-orbit="auto 0deg auto"
+  environment-image="neutral" exposure="1" loading="eager"
+  alt="Kitchen interior model">
+  <button slot="ar-button">View in your space</button>
+</model-viewer>
+
+<p class="note" id="note">Tabletop is a small model you place on a table or the floor. The ceiling
+is removed so you can see in. Large file &mdash; the still image is replaced by the 3D model once
+it finishes loading.</p>
+
+<script>
+  const mv = document.getElementById('mv'), note = document.getElementById('note');
+  const TEXT = {
+    Tabletop: 'Tabletop is a small model you place on a table or the floor. The ceiling is ' +
+              'removed so you can see in.',
+    Walkin:   'Walk-in is the real room at 1:1, ceiling on. It looks like a plain box here ' +
+              'because you are outside it — tap View in your space, place it, and walk in. ' +
+              'Needs about 5 m of clear floor.'
+  };
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+    const v = b.dataset.v;
+    document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+    mv.poster = 'previews/Kitchen-' + v + '.png';
+    mv.src = 'Kitchen-' + v + '-Android.glb';
+    mv.iosSrc = 'Kitchen-' + v + '.usdz';
+    note.textContent = TEXT[v];
+  });
+</script>
+</body>
+</html>
