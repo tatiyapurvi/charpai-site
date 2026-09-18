@@ -45,7 +45,8 @@
   poster="previews/Neetu-Joya-Kids-Room-Tabletop.png"
   ar ar-modes="scene-viewer quick-look webxr" ar-scale="fixed"
   camera-controls touch-action="pan-y" shadow-intensity="1"
-  camera-orbit="30deg 45deg auto" min-camera-orbit="auto 0deg auto"
+  camera-target="0m 0m 0m"
+  camera-orbit="30deg 55deg auto" min-camera-orbit="auto 0deg auto" max-camera-orbit="auto 180deg auto"
   environment-image="neutral" exposure="1" loading="eager"
   alt="Neetu-Joya-Kids-Room interior model">
   <button slot="ar-button">View in your space</button>
@@ -60,10 +61,25 @@ it finishes loading.</p>
   const TEXT = {
     Tabletop: 'Tabletop is a small model you place on a table or the floor. The ceiling is ' +
               'removed so you can see in.',
-    Walkin:   'Walk-in is the real room at 1:1, ceiling on. It looks like a plain box here ' +
-              'because you are outside it — tap View in your space, place it, and walk in. ' +
-              'Needs about 5 m of clear floor.'
+    Walkin:   'Walk-in is the real room at 1:1, ceiling on. You start standing inside it, ' +
+              'on the floor — drag to look around. Tap View in your space to place it in ' +
+              'your own room. Needs about 5 m of clear floor.'
   };
+  // The pivot is the centre of the FLOOR, never the bounding-box centre: that default
+  // floats mid-air and lands on whatever furniture happens to sit there - a bed, an
+  // island - which differs in every design. Walk-in also starts you standing on the
+  // ground inside the room, and is clamped so orbiting cannot lift you off it.
+  const CAM = {
+    Tabletop: {orbit: '30deg 55deg auto', min: 'auto 0deg auto', max: 'auto 180deg auto'},
+    Walkin:   {orbit: '35deg 49.1deg 2.44m', min: 'auto 30deg 0.86m', max: 'auto 96deg 5.05m'}
+  };
+  function applyCam(v) {
+    const c = CAM[v];
+    mv.setAttribute('camera-target', '0m 0m 0m');
+    mv.setAttribute('min-camera-orbit', c.min);
+    mv.setAttribute('max-camera-orbit', c.max);
+    mv.setAttribute('camera-orbit', c.orbit);
+  }
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
     const v = b.dataset.v;
     document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
@@ -71,6 +87,8 @@ it finishes loading.</p>
     mv.src = 'Neetu-Joya-Kids-Room-' + v + '-Android.glb';
     mv.iosSrc = 'Neetu-Joya-Kids-Room-' + v + '.usdz';
     note.textContent = TEXT[v];
+    mv.addEventListener('load', () => applyCam(v), {once: true});
+    applyCam(v);
   });
 </script>
 </body>
