@@ -70,12 +70,12 @@ it finishes loading.</p>
   // island - which differs in every design. Walk-in also starts you standing on the
   // ground inside the room, and is clamped so orbiting cannot lift you off it.
   const CAM = {
-    Tabletop: {orbit: '30deg 55deg auto', min: 'auto 0deg auto', max: 'auto 180deg auto'},
-    Walkin:   {orbit: '-143.6deg 41.9deg 2.15m', min: 'auto 30deg 0.75m', max: 'auto 96deg 5.05m'}
+    Tabletop: {target: '0m 0m 0m', orbit: '30deg 55deg auto', min: 'auto 0deg auto', max: 'auto 180deg auto'},
+    Walkin:   {target: '-1.98m 1.15m -2.52m', orbit: '38.1deg 82.1deg 3.24m', min: 'auto 30deg 1.13m', max: 'auto 96deg 5.05m'}
   };
   function applyCam(v) {
     const c = CAM[v];
-    mv.setAttribute('camera-target', '0m 0m 0m');
+    mv.setAttribute('camera-target', c.target);
     mv.setAttribute('min-camera-orbit', c.min);
     mv.setAttribute('max-camera-orbit', c.max);
     mv.setAttribute('camera-orbit', c.orbit);
