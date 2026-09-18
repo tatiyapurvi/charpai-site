@@ -70,8 +70,12 @@ it finishes loading.</p>
   // island - which differs in every design. Walk-in also starts you standing on the
   // ground inside the room, and is clamped so orbiting cannot lift you off it.
   const CAM = {
-    Tabletop: {target: '0m 0m 0m', orbit: '30deg 55deg auto', min: 'auto 0deg auto', max: 'auto 180deg auto'},
-    Walkin:   {target: '-2.07m 1.15m -2.04m', orbit: '45.4deg 81.2deg 2.94m', min: 'auto 30deg 1.03m', max: 'auto 96deg 4.14m'}
+    Tabletop: {target: '0m 0m 0m', orbit: '30deg 55deg auto', min: 'auto 0deg auto',
+               max: 'auto 180deg auto', fov: 'auto'},
+    // 30deg (model-viewer's default) is a telephoto lens: standing in the middle of a
+    // room you see one cupboard. 50deg is about what a room photograph looks like.
+    Walkin:   {target: '-2.07m 1.15m -2.04m', orbit: '45.4deg 81.2deg 2.94m', min: 'auto 30deg 1.03m',
+               max: 'auto 96deg 4.14m', fov: '50deg'}
   };
   function applyCam(v) {
     const c = CAM[v];
@@ -79,6 +83,7 @@ it finishes loading.</p>
     mv.setAttribute('min-camera-orbit', c.min);
     mv.setAttribute('max-camera-orbit', c.max);
     mv.setAttribute('camera-orbit', c.orbit);
+    mv.setAttribute('field-of-view', c.fov);
   }
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
     const v = b.dataset.v;
