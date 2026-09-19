@@ -69,10 +69,9 @@
 
 <a-scene
   mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1; autoStart: false;
-                uiLoading: no; uiScanning: no; uiError: no;
-                filterMinCF: 0.0001; filterBeta: 10; missTolerance: 8; warmupTolerance: 3"
+                uiLoading: no; uiScanning: no; uiError: no"
   color-space="sRGB"
-  renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; alpha: true"
+  renderer="colorManagement: true; physicallyCorrectLights: true; antialias: false; alpha: true; precision: medium"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false">
 
@@ -91,6 +90,13 @@
   <a-entity class="anchor" mindar-image-target="targetIndex: 0"></a-entity>
   <a-entity class="anchor" mindar-image-target="targetIndex: 1"></a-entity>
   <a-entity class="anchor" mindar-image-target="targetIndex: 2"></a-entity>
+
+  <!-- ONE copy of the room, moved under whichever sheet is found. Three copies meant
+       three scene graphs of 361 meshes being walked every frame. -->
+  <a-entity id="rig" visible="false">
+    <a-entity id="model" gltf-model="#room"></a-entity>
+    <a-plane id="overlay" visible="false"></a-plane>
+  </a-entity>
 </a-scene>
 
 <script>
@@ -113,33 +119,32 @@ const alignBtn = document.getElementById('align');
 
 let showAlign = false;
 
-function buildAnchorContents(anchor) {
-  const model = document.createElement('a-entity');
-  model.setAttribute('gltf-model', '#room');
-  model.setAttribute('position', `0 ${GEOM.offsetY} 0`);
-  model.setAttribute('rotation', GEOM.rotation);
-  model.setAttribute('scale', `${GEOM.scale} ${GEOM.scale} ${GEOM.scale}`);
-  anchor.appendChild(model);
+const rig     = document.getElementById('rig');
+const model   = document.getElementById('model');
+const overlay = document.getElementById('overlay');
 
-  // Lies flat on the paper, one printed plan exactly on top of the other. If the two
-  // drawings coincide, the 3D is registered; if they do not, the error is visible.
-  const overlay = document.createElement('a-plane');
-  overlay.setAttribute('width',  GEOM.planW);
-  overlay.setAttribute('height', GEOM.planH);
-  overlay.setAttribute('position', `0 ${GEOM.offsetY} 0.0006`);
-  overlay.setAttribute('material', 'src: #planimg; transparent: true; opacity: 0.55; side: double');
-  overlay.setAttribute('visible', 'false');
-  overlay.classList.add('overlay');
-  anchor.appendChild(overlay);
-}
+model.setAttribute('position', `0 ${GEOM.offsetY} 0`);
+model.setAttribute('rotation', GEOM.rotation);
+model.setAttribute('scale', `${GEOM.scale} ${GEOM.scale} ${GEOM.scale}`);
 
+// Lies flat on the paper, one printed plan exactly on top of the other. If the two
+// drawings coincide, the 3D is registered; if they do not, the error is visible.
+overlay.setAttribute('width',  GEOM.planW);
+overlay.setAttribute('height', GEOM.planH);
+overlay.setAttribute('position', `0 ${GEOM.offsetY} 0.0006`);
+overlay.setAttribute('material', 'src: #planimg; transparent: true; opacity: 0.55; side: double');
+
+const SHEETS = ['Paper sheet', 'Ink sheet', 'Stone sheet'];
 const anchors = [...document.querySelectorAll('.anchor')];
 anchors.forEach((a, i) => {
-  buildAnchorContents(a);
   a.addEventListener('targetFound', () => {
-    status.textContent = ['Paper sheet', 'Ink sheet', 'Stone sheet'][i] + ' — tracking';
+    // three.js reparents on add(), so this both moves the rig and drops it from the old parent
+    a.object3D.add(rig.object3D);
+    rig.object3D.visible = true;
+    status.textContent = SHEETS[i] + ' — tracking';
   });
   a.addEventListener('targetLost', () => {
+    rig.object3D.visible = false;
     status.textContent = 'Looking for the sheet…';
   });
 });
@@ -147,7 +152,7 @@ anchors.forEach((a, i) => {
 alignBtn.addEventListener('click', () => {
   showAlign = !showAlign;
   alignBtn.setAttribute('aria-pressed', String(showAlign));
-  document.querySelectorAll('.overlay').forEach(o => o.setAttribute('visible', showAlign));
+  overlay.setAttribute('visible', showAlign);
 });
 
 document.getElementById('start').addEventListener('click', async () => {
