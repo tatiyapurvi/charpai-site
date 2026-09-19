@@ -64,14 +64,16 @@
 
 <div class="hud" id="hud" hidden>
   <div class="status" id="status">Looking for the sheet&hellip;</div>
-  <button class="tog" id="align" aria-pressed="false">Alignment check</button>
+  <div class="status" id="fps">&nbsp;</div>
+  <button class="tog" id="cull" aria-pressed="false">Cull</button>
+  <button class="tog" id="align" aria-pressed="false">Align</button>
 </div>
 
 <a-scene
   mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1; autoStart: false;
                 uiLoading: no; uiScanning: no; uiError: no"
   color-space="sRGB"
-  renderer="colorManagement: true; physicallyCorrectLights: true; antialias: false; alpha: true; precision: medium"
+  renderer="colorManagement: true; physicallyCorrectLights: true; antialias: false; alpha: true"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false">
 
@@ -80,7 +82,7 @@
     <img id="planimg" src="./plan-overlay.png">
   </a-assets>
 
-  <a-camera position="0 0 0" look-controls="enabled: false" cursor="enabled: false"></a-camera>
+  <a-camera position="0 0 0" look-controls="enabled: false" cursor="enabled: false" depth-fix></a-camera>
 
   <a-entity light="type: hemisphere; color: #ffffff; groundColor: #b9b2a8; intensity: 0.85"></a-entity>
   <a-entity light="type: directional; color: #fff8ef; intensity: 0.75; castShadow: false"
@@ -100,6 +102,24 @@
 </a-scene>
 
 <script>
+/* MindAR builds its projection with near 10 / far 100000, in units where the target
+   image's width is the marker width in pixels (1400 here). The room therefore sits a
+   couple of thousand units out while the near plane is at 10, so essentially all of the
+   depth buffer is spent on empty space in front of the camera and coplanar panels fight.
+   Changing only near/far leaves fov and aspect alone, so the picture does not move —
+   only the depth mapping improves. MindAR re-applies its own values on every resize,
+   so this keeps watch. */
+const NEAR = 200, FAR = 20000;
+AFRAME.registerComponent('depth-fix', {
+  tick: function () {
+    const cam = this.el.getObject3D('camera');
+    if (!cam || !cam.isPerspectiveCamera) return;
+    if (cam.near !== NEAR || cam.far !== FAR) {
+      cam.near = NEAR; cam.far = FAR; cam.updateProjectionMatrix();
+    }
+  }
+});
+
 // Placement is derived from the sheet layout, not tuned by eye. MindAR normalises the
 // target so its WIDTH is 1 unit, and the frame — not the A4 page — is the target, so a
 // printer that shrinks the page changes nothing here.
@@ -148,6 +168,35 @@ anchors.forEach((a, i) => {
     status.textContent = 'Looking for the sheet…';
   });
 });
+
+// Every material comes out of the pipeline double-sided, which is right for a walk-in
+// room and wasteful for a dollhouse you look at from outside: it doubles fill rate and
+// lets each panel's own front and back faces fight. Toggle so we can see if it is the cause.
+const cullBtn = document.getElementById('cull');
+let culled = false;
+cullBtn.addEventListener('click', () => {
+  culled = !culled;
+  cullBtn.setAttribute('aria-pressed', String(culled));
+  model.object3D.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    mats.forEach(m => { if (m) { m.side = culled ? THREE.FrontSide : THREE.DoubleSide; m.needsUpdate = true; } });
+  });
+});
+
+const fpsEl = document.getElementById('fps');
+let frames = 0, last = performance.now();
+AFRAME.registerComponent('fps-meter', {
+  tick: function () {
+    frames++;
+    const now = performance.now();
+    if (now - last >= 1000) {
+      fpsEl.textContent = Math.round(frames * 1000 / (now - last)) + ' fps';
+      frames = 0; last = now;
+    }
+  }
+});
+scene.setAttribute('fps-meter', '');
 
 alignBtn.addEventListener('click', () => {
   showAlign = !showAlign;
