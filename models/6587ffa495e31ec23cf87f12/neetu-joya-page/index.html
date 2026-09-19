@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Neetu Joya Kids Room &middot; page AR</title>
+<meta name="robots" content="noindex, nofollow">
+<script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe-master.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<style>
+  :root { --bg:#f6f4f1; --ink:#1b1a18; --line:#d8d3cc; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  a-scene { position:fixed; inset:0; }
+
+  .panel { position:fixed; inset:0; z-index:20; background:var(--bg);
+    display:flex; flex-direction:column; justify-content:center; padding:28px 24px;
+    padding-bottom:calc(28px + env(safe-area-inset-bottom)); }
+  .panel[hidden] { display:none; }
+  h1 { margin:0 0 6px; font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+  h1 span { font-weight:400; }
+  p  { margin:0 0 14px; font-size:14px; opacity:.72; max-width:34em; }
+  ol { margin:0 0 20px; padding-left:20px; font-size:14px; opacity:.72; max-width:34em; }
+  li { margin-bottom:6px; }
+  .btn { display:inline-block; padding:14px 24px; border:0; border-radius:999px;
+    background:var(--ink); color:var(--bg); font:inherit; font-size:15px; font-weight:500;
+    cursor:pointer; align-self:flex-start; }
+  .sheets { margin-top:22px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; opacity:.72; }
+  .sheets a { color:var(--ink); }
+
+  .hud { position:fixed; left:0; right:0; bottom:0; z-index:10; pointer-events:none;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    display:flex; align-items:center; gap:10px; justify-content:space-between; }
+  .status { pointer-events:none; font-size:13px; padding:8px 14px; border-radius:999px;
+    background:rgba(27,26,24,.72); color:#fff; backdrop-filter:blur(6px); }
+  .tog { pointer-events:auto; font:inherit; font-size:13px; padding:8px 14px; border:0;
+    border-radius:999px; background:rgba(27,26,24,.72); color:#fff; backdrop-filter:blur(6px); }
+  .tog[aria-pressed="true"] { background:#fff; color:var(--ink); }
+  .err { color:#a3302b; }
+</style>
+</head>
+<body>
+
+<div class="panel" id="intro">
+  <h1>Neetu Joya <span>&middot; kids room</span></h1>
+  <p>Point the camera at the printed A4 plan. The room stands up out of the drawing at the
+     same 1:25 the sheet is drawn to &mdash; the model&rsquo;s footprint lands exactly on the
+     printed one.</p>
+  <ol>
+    <li>Print a sheet at 100%, on A4. Do not let the printer scale it to fit.</li>
+    <li>Lay it flat, under even light. Avoid glare across the page.</li>
+    <li>Hold the phone over it, roughly square on, 25&ndash;40&nbsp;cm away.</li>
+  </ol>
+  <button class="btn" id="start">Start the camera</button>
+  <div class="sheets">
+    Printable sheets &mdash;
+    <a href="./sheet-paper.pdf">paper</a> &middot;
+    <a href="./sheet-ink.pdf">ink</a> &middot;
+    <a href="./sheet-stone.pdf">stone</a>.
+    All three are recognised; print whichever you like.
+  </div>
+</div>
+
+<div class="hud" id="hud" hidden>
+  <div class="status" id="status">Looking for the sheet&hellip;</div>
+  <button class="tog" id="align" aria-pressed="false">Alignment check</button>
+</div>
+
+<a-scene
+  mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 1; autoStart: false;
+                uiLoading: no; uiScanning: no; uiError: no;
+                filterMinCF: 0.0001; filterBeta: 10; missTolerance: 8; warmupTolerance: 3"
+  color-space="sRGB"
+  renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; alpha: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false">
+
+  <a-assets timeout="60000">
+    <a-asset-item id="room" src="./room.glb"></a-asset-item>
+    <img id="planimg" src="./plan-overlay.png">
+  </a-assets>
+
+  <a-camera position="0 0 0" look-controls="enabled: false" cursor="enabled: false"></a-camera>
+
+  <a-entity light="type: hemisphere; color: #ffffff; groundColor: #b9b2a8; intensity: 0.85"></a-entity>
+  <a-entity light="type: directional; color: #fff8ef; intensity: 0.75; castShadow: false"
+            position="1 2 1.4"></a-entity>
+
+  <!-- 0 paper, 1 ink, 2 stone — same artwork, same geometry, so one transform serves all -->
+  <a-entity class="anchor" mindar-image-target="targetIndex: 0"></a-entity>
+  <a-entity class="anchor" mindar-image-target="targetIndex: 1"></a-entity>
+  <a-entity class="anchor" mindar-image-target="targetIndex: 2"></a-entity>
+</a-scene>
+
+<script>
+// Placement is derived from the sheet layout, not tuned by eye. MindAR normalises the
+// target so its WIDTH is 1 unit, and the frame — not the A4 page — is the target, so a
+// printer that shrinks the page changes nothing here.
+const GEOM = {
+  scale:    0.210562,   // 1 metre of room -> MindAR units (176.02 mm plan / 190 mm frame / 4.40 m)
+  offsetY:  0.072861,   // plan centre sits above frame centre by 163.5 px of 2244
+  rotation: '90 0 0',   // model +Y out of the page, model +Z toward the foot of the sheet
+  planW:    0.926471,   // printed plan width, in the same units
+  planH:    1.180927
+};
+
+const scene  = document.querySelector('a-scene');
+const intro  = document.getElementById('intro');
+const hud    = document.getElementById('hud');
+const status = document.getElementById('status');
+const alignBtn = document.getElementById('align');
+
+let showAlign = false;
+
+function buildAnchorContents(anchor) {
+  const model = document.createElement('a-entity');
+  model.setAttribute('gltf-model', '#room');
+  model.setAttribute('position', `0 ${GEOM.offsetY} 0`);
+  model.setAttribute('rotation', GEOM.rotation);
+  model.setAttribute('scale', `${GEOM.scale} ${GEOM.scale} ${GEOM.scale}`);
+  anchor.appendChild(model);
+
+  // Lies flat on the paper, one printed plan exactly on top of the other. If the two
+  // drawings coincide, the 3D is registered; if they do not, the error is visible.
+  const overlay = document.createElement('a-plane');
+  overlay.setAttribute('width',  GEOM.planW);
+  overlay.setAttribute('height', GEOM.planH);
+  overlay.setAttribute('position', `0 ${GEOM.offsetY} 0.0006`);
+  overlay.setAttribute('material', 'src: #planimg; transparent: true; opacity: 0.55; side: double');
+  overlay.setAttribute('visible', 'false');
+  overlay.classList.add('overlay');
+  anchor.appendChild(overlay);
+}
+
+const anchors = [...document.querySelectorAll('.anchor')];
+anchors.forEach((a, i) => {
+  buildAnchorContents(a);
+  a.addEventListener('targetFound', () => {
+    status.textContent = ['Paper sheet', 'Ink sheet', 'Stone sheet'][i] + ' — tracking';
+  });
+  a.addEventListener('targetLost', () => {
+    status.textContent = 'Looking for the sheet…';
+  });
+});
+
+alignBtn.addEventListener('click', () => {
+  showAlign = !showAlign;
+  alignBtn.setAttribute('aria-pressed', String(showAlign));
+  document.querySelectorAll('.overlay').forEach(o => o.setAttribute('visible', showAlign));
+});
+
+document.getElementById('start').addEventListener('click', async () => {
+  const btn = document.getElementById('start');
+  btn.disabled = true;
+  btn.textContent = 'Loading the room…';
+  try {
+    if (!scene.hasLoaded) await new Promise(r => scene.addEventListener('loaded', r, {once:true}));
+    await scene.systems['mindar-image-system'].start();
+    intro.hidden = true;
+    hud.hidden = false;
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Start the camera';
+    const p = document.createElement('p');
+    p.className = 'err';
+    p.textContent = 'The camera could not start: ' + (e && e.message ? e.message : e) +
+      ' — this page needs camera permission, and on iPhone it must be opened in Safari.';
+    intro.appendChild(p);
+  }
+});
+</script>
+</body>
+</html>
