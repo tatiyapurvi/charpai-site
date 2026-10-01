@@ -398,7 +398,6 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .crow:hover{background:var(--sel)}
 .cmain{display:flex;flex-direction:column;gap:3px;min-width:0}
 .cname{font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px}
-.here{width:8px;height:8px;border-radius:50%;background:var(--tape);box-shadow:0 0 0 2px var(--tape-soft);flex:0 0 8px}
 .csub{color:var(--muted);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cmeta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto}
 .camt{font:700 18px var(--num)}
@@ -2525,7 +2524,7 @@ function renderClients(){
     .sort((a, b) => key(b).localeCompare(key(a)));
   const F = [['all', 'All'], ['draft', 'Draft'], ['quoted', 'Quoted'], ['won', 'Won'], ['lost', 'Lost']];
   const row = c => `<button class="crow" data-cid="${esc(c.id)}">
-      <span class="cmain"><span class="cname">${c.id === state.clientId ? '<span class="here" title="Open on this device"></span>' : ''}${esc(c.name || 'No name')}</span>
+      <span class="cmain"><span class="cname">${esc(c.name || 'No name')}</span>
         <span class="csub">${[c.phone, c.addr, PF && IS_ADMIN ? (c.ownerEmail ? personName(c.ownerEmail) : 'Not assigned') : c.exec].filter(Boolean).map(esc).join(' · ') || 'No details yet'}</span></span>
       <span class="cmeta">${pillHTML(c)}<span class="camt">${amountOf(c) ? rs(amountOf(c)) : ''}</span><span class="cago">${esc(agoTxt(c.edited || c.at || c.created))}</span></span></button>`;
   el.innerHTML = `<div class="cl-wrap">${top}
