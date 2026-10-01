@@ -11,6 +11,14 @@ Both must stay in the repo root or the domain unbinds on the next deploy.
 
 Live in 30-60 seconds.
 
+## /sales (Charpai Sales app)
+
+`sales/index.html` is **built, not hand-edited**. Source and build steps live in
+`~/Documents/Charpai ERP/measurement-sheet-backup/curtain-calculator/` (read its HANDOVER.md §2a):
+`python3 build.py && python3 app/build_app.py` writes `sales/index.html` here; then commit just that file.
+Logins and data are in Firebase (project `charpai-sales`); the security is in its rules, so this public repo
+holds no secrets. Never copy `app/export/` or `charpai-import.json` here: they contain costs.
+
 ## DNS at GoDaddy (one time)
 
 My Products > charpai.co.in > DNS > Manage Zones.
