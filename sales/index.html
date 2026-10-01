@@ -406,7 +406,7 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .cl-empty{padding:44px 16px;text-align:center;color:var(--muted)}
 .cl-empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
 /* client page */
-.cp{max-width:900px;margin:0 auto;display:grid;gap:14px}
+.cp{max-width:900px;display:grid;gap:14px}   /* left-aligned under the client bar */
 .back{border:0;background:none;color:var(--muted);font-weight:600;cursor:pointer;padding:4px 0;font-size:14.5px;justify-self:start}
 .back:hover{color:var(--ink)}
 .cp-head{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
@@ -429,10 +429,15 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .vacts .btn{padding:6px 12px;font-size:14px}
 /* client bar above the sheet */
 .cbar[hidden]{display:none}
-.cbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:14.5px}
+.cbar{margin-bottom:16px;font-size:14.5px}
+.cbar-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.ctabs{display:flex;gap:4px;border-bottom:2px solid var(--line);overflow-x:auto}
+.ctab{border:0;background:none;padding:10px 16px 9px;font:700 18px/1.1 var(--num);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.ctab:hover{color:var(--ink)}
+.ctab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.ctab.q[aria-selected="true"]{border-bottom-color:var(--tape)}
 .cbar .sep{color:var(--faint)}
-.cbar-name{border:0;background:none;font:700 19px var(--num);cursor:pointer;color:var(--ink);padding:2px 0}
-.cbar-name:hover{text-decoration:underline}
+.cbar-name{font:700 21px var(--num);color:var(--ink);padding:2px 0}
 .cbar-save{color:var(--faint);font-size:13px;margin-left:auto}
 .cbar-save.err{color:var(--warn);font-weight:600}
 body.shared .house{display:none}
@@ -517,18 +522,16 @@ tr.dash-r:hover td{background:var(--sel)}
   <div class="tabs-in" role="tablist">
     <button class="tab" role="tab" id="tab-d" hidden><b>Dashboard</b><small>the whole team</small></button>
     <button class="tab" role="tab" id="tab-h"><b>Clients</b><small>every client</small></button>
-    <button class="tab" role="tab" id="tab-c"><b>Curtains</b><small>windows &amp; doors</small></button>
-    <button class="tab" role="tab" id="tab-b"><b>Blinds</b><small>roller, roman, honeycomb…</small></button>
+    <button class="tab" role="tab" id="tab-r"><b>Prices</b><small>curtains &amp; blinds</small></button>
     <button class="tab" role="tab" id="tab-p" hidden><b>People</b><small>who can sign in</small></button>
-    <button class="qbtn" id="open-quote" aria-pressed="false"><b>Quotation</b><small>curtains + blinds</small></button>
   </div>
 </nav>
 
 <main class="page">
   <div class="cbar" id="cbar" hidden></div>
   <div class="subtabs" id="subtabs">
-    <button class="subtab" id="sub-measure" data-sub="measure">Measure</button>
-    <button class="subtab" id="sub-prices" data-sub="prices">Prices</button>
+    <button class="subtab" id="sub-measure" data-sub="c-prices">Curtain prices</button>
+    <button class="subtab" id="sub-prices" data-sub="b-prices">Blinds prices</button>
     <span class="hint" id="subnote"></span>
   </div>
   <section id="v-clients" hidden>
@@ -2447,6 +2450,7 @@ async function syncOpenDraft(){
   watchDraft(); gate();
 }
 async function openClient(cid, view){
+  cpId = cid;
   if (cid !== state.clientId) {
     await flushDraft();
     let d = null; try { d = await Store.getDraft(cid); } catch (e) { toast('Could not open this client. Check the internet.'); return; }
@@ -2512,7 +2516,7 @@ async function recordVersion(v, sig, t){
 function renderClients(){
   const el = $('#cl-body');
   const top = `<div class="cl-head"><h2>Clients</h2>${shared ? '<button class="btn solid big" data-act="new">+ New client</button>' : ''}</div>`;
-  if (!shared) { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty"><b>The client list works when the page is opened from claude.ai.</b>On this device you can still measure under Curtains and Blinds.</div></div>`; return; }
+  if (!shared) { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty"><b>The client list needs the shared store.</b>On this device you can still measure one sheet.<div style="margin-top:12px"><button class="btn solid" id="cl-local">Open the sheet on this device</button></div></div></div>`; return; }
   if (CL.state !== 'ready') { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty">${CL.state === 'error' ? '<b>Could not load the clients.</b>Reload the page.' : 'Loading the clients…'}</div></div>`; return; }
   const counts = {all: CL.list.length, draft: 0, quoted: 0, won: 0, lost: 0}; CL.list.forEach(c => counts[statusOf(c)]++);
   const ql = clQ.trim().toLowerCase(), key = c => String(c.edited || c.at || c.created || '');
@@ -2536,6 +2540,7 @@ clb.addEventListener('input', e => { if (e.target.id !== 'cl-q') return; clQ = e
 clb.addEventListener('click', e => {
   const t = e.target;
   if (t.closest('[data-act="new"]')) { askNewClient(); return; }
+  if (t.closest('#cl-local')) { go('c-measure'); return; }
   const f = t.closest('[data-f]'); if (f) { clF = f.dataset.f; renderClients(); return; }
   const r = t.closest('[data-cid]'); if (r) { cpId = r.dataset.cid; go('client'); }
 });
@@ -2558,10 +2563,9 @@ function renderClientPage(){
         <span class="vacts"><button class="btn" data-act="view" data-n="${x.n}">View</button><button class="btn" data-act="pdf" data-n="${x.n}">PDF</button><button class="link" data-act="from" data-n="${x.n}">Start from this</button></span></div>`).join('');
   const changed = c.latest && c.dsig && c.dsig !== c.sig;
   el.innerHTML = `<div class="cp">
-    <button class="back" data-act="clients">← All clients</button>
     <div class="cp-head"><div><h2>${esc(c.name || 'No name')}</h2><div class="csub" style="white-space:normal">${[c.phone, c.addr, c.no ? 'Quotation ' + c.no : '', c.exec ? 'Handled by ' + c.exec : ''].filter(Boolean).map(esc).join(' · ') || 'No details yet'}</div>
       ${PF && IS_ADMIN ? `<label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px">Executive <select id="cp-owner" class="search" style="width:auto;padding:5px 8px"><option value="">Not assigned</option>${[...PEOPLE].filter(([, p]) => p.role !== 'admin' || p.active !== false).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>${pillHTML(c)}</div>
-    <div class="cp-acts"><button class="btn solid big" data-act="sheet">Open measurement sheet</button><button class="btn big" data-act="quote">See quotation</button><button class="btn ghost" data-act="edit">Edit details</button></div>
+    <div class="cp-acts"><button class="btn solid big" data-act="sheet">Open their measurements</button><button class="btn ghost" data-act="edit">Edit details</button></div>
     <p class="hint" style="margin:-4px 0 0">Sheet last changed ${esc(agoTxt(c.edited || c.created))}.${changed ? ` <b style="color:var(--warn)">It has changes not yet sent to the customer</b> (last sent: v${c.latest}).` : ''}</p>
     ${outcome}
     <div class="card"><h3>Quotations sent</h3>${vlist}</div></div>`;
@@ -2674,17 +2678,34 @@ function showVersion(c, x){
 }
 
 // ---- the client bar above the sheet, and the "no client open" screen
+// The client bar, above everything that belongs to one client: ← Clients / name · status · saved, then the client's tabs.
+const CTABS = [['client', 'Overview'], ['c-measure', 'Curtains'], ['b-measure', 'Blinds'], ['quote', 'Quotation']];
 function renderCbar(){
   const bar = $('#cbar'); if (!bar) return;
-  const on = shared && state.clientId && ['c-measure', 'b-measure', 'quote', 'c-prices', 'b-prices'].includes(current);
+  const on = ['client', 'c-measure', 'b-measure', 'quote'].includes(current) && (!shared || current === 'client' || state.clientId);
   bar.hidden = !on; if (!on) return;
-  const c = CL.byId.get(state.clientId) || {name: state.house, latest: 0};
-  const saveTxt = draftErr === 'perm' ? '<span class="cbar-save err">Not saved for the team: ask Purvi to make you a Contributor</span>'
+  if (!shared) {   // the page on its own, without the shared store: one sheet on this device
+    bar.innerHTML = `<div class="cbar-top"><span class="cbar-name" style="cursor:default">Sheet on this device</span></div>
+      <div class="ctabs" role="tablist">${CTABS.slice(1).map(([v, n]) => `<button class="ctab${v === 'quote' ? ' q' : ''}" data-ct="${v}" aria-selected="${current === v}">${n}</button>`).join('')}</div>`;
+    return;
+  }
+  const cid = current === 'client' ? cpId : state.clientId, here = cid === state.clientId;
+  const c = CL.byId.get(cid) || {name: here ? state.house : '', latest: 0};
+  const saveTxt = !here ? '' : draftErr === 'perm' ? `<span class="cbar-save err">Not saved for the team: ${PF ? 'ask Purvi to check your access' : 'ask Purvi to make you a Contributor'}</span>`
     : draftErr ? '<span class="cbar-save err">Not saved yet (no internet?). Kept on this device.</span>'
     : draftBusy || draftTimer ? '<span class="cbar-save">Saving…</span>' : '<span class="cbar-save">Saved ✓</span>';
-  bar.innerHTML = `<button class="back" data-act="clients">← Clients</button><span class="sep">/</span><button class="cbar-name" data-act="client">${esc(state.house || c.name || 'No name')}</button>${c.id ? pillHTML(c) : ''}${saveTxt}`;
+  bar.innerHTML = `<div class="cbar-top"><button class="back" data-act="clients">← Clients</button><span class="sep">/</span><span class="cbar-name">${esc((here ? state.house : '') || c.name || 'No name')}</span>${c.id ? pillHTML(c) : ''}${saveTxt}</div>
+    <div class="ctabs" role="tablist">${CTABS.map(([v, n]) => `<button class="ctab${v === 'quote' ? ' q' : ''}" role="tab" data-ct="${v}" aria-selected="${current === v}">${n}</button>`).join('')}</div>`;
 }
-$('#cbar').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'clients') go('clients'); else { cpId = state.clientId; go('client'); } });
+$('#cbar').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act], [data-ct]'); if (!b) return;
+  if (b.dataset.act === 'clients') { go('clients'); return; }
+  const v = b.dataset.ct; if (!v || v === current) return;
+  if (!shared) { go(v); return; }
+  const cid = current === 'client' ? cpId : state.clientId;
+  if (v === 'client') { cpId = cid; go('client'); return; }
+  if (cid === state.clientId) go(v); else await openClient(cid, v);
+});
 $('#v-none').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'new') askNewClient(); else go('clients'); });
 // With the shared store every sheet belongs to a client: the sheet, blinds and quotation show "No client open" without one.
 const GATED = ['c-measure', 'b-measure', 'quote'];
@@ -2846,19 +2867,16 @@ function go(v){
   current = v;
   const noClient = shared && !state.clientId && GATED.includes(v);   // every sheet belongs to a client
   for (const [k, id] of Object.entries(VIEWS)) $('#v-' + id).hidden = noClient ? k !== 'none' : k !== v;
+  // Top bar (Purvi, 1 Oct): Dashboard · Clients · Prices · People. Curtains, Blinds and Quotation belong to one client,
+  // so they are tabs inside the client (renderCbar), not in the top bar.
   const main = ['quote', 'clients', 'client', 'dash', 'people'].includes(v) ? '' : v[0]; if (main) lastMain = main;
-  $('#tab-d').setAttribute('aria-selected', v === 'dash' ? 'true' : 'false'); $('#tab-p').setAttribute('aria-selected', v === 'people' ? 'true' : 'false');
-  $('#tab-h').setAttribute('aria-selected', v === 'clients' || v === 'client' ? 'true' : 'false');
-  $('#tab-c').setAttribute('aria-selected', main === 'c' ? 'true' : 'false');
-  $('#tab-b').setAttribute('aria-selected', main === 'b' ? 'true' : 'false');
-  $('#open-quote').setAttribute('aria-pressed', v === 'quote' ? 'true' : 'false');
-  $('#subtabs').hidden = ['quote', 'clients', 'client', 'dash', 'people'].includes(v);   // Prices stay reachable without a client
-  const sub = v.slice(2), b = lastMain === 'b';
-  $('#sub-measure').setAttribute('aria-selected', sub === 'measure' ? 'true' : 'false');
-  $('#sub-prices').setAttribute('aria-selected', sub === 'prices' ? 'true' : 'false');
-  $('#sub-measure').textContent = b ? 'Measure blinds' : 'Measure curtains';
-  $('#sub-prices').textContent = b ? 'Blinds prices' : 'Curtain prices';
-  $('#subnote').textContent = b ? 'The form for the salesperson, order forms for the companies, and the blinds price lists.' : 'The form for the salesperson with drawings, and stitching, lining and track rates.';
+  const prices = /prices$/.test(v), top = v === 'dash' ? 'd' : v === 'people' ? 'p' : prices ? 'r' : 'h';
+  for (const k of 'dhrp') $('#tab-' + k).setAttribute('aria-selected', top === k ? 'true' : 'false');
+  if (prices) lastPrices = v;
+  $('#subtabs').hidden = !prices;
+  $('#sub-measure').setAttribute('aria-selected', v === 'c-prices' ? 'true' : 'false');
+  $('#sub-prices').setAttribute('aria-selected', v === 'b-prices' ? 'true' : 'false');
+  $('#subnote').textContent = v === 'b-prices' ? 'Blinds price lists, motors and remotes, installation.' : 'Stitching, linings, tracks, motor kits and remotes, installation.';
   if (v === 'quote') renderQuote();
   if (v === 'clients') renderClients();
   if (v === 'client') renderClientPage();
@@ -2875,11 +2893,10 @@ function go(v){
 $('#tab-h').onclick = () => { clOwner = ''; go('clients'); };
 $('#tab-d').onclick = () => go('dash');
 $('#tab-p').onclick = () => go('people');
-$('#tab-c').onclick = () => go('c-measure');
-$('#tab-b').onclick = () => go('b-measure');
-$('#open-quote').onclick = () => go('quote');
+let lastPrices = 'c-prices';
+$('#tab-r').onclick = () => go(lastPrices);
 addEventListener('hashchange', () => { const h = location.hash.slice(1); if (VIEWS[h] || OLD_VIEW[h]) go(h); });
-document.querySelectorAll('.subtab').forEach(x => x.onclick = () => go(lastMain + '-' + x.dataset.sub));
+document.querySelectorAll('.subtab').forEach(x => x.onclick = () => go(x.dataset.sub));
 async function copyText(text, box){
   try { await navigator.clipboard.writeText(text); toast('Copied. Paste it in WhatsApp.'); }
   catch (e) {
