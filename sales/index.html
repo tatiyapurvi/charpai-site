@@ -1880,7 +1880,7 @@ $('#q-head').addEventListener('input', e => {
   save(); renderPaper();
 });
 function lineHTML(l, n, showC, ro){
-  const rate = l.mrp == null ? ro ? '—' : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>` : inr(l.mrp);
+  const rate = l.mrp == null ? ro ? '—' : PF && !IS_ADMIN && !['pick', 'remote'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>` : inr(l.mrp);
   return `<tr><td class="c">${n}</td><td>${esc(l.area || '')}</td><td>${esc(l.product)}</td><td>${esc(l.what)}</td><td class="c">${esc(l.hsn || '')}</td>
     <td class="r">${cpF(r2(l.qty))}</td><td class="c">${esc(l.unit)}</td><td class="r">${rate}</td><td class="r"><b>${l.amt == null ? '—' : inr(l.amt)}</b></td>
     ${showC ? `<td class="r cost">${l.camt == null ? '—' : inr(l.camt)}</td>` : ''}</tr>`;
@@ -2266,6 +2266,7 @@ async function connectPrices(){
   canSeeCost = canEditPrices;
   document.body.classList.add('shared');
   setupPlatform();
+  if (PF && !IS_ADMIN && /prices$/.test(current)) go('clients');   // opened on a prices link before sign-in was known
   if (!canEditPrices) costs = {fabrics:{}, stitch:{}, track:{}};
   refreshAll();
   loadCatalog();
@@ -2732,6 +2733,7 @@ function setupPlatform(){
   acct.innerHTML = `<span><b>${esc(PF.name || PF.email)}</b><small>${IS_ADMIN ? 'Admin' : 'Sales'}</small></span><button class="btn" id="signout">Sign out</button>`;
   document.querySelector('.tape-in').appendChild(acct);
   $('#signout').onclick = () => PF.signOut();
+  $('#tab-r').hidden = !IS_ADMIN;
   if (IS_ADMIN) {
     $('#tab-d').hidden = false; $('#tab-p').hidden = false;
     db.collection('users').onSnapshot(s => { PEOPLE.clear(); s.docs.forEach(d => PEOPLE.set(d.id, d.data())); if (current === 'people') renderPeople(); if (current === 'dash') renderDash(); if (current === 'clients') renderClients(); }, () => {});
@@ -2863,6 +2865,7 @@ function go(v){
   v = OLD_VIEW[v] || v; if (!VIEWS[v] || v === 'none') v = 'c-measure';
   if (v === 'client' && !cpId) v = 'clients';
   if ((v === 'dash' || v === 'people') && !(PF && IS_ADMIN)) v = 'clients';
+  if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';   // Purvi, 1 Oct: sales don't see the Prices page
   current = v;
   const noClient = shared && !state.clientId && GATED.includes(v);   // every sheet belongs to a client
   for (const [k, id] of Object.entries(VIEWS)) $('#v-' + id).hidden = noClient ? k !== 'none' : k !== v;
