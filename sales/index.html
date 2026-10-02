@@ -738,7 +738,7 @@ function trackHow(row, W, res, R) {
 
 // 300 cm rolls (Purvi, 2 Oct 2026). One 300 cm width is cut into 2 panels, so panels always come in pairs and the fabric
 // is bought in whole widths. How many panels: the same rule as 140 cm, 19–22″ of window a panel, up to 24″ (Purvi: "ignore
-// 1.4 for now, work on the 19-22 and 22-24 formula"). Turned sideways, the roll width becomes the height.
+// 1.4 for now, work on the 19-22 and 22-24 formula"). Windows under 109″ tall are turned sideways: width × 1.4.
 function curtainWide(row, R, res) {
   const W = +row.W || 0, H = +row.H || 0, p = row.fabric, roll = p.r;
   const st = row.style || {};
@@ -771,18 +771,16 @@ function curtainWide(row, R, res) {
   const raw = widths * cut / 39.37;
   let m = cpUp(raw, step);
   let how = ptxt + ctxt + ' ' + widths + ' width' + (widths === 1 ? '' : 's') + ' of ' + cpF(roll) + ' cm × ' + cpF(cut) + '″ = ' + f2(raw) + ' m, rounded up to ' + cpF(m) + ' m.';
-  const usable = roll / 2.54 - (R.curtain_turn_side_in ?? 2);
-  if (cut > usable) how += ' Can\'t be turned sideways: the ' + cpF(cut) + '″ drop is taller than the ' + f1(usable) + '″ usable roll width.';
+  // Under 109″ tall (Purvi, 2 Oct): no panel maths for the fabric. Turn it sideways and buy window width × 1.4.
+  const maxH = R.curtain_turn_max_h_300 || 109, tfl = R.curtain_turn_fullness_300 || 1.4;
+  if (H >= maxH) how += ' Not turned sideways: the window is ' + cpF(H) + '″ tall, and turning is only for windows under ' + cpF(maxH) + '″.';
   else if (p.t) how += ' (Not turned sideways: the pattern has a direction.)';
   else {
-    const hem = R.curtain_turn_hems_in ?? 8;
-    const fl = R.curtain_turn_fullness || 2.25, traw = (W * fl + hem) / 39.37, tm = cpUp(traw, step);
-    if (tm < m) {
-      m = tm; res.turned = true;
-      how = 'Fabric turned sideways: the ' + cpF(roll) + ' cm roll (' + f1(usable) + '″ usable) is taller than the ' + cpF(cut) + '″ drop, so no joins and less fabric. '
-        + cpF(W) + '″ × ' + cpF(fl) + ' for the folds + ' + cpF(hem) + '″ for the sides = ' + f2(traw) + ' m, rounded up to ' + cpF(m) + ' m. '
-        + 'The tailor charges ' + panels + ' panels. (Upright it would be ' + panels + ' panels, ' + cpF(cpUp(raw, step)) + ' m.)';
-    }
+    const traw = W * tfl / 39.37;
+    m = cpUp(traw, step); res.turned = true;
+    how = 'The window is under ' + cpF(maxH) + '″ tall, so the fabric is turned sideways (the ' + cpF(roll) + ' cm roll covers the height). '
+      + cpF(W) + '″ × ' + cpF(tfl) + ' = ' + cpF(Math.round(W * tfl * 100) / 100) + '″ = ' + f2(traw) + ' m, rounded up to ' + cpF(m) + ' m. '
+      + 'The tailor charges ' + panels + ' panels. (Upright it would be ' + widths + ' width' + (widths === 1 ? '' : 's') + ', ' + cpF(cpUp(raw, step)) + ' m.)';
   }
   res.panels = panels; res.qty = m;
   res.how = how + trackHow(row, W, res, R);
@@ -962,7 +960,7 @@ const ORDER_COLS = {
 const ORDER_HEAD = {shade: 'Shade No.', series: 'Series Name', W: 'Width (mm)', H: 'Drop (mm)', motor: 'Motor, Remote & Accessories', loc: 'Location of Blinds', qty: 'No. of Blinds'};
 if (typeof module !== 'undefined') module.exports = {BLIND_TYPES, BLIND_NAMES, ORDER_COLS, ORDER_HEAD, blindType};
 
-const D = {"rules": {"curtain_panel_in_140": 24.0, "curtain_panel_min_in_140": 19.0, "curtain_panel_in_300": 50.0, "curtain_panel_min_in_300": 40.0, "curtain_fold_in": 6.0, "curtain_heading_in": 4.0, "curtain_metre_step": 0.25, "curtain_turn_side_in": 2.0, "curtain_turn_fullness": 2.25, "curtain_turn_hems_in": 8.0, "track_step_ft": 0.5, "motor_step_m": 0.5, "blind_step_sqft": 0.5, "blind_min_sqft": 15.0, "wp_roll_width_cm": 53.0, "wp_roll_len_m": 10.0, "wp_trim_in": 4.0, "wp_waste_pct": 10.0, "floor_waste_pct": 5.0, "foam_sheet_w_in": 36.0, "foam_sheet_l_in": 72.0, "uph_allow_in": 4.0, "uph_metre_step": 0.25}, "fabrics": [{"n": "ALLURING JACQUARD COOL NEUTRALS — 12", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Alluring Jacquard — 12dE", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "APKALAHARI - DUNES — KALAR17", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Blackout Lining", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Curtain Border Tape — Woven", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Curtain Lining — Cotton Satin", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Main Curtain Fabric — Luxury", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Main Curtain Fabric — Premium", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Main Curtain Fabric — Standard", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Therasia Sheer 300 cm", "r": 300.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Dimout Lining", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "GLOURIES — 139", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "GULMOHAR — 26", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "GULMOHAR — 7", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "HAZMORY ARTISAN HARMO — 21", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE / IDAR — IBBID01", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE INAY — IBBIA02", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE INWA — IBBIA01", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE IRWA — IBBIA03", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Kala — Kal233", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "LUMINARA — 05", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "LUSTER — 37", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "MATT JACQUARD I — 15", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "OSIONMIST — 29", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Race Drape — RC225W", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sabya — SAB3301", "r": 300.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sabyasachi for Nilaya — Paris Calcutta Velvet", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sabyasachi — SAB1102", "r": 300.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SATINA — 2", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SERENE SHEER — 20", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SERRA DRAPES — 7", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sheer Curtain Fabric — Premium", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sheer Curtain Fabric — Standard", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SS BALLERINA — 09", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SS LUXE BOUCLE — 24", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "TERRA WEAVES — 4", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "TEST Verdant Plains — TST335", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "THE WHITE WINDOW — 16", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "VERDANT PLAINS VOL III — 335", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Walkthrough — WT01", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "ZEN — 6", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "ZENITH HAFLONG — 04", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}], "styles": [{"n": "American Pleat", "mx": 0.0, "mn": 0.0}, {"n": "Two Pinch Pleat", "mx": 0.0, "mn": 0.0}, {"n": "APT / Double Height", "mx": 0.0, "mn": 0.0}, {"n": "Eyelet", "mx": 0.0, "mn": 0.0}, {"n": "Ripple", "mx": 0.0, "mn": 0.0}], "tracks": [{"n": "Manual track", "k": "ft"}, {"n": "Rod cum track", "k": "ft"}, {"n": "Motorised (WiFi)", "k": "motor"}]};
+const D = {"rules": {"curtain_panel_in_140": 24.0, "curtain_panel_min_in_140": 19.0, "curtain_panel_in_300": 50.0, "curtain_panel_min_in_300": 40.0, "curtain_turn_max_h_300": 109, "curtain_turn_fullness_300": 1.4, "curtain_fold_in": 6.0, "curtain_heading_in": 4.0, "curtain_metre_step": 0.25, "curtain_turn_side_in": 2.0, "curtain_turn_fullness": 2.25, "curtain_turn_hems_in": 8.0, "track_step_ft": 0.5, "motor_step_m": 0.5, "blind_step_sqft": 0.5, "blind_min_sqft": 15.0, "wp_roll_width_cm": 53.0, "wp_roll_len_m": 10.0, "wp_trim_in": 4.0, "wp_waste_pct": 10.0, "floor_waste_pct": 5.0, "foam_sheet_w_in": 36.0, "foam_sheet_l_in": 72.0, "uph_allow_in": 4.0, "uph_metre_step": 0.25}, "fabrics": [{"n": "ALLURING JACQUARD COOL NEUTRALS — 12", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Alluring Jacquard — 12dE", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "APKALAHARI - DUNES — KALAR17", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Blackout Lining", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Curtain Border Tape — Woven", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Curtain Lining — Cotton Satin", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Main Curtain Fabric — Luxury", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Main Curtain Fabric — Premium", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Main Curtain Fabric — Standard", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "D'Decor Therasia Sheer 300 cm", "r": 300.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Dimout Lining", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "GLOURIES — 139", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "GULMOHAR — 26", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "GULMOHAR — 7", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "HAZMORY ARTISAN HARMO — 21", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE / IDAR — IBBID01", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE INAY — IBBIA02", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE INWA — IBBIA01", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "IBBANE IRWA — IBBIA03", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Kala — Kal233", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "LUMINARA — 05", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "LUSTER — 37", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "MATT JACQUARD I — 15", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "OSIONMIST — 29", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Race Drape — RC225W", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sabya — SAB3301", "r": 300.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sabyasachi for Nilaya — Paris Calcutta Velvet", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sabyasachi — SAB1102", "r": 300.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SATINA — 2", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SERENE SHEER — 20", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SERRA DRAPES — 7", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sheer Curtain Fabric — Premium", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Sheer Curtain Fabric — Standard", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SS BALLERINA — 09", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "SS LUXE BOUCLE — 24", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "TERRA WEAVES — 4", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "TEST Verdant Plains — TST335", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "THE WHITE WINDOW — 16", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "VERDANT PLAINS VOL III — 335", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "Walkthrough — WT01", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "ZEN — 6", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}, {"n": "ZENITH HAFLONG — 04", "r": 140.0, "p": 0, "t": false, "c": "Curtain Fabric"}], "styles": [{"n": "American Pleat", "mx": 0.0, "mn": 0.0}, {"n": "Two Pinch Pleat", "mx": 0.0, "mn": 0.0}, {"n": "APT / Double Height", "mx": 0.0, "mn": 0.0}, {"n": "Eyelet", "mx": 0.0, "mn": 0.0}, {"n": "Ripple", "mx": 0.0, "mn": 0.0}], "tracks": [{"n": "Manual track", "k": "ft"}, {"n": "Rod cum track", "k": "ft"}, {"n": "Motorised (WiFi)", "k": "motor"}]};
 const R = D.rules;
 const STYLES = ['American Pleat', 'American Pleat Double Height', 'Eyelet', 'Eyelet Double Height', 'Ripple', 'Ripple Double Height'];
 const baseStyle = s => String(s || '').replace(' Double Height', '');
@@ -1071,7 +1069,10 @@ function calc(row){
   const base = {W, H, fabric: fab, style: {mx:0, mn:0}, trackKind: tr.k, panelTxt: row.panelTxt, allowTxt: row.allowTxt, hand: row.hand};
   const res = curtain(base, R);
   const d = {W, H, roll: fab.r, rep: fab.p, noTurn: fab.t, wide: fab.r >= 250};
-  d.fl = R.curtain_turn_fullness || 2.25;   // turned sideways (a per-row fullness for 300 cm was tried 2 Oct, parked)
+  // Turned sideways: 300 cm rolls = window × 1.4, only under 109″ tall (Purvi, 2 Oct); 140 cm keeps × 2.25 + side hems.
+  d.fl = d.wide ? (R.curtain_turn_fullness_300 || 1.4) : (R.curtain_turn_fullness || 2.25);
+  d.hem = d.wide ? 0 : (R.curtain_turn_hems_in ?? 8);
+  d.maxH = R.curtain_turn_max_h_300 || 109;
   d.drops = n => d.wide ? n / 2 : n;   // a 300 cm width is cut into 2 panels
   if (!W || !H) return {res, d, ok:false, lin:null};
   d.override = !!cpNum(row.allowTxt);
@@ -1079,10 +1080,10 @@ function calc(row){
   d.cut0 = H + d.extra;
   d.cut = (d.rep && (d.cut0 % d.rep)) ? cpUp(d.cut0, d.rep) : d.cut0;
   d.usable = fab.r / 2.54 - (R.curtain_turn_side_in ?? 2);
-  d.fits = d.cut <= d.usable;
+  d.fits = d.wide ? H < d.maxH : d.cut <= d.usable;
   const up = curtain(Object.assign({}, base, {fabric: Object.assign({}, fab, {t:true})}), R);
   d.upPanels = up.panels; d.upQty = up.qty;
-  d.turnLen = W * d.fl + (R.curtain_turn_hems_in ?? 8);
+  d.turnLen = W * d.fl + d.hem;
   d.turnQty = cpUp(d.turnLen / 39.37, R.curtain_metre_step || 0.25);
   let lin = null;
   if (String(row.lining || '').trim()) {
@@ -1465,7 +1466,7 @@ function rollView(o){
     g += `<rect class="${o.cls}" x="${x0}" y="${y0 + rh - h}" width="${used * sx}" height="${h}"/>`;
     g += `<text x="${x0 + used*sx/2}" y="${y0 + rh - h/2 + 5}" text-anchor="middle" class="t-dim">one piece ${fmt(Math.round(used*100)/100)}″ long × ${fmt(o.cut)}″ tall, no joins</text>`;
     g += `<rect ${spare} x="${x0}" y="${y0}" width="${used * sx}" height="${rh - h}"/>`;
-    g += `<text x="${x0}" y="${y0 - 10}" class="t-dim">${fmt(o.W)}″ × ${cpF(o.fl || R.curtain_turn_fullness || 2.25)} + ${cpF(R.curtain_turn_hems_in ?? 8)}″ sides = ${f2(used/39.37)} m</text>`;
+    g += `<text x="${x0}" y="${y0 - 10}" class="t-dim">${fmt(o.W)}″ × ${cpF(o.fl || R.curtain_turn_fullness || 2.25)}${o.hem ? ` + ${cpF(o.hem)}″ sides` : ''} = ${f2(used/39.37)} m</text>`;
   } else {
     const wide = o.roll >= 250, drops = wide ? o.panels / 2 : o.panels;
     used = drops * o.cut;
@@ -1495,7 +1496,7 @@ function chips(row, res, d){
   const c = [];
   c.push(`<span class="chip">${cpF(d.roll)} cm roll${d.rep ? ` · repeat ${fmt(d.rep)}″` : ' · no repeat'}</span>`);
   if (res.turned) c.push(`<span class="chip good">Turned sideways: saves ${cpF(Math.round((d.upQty - res.qty)*100)/100)} m (${cpF(d.upQty)} m upright)</span>`);
-  else if (!d.fits) c.push(`<span class="chip">Can't turn: roll is ${ff(d.usable)}″ usable, curtain is ${fmt(d.cut)}″</span>`);
+  else if (!d.fits) c.push(d.wide ? `<span class="chip">Not turned: window is ${fmt(d.H)}″, turning is only under ${fmt(d.maxH)}″</span>` : `<span class="chip">Can't turn: roll is ${ff(d.usable)}″ usable, curtain is ${fmt(d.cut)}″</span>`);
   else if (d.noTurn) c.push(`<span class="chip warn">Would fit sideways (${cpF(d.turnQty)} m), but the fabric can't be turned</span>`);
   else c.push(`<span class="chip">Could turn, but upright uses less</span>`);
   if (String(row.hand || '').trim()) c.push(`<span class="chip warn">Panels chosen by hand</span>`);
@@ -1546,7 +1547,7 @@ function renderSide(){
     ${amountHTML(amt)}
     <div class="fig"><h4>Front view <span>measurements in inches${lin ? ' · dashed = lining behind' : ''}</span></h4>${el.svg}</div>
     <div class="fig"><h4>Seen from above <span>${esc(STYLE_INFO[baseStyle(r.style)] || r.style)}${/Double Height/.test(r.style) ? ' Double height.' : ''}</span></h4>${planView(r, res, el.x0, el.cw)}</div>
-    <div class="fig"><h4>Curtain fabric off the roll <span>${res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
+    <div class="fig"><h4>Curtain fabric off the roll <span>${res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, hem: d.hem, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
     ${lin ? `<div class="fig"><h4>Lining off the roll <span>${esc(lin.name)}</span></h4>${rollView({panels: lin.panels, cut: lin.cut, qty: lin.m, roll: lin.roll, turned: false, rep: 0, W: d.W, cls: 'f-lining', pid: 'h2'})}</div>` : ''}
     ${chips(r, res, d)}
     <div class="how"><b>How it was worked out</b>${boldNums(res.how + linHow)}</div>`;
