@@ -500,6 +500,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .paper td.r,.paper th.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .paper tr.secrow td{background:#F2F2F2;font-weight:700;letter-spacing:.02em}
 .paper tr.subrow td{font-weight:700;background:#FAFAFA}
+.paper tr.secrow.part td{background:#FAFAFA;padding-left:22px;font-style:italic}
 .paper tr.tot td{font-weight:700;font-size:14px}
 .paper tr.tot.big td{font-size:16px;background:#FFF6D6}
 .paper .cost{color:#666}
@@ -1828,6 +1829,15 @@ const TNC = ['50% ADVANCE AGAINST ORDER & REST 50% BEFORE DELIVERY OF THE PRODUC
 // Product column names a customer can read: "D'Decor motor" → "Blind motor" (the brand is in the details column).
 const addonProduct = g => { const k = g.replace(/^(D'Decor|Somfy) /i, ''); return /^skylight/i.test(k) ? 'Skylight blind fitting' : 'Blind ' + k.toLowerCase(); };
 const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['hw', 'Accessories and installation']];
+// Accessories and installation splits into Manual and Motorised when a quote has both (Purvi, 2 Oct). Lines carry grp 'man' | 'mot'.
+// Returns null (no split) for other sections, a quote with only one kind, or an old saved version without grp.
+const HW_PARTS = [['man', 'Manual (non-motorised)'], ['mot', 'Motorised']];
+function secParts(k, L){
+  if (k !== 'hw') return null;
+  const P = HW_PARTS.map(([g, n], i) => { const ls = L.filter(l => l.grp === g); return {n, ab: 'ab'[i], L: ls, sub: ls.reduce((a, l) => a + (l.amt || 0), 0)}; });
+  return P.every(p => p.L.length) ? P : null;
+}
+const isMotorAddon = g => /motor|remote|control/i.test(g);
 const QCODE = {DD: 'DD', SAN: 'SS', AP: 'AP', SAR: 'SAROM'};   // as in Purvi's quotations: DD NIGHTINGALE 47, SS BALLERINA 18, AP SETU…
 const mrpOf2 = (rate, g) => has(rate) ? Math.round(rate * (1 + (+g || 0) / 100)) : null;
 function fabricName(row){
@@ -1860,11 +1870,11 @@ function qSections(){
     const s = stitch.get(k) || {rooms: new Set(), panels: 0, k, style: row.style, lins: new Set()}; s.rooms.add(row.room || '—'); s.panels += res.panels; if (lin) s.lins.add(lin.name); stitch.set(k, s);
     if (res.track) {
       const t = TRACKS.find(x => x.n === row.track) || {};
-      if (res.trackUnit === 'ft') { pieces++; hw(row.room, {product: 'Curtain track (manual)', what: row.track, hsn: H.track || '', qty: res.track, unit: 'RFT', rate: prices.track[row.track], gst: +G.track, cost: costs.track[row.track], incl: gstIncl('track'), fix: 'track'}); }
+      if (res.trackUnit === 'ft') { pieces++; hw(row.room, {grp: 'man', product: 'Curtain track (manual)', what: row.track, hsn: H.track || '', qty: res.track, unit: 'RFT', rate: prices.track[row.track], gst: +G.track, cost: costs.track[row.track], incl: gstIncl('track'), fix: 'track'}); }
       else { kits++; const z = kitSize(res.track), K = prices.kits || kitDefault(), KC = costs.kits || {};
-        mo(row.room, {product: 'Motorised curtain track', what: `${row.track.replace('Motorised · ', '')} with motor (${z ? z + ' MTR' : 'over 9 MTR: ask D\'Decor'})`, hsn: H.kits || '', qty: 1, unit: 'PCS',
+        mo(row.room, {grp: 'mot', product: 'Motorised curtain track', what: `${row.track.replace('Motorised · ', '')} with motor (${z ? z + ' MTR' : 'over 9 MTR: ask D\'Decor'})`, hsn: H.kits || '', qty: 1, unit: 'PCS',
           rate: z && K[t.m] ? K[t.m][z] : null, gst: +G.track, cost: z && KC[t.m] ? KC[t.m][z] : null, incl: gstIncl('kits'), fix: 'track'});
-        if (row.remote !== NO_REMOTE) mo(row.room, {product: 'Curtain motor remote', what: row.remote || 'Remote not picked yet', hsn: H.remotes || '', qty: 1, unit: 'PCS',
+        if (row.remote !== NO_REMOTE) mo(row.room, {grp: 'mot', product: 'Curtain motor remote', what: row.remote || 'Remote not picked yet', hsn: H.remotes || '', qty: 1, unit: 'PCS',
           rate: row.remote ? remoteRate(row.remote) : null, gst: +G.track, cost: row.remote ? (costs.remotes || {})[row.remote] : null, incl: gstIncl('remotes'), fix: row.remote ? 'track' : 'remote'}); }
     }
   });
@@ -1875,15 +1885,16 @@ function qSections(){
     pieces += c.q; const p = c.p;
     add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}`,
       hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: null, fix: b.sup === 'MV' ? 'marvel' : 'bprice'});
-    if (c.addon) hw(b.room, {product: addonProduct(c.addon.group), what: c.addon.name, hsn: H.blindAddons || '', qty: c.addonUnits, unit: c.addon.uom === 'each' ? 'PCS' : c.addon.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: c.addon.rrp, gst: c.addon.gst, cost: null, incl: gstIncl('blindAddons'), fix: 'bprice'});
-    else if (String(b.motor || '').trim()) hw(b.room, {product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
+    if (c.addon) hw(b.room, {grp: isMotorAddon(c.addon.group) ? 'mot' : 'man', product: addonProduct(c.addon.group), what: c.addon.name, hsn: H.blindAddons || '', qty: c.addonUnits, unit: c.addon.uom === 'each' ? 'PCS' : c.addon.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: c.addon.rrp, gst: c.addon.gst, cost: null, incl: gstIncl('blindAddons'), fix: 'bprice'});
+    else if (String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
   });
   for (const l of club.values()) { l.qty = r2(l.qty); l.area = roomsTxt(l.rooms); delete l.rooms; add('hw', l); }
   motor.forEach(l => add('hw', l));
   if (!(state.quote || {}).noInstall) {
-    if (pieces) add('hw', {area: 'All Rooms', product: 'Installation', what: 'All track & blinds', hsn: H.install || '', qty: pieces, unit: 'NOS', rate: inst.piece, gst: +G.install, cost: instC.piece, incl: gstIncl('install'), fix: 'install'});
-    if (kits) add('hw', {area: 'All Rooms', product: 'Installation', what: 'All motorised track', hsn: H.install || '', qty: kits, unit: 'NOS', rate: inst.motor, gst: +G.install, cost: instC.motor, incl: gstIncl('install'), fix: 'install'});
+    if (pieces) add('hw', {grp: 'man', area: 'All Rooms', product: 'Installation', what: 'All track & blinds', hsn: H.install || '', qty: pieces, unit: 'NOS', rate: inst.piece, gst: +G.install, cost: instC.piece, incl: gstIncl('install'), fix: 'install'});
+    if (kits) add('hw', {grp: 'mot', area: 'All Rooms', product: 'Installation', what: 'All motorised track', hsn: H.install || '', qty: kits, unit: 'NOS', rate: inst.motor, gst: +G.install, cost: instC.motor, incl: gstIncl('install'), fix: 'install'});
   }
+  S.hw = S.hw.filter(l => l.grp !== 'mot').concat(S.hw.filter(l => l.grp === 'mot'));   // manual first, then motorised
   return S;
 }
 function quoteTotals(S = qSections()){
@@ -1987,8 +1998,10 @@ function paperHTML(q, house, t, showC, ro){
   const cols = showC ? 10 : 9;
   let n = 0, body = '';
   SECTIONS.filter(([k]) => t.S[k].length).forEach(([k, name], si) => {   // number only the sections that are there: 1, 2, 3…
-    const L = t.S[k]; if (!L.length) return;
-    body += `<tr class="secrow"><td colspan="${cols}">${si + 1} · ${name}</td></tr>` + L.map(l => lineHTML(l, ++n, showC, ro)).join('') +
+    const L = t.S[k], P = secParts(k, L); if (!L.length) return;
+    body += `<tr class="secrow"><td colspan="${cols}">${si + 1} · ${name}</td></tr>` + (P ? P.map(p => `<tr class="secrow part"><td colspan="${cols}">${si + 1}${p.ab} · ${p.n}</td></tr>` +
+      p.L.map(l => lineHTML(l, ++n, showC, ro)).join('') + `<tr class="subrow"><td colspan="8" class="r">${p.n} total</td><td class="r">${inr(p.sub)}</td>${showC ? '<td></td>' : ''}</tr>`).join('')
+      : L.map(l => lineHTML(l, ++n, showC, ro)).join('')) +
       `<tr class="subrow"><td colspan="8" class="r">${name} total</td><td class="r">${inr(t.sub[k])}</td>${showC ? '<td></td>' : ''}</tr>`;
   });
   const hdr = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
@@ -2053,7 +2066,10 @@ document.addEventListener('click', e => {
   SECTIONS.filter(([k]) => t.S[k].length).forEach(([k, name], si) => {   // number only the sections that are there: 1, 2, 3…
     if (!t.S[k].length) return;
     L.push(`\n*${si + 1}. ${name}*`);
-    t.S[k].forEach(l => L.push(`• ${l.area ? l.area + ' · ' : ''}${l.product} · ${l.what}: ${cpF(r2(l.qty))} ${l.unit}${l.amt != null ? ' × ₹' + inr(l.mrp) + ' = ₹' + inr(l.amt) : ' · price to follow'}`));
+    const P = secParts(k, t.S[k]);
+    const line = l => L.push(`• ${l.area ? l.area + ' · ' : ''}${l.product} · ${l.what}: ${cpF(r2(l.qty))} ${l.unit}${l.amt != null ? ' × ₹' + inr(l.mrp) + ' = ₹' + inr(l.amt) : ' · price to follow'}`);
+    if (P) P.forEach(p => { L.push(`_${si + 1}${p.ab}. ${p.n}_`); p.L.forEach(line); L.push(`${p.n} total: ₹${inr(p.sub)}`); });
+    else t.S[k].forEach(line);
     L.push(`${name} total: ₹${inr(t.sub[k])}`);
   });
   L.push(`\nTotal: ₹${inr(t.total)}`);
@@ -2109,7 +2125,11 @@ function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()})
   SECTIONS.filter(([k]) => t.S[k].length).forEach(([k, name], si) => {   // number only the sections that are there: 1, 2, 3…
     if (!t.S[k].length) return;
     body.push([{content: `${si + 1} · ${name.toUpperCase()}`, colSpan: 9, styles: {fontStyle: 'bold', fillColor: [242, 242, 242]}}]);
-    t.S[k].forEach(l => body.push([++n, (l.area || '').toUpperCase(), l.product.toUpperCase(), l.what.toUpperCase(), l.hsn || '', cpF(r2(l.qty)), l.unit, l.mrp == null ? '—' : inr(l.mrp), l.amt == null ? '—' : inr(l.amt)]));
+    const P = secParts(k, t.S[k]);
+    const row = l => body.push([++n, (l.area || '').toUpperCase(), l.product.toUpperCase(), l.what.toUpperCase(), l.hsn || '', cpF(r2(l.qty)), l.unit, l.mrp == null ? '—' : inr(l.mrp), l.amt == null ? '—' : inr(l.amt)]);
+    if (P) P.forEach(p => { body.push([{content: `${si + 1}${p.ab} · ${p.n.toUpperCase()}`, colSpan: 9, styles: {fontStyle: 'bold', fillColor: [250, 250, 250], cellPadding: {top: 3.5, bottom: 3.5, left: 14, right: 3.5}}}]);
+      p.L.forEach(row); body.push([{content: `${p.n.toUpperCase()} TOTAL`, colSpan: 8, styles: {halign: 'right', fontStyle: 'bold'}}, {content: inr(p.sub), styles: {halign: 'right', fontStyle: 'bold'}}]); });
+    else t.S[k].forEach(l => body.push([++n, (l.area || '').toUpperCase(), l.product.toUpperCase(), l.what.toUpperCase(), l.hsn || '', cpF(r2(l.qty)), l.unit, l.mrp == null ? '—' : inr(l.mrp), l.amt == null ? '—' : inr(l.amt)]));
     body.push([{content: `${name.toUpperCase()} TOTAL`, colSpan: 8, styles: {halign: 'right', fontStyle: 'bold'}}, {content: inr(t.sub[k]), styles: {halign: 'right', fontStyle: 'bold'}}]);
   });
   const tot = (a, b) => [{content: a, colSpan: 8, styles: {halign: 'right', fontStyle: 'bold'}}, {content: b, styles: {halign: 'right', fontStyle: 'bold'}}];
