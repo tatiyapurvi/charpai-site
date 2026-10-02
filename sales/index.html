@@ -100,6 +100,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.i
   </div>
 </div>
 <title>Charpai Curtains & Blinds</title>
+<script>try { const t = localStorage.getItem('charpai-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch(_){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
@@ -236,19 +237,24 @@ details.rules li{margin:3px 0;font-size:14px;color:var(--muted)}
 .side-h{padding:12px 14px 4px;display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
 .side-h h2{margin:0;font:700 22px/1.1 var(--num)}
 .side-h .sub{color:var(--muted);font-size:13px}
-.id-h{display:block;padding:14px 14px 6px}
-.id-h .who{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.id-h .who h2{font-size:26px}
-.idx-b{min-width:28px;height:28px;border-radius:50%;background:var(--line);display:inline-grid;place-items:center;font:700 14px var(--num)}
-.layer-b{font-weight:700;font-size:15px;padding:4px 12px;border-radius:999px;color:var(--ink);border:1.5px solid}
-.layer-b.main{background:var(--main);border-color:var(--main-fold)}
-.layer-b.sheer{background:var(--sheer);border-color:var(--sheer-fold)}
-.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px 14px;margin:10px 0 0}
-.facts div{min-width:0}.facts .wide{grid-column:1/-1}
-.facts dt{color:var(--muted);font-size:12px}
-.facts dd{margin:0;font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
-.facts dd small{font-weight:400;color:var(--muted)}
-.facts .ed{color:var(--warn);font-weight:600;font-size:12px}
+.id-h{display:flex;align-items:baseline;gap:10px;padding:16px 14px 10px;border-bottom:1px solid var(--line2)}
+.id-h h2{font-size:28px;min-width:0;overflow-wrap:anywhere}
+.id-h .layer{font-weight:600;font-size:15px;white-space:nowrap}
+.id-h .layer.main{color:var(--good)}.id-h .layer.sheer{color:var(--dim)}
+.id-h .idx{margin-left:auto;color:var(--faint);font:600 15px var(--num)}
+.spec{margin:6px 14px 10px;display:grid;grid-template-columns:72px minmax(0,1fr);font-size:14.5px}
+.spec dt,.spec dd{padding:6px 0;border-bottom:1px solid var(--line2);margin:0}
+.spec dt{color:var(--muted)}
+.spec dd{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spec dd.note{white-space:normal;overflow-wrap:anywhere;font-weight:500}
+.spec dd small{color:var(--muted);font-weight:400}
+.spec dd .big{font:600 17px var(--num)}
+.spec .ed{color:var(--warn);font-weight:600;font-size:12.5px}
+.money{margin:4px 14px 14px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.money .top{background:var(--tape);color:var(--tape-ink);display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 12px}
+.money .top small{font-size:13px}.money .top b{font:700 30px/1 var(--num);white-space:nowrap}
+.money .r{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-top:1px solid var(--line2);font-size:14.5px}
+.money .r small{color:var(--muted)}.money .r b{font:600 18px var(--num);white-space:nowrap}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;padding:8px 14px}
 .kpi{border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .kpi small{display:block;color:var(--muted);font-size:12px}
@@ -466,6 +472,11 @@ body.shared .house{display:none}
 .none-acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 /* signed-in person, dashboard */
 .acct{display:flex;align-items:center;gap:10px;margin-left:auto}
+.theme-sw{margin-left:auto;display:inline-flex;border:1.5px solid var(--tape-ink);border-radius:999px;padding:2px;gap:2px}
+.theme-sw button{border:0;background:none;color:var(--tape-ink);font:600 13px var(--body);padding:4px 11px;border-radius:999px;cursor:pointer}
+.theme-sw button[aria-pressed="true"]{background:var(--tape-ink);color:var(--tape)}
+.theme-sw + .acct{margin-left:0}
+@media print{.theme-sw{display:none}}
 .acct span{display:flex;flex-direction:column;line-height:1.15;text-align:right}
 .acct small{font-size:12px;opacity:.75}
 .acct .btn{border-color:var(--tape-ink);color:var(--tape-ink);padding:6px 12px}
@@ -1621,42 +1632,32 @@ function rowAmount(row, c){
   }
   return {items, total: items.reduce((a, x) => a + (x.amt || 0), 0), missing: items.filter(x => x.amt == null).length};
 }
-function amountHTML(a){
-  return `<div class="amt-list">${a.items.map(x => `<div class="amt-row"><span>${x.label} <small>${cpF(r2(x.qty))} ${x.unit}${x.mrp != null ? ' × ' + rs(x.mrp) : ''}</small></span><b>${x.amt == null ? '<span class="miss-t">no price yet</span>' : rs(x.amt)}</b></div>`).join('')}
-    <div class="amt-row tot"><span>Total${a.missing ? ` <small>(${a.missing} price${a.missing > 1 ? 's' : ''} missing)</small>` : ''}</span><b>${rs(a.total)}</b></div></div>`;
-}
 function renderSide(){
   const r = state.rows[state.sel] || state.rows[0];
   const i = state.rows.indexOf(r);
   const {res, d, ok, lin} = calc(r);
-  // Who this curtain is, always at the top, so nobody scrolls back to the start of the row (Purvi, 2 Oct).
-  const own = String(r.parts || '').trim(), pt = own || PARTS_DEFAULT;
-  const fact = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`, miss = t => `<span class="miss-t">${t}</span>`;
-  const head = `<div class="side-h id-h">
-      <div class="who"><span class="idx-b">${i + 1}</span><h2>${esc(r.room || 'Room not named')}</h2><span class="layer-b ${r.layer === 'Sheer' ? 'sheer' : 'main'}">${r.layer === 'Sheer' ? 'Sheer curtain' : 'Main curtain'}</span></div>
-      <dl class="facts">
-        ${fact('Fabric', r.fabric ? esc(r.fabric) + (lin ? ` <small>+ ${esc(lin.name)}</small>` : '') : miss('Not picked yet'))}
-        ${fact('Style', esc(r.style))}
-        ${fact('Size', r.H || r.W ? `H ${fmt(r.H) || '—'}″ × W ${fmt(r.W) || '—'}″` : miss('Not measured'))}
-        ${fact('Track', r.track ? esc(r.track) : miss('Not picked yet'))}
-        ${fact('Fixing', r.fixing ? esc(r.fixing) : miss('Not picked yet'))}
-        ${fact('Parts', own ? `${esc(pt)} <span class="ed">edited</span>` : pt)}
-        ${String(r.remarks || '').trim() ? `<div class="wide"><dt>Remarks</dt><dd>${esc(r.remarks)}</dd></div>` : ''}
-      </dl></div>`;
+  // Side panel header = spec list (Purvi picked option B, 2 Oct): room + Main/Sheer, then one label, one answer per line.
+  const own = String(r.parts || '').trim(), pt = own || PARTS_DEFAULT, miss = t => `<span class="miss-t">${t}</span>`;
+  const [fab1, ...fabRest] = String(r.fabric || '').split(' · ');
+  const line = (k, v, cls) => `<dt>${k}</dt><dd${cls ? ` class="${cls}"` : ''}>${v}</dd>`;
+  const head = `<div class="side-h id-h"><h2>${esc(r.room || 'Room not named')}</h2><span class="layer ${r.layer === 'Sheer' ? 'sheer' : 'main'}">${r.layer === 'Sheer' ? 'Sheer curtain' : 'Main curtain'}</span><span class="idx">#${i + 1}</span></div>
+    <dl class="spec">
+      ${line('Size', r.H || r.W ? `<span class="big">${fmt(r.H) || '—'}″ high × ${fmt(r.W) || '—'}″ wide</span>` : miss('Not measured yet'))}
+      ${line('Style', `${esc(r.style)} · ${esc(pt)} parts${own ? ' <span class="ed">edited</span>' : ''}`)}
+      ${line('Fabric', r.fabric ? `${esc(fab1)}${fabRest.length ? ` <small>· ${esc(fabRest.join(' · '))}</small>` : ''}` : miss('Not picked yet'))}
+      ${lin ? line('Lining', esc(lin.name)) : ''}
+      ${line('Track', r.track ? esc(r.track) + (remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ` <small>· ${esc(r.remote)}</small>` : '') : miss('Not picked yet'))}
+      ${line('Fixing', r.fixing ? esc(r.fixing) : miss('Not picked yet'))}
+      ${String(r.remarks || '').trim() ? line('Remarks', esc(r.remarks), 'note') : ''}
+    </dl>`;
   if (!ok) { $('#side').innerHTML = `${head}<div class="empty">Type the height and the width in inches to see the drawing.</div>`; return; }
   const el = elevation(r, res, d, lin);
   const fcls = r.layer === 'Sheer' ? 'f-sheer' : 'f-main';
   const linHow = linHowOf(lin), amt = rowAmount(r, {res, lin});
   $('#side').innerHTML = `
     ${head}
-    <div class="kpis">
-      <div class="kpi"><small>${res.turned ? 'Tailor charges' : 'Panels'}</small><b class="num">${res.panels}</b></div>
-      <div class="kpi"><small>Fabric</small><b class="num">${cpF(res.qty)} m</b></div>
-      ${lin ? `<div class="kpi"><small>Lining</small><b class="num">${cpF(lin.m)} m</b></div>` : ''}
-      <div class="kpi"><small>Track</small><b class="num">${res.track ? trackStr(res) : '—'}</b></div>
-      <div class="kpi m" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline"><small>Amount incl. GST, this curtain</small><b class="num">${amt.total ? rs(amt.total) : '—'}</b></div>
-    </div>
-    ${amountHTML(amt)}
+    <div class="money"><div class="top"><small>This curtain, incl. GST${amt.missing ? ` · ${amt.missing} price${amt.missing > 1 ? 's' : ''} missing` : ''}</small><b>${amt.total ? rs(amt.total) : '—'}</b></div>
+      ${amt.items.map(x => `<div class="r"><span>${x.label} <small>${cpF(r2(x.qty))} ${x.unit}${x.mrp != null ? ' × ' + rs(x.mrp) : ''}</small></span><b>${x.amt == null ? '<span class="miss-t">no price yet</span>' : rs(x.amt)}</b></div>`).join('')}</div>
     <div class="fig"><h4>Front view <span>measurements in inches${lin ? ' · dashed = lining behind' : ''}</span></h4>${el.svg}</div>
     <div class="fig"><h4>Seen from above <span>${esc(STYLE_INFO[baseStyle(r.style)] || r.style)}${/Double Height/.test(r.style) ? ' Double height.' : ''}</span></h4>${planView(r, res, el.x0, el.cw)}</div>
     <div class="fig"><h4>Curtain fabric off the roll <span>${d.wide ? (res.rotated ? `turned: ${cpF(d.roll)} cm across the width, 2 panels a width` : `${cpF(d.roll)} cm as the height, one piece`) : res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, hem: d.hem, mPer: d.wide && d.mPer, turnPanels: d.turnPanels, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
@@ -3199,6 +3200,18 @@ $('#copy').onclick = () => {
 };
 function toast(m){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 
+// Light / dark switch in the yellow bar (Purvi, 2 Oct). Starts from the phone or laptop's own setting; a tap is remembered on this device.
+function themeSwitch(){
+  const w = document.createElement('div'); w.className = 'theme-sw'; w.setAttribute('role', 'group'); w.setAttribute('aria-label', 'Light or dark screen');
+  w.innerHTML = '<button data-t="light">☀ Light</button><button data-t="dark">☾ Dark</button>';
+  const cur = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const paint = () => w.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === cur() ? 'true' : 'false'));
+  w.onclick = e => { const b = e.target.closest('button'); if (!b) return; document.documentElement.dataset.theme = b.dataset.t; try { localStorage.setItem('charpai-theme', b.dataset.t); } catch(_){} paint(); };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
+  const tape = document.querySelector('.tape-in'), acct = tape.querySelector('.acct');
+  tape.insertBefore(w, acct); paint();
+}
+themeSwitch();
 fillLists(); renderNote(); renderTable(); renderTotals(); renderSide();
 let startTab = 'clients';
 try { const h = location.hash.slice(1); startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'clients'; } catch(_){}
