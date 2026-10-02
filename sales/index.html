@@ -587,10 +587,11 @@ tr.dash-r:hover td{background:var(--sel)}
           <details class="rules">
             <summary>The rules this sheet follows</summary>
             <ul>
-              <li>Panels on a 140 cm roll: the fewest panels that keep each panel 19–22″ of window. Only if no number of panels lands in 19–22″, up to 24″. On a 300 cm roll used upright, 40–50″.</li>
+              <li>Panels: the fewest panels that keep each panel 19–22″ of window. Only if no number of panels lands in 19–22″, up to 24″. The same on 140 cm and 300 cm rolls.</li>
               <li>Each panel is the height + 6″ for the bottom fold + 4″ for the top heading. If the fabric has a pattern repeat, the length goes up to the next full repeat.</li>
               <li>Metres = panels × length ÷ 39.37, rounded up to the next ¼ m.</li>
-              <li>A 300 cm roll is turned sideways when it is taller than the curtain and that uses less fabric: width × 2.25 for the folds + 8″ for the sides. Not if the fabric can't be turned. The tailor still charges 140 cm panels.</li>
+              <li>A 300 cm roll, window under 109″ tall: used the normal way, 300 cm as the curtain's height. Metres = panels × 1.4 m.</li>
+              <li>A 300 cm roll, window 109″ or taller: turned, so 300 cm runs across the width. Each 300 cm width makes 2 panels, so panels come in pairs; metres = widths × length.</li>
               <li>Lining: the same number of panels and the same length as the curtain (no pattern matching, never turned), rounded up to the next ¼ m.</li>
               <li>Track = width ÷ 12, rounded up to the next ½ ft. Motor track = width in metres, rounded up to the next ½ m kit.</li>
             </ul>
@@ -738,7 +739,9 @@ function trackHow(row, W, res, R) {
 
 // 300 cm rolls (Purvi, 2 Oct 2026). One 300 cm width is cut into 2 panels, so panels always come in pairs and the fabric
 // is bought in whole widths. How many panels: the same rule as 140 cm, 19–22″ of window a panel, up to 24″ (Purvi: "ignore
-// 1.4 for now, work on the 19-22 and 22-24 formula"). Windows under 109″ tall are turned sideways: panels × 1.4 m.
+// 1.4 for now, work on the 19-22 and 22-24 formula"). Wording (Purvi, 2 Oct): on a 300 cm roll the normal way has 300 cm as the curtain's HEIGHT;
+// "turned" means 300 cm runs across the WIDTH. Under 109″ tall: the normal way, panels × 1.4 m. 109″ and taller: turned.
+// res.turned stays "one piece off the roll" for the drawings; res.rotated is what the screen calls turned.
 function curtainWide(row, R, res) {
   const W = +row.W || 0, H = +row.H || 0, p = row.fabric, roll = p.r;
   const st = row.style || {};
@@ -757,16 +760,16 @@ function curtainWide(row, R, res) {
   }
   const step = R.curtain_metre_step || 0.25;
   const maxH = R.curtain_turn_max_h_300 || 109, mPer = R.curtain_turn_m_per_panel_300 || 1.4;
-  // Under 109″ tall (Purvi, 2 Oct): the fabric is turned sideways, and each panel takes 1.4 m off the roll.
+  // Under 109″ tall: the normal way for a 300 cm roll (300 cm = the curtain's height); each panel takes 1.4 m off the roll.
   if (H < maxH && !p.t) {
     const raw = n * mPer, m = cpUp(raw, step);
     res.turned = true; res.panels = n; res.qty = m;
-    res.how = ntxt + '. The window is under ' + cpF(maxH) + '″ tall, so the fabric is turned sideways (the ' + cpF(roll) + ' cm roll covers the height): '
+    res.how = ntxt + '. The window is under ' + cpF(maxH) + '″ tall, so the roll is used the normal way, ' + cpF(roll) + ' cm as the curtain\'s height: '
       + n + ' panels × ' + cpF(mPer) + ' m = ' + f2(raw) + ' m' + (m !== Math.round(raw * 100) / 100 ? ', rounded up to ' + cpF(m) + ' m' : '') + '.' + trackHow(row, W, res, R);
     return res;
   }
-  // 109″ and taller (or a fabric that can't be turned): upright. One 300 cm width is cut into 2 panels, so panels come in
-  // pairs and the fabric is bought in whole widths.
+  // 109″ and taller (or a pattern with a direction): turned, 300 cm across the width. One 300 cm width is cut into 2 panels,
+  // so panels come in pairs and the fabric is bought in whole widths.
   const panels = Math.max(2, Math.ceil(n / 2) * 2), widths = panels / 2;
   const ptxt = ntxt + (panels !== n ? ', made ' + panels + (hand ? '' : ' (' + f1(W / panels) + '″ each)') + ' because a ' + cpF(roll) + ' cm width makes 2' : '') + '.';
   const extra = cpNum(row.allowTxt) || ((R.curtain_fold_in ?? 10) + (R.curtain_heading_in ?? 4));
@@ -776,9 +779,9 @@ function curtainWide(row, R, res) {
   if (rep && (cut % rep)) { cut = cpUp(cut, rep); ctxt += ' Made ' + cpF(cut) + '″ so the pattern (repeats every ' + cpF(rep) + '″) matches.'; }
   const raw = widths * cut / 39.37, m = cpUp(raw, step);
   let how = ptxt + ctxt + ' ' + widths + ' width' + (widths === 1 ? '' : 's') + ' of ' + cpF(roll) + ' cm × ' + cpF(cut) + '″ = ' + f2(raw) + ' m, rounded up to ' + cpF(m) + ' m.';
-  how += H >= maxH ? ' Not turned sideways: the window is ' + cpF(H) + '″ tall, and turning is only for windows under ' + cpF(maxH) + '″.'
-    : ' (Not turned sideways: the pattern has a direction.)';
-  res.panels = panels; res.qty = m;
+  how = (H >= maxH ? 'Turned: the window is ' + cpF(H) + '″ tall (' + cpF(maxH) + '″ or more), so the ' + cpF(roll) + ' cm runs across the width. '
+    : 'Turned: the pattern has a direction, so the ' + cpF(roll) + ' cm runs across the width. ') + how;
+  res.panels = panels; res.qty = m; res.rotated = true;
   res.how = how + trackHow(row, W, res, R);
   return res;
 }
@@ -1071,7 +1074,7 @@ function calc(row){
   const base = {W, H, fabric: fab, style: {mx:0, mn:0}, trackKind: tr.k, panelTxt: row.panelTxt, allowTxt: row.allowTxt, hand: row.hand};
   const res = curtain(base, R);
   const d = {W, H, roll: fab.r, rep: fab.p, noTurn: fab.t, wide: fab.r >= 250};
-  // Turned sideways: 300 cm rolls = panels × 1.4 m, only under 109″ tall (Purvi, 2 Oct); 140 cm keeps W × 2.25 + side hems.
+  // One piece off the roll: 300 cm rolls under 109″ = panels × 1.4 m (300 cm as the height, Purvi 2 Oct); 140 cm turned = W × 2.25 + side hems.
   d.fl = R.curtain_turn_fullness || 2.25;
   d.hem = R.curtain_turn_hems_in ?? 8;
   d.maxH = R.curtain_turn_max_h_300 || 109;
@@ -1225,7 +1228,7 @@ function updateRow(r){
   const tr = tb.querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
   const c = calc(r), {res, ok, lin} = c;
   const q = tr.querySelector('[data-o=qty]');
-  q.innerHTML = ok ? `<span class="v">${cpF(res.qty)}<span class="u" style="color:inherit"> m</span></span>${res.turned ? '<span class="tag">turned</span>' : ''}` : '<span class="none">—</span>';
+  q.innerHTML = ok ? `<span class="v">${cpF(res.qty)}<span class="u" style="color:inherit"> m</span></span>${(c.d.wide ? res.rotated : res.turned) ? '<span class="tag">turned</span>' : ''}` : '<span class="none">—</span>';
   q.title = res.how;
   tr.querySelector('[data-o=how]').innerHTML = ok ? boldNums(res.how + linHowOf(lin)) : '';
   tr.querySelector('[data-o=lin]').innerHTML = ok ? (lin ? `${cpF(lin.m)}<span class="u"> m</span>` : '<span class="none">none</span>') : '';
@@ -1502,7 +1505,8 @@ function rollView(o){
 function chips(row, res, d){
   const c = [];
   c.push(`<span class="chip">${cpF(d.roll)} cm roll${d.rep ? ` · repeat ${fmt(d.rep)}″` : ' · no repeat'}</span>`);
-  if (res.turned && d.wide) c.push(`<span class="chip good">Turned sideways: window under ${fmt(d.maxH)}″ (${cpF(d.upQty)} m upright)</span>`);
+  if (d.wide) c.push(res.rotated ? `<span class="chip">Turned: ${cpF(d.roll)} cm across the width (${d.H >= d.maxH ? `window is ${fmt(d.H)}″, ${fmt(d.maxH)}″ or more` : 'the pattern has a direction'})</span>`
+    : `<span class="chip good">${cpF(d.roll)} cm as the height: window under ${fmt(d.maxH)}″ (turned would be ${cpF(d.upQty)} m)</span>`);
   else if (res.turned) c.push(`<span class="chip good">Turned sideways: saves ${cpF(Math.round((d.upQty - res.qty)*100)/100)} m (${cpF(d.upQty)} m upright)</span>`);
   else if (!d.fits) c.push(d.wide ? `<span class="chip">Not turned: window is ${fmt(d.H)}″, turning is only under ${fmt(d.maxH)}″</span>` : `<span class="chip">Can't turn: roll is ${ff(d.usable)}″ usable, curtain is ${fmt(d.cut)}″</span>`);
   else if (d.noTurn) c.push(`<span class="chip warn">Would fit sideways (${cpF(d.turnQty)} m), but the fabric can't be turned</span>`);
@@ -1555,7 +1559,7 @@ function renderSide(){
     ${amountHTML(amt)}
     <div class="fig"><h4>Front view <span>measurements in inches${lin ? ' · dashed = lining behind' : ''}</span></h4>${el.svg}</div>
     <div class="fig"><h4>Seen from above <span>${esc(STYLE_INFO[baseStyle(r.style)] || r.style)}${/Double Height/.test(r.style) ? ' Double height.' : ''}</span></h4>${planView(r, res, el.x0, el.cw)}</div>
-    <div class="fig"><h4>Curtain fabric off the roll <span>${res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, hem: d.hem, mPer: d.wide && d.mPer, turnPanels: d.turnPanels, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
+    <div class="fig"><h4>Curtain fabric off the roll <span>${d.wide ? (res.rotated ? `turned: ${cpF(d.roll)} cm across the width, 2 panels a width` : `${cpF(d.roll)} cm as the height, one piece`) : res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, hem: d.hem, mPer: d.wide && d.mPer, turnPanels: d.turnPanels, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
     ${lin ? `<div class="fig"><h4>Lining off the roll <span>${esc(lin.name)}</span></h4>${rollView({panels: lin.panels, cut: lin.cut, qty: lin.m, roll: lin.roll, turned: false, rep: 0, W: d.W, cls: 'f-lining', pid: 'h2'})}</div>` : ''}
     ${chips(r, res, d)}
     <div class="how"><b>How it was worked out</b>${boldNums(res.how + linHow)}</div>`;
@@ -2983,7 +2987,7 @@ $('#copy').onclick = () => {
   const L = [`*Curtains · ${state.house || 'house'}*`];
   state.rows.forEach((r, i) => {
     const {res, ok, lin} = calc(r); if (!ok) return;
-    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${r.roll} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${res.turned ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}`);
+    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${r.roll} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${(+r.roll >= 250 ? res.rotated : res.turned) ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}`);
   });
   copyText(L.join('\n'), $('#m-panel'));
 };
