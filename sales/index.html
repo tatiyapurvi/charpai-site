@@ -1847,7 +1847,8 @@ function qSections(){
     if (g) { g.qty += l.qty; g.rooms.add(room || '—'); } else club.set(k, Object.assign(l, {rooms: new Set([room || '—'])})); };
   // Motorised tracks and their remotes are NOT clubbed (Purvi, 2 Oct): room + its track, then right below, room + its remote.
   const motor = [], mo = (room, l) => motor.push(Object.assign(l, {area: room || '—'}));
-  const roomsTxt = r => r.size === 1 ? [...r][0] : r.size <= 3 ? [...r].join(', ') : r.size + ' rooms';
+  // Area on clubbed lines (Purvi, 2 Oct): up to 3 rooms by name, 4+ = "All Rooms", never "5 rooms". Lined stitching always names every room.
+  const roomsTxt = (r, all) => all || r.size <= 3 ? [...r].join(', ') : 'All Rooms';
   state.rows.forEach(row => {
     const c = calc(row); if (!c.ok) return;
     const {res, lin} = c, cf = catRow(row);
@@ -1867,7 +1868,7 @@ function qSections(){
           rate: row.remote ? remoteRate(row.remote) : null, gst: +G.track, cost: row.remote ? (costs.remotes || {})[row.remote] : null, incl: gstIncl('remotes'), fix: row.remote ? 'track' : 'remote'}); }
     }
   });
-  for (const s of stitch.values()) add('stitch', {area: roomsTxt(s.rooms), product: 'Curtain stitching', what: `${s.style} curtain${s.lins.size ? ' with ' + [...s.lins].join(' / ') : ''}`, hsn: H.stitching || '',
+  for (const s of stitch.values()) add('stitch', {area: roomsTxt(s.rooms, s.lins.size > 0), product: 'Curtain stitching', what: `${s.style} curtain${s.lins.size ? ' with ' + [...s.lins].join(' / ') : ''}`, hsn: H.stitching || '',
     qty: s.panels, unit: 'PCS', rate: prices.stitch[s.k], gst: +G.stitching, cost: costs.stitch[s.k], incl: gstIncl('stitching'), fix: 'stitch'});
   state.blinds.forEach(b => {
     const c = bCalc(b); if (!c.ok || !c.t) return;
@@ -1880,8 +1881,8 @@ function qSections(){
   for (const l of club.values()) { l.qty = r2(l.qty); l.area = roomsTxt(l.rooms); delete l.rooms; add('hw', l); }
   motor.forEach(l => add('hw', l));
   if (!(state.quote || {}).noInstall) {
-    if (pieces) add('hw', {area: 'All rooms', product: 'Installation', what: 'All track & blinds', hsn: H.install || '', qty: pieces, unit: 'NOS', rate: inst.piece, gst: +G.install, cost: instC.piece, incl: gstIncl('install'), fix: 'install'});
-    if (kits) add('hw', {area: 'All rooms', product: 'Installation', what: 'All motorised track', hsn: H.install || '', qty: kits, unit: 'NOS', rate: inst.motor, gst: +G.install, cost: instC.motor, incl: gstIncl('install'), fix: 'install'});
+    if (pieces) add('hw', {area: 'All Rooms', product: 'Installation', what: 'All track & blinds', hsn: H.install || '', qty: pieces, unit: 'NOS', rate: inst.piece, gst: +G.install, cost: instC.piece, incl: gstIncl('install'), fix: 'install'});
+    if (kits) add('hw', {area: 'All Rooms', product: 'Installation', what: 'All motorised track', hsn: H.install || '', qty: kits, unit: 'NOS', rate: inst.motor, gst: +G.install, cost: instC.motor, incl: gstIncl('install'), fix: 'install'});
   }
   return S;
 }
