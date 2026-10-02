@@ -208,6 +208,7 @@ tr.row.sel td.first{background:var(--sel)}
 .sheet input.auto.ovr{color:var(--warn);border:2px solid var(--warn);font-weight:700;background:var(--warn-soft)}
 .reset{border:0;background:none;color:var(--warn);cursor:pointer;font-size:16px;padding:2px 3px;visibility:hidden}
 .reset.on{visibility:visible}
+.sheet select.ovr,.sheet .soft select.ovr{color:var(--warn);border:2px solid var(--warn);font-weight:700;background:var(--warn-soft)}
 .out{font:700 19px var(--num);text-align:right;padding-right:8px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .out.m span.v{background:var(--tape);color:var(--tape-ink);padding:1px 7px;border-radius:4px}
 .out .u{font-size:13px;color:var(--muted);font-weight:500}
@@ -1000,17 +1001,20 @@ function remoteSel(r){
 }
 const OLD_TRACK = {'Manual track': 'Kohinoor Track', 'Motorised (WiFi)': "Motorised · Exton Glide (D'Decor motor)"};
 const ROLLS = [140, 150, 280, 300];   // linings on the Prices page
-// Curtain rows (Purvi, 1 Oct): always 140 cm by default. A wider roll is offered only when the company's list gives
-// this fabric a wide roll (250 cm or more); narrow, missing or odd listed widths (139.5, 142, 7…) all count as 140.
-const wideRoll = r => { const x = catRow(r); return x && x.w >= 250 ? +x.w : 0; };
-// Roll choices: always 140. A listed wide fabric adds its own width; a fabric with no width listed (or typed in by hand)
-// adds 300, so the team can pick it (Purvi, 2 Oct). 140 stays the default.
+// Roll width (Purvi, 2 Oct, replaces "always 140"): a fabric from a company list uses exactly the width the list gives
+// (137, 140, 300, 315…), and that is the only choice. No width in the list (≈12,900 D'Decor / AP rows), typed-in or not
+// yet picked: standard widths; 140 is the default. In every case "Type a width…" lets the team type their own
+// (row.rollOwn), shown orange as edited, with ↺ to go back (Purvi, 2 Oct).
+const ROLL_STD = [140, 150, 280, 300, 320];
+const listedRoll = r => { const x = catRow(r); return x && +x.w > 0 ? +x.w : 0; };
+const rollOf = r => +r.rollOwn || listedRoll(r) || +r.roll || 140;
 function rollOpts(r){
-  const o = [140], x = catRow(r), w = wideRoll(r) || (+r.roll >= 250 ? +r.roll : 0);
-  if (w) o.push(w); else if (!x || !(+x.w > 0)) o.push(300);
-  return o;
+  const w = listedRoll(r); if (w) return [w];
+  const o = [...ROLL_STD]; if (+r.roll && !o.includes(+r.roll)) o.push(+r.roll);
+  return o.sort((a, b) => a - b);
 }
-const rollOptHTML = r => rollOpts(r).map(v => `<option value="${v}"${+v === +r.roll ? ' selected' : ''}>${v} cm</option>`).join('');
+const rollOptHTML = r => (+r.rollOwn ? `<option value="own" selected>${cpF(+r.rollOwn)} cm · edited</option>` : '') +
+  rollOpts(r).map(v => `<option value="${v}"${!+r.rollOwn && +v === rollOf(r) ? ' selected' : ''}>${cpF(v)} cm</option>`).join('') + '<option value="other">Type a width…</option>';
 const KEY = 'charpai-curtain-sheet-v1', PKEY = 'charpai-curtain-prices-v1', TKEY = 'charpai-curtain-tab';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1035,7 +1039,7 @@ const findFabric = name => prices.fabrics.find(f => f.n.toLowerCase() === String
 
 // ================= the sheet: kept on this device
 let uid = 1;
-function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
+function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
 function fillFabric(row){
   const f = findFabric(row.fabric);
   if (!f) return false;
@@ -1053,7 +1057,8 @@ function sample(){
   return {house:'Example house', example:true, sel:0, quote:{}, rows: rows.map(r => Object.assign(blank(), r))};
 }
 function migrate(r){
-  if (!(+r.roll >= 250)) r.roll = 140;   // narrow rolls are always 140 now
+  if (!(+r.roll > 0)) r.roll = 140;
+  if (r.rollOwn === undefined) r.rollOwn = '';
   if (r.style === 'APT / Double Height') r.style = 'American Pleat Double Height';
   if (!STYLES.includes(r.style)) r.style = 'American Pleat';
   if (r.lining === undefined) r.lining = '';
@@ -1074,7 +1079,7 @@ if (!state.rows.length) state.rows.push(blank());
 // ================= the calculation for one row
 function calc(row){
   const W = parseFloat(row.W) || 0, H = parseFloat(row.H) || 0;
-  const fab = {r: +row.roll || 140, p: parseFloat(row.repeat) || 0, t: row.turn === 'No', force: row.turn300 === 'Yes'};   // force: 300 cm Turn button
+  const fab = {r: rollOf(row), p: parseFloat(row.repeat) || 0, t: row.turn === 'No', force: row.turn300 === 'Yes'};   // force: 300 cm Turn button
   const tr = TRACKS.find(t => t.n === row.track) || {k:''};
   const base = {W, H, fabric: fab, style: {mx:0, mn:0}, trackKind: tr.k, panelTxt: row.panelTxt, allowTxt: row.allowTxt, hand: row.hand};
   const res = curtain(base, R);
@@ -1166,7 +1171,7 @@ function closeSugg(){ sugg.hidden = true; suggFor = null; }
 function pickSugg(i){
   const x = suggItems[i]; if (!x || !suggFor) return;
   const {input, row} = suggFor, tr = input.closest('tr');
-  { row.sup = x.sup; row.key = x.k; row.fabric = x.n; row.roll = 140; row.repeat = ''; row.turn = 'Yes'; }
+  { row.sup = x.sup; row.key = x.k; row.fabric = x.n; row.roll = listedRoll(row) || 140; row.rollOwn = ''; row.repeat = ''; row.turn = 'Yes'; }
   input.value = row.fabric; input.className = fabricState(row);
   tr.querySelector('[data-f=sup]').value = row.sup;
   const sel = tr.querySelector('[data-f=roll]');
@@ -1204,7 +1209,7 @@ function rowHTML(r, i){
     <td><select id="${id('sup')}" data-f="sup" style="width:132px"><option value="">Any company</option>${Object.entries(SUPS).map(([k, n]) => `<option value="${k}"${r.sup === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></td>
     <td><input id="${id('fabric')}" data-f="fabric" autocomplete="off" value="${esc(r.fabric)}" placeholder="Type to search" style="width:250px" class="${fabricState(r)}" aria-label="Curtain fabric"></td>
     <td><input id="${id('lining')}" data-f="lining" list="linlist" value="${esc(r.lining)}" placeholder="No lining" style="width:150px"></td>
-    <td class="soft"><select id="${id('roll')}" data-f="roll" style="width:84px">${rollOptHTML(r)}</select></td>
+    <td class="soft"><div class="auto-wrap"><select id="${id('roll')}" data-f="roll" style="width:136px" aria-label="Roll width">${rollOptHTML(r)}</select><button class="reset" data-reset="rollOwn" title="Go back to the list's width" aria-label="Reset roll width">↺</button></div></td>
     <td class="soft"><input id="${id('repeat')}" data-f="repeat" class="n" inputmode="decimal" value="${esc(r.repeat)}" placeholder="none" style="width:62px"></td>
     <td class="soft"><select id="${id('turn')}" data-f="turn" style="width:66px">${opt(['Yes','No'], r.turn)}</select><button class="btn t3" data-a="t3" hidden></button></td>
     <td><select id="${id('style')}" data-f="style" style="width:215px">${opt(STYLES, r.style)}</select></td>
@@ -1251,7 +1256,10 @@ function updateRow(r){
   ts.hidden = wide; tb3.hidden = !wide;
   if (wide) { tb3.textContent = on ? 'Turned' : 'Turn'; tb3.classList.toggle('on', on); tb3.disabled = must; tb3.setAttribute('aria-pressed', on ? 'true' : 'false');
     tb3.title = must ? `Windows ${fmt(c.d.maxH)}″ or taller are always turned` : on ? 'Turned by hand: 300 cm across the width. Tap to use 300 cm as the height again.' : 'Tap to turn: 300 cm across the width'; }
-  const rs_ = tr.querySelector('[data-f=roll]'); if (rs_ !== document.activeElement && rs_.options.length !== rollOpts(r).length) rs_.innerHTML = rollOptHTML(r);
+  // The list's width wins once the supplier lists have loaded; the choices are redrawn when they change.
+  if (listedRoll(r) && +r.roll !== listedRoll(r)) r.roll = listedRoll(r);
+  const rs_ = tr.querySelector('[data-f=roll]'), rh = rollOptHTML(r); if (rs_ !== document.activeElement && rs_.dataset.h !== rh) { rs_.innerHTML = rh; rs_.dataset.h = rh; }
+  rs_.classList.toggle('ovr', !!+r.rollOwn); tr.querySelector('[data-reset=rollOwn]').classList.toggle('on', !!+r.rollOwn);
   // The supplier lists load after the table first draws, so the picked / not-on-list colour is refreshed here.
   const fi = tr.querySelector('[data-f=fabric]');
   if (fi !== document.activeElement) fi.className = fabricState(r);
@@ -1272,12 +1280,24 @@ tb.addEventListener('focusin', e => {
 });
 tb.addEventListener('mouseup', e => { const t = e.target; if (t._sel) { e.preventDefault(); t._sel = false; } });
 tb.addEventListener('focusout', e => {
+  if (e.target.dataset && e.target.dataset.f === 'rollTyping') {   // typed width done: back to the list, with the typed width chosen
+    const t = e.target, r = rowById(t.closest('tr').dataset.id), sel = t.previousElementSibling; t.remove();
+    sel.hidden = false; sel.innerHTML = sel.dataset.h = rollOptHTML(r); updateRow(r); return;
+  }
   const t = e.target; if (!t.dataset || !t.dataset.auto) return;
   const r = rowById(t.closest('tr').dataset.id); setTimeout(() => updateRow(r), 0);
 });
 tb.addEventListener('input', e => {
   const t = e.target, f = t.dataset.f; if (!f) return;
   const tr = t.closest('tr'), r = rowById(tr.dataset.id);
+  if (f === 'roll' && t.value === 'other') {   // "Type a width…": a box to type the width in cm
+    t.innerHTML = t.dataset.h = rollOptHTML(r); t.hidden = true;
+    t.insertAdjacentHTML('afterend', `<input data-f="rollTyping" class="n" inputmode="decimal" placeholder="cm" value="${+r.rollOwn || ''}" aria-label="Roll width in cm" style="width:84px">`);
+    t.nextElementSibling.focus(); return;
+  }
+  if (f === 'roll' && t.value === 'own') return;
+  if (f === 'roll') { r.rollOwn = ''; r.roll = +t.value; changed(r); return; }
+  if (f === 'rollTyping') { const v = parseFloat(t.value); if (v >= 20 && v <= 400) { r.rollOwn = v; changed(r); } return; }
   if (t.dataset.auto) {
     const v = t.value.trim();
     r[f] = (!v || (!String(r[f] || '').trim() && v === t.dataset.start)) ? '' : v;
@@ -1295,6 +1315,7 @@ tb.addEventListener('input', e => {
 tb.addEventListener('change', e => {
   if (e.target.tagName !== 'SELECT') return;
   const r = rowById(e.target.closest('tr').dataset.id), f = e.target.dataset.f;
+  if (f === 'roll') return;   // handled on input
   r[f] = f === 'roll' ? +e.target.value : e.target.value;
   if (f === 'track') {
     e.target.classList.toggle('todo', !r.track);
@@ -1309,7 +1330,7 @@ tb.addEventListener('click', e => {
   const tr = e.target.closest('tr'); if (!tr) return;
   const r = rowById(tr.dataset.id);
   const rz = e.target.closest('[data-reset]');
-  if (rz) { r[rz.dataset.reset] = ''; changed(r); tr.querySelector(`[data-f=${rz.dataset.reset}]`).blur(); updateRow(r); return; }
+  if (rz) { r[rz.dataset.reset] = ''; changed(r); tr.querySelector(`[data-f=${rz.dataset.reset}]`)?.blur(); updateRow(r); return; }
   const a = e.target.closest('[data-a]');
   if (!a) { select(tr); return; }
   const i = state.rows.indexOf(r);
@@ -1336,7 +1357,7 @@ function afterStructure(){ renderTable(); renderTotals(); renderSide(); save(); 
 $('#add').onclick = () => {
   const last = state.rows[state.rows.length - 1];
   const r = blank();
-  if (last) Object.assign(r, {layer:last.layer, fabric:last.fabric, lining:last.lining, roll:last.roll, repeat:last.repeat, turn:last.turn, style:last.style});   // track is not copied: the salesperson picks it for each opening
+  if (last) Object.assign(r, {layer:last.layer, fabric:last.fabric, lining:last.lining, roll:last.roll, rollOwn:last.rollOwn || '', repeat:last.repeat, turn:last.turn, style:last.style});   // track is not copied: the salesperson picks it for each opening
   state.rows.push(r); state.sel = state.rows.length - 1; afterStructure();
   document.getElementById(`r${r.id}-room`).focus();
 };
@@ -3022,7 +3043,7 @@ $('#copy').onclick = () => {
   const L = [`*Curtains · ${state.house || 'house'}*`];
   state.rows.forEach((r, i) => {
     const {res, ok, lin} = calc(r); if (!ok) return;
-    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${r.roll} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${(+r.roll >= 250 ? res.rotated : res.turned) ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}`);
+    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${cpF(rollOf(r))} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${(rollOf(r) >= 250 ? res.rotated : res.turned) ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}`);
   });
   copyText(L.join('\n'), $('#m-panel'));
 };
