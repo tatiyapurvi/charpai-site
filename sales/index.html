@@ -370,6 +370,9 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .miss-t{font:600 12px var(--body);color:var(--warn)}
 /* buttons, pills */
 .btn.big{padding:11px 18px;font-size:15.5px}
+.btn.t3{padding:5px 10px;font-size:13px;width:74px}
+.btn.t3.on{background:var(--ink);color:var(--paper)}
+.btn.t3:disabled{opacity:.55;cursor:default}
 .btn.ghost{border-color:transparent;color:var(--muted)}
 .btn.ghost:hover{color:var(--ink);background:var(--line2)}
 .link{border:0;background:none;color:var(--dim);font-weight:600;cursor:pointer;padding:6px 4px;font-size:14px}
@@ -567,7 +570,7 @@ tr.dash-r:hover td{background:var(--sel)}
                 <tr>
                   <th class="first">Room</th><th>Layer</th>
                   <th>Company</th><th>Curtain fabric <small>type name, collection or SKU</small></th><th>Lining <small>empty = none</small></th>
-                  <th>Roll</th><th>Repeat <small>″</small></th><th>Can turn</th>
+                  <th>Roll</th><th>Repeat <small>″</small></th><th>Can turn <small>/ Turn</small></th>
                   <th>Style</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Track</th>
                   <th>Panel <small>″ each</small></th><th>Extra <small>″</small></th>
                   <th class="r">Panels</th><th class="r">Fabric</th><th class="r">Lining</th><th class="r">Track</th><th class="howh"></th>
@@ -742,6 +745,7 @@ function trackHow(row, W, res, R) {
 // 1.4 for now, work on the 19-22 and 22-24 formula"). Wording (Purvi, 2 Oct): on a 300 cm roll the normal way has 300 cm as the curtain's HEIGHT;
 // "turned" means 300 cm runs across the WIDTH. Under 109″ tall: the normal way, panels × 1.4 m. 109″ and taller: turned.
 // res.turned stays "one piece off the roll" for the drawings; res.rotated is what the screen calls turned.
+// fabric.force (the row's Turn button) turns a window under 109″ too.
 function curtainWide(row, R, res) {
   const W = +row.W || 0, H = +row.H || 0, p = row.fabric, roll = p.r;
   const st = row.style || {};
@@ -761,14 +765,14 @@ function curtainWide(row, R, res) {
   const step = R.curtain_metre_step || 0.25;
   const maxH = R.curtain_turn_max_h_300 || 109, mPer = R.curtain_turn_m_per_panel_300 || 1.4;
   // Under 109″ tall: the normal way for a 300 cm roll (300 cm = the curtain's height); each panel takes 1.4 m off the roll.
-  if (H < maxH && !p.t) {
+  if (H < maxH && !p.force) {
     const raw = n * mPer, m = cpUp(raw, step);
     res.turned = true; res.panels = n; res.qty = m;
     res.how = ntxt + '. The window is under ' + cpF(maxH) + '″ tall, so the roll is used the normal way, ' + cpF(roll) + ' cm as the curtain\'s height: '
       + n + ' panels × ' + cpF(mPer) + ' m = ' + f2(raw) + ' m' + (m !== Math.round(raw * 100) / 100 ? ', rounded up to ' + cpF(m) + ' m' : '') + '.' + trackHow(row, W, res, R);
     return res;
   }
-  // 109″ and taller (or a pattern with a direction): turned, 300 cm across the width. One 300 cm width is cut into 2 panels,
+  // 109″ and taller (or turned by hand): turned, 300 cm across the width. One 300 cm width is cut into 2 panels,
   // so panels come in pairs and the fabric is bought in whole widths.
   const panels = Math.max(2, Math.ceil(n / 2) * 2), widths = panels / 2;
   const ptxt = ntxt + (panels !== n ? ', made ' + panels + (hand ? '' : ' (' + f1(W / panels) + '″ each)') + ' because a ' + cpF(roll) + ' cm width makes 2' : '') + '.';
@@ -780,7 +784,7 @@ function curtainWide(row, R, res) {
   const raw = widths * cut / 39.37, m = cpUp(raw, step);
   let how = ptxt + ctxt + ' ' + widths + ' width' + (widths === 1 ? '' : 's') + ' of ' + cpF(roll) + ' cm × ' + cpF(cut) + '″ = ' + f2(raw) + ' m, rounded up to ' + cpF(m) + ' m.';
   how = (H >= maxH ? 'Turned: the window is ' + cpF(H) + '″ tall (' + cpF(maxH) + '″ or more), so the ' + cpF(roll) + ' cm runs across the width. '
-    : 'Turned: the pattern has a direction, so the ' + cpF(roll) + ' cm runs across the width. ') + how;
+    : 'Turned by hand: the ' + cpF(roll) + ' cm runs across the width. ') + how;
   res.panels = panels; res.qty = m; res.rotated = true;
   res.how = how + trackHow(row, W, res, R);
   return res;
@@ -1030,7 +1034,7 @@ const findFabric = name => prices.fabrics.find(f => f.n.toLowerCase() === String
 
 // ================= the sheet: kept on this device
 let uid = 1;
-function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', panelTxt:'', allowTxt:'', hand:''}; }
+function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
 function fillFabric(row){
   const f = findFabric(row.fabric);
   if (!f) return false;
@@ -1069,7 +1073,7 @@ if (!state.rows.length) state.rows.push(blank());
 // ================= the calculation for one row
 function calc(row){
   const W = parseFloat(row.W) || 0, H = parseFloat(row.H) || 0;
-  const fab = {r: +row.roll || 140, p: parseFloat(row.repeat) || 0, t: row.turn === 'No'};
+  const fab = {r: +row.roll || 140, p: parseFloat(row.repeat) || 0, t: row.turn === 'No', force: row.turn300 === 'Yes'};   // force: 300 cm Turn button
   const tr = TRACKS.find(t => t.n === row.track) || {k:''};
   const base = {W, H, fabric: fab, style: {mx:0, mn:0}, trackKind: tr.k, panelTxt: row.panelTxt, allowTxt: row.allowTxt, hand: row.hand};
   const res = curtain(base, R);
@@ -1091,8 +1095,9 @@ function calc(row){
   d.turnLen = W * d.fl + d.hem;
   d.turnQty = cpUp(d.turnLen / 39.37, R.curtain_metre_step || 0.25);
   if (d.wide) {   // what turning would give: the panel count × 1.4 m
-    const tw = curtain(Object.assign({}, base, {H: 1, fabric: Object.assign({}, fab, {t: false})}), R);
+    const tw = curtain(Object.assign({}, base, {H: 1, fabric: Object.assign({}, fab, {t: false, force: false})}), R);
     d.turnPanels = tw.panels; d.mPer = R.curtain_turn_m_per_panel_300 || 1.4;
+    const rt = curtain(Object.assign({}, base, {fabric: Object.assign({}, fab, {force: true})}), R); d.rotQty = rt.qty;   // what turned would give
     d.turnLen = tw.panels * d.mPer * 39.37; d.turnQty = tw.qty;
   }
   let lin = null;
@@ -1200,7 +1205,7 @@ function rowHTML(r, i){
     <td><input id="${id('lining')}" data-f="lining" list="linlist" value="${esc(r.lining)}" placeholder="No lining" style="width:150px"></td>
     <td class="soft"><select id="${id('roll')}" data-f="roll" style="width:84px">${rollOptHTML(r)}</select></td>
     <td class="soft"><input id="${id('repeat')}" data-f="repeat" class="n" inputmode="decimal" value="${esc(r.repeat)}" placeholder="none" style="width:62px"></td>
-    <td class="soft"><select id="${id('turn')}" data-f="turn" style="width:66px">${opt(['Yes','No'], r.turn)}</select></td>
+    <td class="soft"><select id="${id('turn')}" data-f="turn" style="width:66px">${opt(['Yes','No'], r.turn)}</select><button class="btn t3" data-a="t3" hidden></button></td>
     <td><select id="${id('style')}" data-f="style" style="width:215px">${opt(STYLES, r.style)}</select></td>
     <td><input id="${id('H')}" data-f="H" class="n key" inputmode="decimal" value="${esc(r.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input id="${id('W')}" data-f="W" class="n key" inputmode="decimal" value="${esc(r.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
@@ -1240,6 +1245,11 @@ function updateRow(r){
     inp.value = own || AUTO[f](c);
     inp.classList.toggle('ovr', !!own);
   }
+  // 300 cm rows: a Turn button instead of Can turn (Purvi, 2 Oct). 109″ and taller is always turned.
+  const ts = tr.querySelector('[data-f=turn]'), tb3 = tr.querySelector('[data-a=t3]'), wide = c.d.wide, must = wide && c.d.H >= c.d.maxH, on = must || r.turn300 === 'Yes';
+  ts.hidden = wide; tb3.hidden = !wide;
+  if (wide) { tb3.textContent = on ? 'Turned' : 'Turn'; tb3.classList.toggle('on', on); tb3.disabled = must; tb3.setAttribute('aria-pressed', on ? 'true' : 'false');
+    tb3.title = must ? `Windows ${fmt(c.d.maxH)}″ or taller are always turned` : on ? 'Turned by hand: 300 cm across the width. Tap to use 300 cm as the height again.' : 'Tap to turn: 300 cm across the width'; }
   const rs_ = tr.querySelector('[data-f=roll]'); if (rs_ !== document.activeElement && rs_.options.length !== rollOpts(r).length) rs_.innerHTML = rollOptHTML(r);
   // The supplier lists load after the table first draws, so the picked / not-on-list colour is refreshed here.
   const fi = tr.querySelector('[data-f=fabric]');
@@ -1302,6 +1312,7 @@ tb.addEventListener('click', e => {
   const a = e.target.closest('[data-a]');
   if (!a) { select(tr); return; }
   const i = state.rows.indexOf(r);
+  if (a.dataset.a === 't3') { r.turn300 = r.turn300 === 'Yes' ? '' : 'Yes'; changed(r); return; }
   if (a.dataset.a === 'dup') {
     state.rows.splice(i + 1, 0, Object.assign({}, r, {id: uid++})); state.sel = i + 1; afterStructure();
   } else if (a.dataset.a === 'del') {
@@ -1505,8 +1516,8 @@ function rollView(o){
 function chips(row, res, d){
   const c = [];
   c.push(`<span class="chip">${cpF(d.roll)} cm roll${d.rep ? ` · repeat ${fmt(d.rep)}″` : ' · no repeat'}</span>`);
-  if (d.wide) c.push(res.rotated ? `<span class="chip">Turned: ${cpF(d.roll)} cm across the width (${d.H >= d.maxH ? `window is ${fmt(d.H)}″, ${fmt(d.maxH)}″ or more` : 'the pattern has a direction'})</span>`
-    : `<span class="chip good">${cpF(d.roll)} cm as the height: window under ${fmt(d.maxH)}″ (turned would be ${cpF(d.upQty)} m)</span>`);
+  if (d.wide) c.push(res.rotated ? `<span class="chip">Turned: ${cpF(d.roll)} cm across the width (${d.H >= d.maxH ? `window is ${fmt(d.H)}″, ${fmt(d.maxH)}″ or more` : `turned by hand; ${cpF(d.turnQty)} m as the height`})</span>`
+    : `<span class="chip good">${cpF(d.roll)} cm as the height: window under ${fmt(d.maxH)}″ (turned would be ${cpF(d.rotQty)} m)</span>`);
   else if (res.turned) c.push(`<span class="chip good">Turned sideways: saves ${cpF(Math.round((d.upQty - res.qty)*100)/100)} m (${cpF(d.upQty)} m upright)</span>`);
   else if (!d.fits) c.push(d.wide ? `<span class="chip">Not turned: window is ${fmt(d.H)}″, turning is only under ${fmt(d.maxH)}″</span>` : `<span class="chip">Can't turn: roll is ${ff(d.usable)}″ usable, curtain is ${fmt(d.cut)}″</span>`);
   else if (d.noTurn) c.push(`<span class="chip warn">Would fit sideways (${cpF(d.turnQty)} m), but the fabric can't be turned</span>`);
