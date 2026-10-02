@@ -250,11 +250,6 @@ details.rules li{margin:3px 0;font-size:14px;color:var(--muted)}
 .spec dd small{color:var(--muted);font-weight:400}
 .spec dd .big{font:600 17px var(--num)}
 .spec .ed{color:var(--warn);font-weight:600;font-size:12.5px}
-.money{margin:4px 14px 14px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.money .top{background:var(--tape);color:var(--tape-ink);display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 12px}
-.money .top small{font-size:13px}.money .top b{font:700 30px/1 var(--num);white-space:nowrap}
-.money .r{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-top:1px solid var(--line2);font-size:14.5px}
-.money .r small{color:var(--muted)}.money .r b{font:600 18px var(--num);white-space:nowrap}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;padding:8px 14px}
 .kpi{border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .kpi small{display:block;color:var(--muted);font-size:12px}
@@ -1632,6 +1627,10 @@ function rowAmount(row, c){
   }
   return {items, total: items.reduce((a, x) => a + (x.amt || 0), 0), missing: items.filter(x => x.amt == null).length};
 }
+function amountHTML(a){
+  return `<div class="amt-list">${a.items.map(x => `<div class="amt-row"><span>${x.label} <small>${cpF(r2(x.qty))} ${x.unit}${x.mrp != null ? ' × ' + rs(x.mrp) : ''}</small></span><b>${x.amt == null ? '<span class="miss-t">no price yet</span>' : rs(x.amt)}</b></div>`).join('')}
+    <div class="amt-row tot"><span>Total${a.missing ? ` <small>(${a.missing} price${a.missing > 1 ? 's' : ''} missing)</small>` : ''}</span><b>${rs(a.total)}</b></div></div>`;
+}
 function renderSide(){
   const r = state.rows[state.sel] || state.rows[0];
   const i = state.rows.indexOf(r);
@@ -1656,8 +1655,14 @@ function renderSide(){
   const linHow = linHowOf(lin), amt = rowAmount(r, {res, lin});
   $('#side').innerHTML = `
     ${head}
-    <div class="money"><div class="top"><small>This curtain, incl. GST${amt.missing ? ` · ${amt.missing} price${amt.missing > 1 ? 's' : ''} missing` : ''}</small><b>${amt.total ? rs(amt.total) : '—'}</b></div>
-      ${amt.items.map(x => `<div class="r"><span>${x.label} <small>${cpF(r2(x.qty))} ${x.unit}${x.mrp != null ? ' × ' + rs(x.mrp) : ''}</small></span><b>${x.amt == null ? '<span class="miss-t">no price yet</span>' : rs(x.amt)}</b></div>`).join('')}</div>
+    <div class="kpis">
+      <div class="kpi"><small>${res.turned ? 'Tailor charges' : 'Panels'}</small><b class="num">${res.panels}</b></div>
+      <div class="kpi"><small>Fabric</small><b class="num">${cpF(res.qty)} m</b></div>
+      ${lin ? `<div class="kpi"><small>Lining</small><b class="num">${cpF(lin.m)} m</b></div>` : ''}
+      <div class="kpi"><small>Track</small><b class="num">${res.track ? trackStr(res) : '—'}</b></div>
+      <div class="kpi m" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline"><small>Amount incl. GST, this curtain</small><b class="num">${amt.total ? rs(amt.total) : '—'}</b></div>
+    </div>
+    ${amountHTML(amt)}
     <div class="fig"><h4>Front view <span>measurements in inches${lin ? ' · dashed = lining behind' : ''}</span></h4>${el.svg}</div>
     <div class="fig"><h4>Seen from above <span>${esc(STYLE_INFO[baseStyle(r.style)] || r.style)}${/Double Height/.test(r.style) ? ' Double height.' : ''}</span></h4>${planView(r, res, el.x0, el.cw)}</div>
     <div class="fig"><h4>Curtain fabric off the roll <span>${d.wide ? (res.rotated ? `turned: ${cpF(d.roll)} cm across the width, 2 panels a width` : `${cpF(d.roll)} cm as the height, one piece`) : res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, hem: d.hem, mPer: d.wide && d.mPer, turnPanels: d.turnPanels, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
