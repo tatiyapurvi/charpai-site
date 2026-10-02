@@ -1954,11 +1954,13 @@ function quoteTotals(S = qSections()){
   let total = 0, missing = 0, costMissing = 0; const sub = {};
   for (const [k] of SECTIONS) { sub[k] = 0; for (const l of S[k]) { if (l.amt == null) missing++; else { total += l.amt; sub[k] += l.amt; } if (l.camt == null) costMissing++; } }
   const q = state.quote || {}, pct = parseFloat(q.disc) || 0, amt = parseFloat(q.discAmt) || 0;
-  const disc = Math.round(amt || total * pct / 100), final = total - disc;
-  // Margin: amounts carry GST, costs don't, so both are compared before GST.
-  let netSale = 0; for (const [k] of SECTIONS) for (const l of S[k]) if (l.amt != null) netSale += l.amt / (1 + (+l.gst || 0) / 100);
-  const netAfter = total ? netSale * final / total : 0, rawCost = [].concat(...SECTIONS.map(([k]) => S[k])).reduce((a, l) => a + (l.camt || 0), 0);
-  return {S, sub, total, disc, final, missing, costMissing, netAfter, cost: rawCost};
+  // Discount is on the curtain fabric amount only (Purvi, 2 Oct): % of section 1, or ₹ up to section 1's total.
+  const disc = Math.round(Math.min(sub.fabric, amt || sub.fabric * pct / 100)), final = total - disc;
+  const discTxt = 'Discount on curtain fabric' + (!amt && pct ? ` (${cpF(pct)}%)` : '');
+  // Margin: amounts carry GST, costs don't, so both are compared before GST; the discount comes off the fabric lines.
+  let netSale = 0, netFab = 0; for (const [k] of SECTIONS) for (const l of S[k]) if (l.amt != null) { const n = l.amt / (1 + (+l.gst || 0) / 100); netSale += n; if (k === 'fabric') netFab += n; }
+  const netAfter = netSale - (sub.fabric ? netFab * disc / sub.fabric : 0), rawCost = [].concat(...SECTIONS.map(([k]) => S[k])).reduce((a, l) => a + (l.camt || 0), 0);
+  return {S, sub, total, disc, discTxt, final, missing, costMissing, netAfter, cost: rawCost};
 }
 const ONES = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
 const TENS = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
@@ -2069,7 +2071,7 @@ function paperHTML(q, house, t, showC, ro){
     <div class="q-scroll"><table class="paper"><thead><tr><th>Sr.No.</th><th>AREA</th><th>PRODUCT</th><th>FABRIC DETAILS</th><th>HSN</th><th>Qty</th><th>Unit</th><th>MRP</th><th>Amount</th>${showC ? '<th class="cost">Our cost</th>' : ''}</tr></thead>
       <tbody>${body}
       <tr class="tot"><td colspan="8" class="r">TOTAL</td><td class="r">₹ ${inr(t.total)}</td>${showC ? `<td class="r cost">${inr(t.cost)}</td>` : ''}</tr>
-      ${t.disc ? `<tr class="tot"><td colspan="8" class="r">DISCOUNT</td><td class="r">₹ ${inr(t.disc)}</td>${showC ? '<td></td>' : ''}</tr><tr class="tot big"><td colspan="8" class="r">FINAL</td><td class="r">₹ ${inr(t.final)}</td>${showC ? '<td></td>' : ''}</tr>` : ''}
+      ${t.disc ? `<tr class="tot"><td colspan="8" class="r">${esc(t.discTxt || 'Discount on curtain fabric')}</td><td class="r">− ₹ ${inr(t.disc)}</td>${showC ? '<td></td>' : ''}</tr><tr class="tot big"><td colspan="8" class="r">FINAL</td><td class="r">₹ ${inr(t.final)}</td>${showC ? '<td></td>' : ''}</tr>` : ''}
       </tbody></table></div>
     <div class="paper-foot"><p><b>INR :</b> ${words(t.final)} ONLY.</p>
       <div class="pf-grid"><div><b>Bank Detail :</b>${FIRM.bank.map(([a, b]) => `<br>${a} : ${b}`).join('')}</div>
@@ -2084,9 +2086,10 @@ function renderQuoteSum(t = quoteTotals()){
     <div class="rows">
       ${SECTIONS.filter(([k]) => t.S[k].length).map(([k, n]) => `<div class="srow"><span>${n}</span><b>${rs(t.sub[k])}</b></div>`).join('')}
       <div class="srow"><span>Total</span><b>${rs(t.total)}</b></div>
-      <div class="srow"><label for="q-disc">Discount %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
+      <div class="srow"><label for="q-disc">Discount on curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
       <div class="srow"><label for="q-discAmt">or discount ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
-      ${t.disc ? `<div class="srow"><span>Discount</span><b>− ${rs(t.disc)}</b></div>` : ''}
+      ${t.disc ? `<div class="srow"><span>Discount on curtain fabric</span><b>− ${rs(t.disc)}</b></div>` : ''}
+      ${t.S.fabric.length ? '<div class="hint">Only the curtain fabric amount gets a discount.</div>' : ''}
     </div>
     <div class="grand"><small>Final, GST included</small><b>${rs(t.final)}</b></div>
     <label class="switch"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>
@@ -2120,7 +2123,7 @@ async function quoteXLSX(){
   ws.columns = [7, 14, 18, 38, 11, 8, 7, 10, 13].map(width => ({width}));
   const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin};
   const fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: c}});
-  const INR = '[>=10000000]##\\,##\\,##\\,##0;[>=100000]##\\,##\\,##0;##,##0';
+  const inrFmt = (pre = '') => `[>=10000000]${pre}##\\,##\\,##\\,##0;[>=100000]${pre}##\\,##\\,##0;${pre}##,##0`, INR = inrFmt();
   let r = 0;
   const merged = (txt, o = {}) => { r++; ws.mergeCells(r, o.from || 1, r, o.to || 9); const c = ws.getCell(r, o.from || 1); c.value = txt;
     c.font = Object.assign({name: 'Arial', size: 9}, o.font); c.alignment = Object.assign({vertical: 'middle', wrapText: true}, o.align);
@@ -2142,7 +2145,7 @@ async function quoteXLSX(){
   ws.getRow(r).height = 18;
   ws.pageSetup.printTitlesRow = `${head}:${head}`;
   const total = (label, val, o = {}) => { r++; ws.mergeCells(r, 1, r, 8); const c = ws.getCell(r, 1); c.value = label; c.alignment = {horizontal: 'right', vertical: 'middle'};
-    c.font = {name: 'Arial', size: o.size || 9, bold: true}; const v = ws.getCell(r, 9); v.value = val; v.numFmt = o.rs ? '"₹ "' + INR : INR; v.font = {name: 'Arial', size: o.size || 9, bold: true};
+    c.font = {name: 'Arial', size: o.size || 9, bold: true}; const v = ws.getCell(r, 9); v.value = val; v.numFmt = o.rs ? inrFmt(o.minus ? '"− ₹ "' : '"₹ "') : INR; v.font = {name: 'Arial', size: o.size || 9, bold: true};
     v.alignment = {horizontal: 'right', vertical: 'middle'}; for (let i = 1; i <= 9; i++) { ws.getCell(r, i).border = box; if (o.fill) ws.getCell(r, i).fill = fill(o.fill); } ws.getRow(r).height = 16; };
   let n = 0;
   const line = l => { r++; n++;
@@ -2158,7 +2161,7 @@ async function quoteXLSX(){
     total(`${name} total`, t.sub[k], {fill: 'FFFAFAFA'});
   });
   total('TOTAL', t.total, {rs: true, size: 10});
-  if (t.disc) { total('DISCOUNT', t.disc, {rs: true}); total('FINAL', t.final, {rs: true, size: 11, fill: 'FFFFF6D6'}); }
+  if (t.disc) { total(t.discTxt, t.disc, {rs: true, minus: true}); total('FINAL', t.final, {rs: true, size: 11, fill: 'FFFFF6D6'}); }
   const side = {left: thin, right: thin};
   merged(`INR : ${words(t.final)} ONLY.`, {font: {bold: true}, border: side, h: 18});
   merged('Bank Detail :\n' + FIRM.bank.map(([a, b]) => `${a} : ${b}`).join('\n'), {font: {bold: true}, border: side, h: 70});
@@ -2206,7 +2209,7 @@ document.addEventListener('click', e => {
     L.push(`${name} total: ₹${inr(t.sub[k])}`);
   });
   L.push(`\nTotal: ₹${inr(t.total)}`);
-  if (t.disc) L.push(`Discount: ₹${inr(t.disc)}`);
+  if (t.disc) L.push(`${t.discTxt}: − ₹${inr(t.disc)}`);
   L.push(`*Final: ₹${inr(t.final)}* (GST included)`);
   copyText(L.filter(x => x !== '').join('\n'), $('#q-paper'));
 });
@@ -2267,7 +2270,7 @@ function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()})
   });
   const tot = (a, b) => [{content: a, colSpan: 8, styles: {halign: 'right', fontStyle: 'bold'}}, {content: b, styles: {halign: 'right', fontStyle: 'bold'}}];
   body.push(tot('TOTAL', 'Rs. ' + inr(t.total)));
-  if (t.disc) { body.push(tot('DISCOUNT', 'Rs. ' + inr(t.disc))); body.push(tot('FINAL', 'Rs. ' + inr(t.final))); }
+  if (t.disc) { body.push(tot((t.discTxt || 'Discount on curtain fabric').toUpperCase(), '- Rs. ' + inr(t.disc))); body.push(tot('FINAL', 'Rs. ' + inr(t.final))); }
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY, head: [['Sr.No.', 'AREA', 'PRODUCT', 'FABRIC DETAILS', 'HSN', 'Qty', 'Unit', 'MRP', 'Amount']], body,
     headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center'}, line),
     columnStyles: {0: {halign: 'center', cellWidth: 38}, 1: {halign: 'center', cellWidth: 74}, 2: {halign: 'center', cellWidth: 72}, 3: {halign: 'center'}, 4: {halign: 'center', cellWidth: 50},
@@ -2748,7 +2751,7 @@ async function recordVersion(v, sig, t){
   try {
     if (await Store.versionExists(cid, v)) { toast(`Someone saved v${v} of this client a moment ago. Download again to save yours as v${v + 1}.`); delete CL.vers[cid]; return; }
     await Store.addVersion(cid, v, clone({cid, n: v, sig, at, by: UID, name, no: q.no || '', exec: q.exec || '', total,
-      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, final: t.final}, rows: state.rows, blinds: state.blinds}}));
+      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, final: t.final}, rows: state.rows, blinds: state.blinds}}));
     await Store.mergeClient(cid, {name, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', latest: v, sig, at, total, dsig: sig, edited: at});
     delete CL.vers[cid];
     toast(`Kept as v${v} in ${name || 'this client'}'s quotations`);
