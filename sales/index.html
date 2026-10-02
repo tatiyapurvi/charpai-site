@@ -2556,6 +2556,7 @@ async function connectPrices(){
   document.body.classList.add('shared');
   setupPlatform();
   if (PF && !IS_ADMIN && /prices$/.test(current)) go('clients');   // opened on a prices link before sign-in was known
+  if (PF && IS_ADMIN && current !== startTab && ['dash', 'people'].includes(startTab)) go(startTab);   // reload on an admin page: sign-in is known only now
   if (!canEditPrices) costs = {fabrics:{}, stitch:{}, track:{}};
   refreshAll();
   loadCatalog();
@@ -3156,6 +3157,8 @@ function go(v){
   if ((v === 'dash' || v === 'people') && !(PF && IS_ADMIN)) v = 'clients';
   if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';   // Purvi, 1 Oct: sales don't see the Prices page
   current = v;
+  // The page's address remembers where you are, so a reload opens the same page (Purvi, 2 Oct). replaceState: no history entry, no hashchange.
+  try { const h = v === 'client' && cpId ? 'client/' + cpId : v; if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h); } catch(_){}
   const noClient = shared && !state.clientId && GATED.includes(v);   // every sheet belongs to a client
   for (const [k, id] of Object.entries(VIEWS)) $('#v-' + id).hidden = noClient ? k !== 'none' : k !== v;
   // Top bar (Purvi, 1 Oct): Dashboard · Clients · Prices · People. Curtains, Blinds and Quotation belong to one client,
@@ -3219,7 +3222,7 @@ function themeSwitch(){
 themeSwitch();
 fillLists(); renderNote(); renderTable(); renderTotals(); renderSide();
 let startTab = 'clients';
-try { const h = location.hash.slice(1); startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'clients'; } catch(_){}
+try { const h = decodeURIComponent(location.hash.slice(1)); if (/^client\/./.test(h)) { cpId = h.slice(7); startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'clients'; } catch(_){}
 go(startTab);
 connectPrices();
 </script>
