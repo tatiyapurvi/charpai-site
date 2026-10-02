@@ -995,7 +995,13 @@ const ROLLS = [140, 150, 280, 300];   // linings on the Prices page
 // Curtain rows (Purvi, 1 Oct): always 140 cm by default. A wider roll is offered only when the company's list gives
 // this fabric a wide roll (250 cm or more); narrow, missing or odd listed widths (139.5, 142, 7…) all count as 140.
 const wideRoll = r => { const x = catRow(r); return x && x.w >= 250 ? +x.w : 0; };
-function rollOpts(r){ const o = [140]; const w = wideRoll(r) || (+r.roll >= 250 ? +r.roll : 0); if (w) o.push(w); return o; }
+// Roll choices: always 140. A listed wide fabric adds its own width; a fabric with no width listed (or typed in by hand)
+// adds 300, so the team can pick it (Purvi, 2 Oct). 140 stays the default.
+function rollOpts(r){
+  const o = [140], x = catRow(r), w = wideRoll(r) || (+r.roll >= 250 ? +r.roll : 0);
+  if (w) o.push(w); else if (!x || !(+x.w > 0)) o.push(300);
+  return o;
+}
 const rollOptHTML = r => rollOpts(r).map(v => `<option value="${v}"${+v === +r.roll ? ' selected' : ''}>${v} cm</option>`).join('');
 const KEY = 'charpai-curtain-sheet-v1', PKEY = 'charpai-curtain-prices-v1', TKEY = 'charpai-curtain-tab';
 const $ = s => document.querySelector(s);
