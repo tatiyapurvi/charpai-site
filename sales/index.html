@@ -233,6 +233,19 @@ details.rules li{margin:3px 0;font-size:14px;color:var(--muted)}
 .side-h{padding:12px 14px 4px;display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
 .side-h h2{margin:0;font:700 22px/1.1 var(--num)}
 .side-h .sub{color:var(--muted);font-size:13px}
+.id-h{display:block;padding:14px 14px 6px}
+.id-h .who{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.id-h .who h2{font-size:26px}
+.idx-b{min-width:28px;height:28px;border-radius:50%;background:var(--line);display:inline-grid;place-items:center;font:700 14px var(--num)}
+.layer-b{font-weight:700;font-size:15px;padding:4px 12px;border-radius:999px;color:var(--ink);border:1.5px solid}
+.layer-b.main{background:var(--main);border-color:var(--main-fold)}
+.layer-b.sheer{background:var(--sheer);border-color:var(--sheer-fold)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px 14px;margin:10px 0 0}
+.facts div{min-width:0}.facts .wide{grid-column:1/-1}
+.facts dt{color:var(--muted);font-size:12px}
+.facts dd{margin:0;font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.facts dd small{font-weight:400;color:var(--muted)}
+.facts .ed{color:var(--warn);font-weight:600;font-size:12px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;padding:8px 14px}
 .kpi{border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .kpi small{display:block;color:var(--muted);font-size:12px}
@@ -596,19 +609,19 @@ tr.dash-r:hover td{background:var(--sel)}
                   <th class="grp first">Where</th><th class="grp"></th>
                   <th class="grp" colspan="3">Fabric</th>
                   <th class="grp soft" colspan="3">Fabric details <small>(filled in from the fabric)</small></th>
-                  <th class="grp" colspan="4">Size &amp; style</th>
+                  <th class="grp" colspan="5">Size &amp; style</th>
                   <th class="grp" colspan="2">Change only if needed</th>
-                  <th class="grp res" colspan="4">Result</th><th class="grp howh">How it was worked out</th>
-                  <th class="grp"></th>
+                  <th class="grp res" colspan="5">Result</th><th class="grp howh">How it was worked out</th>
+                  <th class="grp"></th><th class="grp"></th>
                 </tr>
                 <tr>
                   <th class="first">Room</th><th>Layer</th>
                   <th>Company</th><th>Curtain fabric <small>type name, collection or SKU</small></th><th>Lining <small>empty = none</small></th>
                   <th>Roll</th><th>Repeat <small>″</small></th><th>Can turn <small>/ Turn</small></th>
-                  <th>Style</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Track</th>
+                  <th>Style</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Track</th><th>Fixing</th>
                   <th>Panel <small>″ each</small></th><th>Extra <small>″</small></th>
-                  <th class="r">Panels</th><th class="r">Fabric</th><th class="r">Lining</th><th class="r">Track</th><th class="howh"></th>
-                  <th></th>
+                  <th class="r">Panels</th><th class="r">Parts</th><th class="r">Fabric</th><th class="r">Lining</th><th class="r">Track</th><th class="howh"></th>
+                  <th>Remarks</th><th></th>
                 </tr>
               </thead>
               <tbody id="tb"></tbody>
@@ -1071,7 +1084,7 @@ const findFabric = name => prices.fabrics.find(f => f.n.toLowerCase() === String
 
 // ================= the sheet: kept on this device
 let uid = 1;
-function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
+function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', fixing:'', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
 function fillFabric(row){
   const f = findFabric(row.fabric);
   if (!f) return false;
@@ -1097,6 +1110,7 @@ function migrate(r){
   if (r.sup === undefined || r.sup === 'OWN') { r.sup = ''; r.key = ''; }
   if (OLD_TRACK[r.track]) r.track = OLD_TRACK[r.track];
   if (r.remote === undefined) r.remote = '';
+  for (const f of ['fixing', 'parts', 'remarks']) if (r[f] === undefined) r[f] = '';
   r.id = uid++;
 }
 function load(){
@@ -1227,8 +1241,10 @@ const AUTO = {
   panelTxt: c => c.ok && c.res.panels ? f1(c.d.W / c.res.panels) : '',
   allowTxt: c => cpF(c.ok ? c.d.extra : ((R.curtain_fold_in ?? 6) + (R.curtain_heading_in ?? 4))),
   hand: c => c.ok && c.res.panels ? String(c.res.panels) : '',
+  parts: () => String(PARTS_DEFAULT),   // how many parts the curtain opens in; not used in the maths
 };
-const AUTO_LABEL = {hand: 'Panels', panelTxt: 'Inches of window each panel covers', allowTxt: 'Extra inches for the fold and heading'};
+const PARTS_DEFAULT = 2, FIXINGS = ['Ceiling fixing', 'Face fixing'];
+const AUTO_LABEL = {hand: 'Panels', parts: 'Number of parts', panelTxt: 'Inches of window each panel covers', allowTxt: 'Extra inches for the fold and heading'};
 function opt(list, val){ return list.map(v => `<option${String(v) === String(val) ? ' selected' : ''}>${esc(v)}</option>`).join(''); }
 function autoCell(r, f, w, big){
   return `<div class="auto-wrap"><input id="r${r.id}-${f}" data-f="${f}" data-auto="1" class="n auto${big ? ' big' : ''}" inputmode="decimal" autocomplete="off" style="width:${w}px" aria-label="${AUTO_LABEL[f]}"><button class="reset" data-reset="${f}" title="Go back to the worked-out number" aria-label="Reset ${AUTO_LABEL[f]}">↺</button></div>`;
@@ -1248,13 +1264,16 @@ function rowHTML(r, i){
     <td><input id="${id('H')}" data-f="H" class="n key" inputmode="decimal" value="${esc(r.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input id="${id('W')}" data-f="W" class="n key" inputmode="decimal" value="${esc(r.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
     <td><select id="${id('track')}" data-f="track" style="width:250px" class="${r.track ? '' : 'todo'}"><option value="">Pick a track</option>${opt(TRACKS.map(t => t.n), r.track)}</select><div data-remote>${remoteSel(r)}</div></td>
+    <td><select id="${id('fixing')}" data-f="fixing" style="width:140px" class="${r.fixing ? '' : 'todo'}" aria-label="Ceiling or face fixing"><option value="">Pick fixing</option>${opt(FIXINGS, r.fixing)}</select></td>
     <td>${autoCell(r, 'panelTxt', 64)}</td>
     <td>${autoCell(r, 'allowTxt', 56)}</td>
     <td>${autoCell(r, 'hand', 58, true)}</td>
+    <td>${autoCell(r, 'parts', 50, true)}</td>
     <td class="out m" data-o="qty"></td>
     <td class="out" data-o="lin"></td>
     <td class="out" data-o="track"></td>
     <td class="howc" data-o="how"></td>
+    <td><input id="${id('remarks')}" data-f="remarks" value="${esc(r.remarks)}" placeholder="Any note" style="width:220px" aria-label="Remarks"></td>
     <td class="acts"><button class="ico" data-a="dup" title="Copy this row" aria-label="Copy row ${i+1}">⧉</button><button class="ico" data-a="del" title="Delete this row" aria-label="Delete row ${i+1}">✕</button></td>
   </tr>`;
 }
@@ -1356,6 +1375,7 @@ tb.addEventListener('change', e => {
     e.target.closest('td').querySelector('[data-remote]').innerHTML = remoteSel(r);
   }
   if (f === 'remote') e.target.classList.toggle('todo', !r.remote);
+  if (f === 'fixing') e.target.classList.toggle('todo', !r.fixing);
   changed(r);
 });
 tb.addEventListener('click', e => {
@@ -1389,7 +1409,7 @@ function afterStructure(){ renderTable(); renderTotals(); renderSide(); save(); 
 $('#add').onclick = () => {
   const last = state.rows[state.rows.length - 1];
   const r = blank();
-  if (last) Object.assign(r, {layer:last.layer, fabric:last.fabric, lining:last.lining, roll:last.roll, rollOwn:last.rollOwn || '', repeat:last.repeat, turn:last.turn, style:last.style});   // track is not copied: the salesperson picks it for each opening
+  if (last) Object.assign(r, {layer:last.layer, fabric:last.fabric, lining:last.lining, roll:last.roll, rollOwn:last.rollOwn || '', repeat:last.repeat, turn:last.turn, style:last.style, fixing:last.fixing || ''});   // track, parts and remarks are not copied: the salesperson picks it for each opening
   state.rows.push(r); state.sel = state.rows.length - 1; afterStructure();
   document.getElementById(`r${r.id}-room`).focus();
 };
@@ -1606,14 +1626,26 @@ function renderSide(){
   const r = state.rows[state.sel] || state.rows[0];
   const i = state.rows.indexOf(r);
   const {res, d, ok, lin} = calc(r);
-  const title = `${i + 1}. ${esc(r.room || 'Opening')}${r.layer === 'Sheer' ? ' · sheer' : ''}`;
-  const sub = `${esc(r.style)}${lin ? ' · with lining' : ''}${r.fabric ? ' · ' + esc(r.fabric) : ''}`;
-  if (!ok) { $('#side').innerHTML = `<div class="side-h"><h2>${title}</h2><span class="sub">${sub}</span></div><div class="empty">Type the height and the width in inches to see the drawing.</div>`; return; }
+  // Who this curtain is, always at the top, so nobody scrolls back to the start of the row (Purvi, 2 Oct).
+  const own = String(r.parts || '').trim(), pt = own || PARTS_DEFAULT;
+  const fact = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`, miss = t => `<span class="miss-t">${t}</span>`;
+  const head = `<div class="side-h id-h">
+      <div class="who"><span class="idx-b">${i + 1}</span><h2>${esc(r.room || 'Room not named')}</h2><span class="layer-b ${r.layer === 'Sheer' ? 'sheer' : 'main'}">${r.layer === 'Sheer' ? 'Sheer curtain' : 'Main curtain'}</span></div>
+      <dl class="facts">
+        ${fact('Fabric', r.fabric ? esc(r.fabric) + (lin ? ` <small>+ ${esc(lin.name)}</small>` : '') : miss('Not picked yet'))}
+        ${fact('Style', esc(r.style))}
+        ${fact('Size', r.H || r.W ? `H ${fmt(r.H) || '—'}″ × W ${fmt(r.W) || '—'}″` : miss('Not measured'))}
+        ${fact('Track', r.track ? esc(r.track) : miss('Not picked yet'))}
+        ${fact('Fixing', r.fixing ? esc(r.fixing) : miss('Not picked yet'))}
+        ${fact('Parts', own ? `${esc(pt)} <span class="ed">edited</span>` : pt)}
+        ${String(r.remarks || '').trim() ? `<div class="wide"><dt>Remarks</dt><dd>${esc(r.remarks)}</dd></div>` : ''}
+      </dl></div>`;
+  if (!ok) { $('#side').innerHTML = `${head}<div class="empty">Type the height and the width in inches to see the drawing.</div>`; return; }
   const el = elevation(r, res, d, lin);
   const fcls = r.layer === 'Sheer' ? 'f-sheer' : 'f-main';
   const linHow = linHowOf(lin), amt = rowAmount(r, {res, lin});
   $('#side').innerHTML = `
-    <div class="side-h"><h2>${title}</h2><span class="sub">${sub}</span></div>
+    ${head}
     <div class="kpis">
       <div class="kpi"><small>${res.turned ? 'Tailor charges' : 'Panels'}</small><b class="num">${res.panels}</b></div>
       <div class="kpi"><small>Fabric</small><b class="num">${cpF(res.qty)} m</b></div>
@@ -3158,7 +3190,7 @@ $('#copy').onclick = () => {
   const L = [`*Curtains · ${state.house || 'house'}*`];
   state.rows.forEach((r, i) => {
     const {res, ok, lin} = calc(r); if (!ok) return;
-    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${cpF(rollOf(r))} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${(rollOf(r) >= 250 ? res.rotated : res.turned) ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}`);
+    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${cpF(rollOf(r))} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${(rollOf(r) >= 250 ? res.rotated : res.turned) ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}${r.fixing ? '\n   ' + r.fixing : ''}${r.fixing ? ' · ' : '\n   '}${String(r.parts || '').trim() || PARTS_DEFAULT} parts${String(r.remarks || '').trim() ? '\n   Remarks: ' + r.remarks.trim() : ''}`);
   });
   copyText(L.join('\n'), $('#m-panel'));
 };
