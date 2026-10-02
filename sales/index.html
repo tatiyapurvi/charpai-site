@@ -176,7 +176,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .banner b{font-weight:700}
 
 /* measure table */
-.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl-scroll{overflow:auto;-webkit-overflow-scrolling:touch;max-height:calc(100dvh - 150px);overscroll-behavior:contain}
+/* Column headings stay in view while scrolling down a long sheet (Purvi, 2 Oct). The table scrolls inside its box, so sticky works both ways. */
+.sheet thead{position:sticky;top:0;z-index:3}
+.sheet thead .first{z-index:4}
 table.sheet{border-collapse:separate;border-spacing:0;width:100%;min-width:2300px}
 .sheet td.out{padding-left:16px;padding-right:18px}
 .sheet th.r{padding-right:18px;padding-left:16px}
