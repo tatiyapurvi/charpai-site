@@ -438,7 +438,13 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .clist{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .crow{display:flex;width:100%;gap:12px;align-items:center;justify-content:space-between;text-align:left;border:0;border-bottom:1px solid var(--line2);background:none;padding:14px 16px;cursor:pointer;color:inherit}
 .crow:last-child{border-bottom:0}
+.crow-wrap:last-child{border-bottom:0}
 .crow:hover{background:var(--sel)}
+.crow-wrap{display:flex;align-items:stretch;border-bottom:1px solid var(--line2)}
+.crow-wrap .crow{border-bottom:0;flex:1 1 auto;min-width:0}
+.cdel{flex:none;border:0;background:none;color:var(--faint);padding:0 16px;cursor:pointer;display:grid;place-items:center}
+.cdel:hover{color:var(--warn);background:var(--warn-soft)}
+.btn.danger-solid{background:var(--warn);border-color:var(--warn);color:#fff}
 .cmain{display:flex;flex-direction:column;gap:3px;min-width:0}
 .cname{font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px}
 .csub{color:var(--muted);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2862,10 +2868,10 @@ function renderClients(){
   const list = CL.list.filter(c => ofOwner(c) && (clF === 'all' || statusOf(c) === clF) && (!ql || [c.name, c.no, c.exec, c.phone, c.addr].join(' ').toLowerCase().includes(ql)))
     .sort((a, b) => key(b).localeCompare(key(a)));
   const F = [['all', 'All'], ['draft', 'Draft'], ['quoted', 'Quoted'], ['won', 'Won'], ['lost', 'Lost']];
-  const row = c => `<button class="crow" data-cid="${esc(c.id)}">
+  const row = c => (canDelete() ? '<div class="crow-wrap">' : '') + `<button class="crow" data-cid="${esc(c.id)}">
       <span class="cmain"><span class="cname">${esc(c.name || 'No name')}</span>
         <span class="csub">${[c.phone, c.addr, PF && IS_ADMIN ? (c.ownerEmail ? personName(c.ownerEmail) : 'Not assigned') : c.exec].filter(Boolean).map(esc).join(' · ') || 'No details yet'}</span></span>
-      <span class="cmeta">${pillHTML(c)}<span class="camt">${amountOf(c) ? rs(amountOf(c)) : ''}</span><span class="cago">${esc(agoTxt(c.edited || c.at || c.created))}</span></span></button>`;
+      <span class="cmeta">${pillHTML(c)}<span class="camt">${amountOf(c) ? rs(amountOf(c)) : ''}</span><span class="cago">${esc(agoTxt(c.edited || c.at || c.created))}</span></span></button>` + (canDelete() ? `<button class="cdel" data-del="${esc(c.id)}" title="Delete ${esc(c.name || 'this client')}" aria-label="Delete ${esc(c.name || 'this client')}">${BIN_SVG}</button></div>` : '');
   el.innerHTML = `<div class="cl-wrap">${top}
     <div class="cl-tools"><input id="cl-q" class="search" value="${esc(clQ)}" placeholder="Search name, phone, area, quotation no." aria-label="Search clients">
       ${PF && IS_ADMIN ? `<select id="cl-owner" class="search" style="flex:0 1 220px" aria-label="Executive"><option value="">Every executive</option>${[...PEOPLE].filter(([e, p]) => sells(p) || clOwner === e).map(([e, p]) => `<option value="${esc(e)}"${clOwner === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}<option value="-"${clOwner === '-' ? ' selected' : ''}>Not assigned</option></select>` : ''}
@@ -2880,6 +2886,7 @@ clb.addEventListener('click', e => {
   if (t.closest('[data-act="new"]')) { askNewClient(); return; }
   if (t.closest('#cl-local')) { go('c-measure'); return; }
   const f = t.closest('[data-f]'); if (f) { clF = f.dataset.f; renderClients(); return; }
+  const dl = t.closest('[data-del]'); if (dl) { const c = CL.byId.get(dl.dataset.del); if (c) askDelete(c); return; }
   const r = t.closest('[data-cid]'); if (r) { cpId = r.dataset.cid; go('client'); }
 });
 
@@ -2906,7 +2913,33 @@ function renderClientPage(){
     <div class="cp-acts"><button class="btn solid big" data-act="sheet">Open their measurements</button><button class="btn ghost" data-act="edit">Edit details</button></div>
     <p class="hint" style="margin:-4px 0 0">Sheet last changed ${esc(agoTxt(c.edited || c.created))}.${changed ? ` <b style="color:var(--warn)">It has changes not yet sent to the customer</b> (last sent: v${c.latest}).` : ''}</p>
     ${outcome}
-    <div class="card"><h3>Quotations sent</h3>${vlist}</div></div>`;
+    <div class="card"><h3>Quotations sent</h3>${vlist}</div>
+    ${canDelete() ? `<div class="card outc"><div><b>Delete this client</b><p>Removes ${esc(c.name || 'them')}, their measurements and every quotation sent. Only you see this.</p></div><button class="btn danger" data-act="delete">Delete client</button></div>` : ''}</div>`;
+}
+// ---- Delete a client for good: Purvi only (3 Oct, "need buttons on just mine (admin) account to be able to delete a customer")
+const canDelete = () => !!(PF && PF.owner);
+const BIN_SVG = '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5.5M11.5 8.5v5.5"/></svg>';
+function askDelete(c){
+  if (!canDelete()) return;
+  const n = c.latest || 0;
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Delete ${esc(c.name || 'this client')}?</h2>
+    <p class="sub">This removes the client, their measurements${n ? ` and ${n === 1 ? 'the quotation' : `all ${n} quotations`} sent (v1${n > 1 ? '–v' + n : ''})` : ''}. <b>It can't be undone.</b>${n ? ' Download any PDF you still need first.' : ''}</p>
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid danger-solid" data-dlg="ok">Delete for good</button></div></div>`, false, async () => {
+    try { await deleteClient(c.id); } catch (e) { toast('Not deleted: ' + (e && e.message || 'check the internet')); return false; }
+    toast(`${c.name || 'Client'} deleted`); if (current === 'client') go('clients'); else renderClients();
+  });
+}
+async function deleteClient(cid){
+  if (!canDelete()) return;
+  if (cid === state.clientId) {   // open on this device: stop saving it, or the next save would bring it back
+    clearTimeout(draftTimer); draftTimer = null; draftPending = null;
+    if (draftUnsub) { try { draftUnsub(); } catch(_){} draftUnsub = null; }
+    state = {house: '', example: false, sel: 0, bsel: 0, quote: {}, rows: [blank()], blinds: []}; ensureMore(true); draftLast = ''; keepLocal();
+  }
+  for (const v of await Store.listVersions(cid)) await db.doc(`qversions/${cid}_v${v.n}`).delete();
+  try { await db.doc('drafts/' + cid).delete(); } catch(_){}
+  await db.doc('clients/' + cid).delete();   // last, so a half-finished delete still shows the client
+  delete CL.vers[cid];
 }
 $('#cp-body').addEventListener('change', e => {
   if (e.target.id !== 'cp-owner') return; const c = CL.byId.get(cpId), to = e.target.value; if (!c || !to) { renderClientPage(); return; }
@@ -2916,6 +2949,7 @@ $('#cp-body').addEventListener('change', e => {
 $('#cp-body').addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act, c = CL.byId.get(cpId); if (act === 'clients') { go('clients'); return; } if (!c) return;
+  if (act === 'delete') { askDelete(c); return; }
   const V = Array.isArray(CL.vers[c.id]) ? CL.vers[c.id] : [], x = V.find(v => v.n === +b.dataset.n);
   if (act === 'sheet' || act === 'quote') { b.disabled = true; await openClient(c.id, act === 'quote' ? 'quote' : null); b.disabled = false; return; }
   if (act === 'edit') return askDetails(c);
