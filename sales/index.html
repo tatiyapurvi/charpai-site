@@ -59,7 +59,7 @@ auth.onAuthStateChanged(async u => {
   const ok = p && p.active !== false && (viaGoogle ? u.emailVerified : p.pw === true);
   if (!ok) { gateShow('g-denied', email === OWNER ? 'Purvi, please sign in with the Google button.' : `${email} is not on Charpai’s team list${p && p.active === false ? ' any more' : ''}. Ask Purvi to add you.`); return; }
   const admin = email === OWNER || p.role === 'admin';
-  window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, admin, owner: email === OWNER,
+  window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, job: p.job || '', phone: p.phone || '', admin, owner: email === OWNER,
     signOut: () => auth.signOut().then(() => location.reload()),
     async createPasswordUser(em, pw){ const sec = firebase.apps.find(a => a.name === 'add') || firebase.initializeApp(FIREBASE_CONFIG, 'add');
       await sec.auth().createUserWithEmailAndPassword(em, pw); await sec.auth().signOut(); }};
@@ -302,6 +302,23 @@ svg text{font-family:var(--num);fill:var(--ink)}
 .calbtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
 .fld.bad input{border:2px dashed var(--warn)}
 .fld .fhint{display:block;font-size:12px;color:var(--warn);margin-top:3px}
+.fld .fhint.ok{color:var(--good)}
+.fld input.ovr{border-color:var(--warn);color:var(--warn);font-weight:600}
+.linkbtn{border:0;background:none;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer}
+/* People (3 Oct): one table, any kind of employee */
+.ptable{width:100%;border-collapse:collapse;font-size:14.5px}
+.ptable th{text-align:left;font-size:12.5px;font-weight:600;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ptable td{padding:12px;border-bottom:1px solid var(--line2);vertical-align:middle}
+.ptable tr:last-child td{border-bottom:0}
+.ptable tr.off td{opacity:.55}
+.ptable .pn{font-weight:700;font-size:16px}
+.ptable .mono{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ptable .none{color:var(--faint)}
+.ptable .miss{color:var(--warn);font-weight:600}
+.ptable td.r{text-align:right;white-space:nowrap}
+.pfilter{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.seed{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px;background:var(--tape-soft);border-color:var(--tape)}
+@media (max-width:760px){.ptable .hide-s{display:none}}
 .q-open{padding:12px 14px;border-top:1px solid var(--line2)}
 .q-open h3{margin:0 0 2px;font:700 19px/1.2 var(--num)}
 .q-open .sub{color:var(--muted);font-size:13px;margin-bottom:6px}
@@ -2079,12 +2096,16 @@ function renderQuoteHead(){
   if (!q.date) q.date = new Date().toISOString().slice(0, 10);
   if (!q.no) { const d = q.date.split('-'); q.no = `${d[2]}${d[1]}${d[0].slice(2)}/`; }
   if (q.accounts == null) q.accounts = 'Rohit Singh - 9001576636';
-  if (!q.exec) { try { q.exec = localStorage.getItem(EXKEY) || ''; } catch(_){} }
+  // Executive = the client's executive from People, "Name - mobile" (Purvi, 3 Oct). Typing over it keeps the typed text (execOwn).
+  if (!q.execOwn) { const a = execOf(state.clientId); if (a) q.exec = a; else if (!q.exec) { try { q.exec = localStorage.getItem(EXKEY) || ''; } catch(_){} } }
   $('#q-head').innerHTML = QFIELDS.map(([k, l]) => {
     const val = esc(k === 'bill' ? state.house || '' : q[k] || '');
     if (k === 'ddate') { const d = parseDay(q.ddate), bad = q.ddate && !d;
       return `<div class="fld${bad ? ' bad' : ''}"><label for="q-ddate">${l}</label><div class="datewrap"><input id="q-ddate" data-q="ddate" value="${val}" placeholder="dd/mm/yy" autocomplete="off">
         <label class="calbtn" title="Pick from the calendar">${CAL_SVG}<input type="date" data-cal="ddate" aria-label="Pick the delivery date from a calendar"${d ? ` value="${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}"` : ''}></label></div>${bad ? '<span class="fhint">Not a date. Type it like 15/10/26, or use the calendar.</span>' : ''}</div>`; }
+    if (k === 'exec') { const a = execOf(state.clientId);
+      return `<div class="fld"><label for="q-exec">${l}</label><input id="q-exec" data-q="exec" value="${val}"${q.execOwn ? ' class="ovr"' : ''}>${!a ? '' : q.execOwn
+        ? `<span class="fhint">Typed by hand · <button class="linkbtn" data-exec="auto">use ${esc(a)}</button></span>` : '<span class="fhint ok">From People</span>'}</div>`; }
     return `<div class="fld"><label for="q-${k}">${l}</label><input id="q-${k}" data-q="${k}"${k === 'date' ? ' type="date"' : ''} value="${val}"></div>`;
   }).join('');
 }
@@ -2097,11 +2118,11 @@ $('#q-head').addEventListener('change', e => {
   save(); renderQuoteHead(); renderPaper();
 });
 $('#q-head').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.q === 'ddate') e.target.blur(); });
-$('#q-head').addEventListener('click', e => { const c = e.target.closest('[data-cal]'); if (c) { try { c.showPicker(); } catch(_){} } });
+$('#q-head').addEventListener('click', e => { if (e.target.closest('[data-exec]')) { state.quote.execOwn = false; renderQuoteHead(); renderPaper(); save(); return; } const c = e.target.closest('[data-cal]'); if (c) { try { c.showPicker(); } catch(_){} } });
 $('#q-head').addEventListener('input', e => {
   const k = e.target.dataset.q; if (!k) return;
   if (k === 'bill') { state.house = e.target.value; $('#house').value = state.house; } else state.quote[k] = e.target.value;
-  if (k === 'exec') { try { localStorage.setItem(EXKEY, e.target.value); } catch(_){} }
+  if (k === 'exec') { try { localStorage.setItem(EXKEY, e.target.value); } catch(_){} state.quote.execOwn = !!e.target.value.trim() && e.target.value !== execOf(state.clientId); e.target.classList.toggle('ovr', state.quote.execOwn); }
   save(); renderPaper();
 });
 function lineHTML(l, n, showC, ro){
@@ -2700,7 +2721,7 @@ function watchClients(){
     if (current === 'client') renderClientPage();
     if (current === 'dash') renderDash();
     if (current === 'quote') renderQuoteSum();
-    renderCbar();
+    syncExec(); renderCbar();
   }, () => { CL.state = 'error'; if (current === 'clients') renderClients(); });
   syncOpenDraft();
 }
@@ -2847,7 +2868,7 @@ function renderClients(){
       <span class="cmeta">${pillHTML(c)}<span class="camt">${amountOf(c) ? rs(amountOf(c)) : ''}</span><span class="cago">${esc(agoTxt(c.edited || c.at || c.created))}</span></span></button>`;
   el.innerHTML = `<div class="cl-wrap">${top}
     <div class="cl-tools"><input id="cl-q" class="search" value="${esc(clQ)}" placeholder="Search name, phone, area, quotation no." aria-label="Search clients">
-      ${PF && IS_ADMIN ? `<select id="cl-owner" class="search" style="flex:0 1 220px" aria-label="Executive"><option value="">Every executive</option>${[...PEOPLE].filter(([, p]) => p.role !== 'admin').map(([e, p]) => `<option value="${esc(e)}"${clOwner === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}<option value="-"${clOwner === '-' ? ' selected' : ''}>Not assigned</option></select>` : ''}
+      ${PF && IS_ADMIN ? `<select id="cl-owner" class="search" style="flex:0 1 220px" aria-label="Executive"><option value="">Every executive</option>${[...PEOPLE].filter(([e, p]) => sells(p) || clOwner === e).map(([e, p]) => `<option value="${esc(e)}"${clOwner === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}<option value="-"${clOwner === '-' ? ' selected' : ''}>Not assigned</option></select>` : ''}
       <div class="fpills" role="group" aria-label="Show">${F.map(([k, n]) => `<button class="fpill" data-f="${k}" aria-pressed="${clF === k}">${n}<b>${counts[k]}</b></button>`).join('')}</div></div>
     <div class="clist">${list.length ? list.map(row).join('') : `<div class="cl-empty">${CL.list.length ? '<b>No client matches.</b>Try another word or show All.' : '<b>No clients yet.</b>Tap + New client, type their name, and start measuring.'}</div>`}</div></div>`;
 }
@@ -2881,7 +2902,7 @@ function renderClientPage(){
   const changed = c.latest && c.dsig && c.dsig !== c.sig;
   el.innerHTML = `<div class="cp">
     <div class="cp-head"><div><h2>${esc(c.name || 'No name')}</h2><div class="csub" style="white-space:normal">${[c.phone, c.addr, c.no ? 'Quotation ' + c.no : '', c.exec ? 'Handled by ' + c.exec : ''].filter(Boolean).map(esc).join(' · ') || 'No details yet'}</div>
-      ${PF && IS_ADMIN ? `<label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px">Executive <select id="cp-owner" class="search" style="width:auto;padding:5px 8px"><option value="">Not assigned</option>${[...PEOPLE].filter(([, p]) => p.role !== 'admin' || p.active !== false).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>${pillHTML(c)}</div>
+      ${PF && IS_ADMIN ? `<label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px">Executive <select id="cp-owner" class="search" style="width:auto;padding:5px 8px"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => sells(p) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>${pillHTML(c)}</div>
     <div class="cp-acts"><button class="btn solid big" data-act="sheet">Open their measurements</button><button class="btn ghost" data-act="edit">Edit details</button></div>
     <p class="hint" style="margin:-4px 0 0">Sheet last changed ${esc(agoTxt(c.edited || c.created))}.${changed ? ` <b style="color:var(--warn)">It has changes not yet sent to the customer</b> (last sent: v${c.latest}).` : ''}</p>
     ${outcome}
@@ -2959,8 +2980,9 @@ function askDetails(c){
     const v = id => d.querySelector('#' + id).value.trim(), f = {name: v('e-name'), phone: v('e-phone'), addr: v('e-addr'), exec: v('e-exec')};
     if (!f.name) return false;
     try {
-      if (c.id === state.clientId) { state.house = f.name; Object.assign(state.quote, {phone: f.phone, addr: f.addr, exec: f.exec}); save(); refreshSheet(); await flushDraft(); }
-      else { const dr = await Store.getDraft(c.id); if (dr) { dr.sheet = dr.sheet || {}; dr.sheet.house = f.name; dr.sheet.quote = Object.assign(dr.sheet.quote || {}, {phone: f.phone, addr: f.addr, exec: f.exec}); dr.at = new Date().toISOString(); dr.dev = DEV; await Store.setDraft(c.id, clone(dr)); } }
+      const own = !!f.exec && f.exec !== execOf(c.id);
+      if (c.id === state.clientId) { state.house = f.name; Object.assign(state.quote, {phone: f.phone, addr: f.addr, exec: f.exec, execOwn: own}); save(); refreshSheet(); await flushDraft(); }
+      else { const dr = await Store.getDraft(c.id); if (dr) { dr.sheet = dr.sheet || {}; dr.sheet.house = f.name; dr.sheet.quote = Object.assign(dr.sheet.quote || {}, {phone: f.phone, addr: f.addr, exec: f.exec, execOwn: own}); dr.at = new Date().toISOString(); dr.dev = DEV; await Store.setDraft(c.id, clone(dr)); } }
       await Store.mergeClient(c.id, {name: f.name, phone: f.phone, addr: f.addr, exec: f.exec});
     } catch (e) { toast('Not saved. Check the internet.'); return false; }
   });
@@ -3044,7 +3066,17 @@ function newLocalSheet(){
 // {email, name, role, admin, owner, signOut(), createPasswordUser(email, pw)}. Firebase's rules (app/firestore.rules)
 // enforce the same split on the server: a sales executive only ever receives their own clients; costs only reach Purvi.
 let PF = null, ME_EMAIL = null, IS_ADMIN = true;
-const PEOPLE = new Map();   // email → {name, role, active, pw}
+const PEOPLE = new Map();   // id → {name, job, phone, role, active, pw}. id = their email; someone without an email yet gets 'p_…' (can't sign in)
+// Job is what they do (any number of kinds, add to JOBS); role is what they may see ('sales' = own clients, 'admin' = everything). Kept apart so new kinds of staff need no new code.
+const JOBS = ['Sales executive', 'Accounts', 'Store', 'Site supervisor', 'Installer', 'Production', 'Designer', 'Manager'];
+const TEAM_SEED = [['Aabid Chouhan', '7792060786'], ['Rohit Sankhla', '9001576636'], ['Nita Bhandari', '9983980999'], ['Firoz Khan', '8209259681'], ['Hanuman Bishnoi', '9414331446']];   // Purvi, 3 Oct
+const jobOf = p => p.job || (p.role === 'admin' ? 'Manager' : 'Sales executive');
+const sells = p => p && p.active !== false && jobOf(p) === 'Sales executive';
+const canLogin = id => String(id).includes('@');
+const mobile = v => { const d = String(v || '').replace(/\D/g, ''); return d.length === 12 && d.startsWith('91') ? d.slice(2) : d.length === 11 && d.startsWith('0') ? d.slice(1) : d; };
+const nameKey = n => { const w = String(n || '').toLowerCase().split(/\s+/).filter(Boolean); return w.length ? w[0] + ' ' + w[w.length - 1] : ''; };
+const execOf = cid => { if (!PF) return ''; const p = PEOPLE.get(ownerOf(cid)); return p && p.name ? p.name + (p.phone ? ' - ' + p.phone : '') : ''; };
+function syncExec(){ if (!state.clientId || (state.quote || {}).execOwn) return; if (current === 'quote') { renderQuoteHead(); renderPaper(); } }
 const scoped = q => ME_EMAIL && !IS_ADMIN ? q.where('ownerEmail', '==', ME_EMAIL) : q;
 const ownerOf = cid => (CL.byId.get(cid) || {}).ownerEmail || ME_EMAIL || null;
 const personName = e => e ? ((PEOPLE.get(e) || {}).name || e) : '';
@@ -3060,8 +3092,8 @@ function setupPlatform(){
   $('#tab-r').hidden = !IS_ADMIN;
   if (IS_ADMIN) {
     $('#tab-d').hidden = false; $('#tab-p').hidden = false;
-    db.collection('users').onSnapshot(s => { PEOPLE.clear(); s.docs.forEach(d => PEOPLE.set(d.id, d.data())); if (current === 'people') renderPeople(); if (current === 'dash') renderDash(); if (current === 'clients') renderClients(); }, () => {});
-  } else PEOPLE.set(ME_EMAIL, {name: PF.name, role: PF.role, active: true});
+    db.collection('users').onSnapshot(s => { PEOPLE.clear(); s.docs.forEach(d => PEOPLE.set(d.id, d.data())); syncExec(); if (current === 'people') renderPeople(); if (current === 'dash') renderDash(); if (current === 'clients') renderClients(); }, () => {});
+  } else PEOPLE.set(ME_EMAIL, {name: PF.name, role: PF.role, job: PF.job || '', phone: PF.phone || '', active: true});
 }
 // Hand a client (their card, live sheet and every sent quotation) to another executive. Admin only.
 async function reassign(cid, email){
@@ -3086,7 +3118,7 @@ function renderDash(){
   const el = $('#dash-body'); if (!el) return;
   if (CL.state !== 'ready') { el.innerHTML = '<div class="cl-wrap"><div class="clist cl-empty">Loading…</div></div>'; return; }
   const per = new Map(), row = e => { if (!per.has(e)) per.set(e, {e, n: 0, q: 0, qv: 0, w: 0, wv: 0, l: 0, open: 0, ov: 0, last: ''}); return per.get(e); };
-  for (const [e, p] of PEOPLE) if (p.active !== false && p.role !== 'admin') row(e);
+  for (const [e, p] of PEOPLE) if (sells(p)) row(e);
   const why = new Map(), follow = [], wk = Date.now() - 7 * 864e5;
   let N = 0, Q = 0, QV = 0, W = 0, WV = 0, Lo = 0, O = 0, OV = 0;
   for (const c of CL.list) {
@@ -3121,22 +3153,52 @@ document.addEventListener('click', e => {
   const c = e.target.closest('[data-cid]'); if (c) { cpId = c.dataset.cid; go('client'); }
 });
 
-// ---- People (admin): who can sign in, and how
+// ---- People (admin): everyone at Charpai, what they do, their mobile, and whether they can sign in (Purvi, 3 Oct)
+let pJob = '';
+function seedMissing(){   // the executives Purvi sent on 3 Oct that aren't on the list yet, or have no mobile
+  const byKey = new Map([...PEOPLE].map(([id, p]) => [nameKey(p.name), [id, p]]));
+  return TEAM_SEED.filter(([n, ph]) => { const m = byKey.get(nameKey(n)); return !m || !m[1].phone; });
+}
 function renderPeople(){
   const el = $('#people-body'); if (!el) return;
   const counts = new Map(); CL.list.forEach(c => counts.set(c.ownerEmail || '', (counts.get(c.ownerEmail || '') || 0) + 1));
-  const list = [...PEOPLE].sort((a, b) => (a[1].active === false) - (b[1].active === false) || String(a[1].name).localeCompare(String(b[1].name)));
+  const all = [...PEOPLE].sort((a, b) => (a[1].active === false) - (b[1].active === false) || String(a[1].name).localeCompare(String(b[1].name)));
+  const jobs = uniq(all.map(([, p]) => jobOf(p))); if (pJob && !jobs.includes(pJob)) pJob = '';
+  const list = all.filter(([, p]) => !pJob || jobOf(p) === pJob), seed = seedMissing();
   el.innerHTML = `<div class="cl-wrap"><div class="cl-head"><h2>People</h2><button class="btn solid big" data-act="add">+ Add person</button></div>
-    <p class="hint" style="margin:-6px 0 12px">Only people on this list can sign in. Sales executives see only their own clients; admins see everyone. Dealer prices and margins are shown to Purvi only.</p>
-    <div class="clist">${list.map(([e, p]) => `<div class="crow" style="cursor:default"><span class="cmain"><span class="cname">${esc(p.name || e)}${p.active === false ? ' <span class="pill lost">Switched off</span>' : ''}</span>
-      <span class="csub">${esc(e)} · ${p.role === 'admin' ? 'Admin' : 'Sales executive'} · signs in with ${p.pw ? 'email + password' : 'Google'} · ${counts.get(e) || 0} client${counts.get(e) === 1 ? '' : 's'}</span></span>
-      <span class="cp-acts">${e === ME_EMAIL ? '<span class="hint">You</span>' : `<button class="btn" data-act="toggle" data-e="${esc(e)}">${p.active === false ? 'Switch on' : 'Switch off'}</button>`}</span></div>`).join('')}</div>
+    <p class="hint" style="margin:-6px 0 12px">Everyone at Charpai. A sales executive's name and mobile go on their clients' quotations. Only people with an email can sign in: sales executives see only their own clients, admins see everyone. Dealer prices and margins are shown to Purvi only.</p>
+    ${seed.length ? `<div class="card seed"><div><b>${seed.length} sales executive${seed.length > 1 ? 's' : ''} from your list ${seed.length > 1 ? 'are' : 'is'} not added yet</b><div class="hint">${seed.map(([n, ph]) => esc(n) + ' · ' + ph).join(' &nbsp;·&nbsp; ')}</div></div><button class="btn solid" data-act="seed">Add them</button></div>` : ''}
+    ${jobs.length > 1 ? `<div class="pfilter">${['', ...jobs].map(j => `<button class="fpill" data-job="${esc(j)}" aria-pressed="${pJob === j}">${j ? esc(j) : 'Everyone'} <small>${all.filter(([, p]) => !j || jobOf(p) === j).length}</small></button>`).join('')}</div>` : ''}
+    <div class="clist" style="overflow-x:auto"><table class="ptable"><thead><tr><th>Name</th><th>Job</th><th>Mobile</th><th class="hide-s">Email · sign-in</th><th class="hide-s">Sees</th><th class="hide-s">Clients</th><th></th></tr></thead><tbody>
+    ${list.map(([id, p]) => `<tr class="${p.active === false ? 'off' : ''}">
+      <td><span class="pn">${esc(p.name || id)}</span>${p.active === false ? ' <span class="pill lost">Switched off</span>' : ''}${id === ME_EMAIL ? ' <span class="pill">You</span>' : ''}</td>
+      <td>${esc(jobOf(p))}</td>
+      <td class="mono">${p.phone ? esc(p.phone) : `<span class="${sells(p) ? 'miss' : 'none'}">${sells(p) ? 'Add mobile' : '—'}</span>`}</td>
+      <td class="hide-s">${canLogin(id) ? `${esc(id)}<div class="hint">${p.pw ? 'email + password' : 'Google'}</div>` : '<span class="none">No email yet: can’t sign in</span>'}</td>
+      <td class="hide-s">${canLogin(id) ? (p.role === 'admin' ? 'Every client' : 'Own clients') : '<span class="none">—</span>'}</td>
+      <td class="hide-s mono">${counts.get(id) || 0}</td>
+      <td class="r"><button class="btn" data-act="edit" data-e="${esc(id)}">Edit</button>${id === ME_EMAIL ? '' : ` <button class="btn" data-act="toggle" data-e="${esc(id)}">${p.active === false ? 'Switch on' : 'Switch off'}</button>`}</td></tr>`).join('')}
+    </tbody></table></div>
     ${PF && PF.owner ? `<div class="card" style="margin-top:14px"><h3>Copy from the claude.ai page</h3><p class="hint" style="margin:0 0 10px">Once only: brings over the prices, costs, supplier lists and the clients made on claude.ai. Pick the file <b>charpai-import.json</b> Claude made for you.</p>
       <label class="btn solid" style="display:inline-block">Choose the file<input type="file" id="imp" accept=".json,application/json" hidden></label> <span class="hint" id="imp-msg"></span></div>` : ''}</div>`;
 }
 $('#people-body') && $('#people-body').addEventListener('click', async e => {
+  const j = e.target.closest('[data-job]'); if (j) { pJob = j.dataset.job; renderPeople(); return; }
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'add') return askPerson();
+  if (b.dataset.act === 'edit') return askPerson(b.dataset.e);
+  if (b.dataset.act === 'seed') {
+    b.disabled = true; const byKey = new Map([...PEOPLE].map(([id, p]) => [nameKey(p.name), [id, p]]));
+    try {
+      for (const [n, ph] of seedMissing()) {
+        const m = byKey.get(nameKey(n));
+        if (m) await db.doc('users/' + m[0]).update(Object.assign({phone: ph}, m[1].job ? {} : {job: 'Sales executive'}));
+        else await db.doc('users/p_' + n.toLowerCase().replace(/[^a-z]+/g, '-')).set({name: n, job: 'Sales executive', phone: ph, role: 'sales', active: true, pw: false, added: new Date().toISOString(), addedBy: ME_EMAIL});
+      }
+      toast('Added. Their emails can go in later with Edit.');
+    } catch (er) { toast('Not saved: ' + (er && er.message || er)); b.disabled = false; }
+    return;
+  }
   if (b.dataset.act === 'toggle') { const em = b.dataset.e, p = PEOPLE.get(em); if (!p) return;
     confirmDlg(p.active === false ? `Switch ${esc(p.name)} back on?` : `Switch off ${esc(p.name)}?`, p.active === false ? 'They can sign in again and see their clients.' : 'They can no longer sign in. Their clients stay; you can hand them to someone else from each client page.', p.active === false ? 'Switch on' : 'Switch off',
       async () => { await db.doc('users/' + em).update({active: p.active === false}); }); }
@@ -3151,34 +3213,56 @@ document.addEventListener('change', async e => {
     msg(`Done: ${n} items copied. Reload the page to see everything.`);
   } catch (er) { msg('Stopped: ' + (er && er.message || er)); }
 });
-function askPerson(){
-  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Add a person</h2><p class="sub">They sign in at charpai.co.in/sales.</p>
-    ${fld('p-name', 'Name', '', 'autofocus placeholder="e.g. Nita Bhandari" autocomplete="off"')}
-    <label class="f" for="p-email">Email</label><input type="text" id="p-email" inputmode="email" autocomplete="off" placeholder="their Gmail or work email">
-    <label class="f">Role</label>
-    <label class="opt"><input type="radio" name="p-role" value="sales" checked><span><b>Sales executive</b><small>Sees and works on only their own clients</small></span></label>
-    <label class="opt"><input type="radio" name="p-role" value="admin"><span><b>Admin</b><small>Sees every client, the dashboard and People (not dealer prices)</small></span></label>
-    <label class="f">How they sign in</label>
+// Add or edit a person. Email is optional: without one they can't sign in, but can still be a client's executive.
+// Adding an email later moves them to users/<email> and hands their clients over to that email.
+function askPerson(id){
+  const p = id ? PEOPLE.get(id) || {} : {}, hasEmail = !!id && canLogin(id), me = id === ME_EMAIL, job = id ? jobOf(p) : 'Sales executive', other = !JOBS.includes(job);
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">${id ? 'Edit ' + esc(p.name || '') : 'Add a person'}</h2><p class="sub">${id ? 'Changes show on new quotations straight away.' : 'Anyone at Charpai. Add an email if they should sign in.'}</p>
+    ${fld('p-name', 'Name', p.name || '', 'autofocus placeholder="e.g. Nita Bhandari" autocomplete="off"')}
+    <label class="f" for="p-job">Job</label><select id="p-job" class="search" style="width:100%">${[...JOBS, 'Other…'].map(x => `<option${(other ? 'Other…' : job) === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>
+    <div id="p-jobbox"${other ? '' : ' hidden'}>${fld('p-jobo', 'Which job?', other ? job : '', 'placeholder="e.g. Delivery" autocomplete="off"')}</div>
+    ${fld('p-phone', 'Mobile <small>(goes on the quotation for sales executives)</small>', p.phone || '', 'inputmode="tel" placeholder="98290 12345" autocomplete="off"')}
+    <label class="f" for="p-email">Email <small>(optional: needed to sign in)</small></label><input type="text" id="p-email" inputmode="email" autocomplete="off" placeholder="their Gmail or work email" value="${hasEmail ? esc(id) : ''}"${hasEmail ? ' readonly' : ''}>
+    ${hasEmail ? '<p class="hint" style="margin:4px 0 0">To change a sign-in email, add them again with the new email and switch this one off.</p>' : ''}
+    <div id="p-access"${hasEmail ? '' : ' hidden'}>${me ? '' : `<label class="f">What they see</label>
+    <label class="opt"><input type="radio" name="p-role" value="sales"${p.role === 'admin' ? '' : ' checked'}><span><b>Own clients</b><small>Sees and works on only their own clients</small></span></label>
+    <label class="opt"><input type="radio" name="p-role" value="admin"${p.role === 'admin' ? ' checked' : ''}><span><b>Every client (admin)</b><small>Sees every client, the dashboard and People (not dealer prices)</small></span></label>`}
+    ${hasEmail ? '' : `<label class="f">How they sign in</label>
     <label class="opt"><input type="radio" name="p-how" value="google" checked><span><b>Google account</b><small>No password to remember. Their email must be a Google account (Gmail).</small></span></label>
     <label class="opt"><input type="radio" name="p-how" value="pw"><span><b>Email + password</b><small>You set a first password and send it to them once</small></span></label>
-    <div id="p-pwbox" hidden>${fld('p-pw', 'First password <small>(at least 8 letters or numbers)</small>', Math.random().toString(36).slice(2, 6) + '-' + Math.random().toString(36).slice(2, 6), 'autocomplete="off"')}</div>
+    <div id="p-pwbox" hidden>${fld('p-pw', 'First password <small>(at least 8 letters or numbers)</small>', Math.random().toString(36).slice(2, 6) + '-' + Math.random().toString(36).slice(2, 6), 'autocomplete="off"')}</div>`}</div>
     <p class="hint" id="p-msg" style="color:var(--warn)"></p>
-    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Add</button></div></div>`, false, async d => {
-    const v = id => d.querySelector('#' + id).value.trim(), msg = t => { d.querySelector('#p-msg').textContent = t; return false; };
-    const name = v('p-name'), email = v('p-email').toLowerCase(), role = d.querySelector('input[name=p-role]:checked').value, pw = d.querySelector('input[name=p-how]:checked').value === 'pw';
-    if (!name) return msg('Type their name.'); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return msg('That email doesn’t look right.');
-    if (PEOPLE.has(email)) return msg('This email is already on the list.');
-    const pass = v('p-pw'); if (pw && pass.length < 8) return msg('The password needs at least 8 letters or numbers.');
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">${id ? 'Save' : 'Add'}</button></div></div>`, false, async d => {
+    const v = k => d.querySelector('#' + k).value.trim(), msg = t => { d.querySelector('#p-msg').textContent = t; return false; };
+    const name = v('p-name'), email = v('p-email').toLowerCase(), jobSel = v('p-job'), jobV = jobSel === 'Other…' ? v('p-jobo') : jobSel, phone = mobile(v('p-phone'));
+    const roleEl = d.querySelector('input[name=p-role]:checked'), role = me ? (p.role || 'admin') : email && roleEl ? roleEl.value : 'sales';
+    const howEl = d.querySelector('input[name=p-how]:checked'), pw = hasEmail ? !!p.pw : !!email && !!howEl && howEl.value === 'pw', pass = pw && !hasEmail ? v('p-pw') : '';
+    if (!name) return msg('Type their name.'); if (!jobV) return msg('Type the job.');
+    if (phone && phone.length !== 10) return msg('The mobile number should have 10 digits.');
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return msg('That email doesn’t look right.');
+    if (!hasEmail && email && PEOPLE.has(email)) return msg('This email is already on the list.');
+    if (!id && [...PEOPLE.values()].some(x => nameKey(x.name) === nameKey(name))) return msg(`${name} is already on the list: use Edit.`);
+    if (pw && !hasEmail && pass.length < 8) return msg('The password needs at least 8 letters or numbers.');
+    const newId = hasEmail ? id : email || id || 'p_' + name.toLowerCase().replace(/[^a-z]+/g, '-') + '-' + Math.random().toString(36).slice(2, 6);
+    const data = Object.assign({}, p, {name, job: jobV, phone, role, pw, active: p.active !== false});
+    if (!id) Object.assign(data, {added: new Date().toISOString(), addedBy: ME_EMAIL});
     try {
-      await db.doc('users/' + email).set({name, role, active: true, pw, added: new Date().toISOString(), addedBy: ME_EMAIL});
-      if (pw) { try { await PF.createPasswordUser(email, pass); } catch (er) { if (!(er && er.code === 'auth/email-already-in-use')) { await db.doc('users/' + email).delete(); return msg('Could not create the login: ' + (er && er.message || er)); } } }
+      await db.doc('users/' + newId).set(data);
+      if (pass) { try { await PF.createPasswordUser(email, pass); } catch (er) { if (!(er && er.code === 'auth/email-already-in-use')) { if (newId !== id) await db.doc('users/' + newId).delete(); return msg('Could not create the login: ' + (er && er.message || er)); } } }
+      if (id && newId !== id) {   // an email added for someone who had none: their clients follow them, then the old entry goes
+        for (const c of CL.list.filter(c => c.ownerEmail === id)) await reassign(c.id, newId);
+        await db.doc('users/' + id).delete();
+      }
     } catch (er) { return msg('Not saved: ' + (er && er.message || er)); }
     closeDlg();
-    openDlg(`<div class="dlg-in"><h2 id="dlg-title">${esc(name)} is added</h2><p class="sub">Send them this once on WhatsApp:</p>
+    if (email && !hasEmail) openDlg(`<div class="dlg-in"><h2 id="dlg-title">${esc(name)} can sign in now</h2><p class="sub">Send them this once on WhatsApp:</p>
       <textarea rows="5" readonly style="font-size:15px">Charpai Sales: https://charpai.co.in/sales\n${pw ? `Email: ${email}\nPassword: ${pass}\n(You can change it with “Forgot password?”)` : `Sign in with your Google account: ${email}`}</textarea>
       <div class="dlg-acts"><button class="btn solid" data-dlg="close">Done</button></div></div>`);
+    else toast(id ? 'Saved' : `${name} added`);
   });
-  dlg.querySelectorAll('input[name=p-how]').forEach(r => r.onchange = () => { dlg.querySelector('#p-pwbox').hidden = dlg.querySelector('input[name=p-how]:checked').value !== 'pw'; });
+  const sync = () => { d_('p-jobbox').hidden = d_('p-job').value !== 'Other…'; d_('p-access').hidden = !d_('p-email').value.trim(); const pb = d_('p-pwbox'); if (pb) pb.hidden = (dlg.querySelector('input[name=p-how]:checked') || {}).value !== 'pw'; };
+  const d_ = k => dlg.querySelector('#' + k);
+  dlg.oninput = dlg.onchange = () => { if (d_('p-job')) sync(); };   // replaced by the next person dialog; harmless on others
 }
 
 // ================= more products: wallpaper, fabric, flooring, mattress (Purvi, 3 Oct)
