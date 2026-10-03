@@ -233,6 +233,11 @@ details.rules{padding:0 14px 14px}
 details.rules summary{cursor:pointer;font-weight:600;padding:10px 0}
 details.rules li{margin:3px 0;font-size:14px;color:var(--muted)}
 
+/* wallpaper, fabric, flooring, mattress sheets (3 Oct) */
+table.sheet.psheet{min-width:0;width:max-content}
+.psheet td.howc{min-width:300px;max-width:380px}
+.spec.wide{grid-template-columns:118px minmax(0,1fr)}
+.p-empty-tip{margin:0 14px 12px;padding:10px 12px;border-radius:8px;background:var(--bg);color:var(--muted);font-size:13.5px}
 /* drawing */
 .side-h{padding:12px 14px 4px;display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
 .side-h h2{margin:0;font:700 22px/1.1 var(--num)}
@@ -451,11 +456,18 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .cbar[hidden]{display:none}
 .cbar{margin-bottom:16px;font-size:14.5px}
 .cbar-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.ctabs{display:flex;gap:4px;border-bottom:2px solid var(--line);overflow-x:auto}
+.ctabs-row{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--line)}
+.ctabs{display:flex;gap:2px;overflow-x:auto;flex:1 1 auto;min-width:0;align-items:flex-end;scrollbar-width:none}
+.ctabs::-webkit-scrollbar{display:none}
+.ctab-sep{flex:none;width:1px;height:22px;background:var(--line);margin:0 8px 11px}
+.ctab .cnt{display:inline-block;margin-left:6px;min-width:20px;padding:1px 6px;border-radius:10px;background:var(--line2);color:var(--muted);font:600 12px/1.4 var(--body);text-align:center;vertical-align:2px}
+.ctab[aria-selected="true"] .cnt{background:var(--ink);color:var(--paper)}
+.qgo{flex:none;display:inline-flex;align-items:center;gap:7px;margin:0 0 7px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:8px;padding:7px 15px 7px 12px;font:700 18px/1.1 var(--num);cursor:pointer;white-space:nowrap}
+.qgo:hover{opacity:.88}
+.qgo[aria-pressed="true"]{background:var(--tape);border-color:var(--tape);color:var(--tape-ink)}
 .ctab{border:0;background:none;padding:10px 16px 9px;font:700 18px/1.1 var(--num);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
 .ctab:hover{color:var(--ink)}
 .ctab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
-.ctab.q[aria-selected="true"]{border-bottom-color:var(--tape)}
 .cbar .sep{color:var(--faint)}
 .cbar-name{font:700 21px var(--num);color:var(--ink);padding:2px 0}
 .cbar-save{color:var(--faint);font-size:13px;margin-left:auto}
@@ -674,6 +686,20 @@ tr.dash-r:hover td{background:var(--sel)}
         <div class="panel" id="b-orders" hidden></div>
       </div>
       <aside class="side panel" id="bside" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section id="v-product" hidden>
+    <div class="wrap">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
+        <div class="panel">
+          <div class="bar"><span id="p-note"></span><span class="acts2"><b id="p-total"></b></span></div>
+          <div class="tbl-scroll"><table class="sheet psheet" id="p-table"><thead id="p-head"></thead><tbody id="ptb"></tbody></table></div>
+          <div class="addbar"><button class="btn solid" id="p-add"></button><span class="hint" id="p-hint"></span></div>
+        </div>
+        <div class="panel"><details class="rules" open><summary id="p-rules-h">The rules this sheet follows</summary><ul id="p-rules"></ul></details></div>
+      </div>
+      <aside class="side panel" id="pside" aria-live="polite"></aside>
     </div>
   </section>
 
@@ -2681,7 +2707,7 @@ function watchClients(){
 
 // ---- the live sheet, saved for the team a moment after every change
 let draftTimer = null, draftLast = '', draftUnsub = null, draftSeen = '', draftErr = '', draftPending = null, draftBusy = false;
-const sheetOf = () => { const q = clone(state.quote || {}); delete q.pdf; return {house: state.house || '', rows: state.rows, blinds: state.blinds, quote: q}; };
+const sheetOf = () => { const q = clone(state.quote || {}); delete q.pdf; return {house: state.house || '', rows: state.rows, blinds: state.blinds, more: state.more, quote: q}; };
 const keepLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(_){} };
 function queueDraft(){ if (!shared || !db || !state.clientId) return; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 1200); renderCbar(); }
 async function flushDraft(){ if (draftTimer) { clearTimeout(draftTimer); await saveDraft(); } }
@@ -2713,11 +2739,11 @@ function watchDraft(){
     applyDraft(d, true);
   });
 }
-const typingHere = () => { const a = document.activeElement; return !!a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && !!a.closest('#v-measure, #v-blinds, #v-quote'); };
+const typingHere = () => { const a = document.activeElement; return !!a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && !!a.closest('#v-measure, #v-blinds, #v-product, #v-quote'); };
 document.addEventListener('focusout', () => setTimeout(() => { if (draftPending && !draftTimer && !typingHere() && draftPending.cid === state.clientId) { const d = draftPending; draftPending = null; if (d.at > draftSeen) applyDraft(d, true); } }, 300));
 function applyDraft(d, remote){
   const s = clone(d.sheet || {}), sel = state.sel, bsel = state.bsel;
-  state = {house: s.house || '', example: false, sel: remote ? sel : 0, bsel: remote ? bsel : 0, clientId: d.cid, savedAt: d.at, rows: s.rows || [], blinds: s.blinds || [], quote: s.quote || {}};
+  state = {house: s.house || '', example: false, sel: remote ? sel : 0, bsel: remote ? bsel : 0, clientId: d.cid, savedAt: d.at, rows: s.rows || [], blinds: s.blinds || [], more: s.more, quote: s.quote || {}};
   state.rows.forEach(migrate); state.blinds.forEach(bMigrate); if (!state.rows.length) state.rows.push(blank());
   if (state.sel >= state.rows.length) state.sel = 0;
   draftSeen = d.at; draftLast = JSON.stringify(sheetOf()); keepLocal();
@@ -2725,8 +2751,9 @@ function applyDraft(d, remote){
   if (remote) toast('Updated with changes from another device');
 }
 function refreshSheet(){
+  ensureMore(true);
   $('#house').value = state.house || ''; renderNote(); renderTable(); renderTotals(); renderSide(); renderQuoteHead();
-  if (current === 'quote') renderPaper(); if (current === 'b-measure') renderBlinds(); renderCbar();
+  if (current === 'quote') renderPaper(); if (current === 'b-measure') renderBlinds(); if (MP[current]) renderProduct(current); renderCbar();
 }
 // On opening the page: take the shared copy of the client open here if it changed elsewhere; then follow it.
 // A sheet left on this device from before clients existed becomes a client of its own (if it has a name or measurements).
@@ -2755,7 +2782,7 @@ async function openClient(cid, view){
 }
 function fromVersion(c, x, quiet){   // the sent version becomes the live sheet again, dated today
   const s = clone(x.snap);
-  state = {house: s.house || '', example: false, sel: 0, bsel: 0, clientId: c.id, rows: s.rows || [], blinds: s.blinds || [],
+  state = {house: s.house || '', example: false, sel: 0, bsel: 0, clientId: c.id, rows: s.rows || [], blinds: s.blinds || [], more: s.more,
     quote: Object.assign(s.q || {}, {date: new Date().toISOString().slice(0, 10)})};
   state.rows.forEach(migrate); state.blinds.forEach(bMigrate); if (!state.rows.length) state.rows.push(blank());
   draftLast = ''; refreshSheet(); save(); watchDraft(); go(sheetView());
@@ -2793,7 +2820,7 @@ async function recordVersion(v, sig, t){
   try {
     if (await Store.versionExists(cid, v)) { toast(`Someone saved v${v} of this client a moment ago. Download again to save yours as v${v + 1}.`); delete CL.vers[cid]; return; }
     await Store.addVersion(cid, v, clone({cid, n: v, sig, at, by: UID, name, no: q.no || '', exec: q.exec || '', total,
-      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, final: t.final}, rows: state.rows, blinds: state.blinds}}));
+      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, final: t.final}, rows: state.rows, blinds: state.blinds, more: state.more}}));
     await Store.mergeClient(cid, {name, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', latest: v, sig, at, total, dsig: sig, edited: at});
     delete CL.vers[cid];
     toast(`Kept as v${v} in ${name || 'this client'}'s quotations`);
@@ -2969,14 +2996,12 @@ function showVersion(c, x){
 
 // ---- the client bar above the sheet, and the "no client open" screen
 // The client bar, above everything that belongs to one client: ← Clients / name · status · saved, then the client's tabs.
-const CTABS = [['client', 'Overview'], ['c-measure', 'Curtains'], ['b-measure', 'Blinds'], ['quote', 'Quotation']];
 function renderCbar(){
   const bar = $('#cbar'); if (!bar) return;
-  const on = ['client', 'c-measure', 'b-measure', 'quote'].includes(current) && (!shared || current === 'client' || state.clientId);
+  const on = ['client', ...GATED].includes(current) && (!shared || current === 'client' || state.clientId);
   bar.hidden = !on; if (!on) return;
   if (!shared) {   // the page on its own, without the shared store: one sheet on this device
-    bar.innerHTML = `<div class="cbar-top"><span class="cbar-name" style="cursor:default">Sheet on this device</span></div>
-      <div class="ctabs" role="tablist">${CTABS.slice(1).map(([v, n]) => `<button class="ctab${v === 'quote' ? ' q' : ''}" data-ct="${v}" aria-selected="${current === v}">${n}</button>`).join('')}</div>`;
+    bar.innerHTML = `<div class="cbar-top"><span class="cbar-name" style="cursor:default">Sheet on this device</span></div>${ctabsHTML(false)}`;
     return;
   }
   const cid = current === 'client' ? cpId : state.clientId, here = cid === state.clientId;
@@ -2985,7 +3010,16 @@ function renderCbar(){
     : draftErr ? '<span class="cbar-save err">Not saved yet (no internet?). Kept on this device.</span>'
     : draftBusy || draftTimer ? '<span class="cbar-save">Saving…</span>' : '<span class="cbar-save">Saved ✓</span>';
   bar.innerHTML = `<div class="cbar-top"><button class="back" data-act="clients">← Clients</button><span class="sep">/</span><span class="cbar-name">${esc((here ? state.house : '') || c.name || 'No name')}</span>${c.id ? pillHTML(c) : ''}${saveTxt}</div>
-    <div class="ctabs" role="tablist">${CTABS.map(([v, n]) => `<button class="ctab${v === 'quote' ? ' q' : ''}" role="tab" data-ct="${v}" aria-selected="${current === v}">${n}</button>`).join('')}</div>`;
+    ${ctabsHTML(true)}`;
+}
+// Overview | the products, each with how many it has | Quotation as its own button on the right (Purvi, 3 Oct: "qtn should be a separate button from the product categories")
+function ctabsHTML(overview){
+  const here = !shared || (current === 'client' ? cpId : state.clientId) === state.clientId;
+  const tab = (v, n, k) => { const c = here && k != null ? k : 0; return `<button class="ctab" role="tab" data-ct="${v}" aria-selected="${current === v}">${n}${c ? `<span class="cnt">${c}</span>` : ''}</button>`; };
+  return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') + '<span class="ctab-sep" aria-hidden="true"></span>' : ''}
+    ${tab('c-measure', 'Curtains', state.rows.filter(r => +r.W || +r.H).length)}${tab('b-measure', 'Blinds', state.blinds.filter(b => +b.W || +b.H).length)}
+    ${MP_ORDER.map(k => tab(k, MP[k].name, mpCount(k))).join('')}</div>
+    <button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}"><svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Quotation</button></div>`;
 }
 $('#cbar').addEventListener('click', async e => {
   const b = e.target.closest('[data-act], [data-ct]'); if (!b) return;
@@ -2998,7 +3032,7 @@ $('#cbar').addEventListener('click', async e => {
 });
 $('#v-none').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'new') askNewClient(); else go('clients'); });
 // With the shared store every sheet belongs to a client: the sheet, blinds and quotation show "No client open" without one.
-const GATED = ['c-measure', 'b-measure', 'quote'];
+const GATED = ['c-measure', 'b-measure', 'wallpaper', 'fabric', 'flooring', 'mattress', 'quote'];
 function gate(){ if (shared && GATED.includes(current)) go(current); }
 function newLocalSheet(){
   state = {house:'', example:false, sel:0, bsel:0, quote:{}, rows:[blank()], blinds:[]}; refreshSheet(); save(); go('c-measure'); $('#house').focus();
@@ -3147,8 +3181,295 @@ function askPerson(){
   dlg.querySelectorAll('input[name=p-how]').forEach(r => r.onchange = () => { dlg.querySelector('#p-pwbox').hidden = dlg.querySelector('input[name=p-how]:checked').value !== 'pw'; });
 }
 
+// ================= more products: wallpaper, fabric, flooring, mattress (Purvi, 3 Oct)
+// Measurement sheets only, no prices and no quotation lines yet. One engine; each product is a list of columns plus calc().
+// Fields come from the research brain: wall flat / leakage / bumps (FigJam 107:2981), skirting or beading (107:2973),
+// mattress measured on a raw bed before the headboard foam (107:2957, 107:2965), customer-told sizes (240:4749),
+// fabric for our upholstery vs made outside (235:4567, 235:4574), a double-ordered ₹35,000 wallpaper roll (261:5572).
+const WP_ROLLS = {'53 cm × 10 m': [53, 10], '70 cm × 10 m': [70, 10], '100 cm × 10 m': [100, 10], '106 cm × 10 m': [106, 10], '106 cm × 15.6 m': [106, 15.6]};
+const FL_WASTE = {'Laminate': 10, 'Engineered wood': 10, 'Solid wood': 10, 'Vinyl (SPC / LVT)': 8, 'Wall-to-wall carpet': 15, 'Carpet tiles': 5};
+const FL_LAY = {'Straight': 0, 'Diagonal': 5, 'Herringbone / chevron': 10};
+const MT_W = {30: 'Single', 35: 'Single', 36: 'Single', 48: 'Double', 60: 'Queen', 72: 'King'}, MT_L = [72, 75, 78];
+const COMPANIES = ["D'Decor Sansaar", "D'Decor FabriCare", 'Sarom', 'Asian Paints', 'Other'];
+const ceilQ = v => Math.ceil(v * 4 - 1e-9) / 4;
+const nv = v => parseFloat(v) || 0;
+const MP = {
+  wallpaper: {name: 'Wallpaper', one: 'wall', many: 'walls', add: '+ Add wall',
+    note: 'One row per wall. Height and width in inches, as measured.',
+    hint: 'Tap a row to see its rolls and checks. A typed roll count shows in orange; ↺ puts it back.',
+    blank: () => ({room: '', wall: '', sup: '', design: '', kind: 'Roll', roll: '53 cm × 10 m', rep: '', H: '', W: '', open: '', cond: '', rolls: '', remarks: ''}),
+    cols: [
+      {g: 'Where', k: 'room', label: 'Room', t: 'room'},
+      {g: 'Where', k: 'wall', label: 'Wall', t: 'text', ph: 'e.g. behind the bed', w: 150},
+      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'Other'], blank: 'Pick', w: 160},
+      {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: 'Collection · design no.', w: 210},
+      {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
+      {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: Object.keys(WP_ROLLS), w: 150, off: r => r.kind !== 'Roll'},
+      {g: 'Wallpaper', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
+      {g: 'Size', k: 'H', label: 'Height', sub: '″', t: 'num', key: 1},
+      {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
+      {g: 'The wall', k: 'cond', label: 'Condition', t: 'sel', opts: ['Flat and dry', 'Bumps or cracks', 'Damp or leakage', 'Fresh plaster or paint'], blank: 'Check the wall', todo: 1, w: 190},
+      {g: 'The wall', k: 'open', label: 'Doors / windows on it', t: 'sel', opts: ['None', 'Window', 'Door', 'Window and door', 'Switchboards only'], blank: 'Pick', w: 170},
+      {g: 'Result', k: 'area', label: 'Area', out: c => c.ok ? `${cpF(c.area)}<span class="u"> sq ft</span>` : ''},
+      {g: 'Result', k: 'rolls', label: 'Rolls', t: 'auto', def: c => c.calcRolls, off: r => r.kind !== 'Roll'},
+      {g: 'Result', k: 'how', how: 1},
+      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
+    ],
+    calc(r){
+      const H = nv(r.H), W = nv(r.W), c = {ok: !!(H && W), warn: [], kpis: []};
+      if (r.cond === 'Damp or leakage') c.warn.push('Damp wall: fix the leakage and let it dry before papering');
+      if (r.cond === 'Bumps or cracks') c.warn.push('Wall needs putty and levelling first');
+      if (r.cond === 'Fresh plaster or paint') c.warn.push('Fresh wall: let it dry fully before papering');
+      if (!r.cond) c.warn.push('Wall condition not checked yet');
+      if (!c.ok) return c;
+      c.area = r2(H * W / 144);
+      if (r.kind !== 'Roll') {
+        c.kpis = [{l: 'Wall area', v: cpF(c.area), u: 'sq ft'}, {l: 'Order size', v: `${cpF(H + 4)} × ${cpF(W + 4)}`, u: '″ high × wide, 2″ extra each side', m: 1}];
+        c.how = `Mural made to size: the wall <b>${fmt(H)}″ × ${fmt(W)}″</b> plus 2″ on every side for trimming = <b>${fmt(H + 4)}″ × ${fmt(W + 4)}″</b>.`;
+        return c;
+      }
+      const [wcm, lm] = WP_ROLLS[r.roll] || WP_ROLLS['53 cm × 10 m'], win = wcm / 2.54, rep = nv(r.rep);
+      const drop = H + 4 + rep, per = Math.floor(lm * 39.37 / drop), strips = Math.ceil(W / win - 1e-9);
+      c.strips = strips; c.per = per;
+      if (!per) { c.warn.push(`Wall is taller than one ${lm} m roll: order a mural or a longer roll`); c.how = `Each strip is ${fmt(drop)}″, longer than the roll.`; return c; }
+      c.calcRolls = Math.ceil(strips / per); c.rolls = +r.rolls > 0 ? +r.rolls : c.calcRolls;
+      c.how = `Width <b>${fmt(W)}″</b> ÷ roll width ${fmt(r2(win))}″ = <b>${strips} strips</b>. Each strip = height ${fmt(H)}″ + 4″ trimming${rep ? ` + ${fmt(rep)}″ repeat` : ''} = ${fmt(drop)}″, so one ${lm} m roll gives <b>${per} strips</b>. ${strips} ÷ ${per} = <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>.`;
+      c.kpis = [{l: 'Strips', v: strips, u: `${per} per roll`}, {l: 'Wall area', v: cpF(c.area), u: 'sq ft'}, {l: 'Rolls to order', v: c.rolls, u: +r.rolls > 0 ? 'typed in' : r.roll, m: 1}];
+      return c;
+    },
+    sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.rolls || 0), 0); return n ? `${n} roll${n > 1 ? 's' : ''} to order` : ''; },
+    rules: ['Strips = wall width ÷ the roll width, rounded up.', 'Each strip = wall height + 4″ for trimming, plus one pattern repeat if the design has one.', 'Strips from one roll = roll length ÷ strip length, rounded down. Rolls = strips ÷ strips per roll, rounded up.',
+      'Doors and windows are not taken off: the leftover covers matching and mistakes.', 'Murals are made to size: the wall plus 2″ on every side.',
+      'Order every roll in one go so they come from the same batch, and count the rolls that arrive before cutting any.'],
+  },
+  fabric: {name: 'Fabric', one: 'item', many: 'items', add: '+ Add item',
+    note: 'Fabric sold by the metre: sofas, chairs, cushions, headboards. One row per item.',
+    hint: 'Metres per piece come from the upholsterer. Tap a row to see who makes it and the total.',
+    blank: () => ({room: '', item: '', use: '', who: '', sup: '', fabric: '', roll: '140', rep: '', mper: '', qty: 1, remarks: ''}),
+    cols: [
+      {g: 'Where', k: 'room', label: 'Room', t: 'room'},
+      {g: 'What', k: 'item', label: 'Item', t: 'text', ph: 'e.g. 3-seater sofa', w: 170},
+      {g: 'What', k: 'use', label: 'Used for', t: 'sel', opts: ['Sofa', 'Chair', 'Cushions', 'Headboard / bed back', 'Ottoman / pouffe', 'Bed linen', 'Other'], blank: 'Pick', w: 170},
+      {g: 'What', k: 'who', label: 'Who makes it', t: 'sel', opts: ['Our upholstery team', 'Customer gets it made outside'], blank: 'Pick', todo: 1, w: 220},
+      {g: 'Fabric', k: 'sup', label: 'Company', t: 'sel', opts: COMPANIES, blank: 'Pick', w: 160},
+      {g: 'Fabric', k: 'fabric', label: 'Fabric', sub: 'collection, serial or SKU', t: 'text', ph: 'Collection · serial', w: 220},
+      {g: 'Fabric', k: 'roll', label: 'Roll', sub: 'cm', t: 'num', w: 70},
+      {g: 'Fabric', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
+      {g: 'Quantity', k: 'mper', label: 'Metres each', t: 'num', key: 1},
+      {g: 'Quantity', k: 'qty', label: 'Pieces', t: 'num', w: 60},
+      {g: 'Result', k: 'tot', label: 'Fabric', out: c => c.ok ? `${fmt(c.m)}<span class="u"> m</span>` : ''},
+      {g: 'Result', k: 'how', how: 1},
+      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
+    ],
+    calc(r){
+      const m = nv(r.mper), q = Math.max(1, parseInt(r.qty, 10) || 1), c = {ok: m > 0, warn: [], kpis: []};
+      if (!r.who) c.warn.push('Who makes it? Not picked yet');
+      if (!m) c.warn.push('Ask the upholsterer for the metres per piece');
+      if (!c.ok) return c;
+      c.m = ceilQ(m * q);
+      c.how = `<b>${fmt(m)} m</b> each × <b>${q}</b> piece${q > 1 ? 's' : ''} = <b>${fmt(c.m)} m</b>, rounded up to the next ¼ m.`;
+      c.kpis = [{l: 'Pieces', v: q, u: r.use || 'item'}, {l: 'Each', v: fmt(m), u: 'm'}, {l: 'Fabric to order', v: fmt(c.m), u: 'metres', m: 1}];
+      return c;
+    },
+    sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.m || 0), 0); return m ? `${fmt(m)} m fabric` : ''; },
+    rules: ['Metres per piece are what the upholsterer asks for; check them against the fabric\'s roll width and repeat.', 'Total = metres each × pieces, rounded up to the next ¼ m.',
+      'Our upholstery team: the store sends the fabric to production. Made outside: the customer takes the fabric with them.'],
+  },
+  flooring: {name: 'Flooring', one: 'area', many: 'areas', add: '+ Add area',
+    note: 'One row per room or area. Length and width in inches, as measured.',
+    hint: 'Wastage fills itself from the floor type and laying; type over it if needed (orange), ↺ puts it back.',
+    blank: () => ({room: '', type: '', sup: '', product: '', L: '', W: '', lay: 'Straight', waste: '', pack: '', edge: '', doors: '', sub: '', under: '', remarks: ''}),
+    cols: [
+      {g: 'Where', k: 'room', label: 'Room', t: 'room'},
+      {g: 'Floor', k: 'type', label: 'Type', t: 'sel', opts: Object.keys(FL_WASTE), blank: 'Pick', w: 180},
+      {g: 'Floor', k: 'sup', label: 'Company', t: 'text', ph: 'Company', w: 140},
+      {g: 'Floor', k: 'product', label: 'Product', sub: 'collection, design', t: 'text', ph: 'Collection · design', w: 200},
+      {g: 'Size', k: 'L', label: 'Length', sub: '″', t: 'num', key: 1},
+      {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
+      {g: 'Laying', k: 'lay', label: 'Pattern', t: 'sel', opts: Object.keys(FL_LAY), w: 180},
+      {g: 'Laying', k: 'waste', label: 'Wastage', sub: '%', t: 'auto', def: (c, r) => c.wasteDef},
+      {g: 'Laying', k: 'pack', label: 'Box covers', sub: 'sq ft', t: 'num', w: 80, off: r => /carpet$/i.test(r.type) && r.type !== 'Carpet tiles'},
+      {g: 'Edges', k: 'edge', label: 'Skirting or beading', t: 'sel', opts: ['Skirting', 'Beading', 'Both', 'None'], blank: 'Ask', todo: 1, w: 150},
+      {g: 'Edges', k: 'doors', label: 'Doors', t: 'num', w: 60},
+      {g: 'Site', k: 'sub', label: 'Floor now', t: 'sel', opts: ['Level tiles or marble', 'Level cement', 'Uneven', 'Damp'], blank: 'Check the floor', todo: 1, w: 180},
+      {g: 'Site', k: 'under', label: 'Underlay', t: 'sel', opts: ['Yes', 'No', 'Comes attached'], blank: 'Pick', w: 130},
+      {g: 'Result', k: 'area', label: 'Area', out: c => c.ok ? `${cpF(c.area)}<span class="u"> sq ft</span>` : ''},
+      {g: 'Result', k: 'order', label: 'To order', out: c => c.ok ? `${cpF(c.order)}<span class="u"> sq ft</span>${c.boxes ? `<span class="tag" style="color:var(--muted)">${c.boxes} boxes</span>` : ''}` : ''},
+      {g: 'Result', k: 'rft', label: 'Edging', out: c => c.rft ? `${c.rft}<span class="u"> rft</span>` : ''},
+      {g: 'Result', k: 'how', how: 1},
+      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
+    ],
+    calc(r){
+      const L = nv(r.L), W = nv(r.W), c = {ok: !!(L && W), warn: [], kpis: []};
+      c.wasteDef = r.type ? FL_WASTE[r.type] + (FL_LAY[r.lay] || 0) : '';
+      if (r.sub === 'Damp') c.warn.push('Damp floor: fix it before laying; wood and laminate swell');
+      if (r.sub === 'Uneven') c.warn.push('Floor needs levelling: add it to the quote');
+      if (!r.sub) c.warn.push('Floor not checked yet');
+      if (!r.edge) c.warn.push('Skirting or beading? Not asked yet');
+      if (!r.type) c.warn.push('Floor type not picked');
+      if (!c.ok) return c;
+      const w = has(r.waste) && r.waste !== '' ? nv(r.waste) : (+c.wasteDef || 0), pack = nv(r.pack);
+      c.area = r2(L * W / 144); c.order = Math.ceil(c.area * (1 + w / 100) - 1e-9);
+      if (pack > 0 && !(/carpet$/i.test(r.type) && r.type !== 'Carpet tiles')) c.boxes = Math.ceil(c.order / pack - 1e-9);
+      const doors = Math.max(0, parseInt(r.doors, 10) || 0);
+      if (r.edge && r.edge !== 'None') c.rft = Math.max(0, Math.ceil(2 * (L + W) / 12 - doors * 3 - 1e-9));
+      c.how = `<b>${fmt(L)}″ × ${fmt(W)}″</b> ÷ 144 = <b>${cpF(c.area)} sq ft</b>. Plus ${w}% wastage = <b>${c.order} sq ft</b>${c.boxes ? ` ÷ ${fmt(pack)} sq ft a box = <b>${c.boxes} boxes</b>` : ''}.${c.rft ? ` ${r.edge}: room edge ${fmt(r2(2 * (L + W) / 12))} ft${doors ? ` less ${doors} door${doors > 1 ? 's' : ''} × 3 ft` : ''} = <b>${c.rft} rft</b>.` : ''}`;
+      c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: 'To order', v: c.order, u: `sq ft, ${w}% wastage`, m: 1}];
+      if (c.boxes) c.kpis.push({l: 'Boxes', v: c.boxes, u: `${fmt(pack)} sq ft each`});
+      if (c.rft) c.kpis.push({l: r.edge === 'Both' ? 'Skirting + beading' : r.edge, v: c.rft, u: 'running ft'});
+      return c;
+    },
+    sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.order || 0), 0); return n ? `${n.toLocaleString('en-IN')} sq ft to order` : ''; },
+    rules: ['Area = length × width ÷ 144 (inches to sq ft).', 'Wastage: laminate and wood 10%, vinyl 8%, wall-to-wall carpet 15%, carpet tiles 5%; diagonal adds 5%, herringbone or chevron 10%. Type over it if the company says otherwise.',
+      'To order = area + wastage, rounded up to a whole sq ft. Boxes = that ÷ what one box covers, rounded up.', 'Skirting / beading = the room\'s edge (2 × (length + width)) less 3 ft for every door.',
+      'Always ask skirting or beading, and check the floor is level and dry, before quoting.'],
+  },
+  mattress: {name: 'Mattress', one: 'bed', many: 'beds', add: '+ Add bed',
+    note: 'One row per bed. Length and width of the bed\'s mattress space in inches, measured inside the frame.',
+    hint: 'Standard Sleepwell sizes are named for you; anything else is a custom size.',
+    blank: () => ({room: '', bed: '', sup: 'Sleepwell', model: '', L: '', W: '', T: '', feel: '', by: '', head: '', bedType: '', qty: 1, remarks: ''}),
+    cols: [
+      {g: 'Where', k: 'room', label: 'Room', t: 'room'},
+      {g: 'Where', k: 'bed', label: 'Bed', t: 'text', ph: 'e.g. master bed', w: 140},
+      {g: 'Mattress', k: 'sup', label: 'Company', t: 'sel', opts: ['Sleepwell', 'Other'], w: 130},
+      {g: 'Mattress', k: 'model', label: 'Range / model', t: 'text', ph: 'e.g. Impressions', w: 180},
+      {g: 'Size', k: 'L', label: 'Length', sub: '″', t: 'num', key: 1},
+      {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
+      {g: 'Size', k: 'T', label: 'Thickness', t: 'sel', opts: ['4″', '5″', '6″', '8″', '10″', '12″'], blank: 'Pick', w: 100},
+      {g: 'Size', k: 'feel', label: 'Feel', t: 'sel', opts: ['Soft', 'Medium', 'Firm'], blank: 'Pick', w: 110},
+      {g: 'Check', k: 'by', label: 'Measured by', t: 'sel', opts: ['Our team, at site', 'Customer told us'], blank: 'Pick', todo: 1, w: 180},
+      {g: 'Check', k: 'head', label: 'Headboard', t: 'sel', opts: ['Bed finished, padding done', 'Raw bed, padding to come', 'No padded headboard'], blank: 'Ask', todo: 1, w: 230},
+      {g: 'Check', k: 'bedType', label: 'Bed type', t: 'sel', opts: ['Plain', 'Box storage', 'Hydraulic storage', 'Drawer storage'], blank: 'Pick', w: 160},
+      {g: 'Check', k: 'qty', label: 'Qty', t: 'num', w: 56},
+      {g: 'Result', k: 'size', label: 'Size', out: c => c.ok ? `${c.label}<span class="tag" style="color:${c.std ? 'var(--good)' : 'var(--warn)'}">${c.std ? 'standard' : 'custom size'}</span>` : ''},
+      {g: 'Result', k: 'mm', label: 'In mm', out: c => c.ok ? `${c.mmL} × ${c.mmW}` : ''},
+      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
+    ],
+    calc(r){
+      const L = nv(r.L), W = nv(r.W), c = {ok: !!(L && W), warn: [], kpis: []};
+      if (r.by === 'Customer told us') c.warn.push('Size from the customer: check it at site before ordering');
+      if (r.head === 'Raw bed, padding to come') c.warn.push('Measure again after the headboard padding is done: the foam takes space');
+      if (!r.by) c.warn.push('Who measured? Not picked yet');
+      if (!r.head) c.warn.push('Headboard padding: not asked yet');
+      if (!c.ok) return c;
+      const name = MT_L.includes(L) ? MT_W[W] : '';
+      c.std = !!name; c.label = `${name || 'Custom'} ${fmt(L)} × ${fmt(W)}`; c.mmL = mmOf(L); c.mmW = mmOf(W);
+      const t = parseFloat(r.T) || 0, q = Math.max(1, parseInt(r.qty, 10) || 1);
+      c.kpis = [{l: name ? 'Standard size' : 'Custom size', v: name || 'Custom', u: `${fmt(L)} × ${fmt(W)}″`}, {l: 'For the order', v: `${fmt(L)} × ${fmt(W)}${t ? ' × ' + t : ''}`, u: `inches, length × width${t ? ' × thickness' : ''}${q > 1 ? ` · ${q} pieces` : ''}`, m: 1}, {l: 'In mm', v: `${c.mmL} × ${c.mmW}`, u: 'length × width'}];
+      return c;
+    },
+    sum: (rows, cs) => { const n = rows.reduce((a, r, i) => a + (cs[i].ok ? Math.max(1, parseInt(r.qty, 10) || 1) : 0), 0); return n ? `${n} mattress${n > 1 ? 'es' : ''}` : ''; },
+    rules: ['Measure inside the bed frame, where the mattress sits: length head to foot, then width.', 'Standard Sleepwell lengths 72, 75, 78″; widths 30, 35, 36 (single), 48 (double), 60 (queen), 72″ (king). Anything else is a custom size.',
+      'If the headboard is still to be padded, measure again once it is done: the foam takes up length.', 'A size the customer tells us is checked at site before the order goes on the Sleepwell portal.'],
+  },
+};
+const MP_ORDER = ['wallpaper', 'fabric', 'flooring', 'mattress'];
+function ensureMore(fresh){   // fresh = the sheet was just loaded: give every row a new id (ids from other devices can clash)
+  if (!state.more || typeof state.more !== 'object') state.more = {};
+  for (const k of MP_ORDER) { if (!Array.isArray(state.more[k])) state.more[k] = []; state.more[k].forEach(r => { const b = MP[k].blank(); for (const f in b) if (r[f] === undefined) r[f] = b[f]; if (fresh || r.id == null) r.id = uid++; }); }
+  if (!state.msel || typeof state.msel !== 'object') state.msel = {};
+}
+ensureMore(true);
+const mpFilled = (k, r) => MP[k].cols.some(c => c.key && nv(r[c.k]));
+const mpCount = k => (state.more && state.more[k] || []).filter(r => mpFilled(k, r)).length;
+let mpCur = 'wallpaper';
+function mpCellHTML(k, col, r){
+  const P = MP[k], dis = col.off && col.off(r) ? ' disabled' : '', w = col.w ? ` style="width:${col.w}px"` : '';
+  if (col.how) return `<td class="howc" data-o="how"></td>`;
+  if (col.out) return `<td class="out" data-o="${col.k}"></td>`;
+  if (col.t === 'room') return `<td class="first"><div class="cell"><span class="idx">${state.more[k].indexOf(r) + 1}</span><input data-p="room" value="${esc(r.room)}" list="roomlist" placeholder="Room" style="width:130px"></div></td>`;
+  if (col.t === 'sel') return `<td><select data-p="${col.k}"${w}${dis} aria-label="${esc(col.label)}"${col.todo && !r[col.k] ? ' class="ovr"' : ''}>${bOpts(col.opts.map(x => [x, x]), r[col.k], col.blank)}</select></td>`;
+  if (col.t === 'auto') return `<td><span class="auto-wrap"><input data-p="${col.k}" class="n auto big" inputmode="decimal" style="width:76px"${dis} aria-label="${esc(col.label)}"><button class="reset" data-reset="${col.k}" title="Put back the worked-out value">↺</button></span></td>`;
+  if (col.t === 'num') return `<td><input data-p="${col.k}" class="n${col.key ? ' key' : ''}" inputmode="decimal" value="${esc(r[col.k])}" placeholder="${col.key ? '0' : ''}" style="width:${col.w || 80}px"${dis} aria-label="${esc(col.label)}"></td>`;
+  return `<td><input data-p="${col.k}" value="${esc(r[col.k])}" placeholder="${esc(col.ph || '')}"${w}${dis} aria-label="${esc(col.label)}"></td>`;
+}
+function mpRowHTML(k, r){
+  return `<tr class="row" data-id="${r.id}">${MP[k].cols.map(col => mpCellHTML(k, col, r)).join('')}
+    <td class="acts"><button class="ico" data-pa="dup" title="Copy this ${MP[k].one}">⧉</button><button class="ico" data-pa="del" title="Delete this ${MP[k].one}">✕</button></td></tr>`;
+}
+function mpUpdateRow(k, r){
+  const tr = $('#ptb').querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
+  const c = MP[k].calc(r);
+  for (const col of MP[k].cols) {
+    if (col.how) { tr.querySelector('[data-o=how]').innerHTML = c.how || ''; continue; }
+    if (col.out) { tr.querySelector(`[data-o=${col.k}]`).innerHTML = col.out(c, r) || '<span class="none">—</span>'; continue; }
+    if (col.t === 'auto') {
+      const inp = tr.querySelector(`[data-p=${col.k}]`), own = has(r[col.k]), d = col.def(c, r);
+      if (document.activeElement !== inp) inp.value = own ? r[col.k] : (d ?? '');
+      inp.classList.toggle('ovr', own); inp.placeholder = d ?? ''; tr.querySelector(`[data-reset=${col.k}]`).classList.toggle('on', own);
+    }
+  }
+  return c;
+}
+function renderProduct(k){
+  ensureMore(); mpCur = k; const P = MP[k], rows = state.more[k];
+  if (!rows.length) rows.push(P.blank()), rows[0].id = uid++;
+  const sel = Math.min(state.msel[k] || 0, rows.length - 1); state.msel[k] = sel;
+  const groups = []; P.cols.forEach(c => { const g = groups[groups.length - 1]; if (g && g.g === c.g) g.n++; else groups.push({g: c.g, n: 1, res: c.g === 'Result'}); });
+  $('#p-head').innerHTML = `<tr>${groups.map((g, i) => `<th class="grp${i ? '' : ' first'}${g.res ? ' res' : ''}" colspan="${g.n}">${esc(g.g)}</th>`).join('')}<th class="grp"></th></tr>
+    <tr>${P.cols.map((c, i) => `<th class="${i ? '' : 'first'}${c.out || c.t === 'auto' ? ' r' : ''}${c.how ? ' howh' : ''}">${c.how ? 'How it was worked out' : esc(c.label)}${c.sub ? ` <small>${esc(c.sub)}</small>` : ''}</th>`).join('')}<th></th></tr>`;
+  $('#ptb').innerHTML = rows.map(r => mpRowHTML(k, r)).join('');
+  rows.forEach(r => mpUpdateRow(k, r));
+  $('#p-note').textContent = P.note; $('#p-add').textContent = P.add; $('#p-hint').textContent = P.hint;
+  $('#p-rules-h').textContent = `How the ${P.name.toLowerCase()} sheet works out the numbers`;
+  $('#p-rules').innerHTML = P.rules.map(x => `<li>${esc(x)}</li>`).join('');
+  mpTotal(k); mpMarkSel(k); renderPSide(k);
+}
+function mpTotal(k){
+  const rows = state.more[k], cs = rows.map(r => MP[k].calc(r)), n = rows.filter(r => mpFilled(k, r)).length;
+  const s = MP[k].sum(rows, cs); $('#p-total').textContent = n ? `${n} ${n > 1 ? MP[k].many : MP[k].one}${s ? ' · ' + s : ''}` : '';
+}
+function mpMarkSel(k){ const r = state.more[k][state.msel[k]]; $('#ptb').querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('sel', !!r && +tr.dataset.id === r.id)); }
+function renderPSide(k){
+  const P = MP[k], rows = state.more[k], r = rows[state.msel[k]] || rows[0], el = $('#pside'); if (!r) { el.innerHTML = ''; return; }
+  const i = rows.indexOf(r), c = P.calc(r);
+  const title = r.room || r.wall || r.item || r.bed ? [r.room, r.wall || r.item || r.bed].filter(Boolean).join(' · ') : `${P.one[0].toUpperCase() + P.one.slice(1)} ${i + 1}`;
+  const skip = new Set(['room', 'remarks', 'how']);
+  const spec = P.cols.filter(col => !col.out && !col.how && !skip.has(col.k) && !(col.off && col.off(r)) && col.t !== 'auto').map(col => {
+    const v = r[col.k]; return `<dt>${esc(col.label)}</dt><dd>${has(v) && v !== '' ? esc(v) + (col.sub && col.t === 'num' ? `<small> ${esc(col.sub)}</small>` : '') : `<span class="ed">${col.todo ? 'not asked yet' : '—'}</span>`}</dd>`;
+  }).join('') + (r.remarks ? `<dt>Remarks</dt><dd class="note">${esc(r.remarks)}</dd>` : '');
+  el.innerHTML = `<div class="side-h"><h2>${esc(title)}</h2><span class="sub">${P.name} · #${i + 1}</span></div>
+    ${c.kpis.length ? `<div class="kpis">${c.kpis.map(x => `<div class="kpi${x.m ? ' m' : ''}"><small>${esc(x.l)}</small><b class="num">${x.v}</b><small>${esc(x.u || '')}</small></div>`).join('')}</div>` : `<div class="p-empty-tip">Type the ${P.cols.filter(x => x.key).map(x => x.label.toLowerCase()).join(' and ')} to see the numbers.</div>`}
+    <div class="chips">${c.warn.map(w => `<span class="chip warn">${esc(w)}</span>`).join('') || '<span class="chip good">All checks done</span>'}</div>
+    <dl class="spec wide">${spec}</dl>
+    ${c.how ? `<div class="how"><b>How it was worked out</b>${c.how.replace(/<b>/g, '<b class="n">')}</div>` : ''}`;
+}
+function mpSelect(k, tr){ const i = state.more[k].findIndex(x => x.id === +tr.dataset.id); if (i < 0 || i === state.msel[k]) return; state.msel[k] = i; mpMarkSel(k); renderPSide(k); }
+const ptb = $('#ptb');
+ptb.addEventListener('input', e => {
+  const f = e.target.dataset.p; if (!f) return;
+  const k = mpCur, tr = e.target.closest('tr'), r = state.more[k].find(x => x.id === +tr.dataset.id); if (!r) return;
+  r[f] = e.target.value;
+  const col = MP[k].cols.find(c => c.k === f);
+  if (e.target.tagName === 'SELECT') { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); }
+  else if (col && col.todo) e.target.classList.toggle('ovr', !r[f]);
+  mpUpdateRow(k, r); mpTotal(k); if (r === state.more[k][state.msel[k]]) renderPSide(k); save();
+});
+ptb.addEventListener('focusin', e => { const tr = e.target.closest('tr'); if (tr) mpSelect(mpCur, tr); if (e.target.classList && e.target.classList.contains('n')) selectOnFocus(e.target); });
+ptb.addEventListener('mouseup', e => { const t = e.target; if (t._sel) { e.preventDefault(); t._sel = false; } });
+ptb.addEventListener('click', e => {
+  const tr = e.target.closest('tr'); if (!tr) return; const k = mpCur, rows = state.more[k];
+  const rs_ = e.target.closest('[data-reset]'); if (rs_) { const r = rows.find(x => x.id === +tr.dataset.id); r[rs_.dataset.reset] = ''; mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
+  const a = e.target.closest('[data-pa]'); if (!a) { mpSelect(k, tr); return; }
+  const r = rows.find(x => x.id === +tr.dataset.id), i = rows.indexOf(r);
+  if (a.dataset.pa === 'dup') { rows.splice(i + 1, 0, Object.assign(clone(r), {id: uid++})); state.msel[k] = i + 1; }
+  else {
+    if (!a.classList.contains('arm')) { a.classList.add('arm'); a.textContent = 'Delete?'; setTimeout(() => { a.classList.remove('arm'); a.textContent = '✕'; }, 3000); return; }
+    rows.splice(i, 1); state.msel[k] = Math.max(0, Math.min(state.msel[k], rows.length - 1));
+  }
+  renderProduct(k); save();
+});
+// "+ Add" keeps the room's company and type from the row above, like Curtains and Blinds.
+$('#p-add').onclick = () => {
+  const k = mpCur, rows = state.more[k], last = rows[rows.length - 1], r = MP[k].blank(); r.id = uid++;
+  if (last) for (const f of ['sup', 'kind', 'roll', 'type', 'lay', 'use', 'who', 'T', 'by']) if (f in r && has(last[f])) r[f] = last[f];
+  rows.push(r); state.msel[k] = rows.length - 1; renderProduct(k); save();
+  const inp = $('#ptb').querySelector(`tr[data-id="${r.id}"] [data-p=room]`); if (inp) inp.focus();
+};
+
 // ================= tabs, copy, start
-const VIEWS = {'dash': 'dash', 'people': 'people', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote'};
+const VIEWS = {'dash': 'dash', 'people': 'people', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote',
+  'wallpaper': 'product', 'fabric': 'product', 'flooring': 'product', 'mattress': 'product'};   // the four product sheets share one section (3 Oct)
 const OLD_VIEW = {measure: 'c-measure', blinds: 'b-measure', prices: 'c-prices', quote: 'quote'};   // tab names before 30 Sep
 let current = 'c-measure', lastMain = 'c';
 function go(v){
@@ -3160,7 +3481,7 @@ function go(v){
   // The page's address remembers where you are, so a reload opens the same page (Purvi, 2 Oct). replaceState: no history entry, no hashchange.
   try { const h = v === 'client' && cpId ? 'client/' + cpId : v; if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h); } catch(_){}
   const noClient = shared && !state.clientId && GATED.includes(v);   // every sheet belongs to a client
-  for (const [k, id] of Object.entries(VIEWS)) $('#v-' + id).hidden = noClient ? k !== 'none' : k !== v;
+  for (const id of new Set(Object.values(VIEWS))) $('#v-' + id).hidden = noClient ? id !== 'none' : id !== VIEWS[v];
   // Top bar (Purvi, 1 Oct): Dashboard · Clients · Prices · People. Curtains, Blinds and Quotation belong to one client,
   // so they are tabs inside the client (renderCbar), not in the top bar.
   const main = ['quote', 'clients', 'client', 'dash', 'people'].includes(v) ? '' : v[0]; if (main) lastMain = main;
@@ -3181,6 +3502,7 @@ function go(v){
   if (v === 'b-prices') renderBPrices();
   if (v === 'b-measure') renderBlinds();
   if (v === 'c-measure') { state.rows.forEach(updateRow); renderTotals(); renderSide(); }
+  if (MP[v]) renderProduct(v);
   try { localStorage.setItem(TKEY, v); } catch(_){}
   window.scrollTo({top: 0});
 }
