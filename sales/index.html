@@ -1075,8 +1075,11 @@ const BLIND_NAMES = {
        ['Panel', 'panel', 'fabric'], ['Arcline', 'arcline', 'fabric'], ['Sierra', 'sierra', 'Sierra'], ['Vertical', 'vertical', 'Vertical'],
        ['Wooden', 'wooden', 'Wooden'], ['Patricia', 'loop', 'Patricia'], ['Skylight Colby', 'skyhoney', 'Skylight-Colby'], ['Skylight Roman', 'skyroman', 'fabric']],
 };
-// FabriCare and Asian Paints: their own names come with their price lists. Until then, the common names.
-for (const s of ['FC', 'AP']) BLIND_NAMES[s] = Object.entries(BLIND_TYPES).map(([k, t]) => [t.name, k]);
+// D'Decor FabriCare: its own names from its Oct 2026 price lists. Zebra = duplex; Zafari and Square (Quadra Roman, Tessela)
+// are read as sheer horizon and duplex from their names only: not confirmed by Purvi.
+BLIND_NAMES.FC = [['Zebra', 'duplex'], ['Zafari', 'sheer'], ['Square', 'duplex'], ['Hive', 'honeycomb'], ['Wooden', 'wooden'], ['Roman (making)', 'roman']];
+// Asian Paints: its own names come with its price list. Until then, the common names.
+BLIND_NAMES.AP = Object.entries(BLIND_TYPES).map(([k, t]) => [t.name, k]);
 const blindType = (sup, fam) => { const n = (BLIND_NAMES[sup] || []).find(x => x[0] === fam); return n ? Object.assign({key: n[1], shades: n[2]}, BLIND_TYPES[n[1]]) : null; };
 // Order-form columns: Marvel's order (width before drop, as on Marvel's form), the same for everyone. Special keys: shade, series, W, H, motor, loc, qty.
 const ORDER_COLS = {
@@ -1752,7 +1755,7 @@ function renderSide(){
 // ================= blinds (price lists in the shared store: blinds/<company>; order details from blind-forms.js)
 const BSUPS = {SAN: "D'Decor Sansaar", FC: "D'Decor FabriCare", AP: 'Asian Paints', MV: 'Marvel'};
 const BCODE = {SAN: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL'};   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
-const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}};
+const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}, cost: new Map()};   // cost: what we pay (blindcost/*, owner only), per m² or per add-on unit
 const SQFT = 10.7639;
 const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti']);   // sq ft in a sq m
 const uniq = a => [...new Set(a)];
@@ -1780,7 +1783,7 @@ function bCalc(b){
   const a = BL.addons.find(x => x.key === b.addon);
   if (a) {
     c.addon = a;
-    c.addonUnits = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : Math.max(1, parseInt(b.addonQty, 10) || 1));
+    c.addonUnits = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : a.uom === 'per m width' ? W * 0.0254 * q : Math.max(1, parseInt(b.addonQty, 10) || 1));
     c.addonMrp = Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)); c.addonAmt = c.addonUnits * c.addonMrp;
   }
   c.warn = t ? t.rules.map(f => f({W: c.mmW, H: c.mmH}, o, (b.series || '') + ' ' + (p ? p.coll : ''))).filter(Boolean) : [];
@@ -1790,7 +1793,7 @@ const bOpts = (list, val, blank) => (blank ? `<option value="">${blank}</option>
 const shadeListId = (b, t) => t && t.shades && (BL.shades[b.sup] || {})[t.shades] ? `sh-${b.sup}-${t.shades}` : '';
 function bRowHTML(b, i){
   const rows = BL.rows.filter(r => r.sup === b.sup), priced = rows.length > 0, t = blindType(b.sup, b.fam);
-  const loading = b.sup === 'SAN' && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
+  const loading = (b.sup === 'SAN' || b.sup === 'FC') && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
   const syss = uniq(rows.filter(r => r.fam === b.fam).map(r => r.sys));
   const designs = rows.filter(r => r.fam === b.fam && r.sys === b.sys).map(r => [r.id, `${r.coll} · ${r.design}${r.extra ? ' (' + r.extra + ')' : ''}`]);
   const adds = BL.addons.filter(a => a.sup === b.sup).map(a => [a.key, `${a.group}: ${a.name} · ₹${a.rrp.toLocaleString('en-IN')} ${a.uom}`]);
@@ -1820,7 +1823,7 @@ function bUpdateRow(b){
   const c = bCalc(b), o = k => tr.querySelector(`[data-o=${k}]`);
   o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>` : '';
   o('area').innerHTML = c.ok ? `${cpF(c.charge * c.q)}<span class="u"> sq ft</span>${c.minApplied ? `<span class="tag" style="color:var(--warn)">minimum ${cpF(r2(c.p.min * SQFT))} sq ft</span>` : c.q > 1 ? `<span class="tag" style="color:var(--muted)">${c.q} × ${cpF(c.charge)}</span>` : ''}` : '';
-  o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.p.gst}% GST</span>` : '';
+  o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.p.gst}% GST</span>${c.p.extra === 'to confirm' ? '<span class="tag" style="color:var(--warn)">price to confirm</span>' : ''}` : '';
   o('amt').innerHTML = c.ok && c.p ? `<span class="v">${rs(c.amt + (c.addonAmt || 0))}</span>${c.addon ? `<span class="tag" style="color:var(--muted)">incl. add-on ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
   o('det').innerHTML = c.t ? `<button class="miss${c.done === c.need && !c.warn?.length ? ' ok' : ''}" data-ba="det">${c.done === c.need ? 'Order details ✓' : `Order details ${c.done}/${c.need}`}${c.warn && c.warn.length ? ' · check' : ''}</button>` : '';
 }
@@ -1831,7 +1834,7 @@ function renderBlinds(){
   state.blinds.forEach(bUpdateRow); bMarkSel(); bTotal(); renderBSide();
   if (!$('#b-orders').hidden) renderOrders();
   const ix = BL.info.SAN, mv = BL.info.MV;
-  $('#bnote').textContent = (ix ? `D'Decor Sansaar: ${ix.count.toLocaleString('en-IN')} prices from ${ix.source}. ` : '') + (mv ? `Marvel: ${mv.shades.toLocaleString('en-IN')} shades from its order forms, prices after the portal login. ` : '') + 'FabriCare and Asian Paints: price lists not added yet. Rates are MRP per sq ft, GST included.';
+  $('#bnote').textContent = (ix ? `D'Decor Sansaar: ${ix.count.toLocaleString('en-IN')} prices from ${ix.source}. ` : '') + (mv ? `Marvel: ${mv.shades.toLocaleString('en-IN')} shades from its order forms, no prices yet. ` : '') + (BL.info.FC ? `D'Decor FabriCare: ${BL.info.FC.count.toLocaleString('en-IN')} prices from D'Decor's Oct 2026 lists. ` : '') + 'Asian Paints: price list not added yet. Rates are MRP per sq ft, GST included.';
 }
 function bTotal(){ const t = state.blinds.reduce((a, b) => { const c = bCalc(b); return a + (c.ok && c.p ? c.amt + (c.addonAmt || 0) : 0); }, 0); $('#btotal').textContent = t ? 'Blinds total ' + rs(t) + ' incl. GST' : ''; }
 function bMarkSel(){ const b = state.blinds[state.bsel]; $('#btb').querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('sel', !!b && +tr.dataset.id === b.id)); }
@@ -1999,7 +2002,7 @@ const TNC = ['50% ADVANCE AGAINST ORDER & REST 50% BEFORE DELIVERY OF THE PRODUC
   'GODOWN DEMURRAGE COST OF RS.1000 PER WEEK SHALL BE LEVIED OVER & ABOVE THE APPLICABLE PRICE IF CUSTOMER IS NOT ACCEPTING THE DELIVERY FOR WHATEVER REASONS AFTER THE PRODUCTS ARE READY TO DISPATCH.',
   'ALL DISPUTES ARE SUBJECT TO JODHPUR JURISDICTION.', 'PAYMENT MODE SHOULD BE ONLINE & CHEQUE.'];
 // Product column names a customer can read: "D'Decor motor" → "Blind motor" (the brand is in the details column).
-const addonProduct = g => { const k = g.replace(/^(D'Decor|Somfy) /i, ''); return /^skylight/i.test(k) ? 'Skylight blind fitting' : 'Blind ' + k.toLowerCase(); };
+const addonProduct = g => { const k = g.replace(/^(D'Decor|Somfy|FabriCare) /i, ''); return /^skylight/i.test(k) ? 'Skylight blind fitting' : /assembly/i.test(k) ? 'Motorised blind assembly' : 'Blind ' + k.toLowerCase(); };
 const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['hw', 'Accessories and installation']];
 // Accessories and installation splits into Manual and Motorised when a quote has both (Purvi, 2 Oct). Lines carry grp 'man' | 'mot'.
 // Returns null (no split) for other sections, a quote with only one kind, or an old saved version without grp.
@@ -2056,8 +2059,8 @@ function qSections(){
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
     add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}`,
-      hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: null, fix: b.sup === 'MV' ? 'marvel' : 'bprice'});
-    if (c.addon) hw(b.room, {grp: isMotorAddon(c.addon.group) ? 'mot' : 'man', product: addonProduct(c.addon.group), what: c.addon.name, hsn: H.blindAddons || '', qty: c.addonUnits, unit: c.addon.uom === 'each' ? 'PCS' : c.addon.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: c.addon.rrp, gst: c.addon.gst, cost: null, incl: gstIncl('blindAddons'), fix: 'bprice'});
+      hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' ? 'marvel' : 'bprice'});
+    if (c.addon) hw(b.room, {grp: isMotorAddon(c.addon.group) ? 'mot' : 'man', product: addonProduct(c.addon.group), what: c.addon.name, hsn: H.blindAddons || '', qty: c.addonUnits, unit: c.addon.uom === 'each' ? 'PCS' : c.addon.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: c.addon.rrp, gst: c.addon.gst, cost: BL.cost.has(c.addon.key) ? BL.cost.get(c.addon.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'});
     else if (String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
   });
   for (const l of club.values()) { l.qty = r2(l.qty); l.area = roomsTxt(l.rooms); delete l.rooms; add('hw', l); }
@@ -2439,9 +2442,9 @@ function hsnSec(list){
 let bpSup = 'SAN', bpFam = '', bpQ = '';
 const BP_NOTE = {
   SAN: '',
-  FC: 'Not on the portals we can reach: D\'Decor Merchant (FabriCare) shows no blinds price list. Needs a price list from D\'Decor.',
+  FC: 'From D\'Decor\'s Oct 2026 lists (Designer, Hive, Wooden, motors). No minimum size printed. Wooden 40–52 missing from D\'Decor\'s file. Roman making charges: price to confirm.',
   AP: 'Asian Paints MyAwaaz sells only fabric, wallpaper, rugs and bedsheets; blinds there are sample books. Needs AP\'s blinds price list.',
-  MV: 'Order-form details and shade lists are loaded. Prices come after the Marvel portal login.'};
+  MV: 'Order-form details and shade lists are loaded. The Marvel portal has no prices: needs Marvel\'s price list.'};
 function renderBPrices(){
   const rows = BL.rows.filter(r => r.sup === bpSup && (!bpFam || r.fam === bpFam) && (!bpQ || (r.coll + ' ' + r.design + ' ' + r.sys).toLowerCase().includes(bpQ.toLowerCase())));
   const fams = uniq(BL.rows.filter(r => r.sup === bpSup).map(r => r.fam));
@@ -2456,12 +2459,12 @@ function renderBPrices(){
       <div class="bp-filters"><select id="bp-sup" aria-label="Company">${bOpts(Object.entries(BSUPS), bpSup)}</select>
         <select id="bp-fam" aria-label="Blind type">${bOpts(fams.map(f => [f, f]), bpFam, 'All types')}</select>
         <input id="bp-q" class="search" value="${esc(bpQ)}" placeholder="Search collection or design"></div>
-      ${rows.length ? `<div class="q-scroll"><table class="pr"><thead><tr><th>Type</th><th>System</th><th>Collection</th><th>Design</th><th style="text-align:right">RRP / m²</th><th style="text-align:right">MRP / sq ft</th><th style="text-align:right">Minimum</th><th style="text-align:right">GST</th></tr></thead><tbody>
-        ${shown.map(r => `<tr><td>${esc(r.fam)}</td><td>${esc(r.sys)}</td><td>${esc(r.coll)}</td><td>${esc(r.design)}${r.extra ? ` <span class="hint">${esc(r.extra)}</span>` : ''}</td><td class="mg">${rs(r.sqm)}</td><td class="mg"><b>${rs(r.sqm * (1 + r.gst / 100) / SQFT)}</b></td><td class="mg">${cpF(r2(r.min * SQFT))} sq ft</td><td class="mg">${r.gst}%</td></tr>`).join('')}
+      ${rows.length ? `<div class="q-scroll"><table class="pr"><thead><tr><th>Type</th><th>System</th><th>Collection</th><th>Design</th><th style="text-align:right">RRP / m²</th><th style="text-align:right">MRP / sq ft</th>${canSeeCost ? '<th style="text-align:right">We pay / sq ft</th>' : ''}<th style="text-align:right">Minimum</th><th style="text-align:right">GST</th></tr></thead><tbody>
+        ${shown.map(r => `<tr><td>${esc(r.fam)}</td><td>${esc(r.sys)}</td><td>${esc(r.coll)}</td><td>${esc(r.design)}${r.extra ? ` <span class="hint">${esc(r.extra)}</span>` : ''}</td><td class="mg">${rs(r.sqm)}</td><td class="mg"><b>${rs(r.sqm * (1 + r.gst / 100) / SQFT)}</b></td>${canSeeCost ? `<td class="mg">${BL.cost.has(r.id) ? rs(BL.cost.get(r.id) / SQFT) + ' + GST' : '—'}</td>` : ''}<td class="mg">${r.min ? cpF(r2(r.min * SQFT)) + ' sq ft' : 'none'}</td><td class="mg">${r.gst}%</td></tr>`).join('')}
       </tbody></table></div>` : `<p class="hint">${BL.state === 'ready' ? esc(BP_NOTE[bpSup] || 'No prices match.') : shared ? 'Loading the price lists…' : 'Price lists load when the page is opened from claude.ai.'}</p>`}</div>
-    ${adds.length ? `<div class="sec"><div class="sec-h"><h2>Motors, remotes and accessories · ${esc(BSUPS[bpSup])}</h2><p>Folio list price.</p>${gstSwitch('blindAddons')}</div>
-      <div class="q-scroll"><table class="pr"><thead><tr><th>Group</th><th>Item</th><th>Unit</th><th style="text-align:right">List price</th></tr></thead><tbody>
-      ${adds.map(a => `<tr><td>${esc(a.group)}</td><td>${esc(a.name)}</td><td>${esc(a.uom)}</td><td class="mg">${rs(a.rrp)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
+    ${adds.length ? `<div class="sec"><div class="sec-h"><h2>Motors, remotes and accessories · ${esc(BSUPS[bpSup])}</h2><p>List price${canSeeCost ? ', and what we pay where the list gives it' : ''}.</p>${gstSwitch('blindAddons')}</div>
+      <div class="q-scroll"><table class="pr"><thead><tr><th>Group</th><th>Item</th><th>Unit</th><th style="text-align:right">List price</th>${canSeeCost ? '<th style="text-align:right">We pay</th>' : ''}</tr></thead><tbody>
+      ${adds.map(a => `<tr><td>${esc(a.group)}</td><td>${esc(a.name)}</td><td>${esc(a.uom)}</td><td class="mg">${rs(a.rrp)}</td>${canSeeCost ? `<td class="mg">${BL.cost.has(a.key) ? rs(BL.cost.get(a.key)) : '—'}</td>` : ''}</tr>`).join('')}</tbody></table></div></div>` : ''}
     ${installSec()}
     ${hsnSec([['blinds', 'Blinds'], ['blindAddons', 'Blind motors and remotes'], ['install', 'Installation']])}`;
 }
@@ -2683,6 +2686,11 @@ async function loadCatalog(){
       BL.info[b.sup] = {count: b.rows.length, source: b.source, year: b.year, shades: Object.values(b.shades || {}).reduce((a, l) => a + l.length, 0)};
     }
     BL.rows = rows; BL.byId = new Map(rows.map(r => [r.id, r])); BL.addons = addons; BL.state = 'ready'; fillShadeLists();
+    if (canSeeCost) try {
+      for (const d of (await db.collection('blindcost').get()).docs) { const b = unpack(d);
+        for (const [id, c] of b.rows || []) BL.cost.set(id, c);
+        for (const [g, n, c] of b.addons || []) BL.cost.set(b.sup + '|' + g + '|' + n, c); }
+    } catch (_) {}
   } catch (e) { BL.state = 'error'; }
   refreshAll();
 }
@@ -3321,7 +3329,7 @@ function renderPeople(){
       <td class="hide-s mono">${counts.get(id) || 0}</td>
       <td class="r"><button class="btn" data-act="edit" data-e="${esc(id)}">Edit</button>${id === ME_EMAIL ? '' : ` <button class="btn" data-act="toggle" data-e="${esc(id)}">${p.active === false ? 'Switch on' : 'Switch off'}</button>`}</td></tr>`).join('')}
     </tbody></table></div>
-    ${PF && PF.owner ? `<div class="card" style="margin-top:14px"><h3>Copy from the claude.ai page</h3><p class="hint" style="margin:0 0 10px">Once only: brings over the prices, costs, supplier lists and the clients made on claude.ai. Pick the file <b>charpai-import.json</b> Claude made for you.</p>
+    ${PF && PF.owner ? `<div class="card" style="margin-top:14px"><h3>Bring in a file from Claude</h3><p class="hint" style="margin:0 0 10px">Adds or replaces supplier lists, prices or costs from a file Claude made for you (for example a new price list). Only the lists in the file change; clients are not touched.</p>
       <label class="btn solid" style="display:inline-block">Choose the file<input type="file" id="imp" accept=".json,application/json" hidden></label> <span class="hint" id="imp-msg"></span></div>` : ''}</div>`;
 }
 $('#people-body') && $('#people-body').addEventListener('click', async e => {
