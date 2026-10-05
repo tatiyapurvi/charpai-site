@@ -1755,7 +1755,7 @@ function renderSide(){
 // ================= blinds (price lists in the shared store: blinds/<company>; order details from blind-forms.js)
 const BSUPS = {SAN: "D'Decor Sansaar", FC: "D'Decor FabriCare", AP: 'Asian Paints', MV: 'Marvel'};
 const BCODE = {SAN: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL'};   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
-const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}, cost: new Map()};   // cost: what we pay (blindcost/*, owner only), per m² or per add-on unit
+const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}, cost: new Map(), costDocs: []};   // cost: what we pay (catcost/blinds-*, owner only), per m² or per add-on unit
 const SQFT = 10.7639;
 const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti']);   // sq ft in a sq m
 const uniq = a => [...new Set(a)];
@@ -2672,7 +2672,7 @@ async function loadCatalog(){
     CAT.state = 'ready';
     if (canSeeCost) {
       const cs = await db.collection('catcost').get();
-      for (const d of cs.docs) { const b = unpack(d); for (const [k, c] of b.rows) CAT.cost.set(b.sup + '|' + k, c); }
+      for (const d of cs.docs) { const b = unpack(d); if (d.id.startsWith('blinds-')) { BL.costDocs.push(b); continue; } for (const [k, c] of b.rows) CAT.cost.set(b.sup + '|' + k, c); }
     }
   } catch (e) { CAT.state = 'error'; }
   try {
@@ -2686,11 +2686,9 @@ async function loadCatalog(){
       BL.info[b.sup] = {count: b.rows.length, source: b.source, year: b.year, shades: Object.values(b.shades || {}).reduce((a, l) => a + l.length, 0)};
     }
     BL.rows = rows; BL.byId = new Map(rows.map(r => [r.id, r])); BL.addons = addons; BL.state = 'ready'; fillShadeLists();
-    if (canSeeCost) try {
-      for (const d of (await db.collection('blindcost').get()).docs) { const b = unpack(d);
-        for (const [id, c] of b.rows || []) BL.cost.set(id, c);
-        for (const [g, n, c] of b.addons || []) BL.cost.set(b.sup + '|' + g + '|' + n, c); }
-    } catch (_) {}
+    for (const b of BL.costDocs) {   // what we pay for blinds: catcost/blinds-<company>, owner only like fabric dealer prices
+      for (const [id, c] of b.rows || []) BL.cost.set(id, c);
+      for (const [g, n, c] of b.addons || []) BL.cost.set(b.sup + '|' + g + '|' + n, c); }
   } catch (e) { BL.state = 'error'; }
   refreshAll();
 }
