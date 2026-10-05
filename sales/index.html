@@ -2657,10 +2657,26 @@ async function connectPrices(){
     refreshAll();
   }, () => {});
 }
+// Supplier lists (catalog, blinds) are ~5 MB. Each device keeps a copy in IndexedDB and downloads them again only when
+// catalog/index.ver changes (the import button bumps it). Saves Firebase's free 10 GB/month download quota. Any cache
+// problem falls back to a normal download. Costs (catcost) are never cached on the device.
+const LISTDB = {
+  open(){ return this.p = this.p || new Promise((ok, no) => { const r = indexedDB.open('charpai-lists', 1); r.onupgradeneeded = () => r.result.createObjectStore('c'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async get(k){ const d = await this.open(); return new Promise((ok, no) => { const r = d.transaction('c').objectStore('c').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async put(k, v){ const d = await this.open(); return new Promise((ok, no) => { const t = d.transaction('c', 'readwrite'); t.objectStore('c').put(v, k); t.oncomplete = () => ok(); t.onerror = () => no(t.error); }); }
+};
+async function listVer(){ try { const ix = await db.doc('catalog/index').get(); return ix.exists && (ix.data() || {}).ver || null; } catch (_) { return null; } }
+async function cachedDocs(name, ver){
+  if (ver) try { const c = await LISTDB.get(name); if (c && c.ver === ver && Array.isArray(c.docs) && c.docs.length) return c.docs.map(x => ({id: x.id, data: () => x.d})); } catch (_) {}
+  const snap = await db.collection(name).get();
+  if (ver) try { await LISTDB.put(name, {ver, docs: snap.docs.map(d => ({id: d.id, d: d.data()}))}); } catch (_) {}
+  return snap.docs;
+}
 async function loadCatalog(){
   CAT.state = 'loading';
+  const ver = await listVer();
   try {
-    const snap = await db.collection('catalog').get();
+    const snap = {docs: await cachedDocs('catalog', ver)};
     const rows = {};
     for (const d of snap.docs) {
       const b = unpack(d);
@@ -2677,7 +2693,7 @@ async function loadCatalog(){
   } catch (e) { CAT.state = 'error'; }
   try {
     BL.state = 'loading';
-    const bs = await db.collection('blinds').get(), rows = [], addons = [];
+    const bs = {docs: await cachedDocs('blinds', ver)}, rows = [], addons = [];
     for (const d of bs.docs) {
       const b = unpack(d), ix = Object.fromEntries(b.cols.map((c, i) => [c, i]));
       for (const r of b.rows) rows.push({id: r[ix.id], sup: b.sup, fam: r[ix.fam], sys: r[ix.sys], coll: r[ix.coll], design: r[ix.design], extra: r[ix.extra], sqm: r[ix.sqm], min: r[ix.min], gst: r[ix.gst]});
@@ -3358,6 +3374,7 @@ document.addEventListener('change', async e => {
   try {
     const B = JSON.parse(await e.target.files[0].text()), all = Object.entries(B).flatMap(([c, docs]) => Object.entries(docs).map(([id, d]) => [c, id, d]));
     let n = 0; for (const [c, id, d] of all) { await db.doc(c + '/' + id).set(d); msg(`Copying… ${++n} of ${all.length}`); }
+    await db.doc('catalog/index').set({ver: Date.now()}, {merge: true});   // tells every device to download the lists again
     msg(`Done: ${n} items copied. Reload the page to see everything.`);
   } catch (er) { msg('Stopped: ' + (er && er.message || er)); }
 });
@@ -3783,3 +3800,5 @@ connectPrices();
 
 </body>
 </html>
+
+<!-- build 20261005-214600 -->
