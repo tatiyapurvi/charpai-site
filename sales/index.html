@@ -779,6 +779,7 @@ tr.dash-r:hover td{background:var(--sel)}
 <datalist id="linlist"></datalist>
 <div id="shadelists" hidden></div>
 <div id="wplists" hidden></div>
+<div id="fllists" hidden></div>
 <datalist id="roomlist"><option value="Living"><option value="Dining"><option value="Master bedroom"><option value="Bedroom 2"><option value="Kids room"><option value="Guest room"><option value="Study"><option value="Puja room"><option value="Staircase"><option value="Balcony door"></datalist>
 
 <script>
@@ -1255,7 +1256,7 @@ function calc(row){
 }
 
 // ================= supplier price lists (pulled from the portals by /fabrics, kept in the shared store)
-const SUPS = {DD: "D'Decor FabriCare", SAN: "D'Decor Sansaar", SAR: 'Sarom', AP: 'Asian Paints', FF: 'F&F'};   // F&F (brand Mind The Gap) added 6 Oct
+const SUPS = {DD: "D'Decor FabriCare", SAN: "D'Decor Sansaar", SAR: 'Sarom', AP: 'Asian Paints', FF: 'F&F'};   // F&F added 6 Oct (its Mind The Gap range removed the same day)
 const CAT = {state: 'none', index: {}, rows: {}, byKey: new Map(), cost: new Map()};
 const catRow = row => row.key && row.sup !== 'OWN' ? CAT.byKey.get(row.sup + '|' + row.key) : null;
 const mrpOf = rrp => Math.round(rrp * 1.05);
@@ -1794,9 +1795,9 @@ const bOpts = (list, val, blank) => (blank ? `<option value="">${blank}</option>
 const shadeListId = (b, t) => t && t.shades && (BL.shades[b.sup] || {})[t.shades] ? `sh-${b.sup}-${t.shades}` : '';
 function bRowHTML(b, i){
   const rows = BL.rows.filter(r => r.sup === b.sup), priced = rows.length > 0, t = blindType(b.sup, b.fam);
-  const loading = (b.sup === 'SAN' || b.sup === 'FC' || b.sup === 'AP') && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
+  const loading = ['SAN', 'FC', 'AP', 'MV'].includes(b.sup) && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
   const syss = uniq(rows.filter(r => r.fam === b.fam).map(r => r.sys));
-  const designs = rows.filter(r => r.fam === b.fam && r.sys === b.sys).map(r => [r.id, `${r.coll} · ${r.design}${r.extra ? ' (' + r.extra + ')' : ''}`]);
+  const designs = rows.filter(r => r.fam === b.fam && r.sys === b.sys).map(r => [r.id, [r.coll, r.design].filter(Boolean).join(' · ') + (r.extra ? ` (${r.extra})` : '')]);
   const adds = BL.addons.filter(a => a.sup === b.sup).map(a => [a.key, `${a.group}: ${a.name} · ₹${a.rrp.toLocaleString('en-IN')} ${a.uom}`]);
   const list = shadeListId(b, t);
   return `<tr class="row" data-id="${b.id}">
@@ -2060,7 +2061,7 @@ function qSections(){
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
     add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}`,
-      hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' ? 'marvel' : 'bprice'});
+      hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
     if (c.addon) hw(b.room, {grp: isMotorAddon(c.addon.group) ? 'mot' : 'man', product: addonProduct(c.addon.group), what: c.addon.name, hsn: H.blindAddons || '', qty: c.addonUnits, unit: c.addon.uom === 'each' ? 'PCS' : c.addon.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: c.addon.rrp, gst: c.addon.gst, cost: BL.cost.has(c.addon.key) ? BL.cost.get(c.addon.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'});
     else if (String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
   });
@@ -2462,7 +2463,7 @@ const BP_NOTE = {
   SAN: '',
   FC: 'From D\'Decor\'s Oct 2026 lists (Designer, Hive, Wooden, motors). No minimum size printed. Wooden 40–52 missing from D\'Decor\'s file. Roman making charges: price to confirm.',
   AP: 'From the Asian Paints 2026 price list (Illumin8): Roller, Fifty50 (Zebra), Honeycomb, Wooden, Roman making; motors, remotes, Roman fabric per metre. List price only, no dealer price. Minimum 1 sq m.',
-  MV: 'Order-form details and shade lists are loaded. The Marvel portal has no prices: needs Marvel\'s price list.'};
+  MV: 'From Marvel\'s RRP price list (w.e.f. 1 Apr 2026): every blind type by series and system, motors, remotes and fittings per type. List price only, no dealer price. Minimum 1.5 sq m (Panel 1.8, Patricia 1, skylights 3). Order-form details and shade lists as before.'};
 function renderBPrices(){
   const rows = BL.rows.filter(r => r.sup === bpSup && (!bpFam || r.fam === bpFam) && (!bpQ || (r.coll + ' ' + r.design + ' ' + r.sys).toLowerCase().includes(bpQ.toLowerCase())));
   const fams = uniq(BL.rows.filter(r => r.sup === bpSup).map(r => r.fam));
@@ -2701,17 +2702,21 @@ async function loadCatalog(){
       if (d.id === 'index') { CAT.index = b.sups || {}; continue; }
       if (d.id.startsWith('wp-')) { const ix = Object.fromEntries(b.cols.map((c, i) => [c, i])), items = new Map();   // wallpaper lists
         for (const x of b.wp || []) { const o = Object.fromEntries(b.cols.map(c => [c, x[ix[c]]])); if (!items.has(o.sku)) items.set(o.sku, o); }
-        WPL[b.name] = {id: d.id, brand: b.brand, date: b.date, uom: b.uom, items}; continue; }
+        if (items.size) WPL[b.name] = {id: d.id, brand: b.brand, date: b.date, uom: b.uom, items}; continue; }
+      if (d.id.startsWith('fl-')) { const ix = Object.fromEntries(b.cols.map((c, i) => [c, i])), items = new Map();   // flooring lists
+        for (const x of b.fl || []) { const o = Object.fromEntries(b.cols.map(c => [c, x[ix[c]]])); items.set(o.code.toUpperCase(), o); }
+        FLL[b.name] = {id: d.id, brand: b.brand, date: b.date, items}; continue; }
       (rows[b.sup] = rows[b.sup] || []).push(...b.rows.map(([k, n, w, r, h, g]) => ({k, n, w, r, h, g, sup: b.sup, s: (n + ' ' + k).toLowerCase()})));
     }
-    CAT.rows = rows; CAT.byKey = new Map(); fillWPLists();
+    CAT.rows = rows; CAT.byKey = new Map(); fillWPLists(); fillFLLists();
     for (const [sup, list] of Object.entries(rows)) for (const x of list) CAT.byKey.set(sup + '|' + x.k, x);
     CAT.state = 'ready';
     if (canSeeCost) {
       const cs = await db.collection('catcost').get();
       const wpName = Object.fromEntries(Object.entries(WPL).map(([n, L]) => [L.id, n]));
       for (const d of cs.docs) { const b = unpack(d); if (d.id.startsWith('blinds-')) { BL.costDocs.push(b); continue; }
-        if (d.id.startsWith('wp-')) { for (const [k, c] of b.wp || []) WPC.set(wpName[d.id] + '|' + k, c); continue; } for (const [k, c] of b.rows) CAT.cost.set(b.sup + '|' + k, c); }
+        if (d.id.startsWith('wp-')) { for (const [k, c] of b.wp || []) WPC.set(wpName[d.id] + '|' + k, c); continue; }
+        if (d.id.startsWith('fl-')) { const n = Object.keys(FLL).find(x => FLL[x].id === d.id); for (const [k, c] of b.fl || []) FLC.set(n + '|' + k.toUpperCase(), c); continue; } for (const [k, c] of b.rows) CAT.cost.set(b.sup + '|' + k, c); }
     }
   } catch (e) { CAT.state = 'error'; }
   try {
@@ -2748,7 +2753,7 @@ function refreshAll(){
   if (current === 'quote' && !busy($('#v-quote'))) renderQuote();
   if (current === 'b-measure' && !busy($('#v-blinds'))) renderBlinds();
   if (current === 'c-measure') { state.rows.forEach(updateRow); renderSide(); }
-  if (current === 'wallpaper' && !busy($('#v-product'))) renderProduct('wallpaper');
+  if ((current === 'wallpaper' || current === 'flooring') && !busy($('#v-product'))) renderProduct(current);
 }
 
 // ================= clients (Purvi, 1 Oct): the home page.
@@ -3462,13 +3467,22 @@ function askPerson(id){
 const WP_ROLLS = {'53 cm × 10 m': [53, 10], '70 cm × 10 m': [70, 10], '100 cm × 10 m': [100, 10], '106 cm × 10 m': [106, 10], '106 cm × 15.6 m': [106, 15.6],
   '52 cm × 3 m (box of 3)': [52, 3, 3], '52 cm × 9 m': [52, 9], '52 cm × 10 m': [52, 10], '48.7 cm × 9 m': [48.7, 9]};   // [width cm, length m, rolls per box]
 // Company wallpaper lists (6 Oct): catalog/wp-<id> (everyone) + catcost/wp-<id> (what we pay, owner only), priced per box.
-// WPL[company name] = {brand, date, uom, items: Map sku → item}. First list: F&F (brand Mind The Gap), shared 25 Mar 2026.
+// WPL[company name] = {brand, date, uom, items: Map sku → item}. No list loaded since F&F's Mind The Gap was removed (6 Oct); an empty list is skipped.
 const WPL = {}, WPC = new Map();
 const wpItem = r => { const L = WPL[r.sup], m = L && /^\s*([A-Z]{1,4}\d{3,})/i.exec(r.design || ''); return m ? L.items.get(m[1].toUpperCase()) || null : null; };
 const wpRollKey = it => Object.keys(WP_ROLLS).find(k => { const [w, l, b] = WP_ROLLS[k]; return w === it.wcm && l === it.rollm && (b || 1) === it.perBox; }) || null;
 function fillWPLists(){
   $('#wplists').innerHTML = Object.entries(WPL).map(([n, L], i) => `<datalist id="wpl-${i}">${[...L.items.values()].map(x => `<option value="${esc(x.sku + ' · ' + x.name)}">${esc(x.coll + (x.colour ? ' · ' + x.colour : ''))}</option>`).join('')}</datalist>`).join('');
 }
+// Company flooring lists (6 Oct): catalog/fl-<id> + catcost/fl-<id>, priced per sq ft. First: F&F's Divine carpets.
+const FLL = {}, FLC = new Map();
+const flItem = r => { const L = FLL[r.sup], m = L && /^\s*((?:WW|CT) [^·]+?)\s*(·|$)/i.exec(r.product || ''); return m ? L.items.get(m[1].trim().toUpperCase()) || null : null; };
+function fillFLLists(){
+  $('#fllists').innerHTML = `<datalist id="flsups">${Object.keys(FLL).map(n => `<option value="${esc(n)}">${esc(FLL[n].brand || '')}</option>`).join('')}</datalist>` +
+    Object.entries(FLL).map(([n, L], i) => `<datalist id="fll-${i}">${[...L.items.values()].map(x => `<option value="${esc(x.code + ' · ' + L.brand)}">${esc(x.type + ' · ' + x.cons + (x.rollm ? ` · ${x.rollm} m roll` : x.tile ? ' · ' + x.tile : ''))}</option>`).join('')}</datalist>`).join('');
+}
+const flListId = r => { const i = Object.keys(FLL).indexOf(r.sup); return i < 0 ? null : 'fll-' + i; };
+function flPicked(r){ const it = flItem(r); if (!it) return false; r.type = it.type; return true; }
 const wpListId = r => { const i = Object.keys(WPL).indexOf(r.sup); return i < 0 ? null : 'wpl-' + i; };
 // Picking a design from a company list fills its roll size and repeat (panels printed over 3 rolls get no repeat).
 function wpPicked(r){
@@ -3541,7 +3555,7 @@ const MP = {
     rules: ['Strips = wall width ÷ the roll width, rounded up.', 'Each strip = wall height + 4″ for trimming, plus one pattern repeat if the design has one.', 'Strips from one roll = roll length ÷ strip length, rounded down. Rolls = strips ÷ strips per roll, rounded up.',
       'Doors and windows are not taken off: the leftover covers matching and mistakes.', 'Murals are made to size: the wall plus 2″ on every side.',
       'Order every roll in one go so they come from the same batch, and count the rolls that arrive before cutting any.',
-      'F&F sells by the box (3 rolls of 3 m, or 1 roll of 9–10 m). Pick the design from the list: its roll size, repeat and price per box fill in.'],
+      'When a company has a price list here, pick the design from the list: its roll size, repeat and price per box fill in, and boxes are counted.'],
   },
   fabric: {name: 'Fabric', one: 'item', many: 'items', add: '+ Add item',
     note: 'Fabric sold by the metre: sofas, chairs, cushions, headboards. One row per item.',
@@ -3583,8 +3597,8 @@ const MP = {
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
       {g: 'Floor', k: 'type', label: 'Type', t: 'sel', opts: Object.keys(FL_WASTE), blank: 'Pick', w: 180},
-      {g: 'Floor', k: 'sup', label: 'Company', t: 'text', ph: 'Company', w: 140},
-      {g: 'Floor', k: 'product', label: 'Product', sub: 'collection, design', t: 'text', ph: 'Collection · design', w: 200},
+      {g: 'Floor', k: 'sup', label: 'Company', t: 'text', ph: 'Company', list: () => 'flsups', w: 140},
+      {g: 'Floor', k: 'product', label: 'Product', sub: 'collection, design', t: 'text', ph: r => FLL[r.sup] ? 'Type a carpet name' : 'Collection · design', list: flListId, w: 220},
       {g: 'Size', k: 'L', label: 'Length', sub: '″', t: 'num', key: 1},
       {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
       {g: 'Laying', k: 'lay', label: 'Pattern', t: 'sel', opts: Object.keys(FL_LAY), w: 180},
@@ -3618,12 +3632,21 @@ const MP = {
       c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: 'To order', v: c.order, u: `sq ft, ${w}% wastage`, m: 1}];
       if (c.boxes) c.kpis.push({l: 'Boxes', v: c.boxes, u: `${fmt(pack)} sq ft each`});
       if (c.rft) c.kpis.push({l: r.edge === 'Both' ? 'Skirting + beading' : r.edge, v: c.rft, u: 'running ft'});
+      const it = flItem(r);
+      if (it) { const mrp = Math.round(it.rrp * (1 + it.gst / 100)), dp = FLC.get(r.sup + '|' + it.code.toUpperCase());
+        c.mrp = mrp * c.order; c.kpis.push({l: 'MRP per sq ft', v: rs(mrp), u: `incl. ${it.gst}% GST`}, {l: 'MRP total', v: rs(c.mrp), u: `${c.order} sq ft × ${rs(mrp)}`, m: 1});
+        if (canSeeCost && dp != null) c.kpis.push({l: 'We pay per sq ft', v: rs(dp), u: 'before GST · only you see this'});
+        if (it.rollm) { const rw = it.rollm * 39.37; c.how += ` Roll is <b>${it.rollm} m</b> (${fmt(Math.round(rw))}″) wide.`;
+          if (L > rw && W > rw) c.warn.push(`Room is wider than the ${it.rollm} m roll both ways: the carpet will have a joint`); }
+        if (it.tile) c.how += ` Tiles are <b>${esc(it.tile)}</b>.`; }
+      else if (FLL[r.sup] && r.product) c.warn.push(`Not found in ${r.sup}'s list: pick it from the list to get its price`);
       return c;
     },
-    sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.order || 0), 0); return n ? `${n.toLocaleString('en-IN')} sq ft to order` : ''; },
+    sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.order || 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0); return n ? `${n.toLocaleString('en-IN')} sq ft to order${m ? ` · MRP ${rs(m)}` : ''}` : ''; },
     rules: ['Area = length × width ÷ 144 (inches to sq ft).', 'Wastage: laminate and wood 10%, vinyl 8%, wall-to-wall carpet 15%, carpet tiles 5%; diagonal adds 5%, herringbone or chevron 10%. Type over it if the company says otherwise.',
       'To order = area + wastage, rounded up to a whole sq ft. Boxes = that ÷ what one box covers, rounded up.', 'Skirting / beading = the room\'s edge (2 × (length + width)) less 3 ft for every door.',
-      'Always ask skirting or beading, and check the floor is level and dry, before quoting.'],
+      'Always ask skirting or beading, and check the floor is level and dry, before quoting.',
+      'F&F (Divine) carpets: pick the company, then the carpet from the list. The type, price per sq ft and roll width fill in; MRP = sq ft to order × MRP per sq ft.'],
   },
   mattress: {name: 'Mattress', one: 'bed', many: 'beds', add: '+ Add bed',
     note: 'One row per bed. Length and width of the bed\'s mattress space in inches, measured inside the frame.',
@@ -3743,6 +3766,8 @@ ptb.addEventListener('input', e => {
   const k = mpCur, tr = e.target.closest('tr'), r = state.more[k].find(x => x.id === +tr.dataset.id); if (!r) return;
   r[f] = e.target.value;
   const col = MP[k].cols.find(c => c.k === f);
+  if (k === 'flooring' && f === 'product' && flPicked(r)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
+  if (k === 'flooring' && f === 'sup' && e.target.tagName === 'INPUT' && FLL[r.sup]) { const pi = tr.querySelector('[data-p=product]'); if (pi) { pi.setAttribute('list', flListId(r)); pi.placeholder = 'Type a carpet name'; } }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r)) { for (const g of ['kind', 'roll', 'rep']) { const x = tr.querySelector(`[data-p=${g}]`); if (x) x.value = r[g]; } const rs_ = tr.querySelector('[data-p=roll]'); if (rs_) rs_.disabled = false; }
   if (e.target.tagName === 'SELECT') { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); }
   else if (col && col.todo) e.target.classList.toggle('ovr', !r[f]);
@@ -3855,4 +3880,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-173147 -->
+<!-- build 20261006-174139 -->
