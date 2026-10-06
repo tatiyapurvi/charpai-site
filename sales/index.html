@@ -2115,8 +2115,8 @@ function qSections(){
     g.rooms.add(r.room || '—'); g.rolls += c.rolls || 0; g.sqft += mural ? c.area : 0; wp.set(k, g);
   });
   for (const g of wp.values()) {
-    const {r, it} = g, inBox = (WP_ROLLS[r.roll] || [])[2] || 1, what = it ? `${r.sup} ${it.sku} ${it.name} (${it.coll})` : [r.sup, r.design].filter(Boolean).join(' ') || 'Design not named';
-    if (it) add('wallpaper', {area: roomsTxt(g.rooms), product: 'Wallpaper', what, hsn: it.hsn || H.wallpaper || '', qty: Math.ceil(g.rolls / inBox), unit: 'BOX',
+    const {r, it} = g, byRoll = !!(it && WPL[r.sup] && WPL[r.sup].uom === 'roll'), inBox = byRoll ? 1 : (wpRoll(r.roll) || [])[2] || 1, what = it ? `${r.sup} ${it.sku} ${it.name} (${it.coll})` : [r.sup, r.design].filter(Boolean).join(' ') || 'Design not named';
+    if (it && !wpSq(it)) add('wallpaper', {area: roomsTxt(g.rooms), product: 'Wallpaper', what, hsn: it.hsn || H.wallpaper || '', qty: Math.ceil(g.rolls / inBox), unit: byRoll ? 'ROLL' : 'BOX',
       rate: it.rrp, gst: it.gst, cost: WPC.has(r.sup + '|' + it.sku) ? WPC.get(r.sup + '|' + it.sku) : null, fix: 'wpick'});
     else add('wallpaper', {area: roomsTxt(g.rooms), product: g.mural ? 'Wallpaper mural' : 'Wallpaper', what, hsn: H.wallpaper || '', qty: g.mural ? r2(g.sqft) : g.rolls, unit: g.mural ? 'SQ FT' : 'ROLL',
       rate: null, gst: 18, cost: null, fix: 'wpick'});
@@ -2754,9 +2754,12 @@ async function loadCatalog(){
     for (const d of snap.docs) {
       const b = unpack(d);
       if (d.id === 'index') { CAT.index = b.sups || {}; continue; }
-      if (d.id.startsWith('wp-')) { const ix = Object.fromEntries(b.cols.map((c, i) => [c, i])), items = new Map();   // wallpaper lists
-        for (const x of b.wp || []) { const o = Object.fromEntries(b.cols.map(c => [c, x[ix[c]]])); if (!items.has(o.sku)) items.set(o.sku, o); }
-        if (items.size) WPL[b.name] = {id: d.id, brand: b.brand, date: b.date, uom: b.uom, items}; continue; }
+      if (d.id.startsWith('wp-')) {   // wallpaper lists: one company can come in several docs (wp-AP-0, wp-AP-1 …); an empty doc is skipped
+        if (!(b.wp || []).length) continue;
+        const ix = Object.fromEntries(b.cols.map((c, i) => [c, i])), L = WPL[b.name] || (WPL[b.name] = {ids: [], brand: b.brand, date: b.date, uom: b.uom, items: new Map()});
+        L.ids.push(d.id);
+        for (const x of b.wp) { const o = Object.fromEntries(b.cols.map(c => [c, x[ix[c]]])); if (!L.items.has(String(o.sku).toUpperCase())) L.items.set(String(o.sku).toUpperCase(), o); }
+        continue; }
       if (d.id.startsWith('fl-')) { const ix = Object.fromEntries(b.cols.map((c, i) => [c, i])), items = new Map();   // flooring lists
         for (const x of b.fl || []) { const o = Object.fromEntries(b.cols.map(c => [c, x[ix[c]]])); items.set(o.code.toUpperCase(), o); }
         FLL[b.name] = {id: d.id, brand: b.brand, date: b.date, items}; continue; }
@@ -2767,9 +2770,9 @@ async function loadCatalog(){
     CAT.state = 'ready';
     if (canSeeCost) {
       const cs = await db.collection('catcost').get();
-      const wpName = Object.fromEntries(Object.entries(WPL).map(([n, L]) => [L.id, n]));
+      const wpName = Object.fromEntries(Object.entries(WPL).flatMap(([n, L]) => L.ids.map(i => [i, n])));
       for (const d of cs.docs) { const b = unpack(d); if (d.id.startsWith('blinds-')) { BL.costDocs.push(b); continue; }
-        if (d.id.startsWith('wp-')) { for (const [k, c] of b.wp || []) WPC.set(wpName[d.id] + '|' + k, c); continue; }
+        if (d.id.startsWith('wp-')) { for (const [k, c] of b.wp || []) WPC.set(wpName[d.id] + '|' + String(k).toUpperCase(), c); continue; }
         if (d.id.startsWith('fl-')) { const n = Object.keys(FLL).find(x => FLL[x].id === d.id); for (const [k, c] of b.fl || []) FLC.set(n + '|' + k.toUpperCase(), c); continue; } for (const [k, c] of b.rows) CAT.cost.set(b.sup + '|' + k, c); }
     }
   } catch (e) { CAT.state = 'error'; }
@@ -3520,13 +3523,39 @@ function askPerson(id){
 // fabric for our upholstery vs made outside (235:4567, 235:4574), a double-ordered ₹35,000 wallpaper roll (261:5572).
 const WP_ROLLS = {'53 cm × 10 m': [53, 10], '70 cm × 10 m': [70, 10], '100 cm × 10 m': [100, 10], '106 cm × 10 m': [106, 10], '106 cm × 15.6 m': [106, 15.6],
   '52 cm × 3 m (box of 3)': [52, 3, 3], '52 cm × 9 m': [52, 9], '52 cm × 10 m': [52, 10], '48.7 cm × 9 m': [48.7, 9]};   // [width cm, length m, rolls per box]
+// A company list can bring other sizes ("53 cm × 10.05 m"). wpRoll() reads any "W cm × L m" key and adds it to the drop-down, so a saved
+// sheet still works on a device that has not loaded the list yet.
+const WP_ROLL_OPTS = Object.keys(WP_ROLLS);
+const wpRoll = key => { let v = WP_ROLLS[key]; if (v) return v; const m = /^([\d.]+) cm × ([\d.]+) m$/.exec(key || ''); if (!m) return null; v = WP_ROLLS[key] = [+m[1], +m[2]]; WP_ROLL_OPTS.push(key); return v; };
 // Company wallpaper lists (6 Oct): catalog/wp-<id> (everyone) + catcost/wp-<id> (what we pay, owner only), priced per box.
 // WPL[company name] = {brand, date, uom, items: Map sku → item}. No list loaded since F&F's Mind The Gap was removed (6 Oct); an empty list is skipped.
 const WPL = {}, WPC = new Map();
-const wpItem = r => { const L = WPL[r.sup], m = L && /^\s*([A-Z]{1,4}\d{3,})/i.exec(r.design || ''); return m ? L.items.get(m[1].toUpperCase()) || null : null; };
-const wpRollKey = it => Object.keys(WP_ROLLS).find(k => { const [w, l, b] = WP_ROLLS[k]; return w === it.wcm && l === it.rollm && (b || 1) === it.perBox; }) || null;
-function fillWPLists(){
-  $('#wplists').innerHTML = Object.entries(WPL).map(([n, L], i) => `<datalist id="wpl-${i}">${[...L.items.values()].map(x => `<option value="${esc(x.sku + ' · ' + x.name)}">${esc(x.coll + (x.colour ? ' · ' + x.colour : ''))}</option>`).join('')}</datalist>`).join('');
+const wpItem = r => { const L = WPL[r.sup], k = L && String(r.design || '').split('·')[0].trim().toUpperCase(); return k ? L.items.get(k) || null : null; };
+const wpRollKey = it => {
+  if (!(it.wcm && it.rollm)) return null;
+  const k = Object.keys(WP_ROLLS).find(k => { const [w, l, b] = WP_ROLLS[k]; return w === it.wcm && l === it.rollm && (b || 1) === (it.perBox || 1); });
+  if (k) return k; if ((it.perBox || 1) > 1) return null;
+  const nk = `${+it.wcm} cm × ${+it.rollm} m`; wpRoll(nk); return nk;
+};
+// Suggestions are filled as you type (the top 40 designs whose code, name, collection or maker contain every word typed), because a
+// company list can hold 14,000 designs: too many for one drop-down on a phone.
+function fillWPLists(){ $('#wplists').innerHTML = '<datalist id="wpl-dyn"></datalist>'; }
+// Some designs (Asian Paints Forte and Custom prints) are listed per SQ FT, but we charge and pay per roll (Purvi, 6 Oct): so they show the
+// per sq ft rate as information, with no total and no quotation price.
+const wpSq = it => !!(it && it.unit === 'sqft');
+function wpSqInfo(c, r, it){
+  const mrp = Math.round(it.rrp * (1 + it.gst / 100)), dp = WPC.get(r.sup + '|' + String(it.sku).toUpperCase());
+  c.kpis.push({l: 'MRP per sq ft', v: rs(mrp), u: `incl. ${it.gst}% GST · listed by the sq ft`});
+  if (canSeeCost && dp != null) c.kpis.push({l: 'We pay per sq ft', v: rs(dp), u: 'before GST · only you see this'});
+  c.warn.push(`${r.sup} lists this design per sq ft, not per roll: no total here, and no price on the quotation`);
+}
+function wpSuggest(r){
+  const L = WPL[r.sup], dl = $('#wpl-dyn'); if (!L || !dl) return;
+  const q = String(r.design || '').split('·')[0].toLowerCase().split(/\s+/).filter(Boolean);
+  if (!q.length) { dl.innerHTML = ''; return; }
+  L.idx = L.idx || [...L.items.values()].map(x => [[x.sku, x.name, x.coll, x.vendor, x.colour].join(' ').toLowerCase(), x]);
+  const out = []; for (const [t, x] of L.idx) if (q.every(w => t.includes(w))) { out.push(x); if (out.length >= 40) break; }
+  dl.innerHTML = out.map(x => `<option value="${esc(x.sku + ' · ' + x.name)}">${esc([x.coll, x.vendor, x.colour].filter(Boolean).join(' · '))}</option>`).join('');
 }
 // Company flooring lists (6 Oct): catalog/fl-<id> + catcost/fl-<id>, priced per sq ft. First: F&F's Divine carpets.
 const FLL = {}, FLC = new Map();
@@ -3537,7 +3566,7 @@ function fillFLLists(){
 }
 const flListId = r => { const i = Object.keys(FLL).indexOf(r.sup); return i < 0 ? null : 'fll-' + i; };
 function flPicked(r){ const it = flItem(r); if (!it) return false; r.type = it.type; return true; }
-const wpListId = r => { const i = Object.keys(WPL).indexOf(r.sup); return i < 0 ? null : 'wpl-' + i; };
+const wpListId = r => WPL[r.sup] ? 'wpl-dyn' : null;
 // Picking a design from a company list fills its roll size and repeat (panels printed over 3 rolls get no repeat).
 function wpPicked(r){
   const it = wpItem(r), k = it && wpRollKey(it); if (!it) return false;
@@ -3560,9 +3589,9 @@ const MP = {
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
       {g: 'Where', k: 'wall', label: 'Wall', t: 'text', ph: 'e.g. behind the bed', w: 150},
       {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},
-      {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or WP no.' : 'Collection · design no.', list: wpListId, w: 230},
+      {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or design no.' : 'Collection · design no.', list: wpListId, w: 230},
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
-      {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: Object.keys(WP_ROLLS), w: 150, off: r => r.kind !== 'Roll'},
+      {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: WP_ROLL_OPTS, w: 150, off: r => r.kind !== 'Roll'},
       {g: 'Wallpaper', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
       {g: 'Size', k: 'H', label: 'Height', sub: '″', t: 'num', key: 1},
       {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
@@ -3584,22 +3613,27 @@ const MP = {
       if (r.kind !== 'Roll') {
         c.kpis = [{l: 'Wall area', v: cpF(c.area), u: 'sq ft'}, {l: 'Order size', v: `${cpF(H + 4)} × ${cpF(W + 4)}`, u: '″ high × wide, 2″ extra each side', m: 1}];
         c.how = `Mural made to size: the wall <b>${fmt(H)}″ × ${fmt(W)}″</b> plus 2″ on every side for trimming = <b>${fmt(H + 4)}″ × ${fmt(W + 4)}″</b>.`;
+        { const it = wpItem(r); if (wpSq(it)) wpSqInfo(c, r, it); }
         return c;
       }
-      const [wcm, lm] = WP_ROLLS[r.roll] || WP_ROLLS['53 cm × 10 m'], win = wcm / 2.54, rep = nv(r.rep);
+      const [wcm, lm] = wpRoll(r.roll) || WP_ROLLS['53 cm × 10 m'], win = wcm / 2.54, rep = nv(r.rep);
       const drop = H + 4 + rep, per = Math.floor(lm * 39.37 / drop), strips = Math.ceil(W / win - 1e-9);
       c.strips = strips; c.per = per;
       if (!per) { c.warn.push(`Wall is taller than one ${lm} m roll: order a mural or a longer roll`); c.how = `Each strip is ${fmt(drop)}″, longer than the roll.`; return c; }
       c.calcRolls = Math.ceil(strips / per); c.rolls = +r.rolls > 0 ? +r.rolls : c.calcRolls;
-      const it = wpItem(r), inBox = (WP_ROLLS[r.roll] || [])[2] || 1;
-      if (it || inBox > 1) c.boxes = Math.ceil(c.rolls / inBox);
+      const it = wpItem(r), byRoll = !!(it && WPL[r.sup] && WPL[r.sup].uom === 'roll'), inBox = byRoll ? 1 : (wpRoll(r.roll) || [])[2] || 1;   // Asian Paints is priced per roll, F&F-style lists per box
+      const sq = wpSq(it);
+      if ((it && !sq) || inBox > 1) c.boxes = Math.ceil(c.rolls / inBox);
       c.how = `Width <b>${fmt(W)}″</b> ÷ roll width ${fmt(r2(win))}″ = <b>${strips} strips</b>. Each strip = height ${fmt(H)}″ + 4″ trimming${rep ? ` + ${fmt(rep)}″ repeat` : ''} = ${fmt(drop)}″, so one ${lm} m roll gives <b>${per} strips</b>. ${strips} ÷ ${per} = <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>.`;
       c.kpis = [{l: 'Strips', v: strips, u: `${per} per roll`}, {l: 'Wall area', v: cpF(c.area), u: 'sq ft'}, {l: 'Rolls to order', v: c.rolls, u: +r.rolls > 0 ? 'typed in' : r.roll, m: 1}];
-      if (c.boxes) { c.kpis.push({l: 'Boxes to order', v: c.boxes, u: inBox > 1 ? `${inBox} rolls in a box` : '1 roll in a box', m: 1});
+      if (c.boxes && !byRoll) { c.kpis.push({l: 'Boxes to order', v: c.boxes, u: inBox > 1 ? `${inBox} rolls in a box` : '1 roll in a box', m: 1});
         if (inBox > 1) c.how += ` Sold in boxes of ${inBox}: ${c.rolls} ÷ ${inBox} = <b>${c.boxes} box${c.boxes > 1 ? 'es' : ''}</b>.`; }
-      if (it) { const mrp = Math.round(it.rrp * (1 + it.gst / 100)), dp = WPC.get(r.sup + '|' + it.sku);
-        c.mrp = mrp * c.boxes; c.kpis.push({l: 'MRP per box', v: rs(mrp), u: `incl. ${it.gst}% GST`}, {l: 'MRP total', v: rs(c.mrp), u: `${c.boxes} × ${rs(mrp)}`, m: 1});
-        if (canSeeCost && dp != null) c.kpis.push({l: 'We pay per box', v: rs(dp), u: 'before GST · only you see this'});
+      if (sq) wpSqInfo(c, r, it);
+      else if (it) { const mrp = Math.round(it.rrp * (1 + it.gst / 100)), dp = WPC.get(r.sup + '|' + it.sku);
+        const unit = byRoll ? 'roll' : 'box';
+        c.mrp = mrp * c.boxes; c.kpis.push({l: `MRP per ${unit}`, v: rs(mrp), u: `incl. ${it.gst}% GST`}, {l: 'MRP total', v: rs(c.mrp), u: `${c.boxes} × ${rs(mrp)}`, m: 1});
+        if (canSeeCost && dp != null) c.kpis.push({l: `We pay per ${unit}`, v: rs(dp), u: 'before GST · only you see this'});
+        if (!(it.wcm && it.rollm)) c.warn.push(`${r.sup}'s list has no roll size for this design: check the roll size`);
         if (it.panel) c.warn.push('Picture printed over 3 rolls: order whole boxes, and check the picture fits this wall'); }
       else if (WPL[r.sup] && r.design) c.warn.push(`Design not found in ${r.sup}'s list: pick it from the list to get its price`);
       return c;
@@ -3745,6 +3779,7 @@ const MP_ORDER = ['wallpaper', 'fabric', 'flooring', 'mattress'];
 function ensureMore(fresh){   // fresh = the sheet was just loaded: give every row a new id (ids from other devices can clash)
   if (!state.more || typeof state.more !== 'object') state.more = {};
   for (const k of MP_ORDER) { if (!Array.isArray(state.more[k])) state.more[k] = []; state.more[k].forEach(r => { const b = MP[k].blank(); for (const f in b) if (r[f] === undefined) r[f] = b[f]; if (fresh || r.id == null) r.id = uid++; }); }
+  state.more.wallpaper.forEach(r => wpRoll(r.roll));
   if (!state.msel || typeof state.msel !== 'object') state.msel = {};
 }
 ensureMore(true);
@@ -3822,6 +3857,8 @@ ptb.addEventListener('input', e => {
   const col = MP[k].cols.find(c => c.k === f);
   if (k === 'flooring' && f === 'product' && flPicked(r)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
   if (k === 'flooring' && f === 'sup' && e.target.tagName === 'INPUT' && FLL[r.sup]) { const pi = tr.querySelector('[data-p=product]'); if (pi) { pi.setAttribute('list', flListId(r)); pi.placeholder = 'Type a carpet name'; } }
+  if (k === 'wallpaper' && f === 'design') wpSuggest(r);
+  if (k === 'wallpaper' && f === 'design' && wpPicked(r) && ![...tr.querySelectorAll('[data-p=roll] option')].some(o => o.value === r.roll)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r)) { for (const g of ['kind', 'roll', 'rep']) { const x = tr.querySelector(`[data-p=${g}]`); if (x) x.value = r[g]; } const rs_ = tr.querySelector('[data-p=roll]'); if (rs_) rs_.disabled = false; }
   if (e.target.tagName === 'SELECT') { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); }
   else if (col && col.todo) e.target.classList.toggle('ovr', !r[f]);
@@ -3934,4 +3971,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-181125 -->
+<!-- build 20261006-182105 -->
