@@ -245,6 +245,29 @@ table.sheet.psheet{min-width:0;width:max-content}
 .pseg .segs button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .pseg .segs .cnt{font:600 12px var(--body);margin-left:6px;color:var(--muted)}
 .pseg .what{color:var(--muted);font-size:14px}
+/* Upholstery: summary table + two-step side form (6 Oct night) */
+.pseg[hidden]{display:none}
+table.sheet.psheet.uwide{width:100%}
+.udot{width:10px;height:10px;border-radius:3px;flex:none;display:inline-block}
+.uprod{display:inline-flex;align-items:center;gap:7px;font-weight:700;white-space:nowrap}
+.psheet td.uwhat{min-width:220px;max-width:360px;white-space:normal}
+.ustep{font:700 15px var(--body);margin:14px 14px 8px;display:flex;align-items:center;gap:8px}
+.ustep i{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:12px}
+.uchoose{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;padding:0 14px}
+.uchoose button{border:1px solid var(--line);border-radius:10px;background:var(--field);padding:9px 10px;cursor:pointer;text-align:left;min-height:58px}
+.uchoose button b{display:flex;align-items:center;gap:7px}.uchoose button small{display:block;color:var(--muted);font-size:12px;margin-top:2px;line-height:1.25}
+.uchoose button:hover{border-color:var(--ink)}.uchoose button[aria-pressed="true"]{border:2px solid var(--ink);background:var(--sel)}
+.uform{display:grid;gap:12px;padding:0 14px 6px}
+.uf{display:flex;flex-direction:column;gap:4px;min-width:0}.uf>span{font-size:13px;color:var(--muted);font-weight:600}
+.uf input,.uf select{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:44px;font-size:16px;width:100%}
+.uf input.n{font:600 20px var(--num);border-color:var(--ink)}
+.ufrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.useg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--field);align-self:flex-start}
+.useg button{border:0;background:none;padding:9px 18px;min-height:44px;font-weight:700;font-size:16px;cursor:pointer;color:var(--muted)}
+.useg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.usugg{display:grid;gap:2px}.usugg:empty{display:none}
+.usugg button{display:flex;justify-content:space-between;gap:10px;border:1px solid var(--line2);background:var(--field);border-radius:6px;padding:7px 10px;cursor:pointer;text-align:left}
+.usugg button:hover{border-color:var(--ink)}.usugg .msg{color:var(--muted);font-size:13px;padding:4px 2px}
 /* Mattress price menu in the side panel: every Sleepwell mattress for this bed's size (Purvi picked "B", 6 Oct) */
 .swm{border-top:1px solid var(--line2);margin-top:6px}
 .swm-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px 6px}
@@ -1191,7 +1214,7 @@ const stitchKey = (style, lining) => style + (lining ? ' + lining' : '');
 const has = v => v !== null && v !== undefined && v !== '';
 const GST_DEF = {fabric: 5, stitching: 5, track: 18, install: 18};
 // Each of our pricing tables says whether its rates already include GST. Only installation does by default (Purvi, 30 Sep).
-const GST_INCL_DEF = {install: true};
+const GST_INCL_DEF = {install: true, uph: true};   // upholstery material rates are shop rates, GST included (switchable)
 const gstIncl = k => !!Object.assign({}, GST_INCL_DEF, prices.gstIncl || {})[k];
 const gstRates = () => Object.assign({}, GST_DEF, prices.gst || {});
 const GST_FOR = {'Curtain fabric': 'fabric', 'Lining': 'fabric', 'Stitching': 'stitching', 'Track': 'track'};
@@ -2074,8 +2097,8 @@ const TNC = ['50% ADVANCE AGAINST ORDER & REST 50% BEFORE DELIVERY OF THE PRODUC
   'ALL DISPUTES ARE SUBJECT TO JODHPUR JURISDICTION.', 'PAYMENT MODE SHOULD BE ONLINE & CHEQUE.'];
 // Product column names a customer can read: "D'Decor motor" → "Blind motor" (the brand is in the details column).
 const addonProduct = g => { const k = g.replace(/^(D'Decor|Somfy|FabriCare) /i, ''); return /^skylight/i.test(k) ? 'Skylight blind fitting' : /assembly/i.test(k) ? 'Motorised blind assembly' : 'Blind ' + k.toLowerCase(); };
-const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['flooring', 'Flooring'], ['mattress', 'Mattresses and pillows'], ['foam', 'Upholstery foam'], ['hw', 'Accessories and installation']];   // Wallpaper after Blinds, then Flooring (Purvi, 6 Oct); Sleepwell mattresses and foam after Flooring (6 Oct)
-const QOPT = ['wallpaper', 'flooring', 'mattress', 'foam'];   // drawn only when the client has some, so older quotations keep their version number
+const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['flooring', 'Flooring'], ['mattress', 'Mattresses and pillows'], ['uph', 'Upholstery material'], ['foam', 'Upholstery foam'], ['hw', 'Accessories and installation']];   // Wallpaper after Blinds, then Flooring (Purvi, 6 Oct); Sleepwell mattresses and foam after Flooring (6 Oct)
+const QOPT = ['wallpaper', 'flooring', 'mattress', 'uph', 'foam'];   // 'foam' only in versions saved on 6 Oct, before Upholstery became one list   // drawn only when the client has some, so older quotations keep their version number
 // Accessories and installation splits into Manual and Motorised when a quote has both (Purvi, 2 Oct). Lines carry grp 'man' | 'mot'.
 // Returns null (no split) for other sections, a quote with only one kind, or an old saved version without grp.
 const HW_PARTS = [['man', 'Manual (non-motorised)'], ['mot', 'Motorised']];
@@ -2094,7 +2117,7 @@ function fabricName(row){
   return `${QCODE[row.sup]} ${base}`;
 }
 function qSections(){
-  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], mattress: [], foam: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
+  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], mattress: [], uph: [], foam: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
   // Supplier list prices (fabric RRP, blinds per m²) are before GST, so GST is added. Our own tables follow their GST switch (gstIncl).
   const add = (sec, l) => { l.mrp = l.incl ? (has(l.rate) ? Math.round(l.rate) : null) : mrpOf2(l.rate, l.gst); l.amt = l.mrp == null ? null : Math.round(l.qty * l.mrp); l.camt = has(l.cost) ? l.qty * l.cost : null; S[sec].push(l); };
   const stitch = new Map(); let pieces = 0, kits = 0;
@@ -2174,12 +2197,14 @@ function qSections(){
   const hc = new Map();
   (state.more.hcp || []).forEach(r => { const x = swHcp(r); if (!x) return; const g = hc.get(r.item) || {x, rooms: new Set(), q: 0}; g.rooms.add(r.room || '—'); g.q += Math.max(1, parseInt(r.qty, 10) || 1); hc.set(r.item, g); });
   for (const g of hc.values()) add('mattress', {area: roomsTxt(g.rooms), product: g.x.g, what: `Sleepwell ${g.x.n} · ${g.x.s}″`, hsn: H.mattress || '9404', qty: g.q, unit: 'PCS', rate: g.x.v, gst: 18, cost: null, incl: true, fix: 'mpick'});
-  (state.more.foam || []).forEach(r => {
-    const c = MP.foam.calc(r); if (!c.ok) return;
-    const t = parseFloat(r.T), q = Math.max(1, parseInt(r.qty, 10) || 1);
-    add('foam', {area: [r.room, r.item].filter(Boolean).join(' · '), product: 'Foam' + (r.part ? ' · ' + r.part.toLowerCase() : ''), what: `Sleepwell ${r.foam || 'foam not picked'} · ${fmt(nv(r.L))} × ${fmt(nv(r.W))}″${t ? ' × ' + inchTxt(t) : ''}${c.kind === 'cut' ? ' (cut to size)' : ''}`,
-      hsn: H.foam || '9404', qty: q, unit: 'PCS', rate: c.each || null, gst: 18, cost: null, incl: true, fix: 'opick'});
+  // Upholstery material (6 Oct night): one line per product and details, the same thing on two lines added up.
+  const up = new Map();
+  (state.more.uph || []).forEach(r => {
+    const c = MP.uph.calc(r); if (!c.ok) return;
+    const k = [c.q.product, c.what, c.q.rate, c.q.incl].join('|'), g = up.get(k);
+    if (g) g.qty += c.qty; else up.set(k, Object.assign({area: '—', what: c.what, qty: c.qty, fix: c.q.rate == null ? (r.p === 'Fabric' ? 'opick' : 'uprice') : 'opick'}, c.q));
   });
+  for (const l of up.values()) { l.qty = r2(l.qty); add('uph', l); }
   for (const l of club.values()) { l.qty = r2(l.qty); l.area = roomsTxt(l.rooms); delete l.rooms; add('hw', l); }
   motor.forEach(l => add('hw', l));
   if (!(state.quote || {}).noInstall) {
@@ -2281,7 +2306,7 @@ $('#q-head').addEventListener('input', e => {
   save(); renderPaper();
 });
 function lineHTML(l, n, showC, ro){
-  const rate = l.mrp == null ? ro ? '—' : PF && !IS_ADMIN && !['pick', 'remote', 'wpick', 'fpick', 'mpick', 'opick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'fpick' ? 'Pick the product from a list' : l.fix === 'mpick' ? 'Pick the mattress' : l.fix === 'opick' ? 'Pick the foam and thickness' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>` : inr(l.mrp);
+  const rate = l.mrp == null ? ro ? '—' : PF && !IS_ADMIN && !['pick', 'remote', 'wpick', 'fpick', 'mpick', 'opick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'fpick' ? 'Pick the product from a list' : l.fix === 'mpick' ? 'Pick the mattress' : l.fix === 'opick' ? 'Fill it in on Upholstery' : l.fix === 'uprice' ? 'Set the rate in Prices' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>` : inr(l.mrp);
   return `<tr><td class="c">${n}</td><td>${esc(l.area || '')}</td><td>${esc(l.product)}</td><td>${esc(l.what)}</td><td class="c">${esc(l.hsn || '')}</td>
     <td class="r">${cpF(r2(l.qty))}</td><td class="c">${esc(l.unit)}</td><td class="r">${rate}</td><td class="r"><b>${l.amt == null ? '—' : inr(l.amt)}</b></td>
     ${showC ? `<td class="r cost">${l.camt == null ? '—' : inr(l.camt)}</td>` : ''}</tr>`;
@@ -2438,7 +2463,8 @@ document.addEventListener('click', e => {
   if (to === 'wpick') { go('wallpaper'); return; }
   if (to === 'fpick') { go('flooring'); return; }
   if (to === 'mpick') { go('mattress'); return; }
-  if (to === 'opick') { go('foam'); return; }
+  if (to === 'opick') { go('uph'); return; }
+  if (to === 'uprice') { go('c-prices'); setTimeout(() => { const x = $('#sec-uph'); if (x) x.scrollIntoView({block: 'start'}); }, 50); return; }
   const blinds = ['bprice', 'marvel'].includes(to);
   go(blinds ? 'b-prices' : 'c-prices');
   setTimeout(() => { const s = document.getElementById('sec-' + to); if (s) s.scrollIntoView({block: 'start'}); }, 50);
@@ -2552,6 +2578,20 @@ function installSec(){
   return `<div class="sec" id="sec-install"><div class="sec-h"><h2>Installation</h2><p>One line at the end of the quotation. The same rates show on the Curtains and Blinds prices pages.</p>${gstSwitch('install')}</div>
     <div class="q-scroll"><table class="pr"><thead><tr><th>What</th><th>Unit</th>${canSeeCost ? '<th class="pay">We pay</th>' : ''}<th class="chg">We charge${gstIncl('install') ? ', GST included' : ', before GST'}</th>${canSeeCost ? '<th style="text-align:right">Margin</th>' : ''}</tr></thead>
     <tbody>${row('piece', 'Each track and each blind', 'per piece')}${row('motor', 'Each motorised track', 'per track')}</tbody></table></div></div>`;
+}
+// Upholstery material rates (Purvi, 6 Oct night: "I'll type them in Prices"). Each has its own unit, HSN and GST %.
+function uphSec(){
+  const P = prices.uph || {}, C = costs.uph || {}, G = prices.uphGst || {}, H = prices.hsn || {}, dis = canEditPrices ? '' : ' disabled';
+  const rows = UPH_RATES.map(([k, n, u]) => { const m = mg(P[k], C[k]);
+    return `<tr><td class="st"><b>${esc(n)}</b></td><td>${u}</td>
+      <td><input data-p="hsn" data-k="uph-${k}" value="${esc(H['uph-' + k] || '')}" placeholder="not set" style="max-width:110px" aria-label="${esc(n)}: HSN"${dis}></td>
+      <td>${moneyIn(has(G[k]) ? G[k] : 18, 'chg', `data-p="uphGst" data-side="sale" data-k="${k}" aria-label="${esc(n)}: GST percent" style="max-width:70px"`).replace('placeholder="₹"', 'placeholder="%"')}</td>
+      ${canSeeCost ? `<td>${moneyIn(C[k], 'pay', `data-p="uph" data-side="cost" data-k="${k}" aria-label="${esc(n)}: we pay"`)}</td>` : ''}
+      <td>${moneyIn(P[k], 'chg', `data-p="uph" data-side="sale" data-k="${k}" aria-label="${esc(n)}: we charge"`)}</td>
+      ${canSeeCost ? `<td class="mg${m.bad ? ' bad' : ''}">${m.t}</td>` : ''}</tr>`; }).join('');
+  return `<div class="sec" id="sec-uph"><div class="sec-h"><h2>Upholstery material</h2><p>For the Upholstery sheet: what a customer takes to get furniture made elsewhere. Fabric comes from the supplier lists and foam from Sleepwell; these are the rest.</p>${gstSwitch('uph')}</div>
+    <div class="q-scroll"><table class="pr"><thead><tr><th>Material</th><th>Unit</th><th>HSN</th><th>GST %</th>${canSeeCost ? '<th class="pay">We pay</th>' : ''}<th class="chg">We charge${gstIncl('uph') ? ', GST included' : ', before GST'}</th>${canSeeCost ? '<th style="text-align:right">Margin</th>' : ''}</tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
 }
 function hsnSec(list){
   const H = prices.hsn || {};
@@ -2667,7 +2707,9 @@ function renderPrices(){
       <div class="sec-h" style="margin-top:18px"><h2>Remotes for motorised curtains</h2><p>Picked under the track on each motorised curtain, and shown as its own line in the quotation. From the Folio price list 2026: D'Decor page 14, Somfy page 15 (RRP before GST).</p>${gstSwitch('remotes')}</div>
       <div class="q-scroll"><table class="pr"><thead><tr><th>Remote</th><th>For motor</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${remRows}</tbody></table></div></div>
     ${installSec()}
-    ${hsnSec([['lining', 'Linings'], ['stitching', 'Stitching'], ['track', 'Curtain track'], ['kits', 'Motorised track kits'], ['remotes', 'Curtain motor remotes'], ['install', 'Installation']])}`;
+    ${uphSec()}
+    ${hsnSec([['lining', 'Linings'], ['stitching', 'Stitching'], ['track', 'Curtain track'], ['kits', 'Motorised track kits'], ['remotes', 'Curtain motor remotes'], ['install', 'Installation'],
+      ['mattress', 'Sleepwell mattresses and pillows (9404 if empty)'], ['foam', 'Sleepwell foam (9404 if empty)'], ['uphFabric', 'Upholstery fabric at our own rate']])}`;
 }
 const pb = $('#p-body');
 function priceInput(e){
@@ -2677,6 +2719,8 @@ function priceInput(e){
   if (t.dataset.p === 'hsn') { prices.hsn = Object.assign({}, prices.hsn || {}, {[t.dataset.k]: t.value.trim()}); priceChanged(); return; }
   if (t.dataset.p === 'remotes') { if (!prices.remotes) prices.remotes = remoteDefault(); if (!costs.remotes) costs.remotes = {}; }
   if (t.dataset.p === 'install') { if (!prices.install) prices.install = {piece: 200, motor: 1000}; if (!costs.install) costs.install = {}; }
+  if (t.dataset.p === 'uph') { if (!prices.uph) prices.uph = {}; if (!costs.uph) costs.uph = {}; }
+  if (t.dataset.p === 'uphGst' && !prices.uphGst) prices.uphGst = {};
   if (t.dataset.p === 'kits') {
     const [m, z] = t.dataset.k.split('|'), bag = t.dataset.side === 'cost' ? (costs.kits = costs.kits || {}) : (prices.kits = prices.kits || kitDefault());
     (bag[m] = bag[m] || {})[z] = num(t.value); priceChanged(); return;
@@ -3068,7 +3112,7 @@ const CFILTERS = [
   {k: 'min', chip: v => 'Value from ' + lakh(v), match: (c, v) => (amountOf(c) || 0) >= +v},
   {k: 'max', chip: v => 'Value up to ' + lakh(v), match: (c, v) => amountOf(c) != null && amountOf(c) <= +v},
   {k: 'added', chip: v => 'Added ' + (ADDED[v] || v).toLowerCase(), match: inAdded},
-  {k: 'has', chip: v => 'Has ' + ((HAS().find(x => x[0] === v) || [])[1] || v).toLowerCase(), match: (c, v) => (c.cats || []).includes(v)},
+  {k: 'has', chip: v => 'Has ' + ((HAS().find(x => x[0] === v) || [])[1] || v).toLowerCase(), match: (c, v) => (c.cats || []).some(x => x === v || (v === 'uph' && (x === 'fabric' || x === 'foam')))},   // cards saved before 6 Oct say fabric / foam
   {k: 'follow', chip: () => 'Needs follow-up', match: c => followDue(c)},
 ];
 const cfActive = () => CFILTERS.filter(f => has(CF[f.k]) && CF[f.k] !== '');
@@ -3352,7 +3396,7 @@ $('#cbar').addEventListener('click', async e => {
 });
 $('#v-none').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'new') askNewClient(); else go('clients'); });
 // With the shared store every sheet belongs to a client: the sheet, blinds and quotation show "No client open" without one.
-const GATED = ['c-measure', 'b-measure', 'wallpaper', 'fabric', 'flooring', 'mattress', 'foam', 'hcp', 'quote'];
+const GATED = ['c-measure', 'b-measure', 'wallpaper', 'uph', 'flooring', 'mattress', 'hcp', 'quote'];
 function gate(){ if (shared && GATED.includes(current)) go(current); }
 function newLocalSheet(){
   state = {house:'', example:false, sel:0, bsel:0, quote:{}, rows:[blank()], blinds:[]}; refreshSheet(); save(); go('c-measure'); $('#house').focus();
@@ -3658,7 +3702,6 @@ function selOpts(list, val, blank){
   return (blank ? `<option value="">${esc(blank)}</option>` : '') + body + (has(val) && !seen.has(String(val)) ? `<option value="${esc(val)}" selected>${esc(val)}</option>` : '');
 }
 let swmSort = 'range';   // price menu: by range or cheapest first
-const COMPANIES = ["D'Decor Sansaar", "D'Decor FabriCare", 'Sarom', 'Asian Paints', 'F&F', 'Other'];
 const ceilQ = v => Math.ceil(v * 4 - 1e-9) / 4;
 const nv = v => parseFloat(v) || 0;
 const MP = {
@@ -3725,39 +3768,6 @@ const MP = {
       'Doors and windows are not taken off: the leftover covers matching and mistakes.', 'Murals are made to size: the wall plus 2″ on every side.',
       'Order every roll in one go so they come from the same batch, and count the rolls that arrive before cutting any.',
       'When a company has a price list here, pick the design from the list: its roll size, repeat and price per box fill in, and boxes are counted.'],
-  },
-  fabric: {name: 'Fabric', seg: 'Fabric', hasName: 'Upholstery fabric', one: 'item', many: 'items', add: '+ Add item',
-    note: 'Fabric sold by the metre: sofas, chairs, cushions, headboards. One row per item.',
-    hint: 'Metres per piece come from the upholsterer. Tap a row to see who makes it and the total.',
-    blank: () => ({room: '', item: '', use: '', who: '', sup: '', fabric: '', roll: '140', rep: '', mper: '', qty: 1, remarks: ''}),
-    cols: [
-      {g: 'Where', k: 'room', label: 'Room', t: 'room'},
-      {g: 'What', k: 'item', label: 'Item', t: 'text', ph: 'e.g. 3-seater sofa', w: 170},
-      {g: 'What', k: 'use', label: 'Used for', t: 'sel', opts: ['Sofa', 'Chair', 'Cushions', 'Headboard / bed back', 'Ottoman / pouffe', 'Bed linen', 'Other'], blank: 'Pick', w: 170},
-      {g: 'What', k: 'who', label: 'Who makes it', t: 'sel', opts: ['Our upholstery team', 'Customer gets it made outside'], blank: 'Pick', todo: 1, w: 220},
-      {g: 'Fabric', k: 'sup', label: 'Company', t: 'sel', opts: COMPANIES, blank: 'Pick', w: 160},
-      {g: 'Fabric', k: 'fabric', label: 'Fabric', sub: 'collection, serial or SKU', t: 'text', ph: 'Collection · serial', w: 220},
-      {g: 'Fabric', k: 'roll', label: 'Roll', sub: 'cm', t: 'num', w: 70},
-      {g: 'Fabric', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
-      {g: 'Quantity', k: 'mper', label: 'Metres each', t: 'num', key: 1},
-      {g: 'Quantity', k: 'qty', label: 'Pieces', t: 'num', w: 60},
-      {g: 'Result', k: 'tot', label: 'Fabric', out: c => c.ok ? `${fmt(c.m)}<span class="u"> m</span>` : ''},
-      {g: 'Result', k: 'how', how: 1},
-      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
-    ],
-    calc(r){
-      const m = nv(r.mper), q = Math.max(1, parseInt(r.qty, 10) || 1), c = {ok: m > 0, warn: [], kpis: []};
-      if (!r.who) c.warn.push('Who makes it? Not picked yet');
-      if (!m) c.warn.push('Ask the upholsterer for the metres per piece');
-      if (!c.ok) return c;
-      c.m = ceilQ(m * q);
-      c.how = `<b>${fmt(m)} m</b> each × <b>${q}</b> piece${q > 1 ? 's' : ''} = <b>${fmt(c.m)} m</b>, rounded up to the next ¼ m.`;
-      c.kpis = [{l: 'Pieces', v: q, u: r.use || 'item'}, {l: 'Each', v: fmt(m), u: 'm'}, {l: 'Fabric to order', v: fmt(c.m), u: 'metres', m: 1}];
-      return c;
-    },
-    sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.m || 0), 0); return m ? `${fmt(m)} m fabric` : ''; },
-    rules: ['Metres per piece are what the upholsterer asks for; check them against the fabric\'s roll width and repeat.', 'Total = metres each × pieces, rounded up to the next ¼ m.',
-      'Our upholstery team: the store sends the fabric to production. Made outside: the customer takes the fabric with them.'],
   },
   flooring: {name: 'Flooring', one: 'area', many: 'areas', add: '+ Add area',
     note: 'One row per room or area. Length and width in inches, as measured.',
@@ -3913,53 +3923,164 @@ const MP = {
     sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.mrp || 0), 0); return m ? `MRP ${rs(m)}` : ''; },
     rules: ['Prices are Sleepwell\'s MRP (from 1 Aug 2026), including GST.', 'Mattress protectors come in the listed sizes only. A custom size is made to order: ask Sleepwell for its price.'],
   },
-  // Sleepwell furniture foam (Purvi, 6 Oct): sheets and cushions, under the Upholstery tab next to Fabric.
-  foam: {name: 'Foam', seg: 'Foam', hasName: 'Upholstery foam', one: 'size', many: 'sizes', add: '+ Add foam',
-    note: 'Sleepwell foam for sofas, chairs, cushions, headboards. One row per size; sizes in inches.',
-    hint: 'Pick the foam and thickness, type the size: a listed sheet or cushion is priced from the list, any other size is cut to size.',
-    blank: () => ({room: '', item: '', part: '', foam: '', T: '', L: '', W: '', qty: 1, remarks: ''}),
-    cols: [
-      {g: 'Where', k: 'room', label: 'Room', t: 'room'},
-      {g: 'What', k: 'item', label: 'Item', t: 'text', ph: 'e.g. 3-seater sofa', w: 150},
-      {g: 'What', k: 'part', label: 'Part', t: 'sel', opts: ['Seat', 'Back', 'Arms', 'Cushion', 'Headboard', 'Mattress', 'Other'], blank: 'Pick', w: 120},
-      {g: 'Foam', k: 'foam', label: 'Foam', t: 'sel', opts: () => SWF_RNG.map(g => ({g, items: SWF.filter(m => m.rng === g).map(m => m.n)})), blank: 'Pick', w: 200},
-      {g: 'Foam', k: 'T', label: 'Thickness', t: 'sel', opts: r => { const m = swFoam(r), tc = m ? m.tcm : {0.5: 1.4, 1: 2.7, 1.5: 4.1, 2: 5.5, 3: 8.2, 4: 11, 5: 13.7}; return Object.keys(tc).map(Number).sort((a, b) => a - b).map(t => [String(t), `${inchTxt(t)} · ${tc[t]} cm`]); }, blank: 'Pick', w: 130},
-      {g: 'Size', k: 'L', label: 'Length', sub: '″', t: 'num', key: 1},
-      {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
-      {g: 'Size', k: 'qty', label: 'Pieces', t: 'num', w: 60},
-      {g: 'Result', k: 'kind', label: 'Comes as', out: c => c.kind ? (c.kind === 'cut' ? 'Cut to size<span class="tag" style="color:var(--warn)">2 weeks</span>' : `Listed ${c.kind}<span class="tag" style="color:var(--good)">list size</span>`) : ''},
-      {g: 'Result', k: 'each', label: 'MRP each', out: c => c.each ? rs(c.each) : ''},
-      {g: 'Result', k: 'mrp', label: 'MRP total', out: c => c.mrp ? rs(c.mrp) : ''},
-      {g: 'Result', k: 'how', how: 1},
-      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
-    ],
+  // Upholstery material (Purvi, 6 Oct night): one list, no tabs. Someone buys material from us to get furniture made elsewhere,
+  // so there is no room or item: each line starts with "What is it?" and then shows only that product's boxes (layout "B").
+  uph: {name: 'Upholstery', hasName: 'Upholstery material', one: 'line', many: 'lines', add: '+ Add material', form: true,
+    note: 'Material a customer takes to get furniture made elsewhere: fabric, foam, fibre, pins, solution, astar. One line each.',
+    hint: 'Tap a line to change it on the right.',
+    filled: r => !!r.p,
+    blank: () => ({p: '', sup: '', key: '', fabric: '', rate: '', m: '', foam: '', T: '', L: '', W: '', qty: '', th: '', kg: '', size: '', n: '', l: '', type: '', remarks: ''}),
+    cols: [],
     calc(r){
-      const L = nv(r.L), W = nv(r.W), m = swFoam(r), t = parseFloat(r.T) || 0, q = Math.max(1, parseInt(r.qty, 10) || 1), c = {ok: !!(L && W), warn: [], kpis: []};
-      if (!m) c.warn.push(r.foam ? `"${r.foam}" is not on Sleepwell's list: pick the foam again` : 'Foam not picked yet');
-      if (!t) c.warn.push('Thickness not picked yet');
-      if (!c.ok || !m || !t) return c;
-      const p = swFPrice(m, L, W, t);
-      if (!p) { c.warn.push(`${m.n} does not come ${inchTxt(t)} thick`); return c; }
-      c.kind = p.kind; c.each = p.v; c.mrp = p.v * q;
-      if (p.kind === 'cut') c.warn.push('Cut to size: Sleepwell takes about 2 weeks');
-      c.kpis = [{l: 'Foam', v: `<span style="font-size:19px">${esc(m.n)}</span>`, u: m.rng}, {l: 'Each piece', v: `${fmt(L)} × ${fmt(W)} × ${inchTxt(t)}`, u: p.kind === 'cut' ? 'cut to size' : 'listed ' + p.kind},
-        {l: q > 1 ? 'MRP total' : 'MRP', v: rs(c.mrp), u: q > 1 ? `${q} × ${rs(p.v)} · incl. GST` : 'incl. GST', m: 1}];
-      c.how = `${p.how} = <b>${rs(p.v)}</b>${q > 1 ? ` each × ${q} pieces = <b>${rs(c.mrp)}</b>` : ''}.`;
+      const U = UPH[r.p], c = {ok: false, warn: [], kpis: []};
+      if (!U) { c.warn.push('Pick what it is'); return c; }
+      const H = prices.hsn || {};
+      if (r.p === 'Fabric') {
+        const x = r.key ? catRow(r) : null, m = nv(r.m);
+        if (!String(r.fabric || '').trim()) c.warn.push('Fabric not picked yet');
+        else if (r.sup !== 'Other' && !x && CAT.state === 'ready') c.warn.push(`Pick the fabric from ${SUPS[r.sup] || 'the company'}'s list to get its price, or choose Other`);
+        if (!m) { c.warn.push('How many metres?'); return c; }
+        const each = x ? mrpOf2(x.r, x.g || 5) : nv(r.rate) || null;
+        Object.assign(c, {ok: true, qty: m, u: 'm', each, tot: each ? Math.round(each * m) : null, what: x ? `${SUPS[r.sup]} · ${x.n}` : String(r.fabric || 'Fabric').trim(),
+          q: {product: 'Upholstery fabric', hsn: x ? x.h || '' : H.uphFabric || '', unit: 'MTR', rate: x ? x.r : (nv(r.rate) || null), gst: x ? x.g || 5 : 5, incl: !x, cost: x ? (CAT.cost.get(r.sup + '|' + r.key) ?? null) : null}});
+        if (!each) c.warn.push(r.sup === 'Other' ? 'Type our rate per metre' : 'No price yet');
+      } else if (r.p === 'Foam') {
+        const m = swFoam(r), t = parseFloat(r.T) || 0, L = nv(r.L), W = nv(r.W), q = Math.max(1, parseInt(r.qty, 10) || 1);
+        if (!m) c.warn.push('Foam not picked yet'); if (!t) c.warn.push('Thickness not picked yet'); if (!(L && W)) c.warn.push('Type the length and width');
+        if (!m || !t || !L || !W) return c;
+        const p = swFPrice(m, L, W, t); if (!p) { c.warn.push(`${m.n} does not come ${inchTxt(t)} thick`); return c; }
+        if (p.kind === 'cut') c.warn.push('Cut to size: Sleepwell takes about 2 weeks');
+        Object.assign(c, {ok: true, qty: q, u: q > 1 ? 'pieces' : 'piece', each: p.v, tot: p.v * q, what: `Sleepwell ${m.n} · ${fmt(L)} × ${fmt(W)} × ${inchTxt(t)}${p.kind === 'cut' ? ' (cut to size)' : ''}`, how: p.how,
+          q: {product: 'Foam', hsn: H.foam || '9404', unit: 'PCS', rate: p.v, gst: 18, incl: true, cost: null}});
+      } else {
+        const k = U.opts ? (U.opts.find(o => o[0] === r[U.v]) || [])[1] : U.key, n = nv(r[U.q]), name = UPH_RATES.find(x => x[0] === k);
+        if (!k) { c.warn.push(`Pick the ${U.vl.toLowerCase()}`); return c; }
+        if (!n) { c.warn.push(`How many ${U.ql.toLowerCase()}?`); return c; }
+        const rate = (prices.uph || {})[k], g = has((prices.uphGst || {})[k]) ? +prices.uphGst[k] : 18, incl = gstIncl('uph');
+        const each = has(rate) ? (incl ? Math.round(rate) : mrpOf2(rate, g)) : null;
+        Object.assign(c, {ok: true, qty: n, u: n === 1 ? U.u : U.us, each, tot: each == null ? null : Math.round(each * n), what: name[1],
+          q: {product: r.p, hsn: H['uph-' + k] || '', unit: U.qu, rate: has(rate) ? rate : null, gst: g, incl, cost: has((costs.uph || {})[k]) ? costs.uph[k] : null}});
+        if (each == null) c.warn.push(`No rate yet for ${name[1]}: set it on the Prices page`);
+      }
+      c.kpis = [{l: 'To order', v: `${fmt(c.qty)} <span style="font-size:15px">${esc(c.u)}</span>`, u: c.what},
+        {l: 'Rate', v: c.each ? rs(c.each) : '—', u: c.each ? 'each ' + (c.u === 'm' ? 'metre' : c.u.replace(/s$/, '')) + ', incl. GST' : 'not set'},
+        {l: 'Amount', v: c.tot ? rs(c.tot) : '—', u: c.tot ? `${fmt(c.qty)} × ${rs(c.each)}` : 'no price yet', m: 1}];
       return c;
     },
-    sum: (rows, cs) => { const n = rows.reduce((a, r, i) => a + (cs[i].mrp ? Math.max(1, parseInt(r.qty, 10) || 1) : 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0); return m ? `${n} piece${n > 1 ? 's' : ''} · MRP ${rs(m)}` : ''; },
-    rules: ['Sizes in inches. Thickness is Sleepwell\'s code (½″ to 5″), shown with its real thickness in cm.',
-      'A size on Sleepwell\'s list (a sheet like 72 × 35, or a cushion like 18 × 18 × 3) is priced from the list.',
-      'Any other size is cut to size by Sleepwell (about 2 weeks): Primo Cool, Satin, Velvet, Memory and Resitec Neo at the list\'s rate per sq m per mm; Prosofa pro rata of the 78 × 72 sheet + 5%.',
-      'Comfort layers (Satin, Velvet, Memory) come as sheets only. Prices are Sleepwell\'s MRP (North Zone, from 21 Sep 2026), including GST.'],
+    sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.tot || 0), 0); return m ? `MRP ${rs(m)}` : ''; },
+    rules: ['Start every line with "What is it?". Only that product\'s boxes show.', 'Fabric: pick the company and search its list for the price (MRP = list price + GST). Choose Other to type a fabric and our own rate per metre.',
+      'Foam: Sleepwell\'s list. A listed sheet or cushion size is priced from the list; any other size is cut to size (about 2 weeks).',
+      'Fibre pad, loose fibre, pins, SR solution and astar: our own rates from the Prices page (Upholstery material).', 'Everything here goes on the quotation, in the Upholstery material section.'],
   },
 };
-// Products under one client tab (6 Oct): Upholstery = Fabric | Foam, Mattress = Mattresses | Pillows and more. The first key is the tab's view.
-const MP_ORDER = ['wallpaper', 'fabric', 'foam', 'flooring', 'mattress', 'hcp'];
-const MP_TABS = [['wallpaper'], ['fabric', 'Upholstery', ['fabric', 'foam']], ['flooring'], ['mattress', 'Mattress', ['mattress', 'hcp']]];
+// Products under one client tab (6 Oct): Mattress = Mattresses | Pillows and more. The first key is the tab's view.
+// Upholstery is one list ('uph'); the Fabric and Foam sheets it replaced are read into it by uphFromOld().
+const MP_ORDER = ['wallpaper', 'uph', 'flooring', 'mattress', 'hcp'];
+const MP_TABS = [['wallpaper'], ['uph'], ['flooring'], ['mattress', 'Mattress', ['mattress', 'hcp']]];
+// ---- Upholstery material sheet: a summary table, and a two-step form in the side panel (Purvi picked "B", 6 Oct night)
+// Products with our own rates: their variant (v / opts → rate key) and quantity field (q). Rates live in prices.uph / costs.uph.
+const UPH = {
+  'Fabric': {d: 'by the metre', c: '#2A5E8C'},
+  'Foam': {d: 'Sleepwell, by size', c: '#B8860B'},
+  'Fibre pad': {d: '1″ or ½″, by the metre', c: '#6B8E5A', v: 'th', vl: 'Thickness', opts: [['1″', 'fp1'], ['½″', 'fp05']], q: 'm', ql: 'Metres', u: 'm', us: 'm', qu: 'MTR'},
+  'Loose fibre': {d: 'by the kg', c: '#8A6FB0', key: 'lf', q: 'kg', ql: 'Kg', u: 'kg', us: 'kg', qu: 'KG'},
+  'Pin packet': {d: '23-8 or 80-10', c: '#5F6964', v: 'size', vl: 'Size', opts: [['23-8', 'pin238'], ['80-10', 'pin8010']], q: 'n', ql: 'Packets', u: 'packet', us: 'packets', qu: 'PKT'},
+  'SR solution 707': {d: 'adhesive, by the litre', c: '#B25E00', key: 'sr', q: 'l', ql: 'Litres', u: 'litre', us: 'litres', qu: 'LTR'},
+  'Astar': {d: 'thick or thin, by the metre', c: '#3F7F86', v: 'type', vl: 'Type', opts: [['Thick', 'astk'], ['Thin', 'astn']], q: 'm', ql: 'Metres', u: 'm', us: 'm', qu: 'MTR'},
+};
+const UPH_RATES = [['fp1', 'Fibre pad 1″', 'per metre'], ['fp05', 'Fibre pad ½″', 'per metre'], ['lf', 'Loose fibre', 'per kg'], ['pin238', 'Pin packet 23-8', 'per packet'],
+  ['pin8010', 'Pin packet 80-10', 'per packet'], ['sr', 'SR solution 707', 'per litre'], ['astk', 'Astar thick', 'per metre'], ['astn', 'Astar thin', 'per metre']];
+const uphDot = p => `<span class="udot" style="background:${UPH[p] ? UPH[p].c : 'var(--line)'}"></span>`;
+// Lines made on the old Fabric and Foam sheets (3–6 Oct) move into this list once, keeping their room and item in the remarks.
+function uphFromOld(){
+  const M = state.more, out = [];
+  (Array.isArray(M.fabric) ? M.fabric : []).forEach(r => { if (!(nv(r.mper) > 0)) return;
+    out.push(Object.assign(MP.uph.blank(), {p: 'Fabric', sup: 'Other', fabric: [r.sup, r.fabric].filter(Boolean).join(' · '), m: String(ceilQ(nv(r.mper) * Math.max(1, parseInt(r.qty, 10) || 1))), remarks: [r.room, r.item, r.use, r.remarks].filter(Boolean).join(' · ')})); });
+  (Array.isArray(M.foam) ? M.foam : []).forEach(r => { if (!(nv(r.L) && nv(r.W))) return;
+    out.push(Object.assign(MP.uph.blank(), {p: 'Foam', foam: r.foam, T: r.T, L: r.L, W: r.W, qty: r.qty, remarks: [r.room, r.item, r.part, r.remarks].filter(Boolean).join(' · ')})); });
+  if (Array.isArray(M.fabric) || Array.isArray(M.foam)) { M.uph = (Array.isArray(M.uph) ? M.uph : []).concat(out); delete M.fabric; delete M.foam; }
+}
+function uphRowHTML(r){
+  const i = state.more.uph.indexOf(r) + 1, c = MP.uph.calc(r);
+  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx">${i}</span></td>
+    <td>${r.p ? `<span class="uprod">${uphDot(r.p)}${esc(r.p)}</span>` : '<span class="chip warn">Pick what it is →</span>'}</td>
+    <td class="uwhat">${c.what ? esc(c.what) : '<span class="none">—</span>'}</td>
+    <td class="out">${c.ok ? `${fmt(c.qty)}<span class="u"> ${esc(c.u)}</span>` : '<span class="none">—</span>'}</td>
+    <td class="out">${c.each ? rs(c.each) : '<span class="none">—</span>'}</td>
+    <td class="out">${c.tot ? rs(c.tot) : c.ok ? '<span class="chip warn">No price yet</span>' : '<span class="none">—</span>'}</td>
+    <td class="acts"><button class="ico" data-pa="dup" title="Copy this line">⧉</button><button class="ico" data-pa="del" title="Delete this line">✕</button></td></tr>`;
+}
+const uphUpdateRow = r => { const tr = $('#ptb').querySelector(`tr[data-id="${r.id}"]`); if (tr) { tr.outerHTML = uphRowHTML(r); mpMarkSel('uph'); } };
+function uphField(label, html){ return `<label class="uf"><span>${label}</span>${html}</label>`; }
+const uIn = (f, r, ph, num) => `<input data-u="${f}" value="${esc(r[f])}" placeholder="${esc(ph || '')}"${num ? ' inputmode="decimal" class="n"' : ''} autocomplete="off">`;
+const uSeg = (f, list, val) => `<span class="useg">${list.map(o => `<button data-uvar="${f}" data-val="${esc(o)}" aria-pressed="${o === val}">${esc(o)}</button>`).join('')}</span>`;
+function uphFormHTML(r){
+  if (r.p === 'Fabric') {
+    const own = r.sup === 'Other';
+    return uphField('Company', `<select data-u="sup">${selOpts([...Object.entries(SUPS).map(([k, n]) => [k, n]), ['Other', 'Other (not on a list)']], r.sup, 'Pick')}</select>`)
+      + uphField('Fabric', `${uIn('fabric', r, own ? 'Name or code' : r.sup ? 'Type a collection, serial or SKU' : 'Pick the company first')}<div class="usugg" id="usugg"></div>`)
+      + (own ? uphField('Our rate per metre, ₹ incl. GST', uIn('rate', r, '₹', 1)) : '') + uphField('Metres', uIn('m', r, '0', 1));
+  }
+  if (r.p === 'Foam') {
+    const m = swFoam(r), tc = m ? m.tcm : {};
+    return uphField('Foam', `<select data-u="foam">${selOpts(SWF_RNG.map(g => ({g, items: SWF.filter(x => x.rng === g).map(x => x.n)})), r.foam, 'Pick')}</select>`)
+      + uphField('Thickness', `<select data-u="T"${m ? '' : ' disabled'}>${selOpts(Object.keys(tc).map(Number).sort((a, b) => a - b).map(t => [String(t), `${inchTxt(t)} · ${tc[t]} cm`]), r.T, m ? 'Pick' : 'Pick the foam first')}</select>`)
+      + `<div class="ufrow">${uphField('Length ″', uIn('L', r, '0', 1))}${uphField('Width ″', uIn('W', r, '0', 1))}${uphField('Pieces', uIn('qty', r, '1', 1))}</div>`;
+  }
+  const U = UPH[r.p]; if (!U) return '';
+  return (U.opts ? uphField(U.vl, uSeg(U.v, U.opts.map(o => o[0]), r[U.v])) : '') + uphField(U.ql, uIn(U.q, r, '0', 1));
+}
+function uphResHTML(r){
+  const c = MP.uph.calc(r);
+  return `${c.kpis.length ? `<div class="kpis">${c.kpis.map(x => `<div class="kpi${x.m ? ' m' : ''}"><small>${esc(x.l)}</small><b class="num">${x.v}</b><small>${esc(x.u || '')}</small></div>`).join('')}</div>` : ''}
+    <div class="chips">${c.warn.map(w => `<span class="chip warn">${esc(w)}</span>`).join('') || (r.p ? '<span class="chip good">Ready for the quotation</span>' : '')}</div>
+    ${c.how ? `<div class="how"><b>How it was worked out</b>${c.how.replace(/<b>/g, '<b class="n">')} = <b class="n">${rs(c.each)}</b> each.</div>` : ''}`;
+}
+function uphSide(){
+  const rows = state.more.uph, r = rows[state.msel.uph] || rows[0], el = $('#pside'); if (!r) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="side-h"><h2>Line ${rows.indexOf(r) + 1}</h2><span class="sub">${r.p ? esc(r.p) : 'Upholstery material'}</span></div>
+    <div class="ustep"><i>1</i>What is it?</div>
+    <div class="uchoose">${Object.keys(UPH).map(p => `<button data-uprod="${esc(p)}" aria-pressed="${r.p === p}"><b>${uphDot(p)}${esc(p)}</b><small>${esc(UPH[p].d)}</small></button>`).join('')}</div>
+    ${r.p ? `<div class="ustep"><i>2</i>${esc(r.p)}</div><div class="uform">${uphFormHTML(r)}${uphField('Remarks', uIn('remarks', r, 'Anything to note'))}</div>` : ''}
+    <div id="uph-res">${r.p ? uphResHTML(r) : ''}</div>`;
+}
+function uphSugg(r){
+  const box = $('#usugg'); if (!box) return;
+  const q = String(r.fabric || '').trim();
+  if (r.sup === 'Other' || !r.sup || r.key || q.length < 2) { box.innerHTML = ''; return; }
+  if (CAT.state !== 'ready') { box.innerHTML = '<div class="msg">Loading the fabric lists…</div>'; return; }
+  const L = findIn(r.sup, q).slice(0, 8);
+  box.innerHTML = L.length ? L.map((x, i) => `<button data-usug="${i}"><span><b>${esc(x.n)}</b></span><span class="num">${has(x.r) ? rs(mrpOf2(x.r, x.g || 5)) + '/m' : 'no price'}</span></button>`).join('')
+    : `<div class="msg">No fabric matches “${esc(q)}” at ${esc(SUPS[r.sup])}.</div>`;
+  box._items = L;
+}
+function uphChanged(r, side){ uphUpdateRow(r); mpTotal('uph'); if (side) uphSide(); else { const x = $('#uph-res'); if (x) x.innerHTML = uphResHTML(r); } save(); }
+const uphCur = () => state.more.uph[state.msel.uph];
+$('#pside').addEventListener('click', e => {
+  if (mpCur !== 'uph') return;
+  const r = uphCur(); if (!r) return;
+  const p = e.target.closest('[data-uprod]'), v = e.target.closest('[data-uvar]'), s = e.target.closest('[data-usug]');
+  if (p) { if (p.dataset.uprod === r.p) return;
+    Object.assign(r, MP.uph.blank(), {p: p.dataset.uprod, remarks: r.remarks});   // a new product starts clean: no stale metres from the last one
+    const U = UPH[r.p]; if (U.opts) r[U.v] = U.opts[0][0];
+    uphChanged(r, true); const f = $('#pside .uform input, #pside .uform select'); if (f && matchMedia('(min-width: 1150px)').matches) f.focus(); return; }
+  if (v) { r[v.dataset.uvar] = v.dataset.val; uphChanged(r, true); return; }
+  if (s) { const x = ($('#usugg')._items || [])[+s.dataset.usug]; if (!x) return; r.sup = x.sup; r.key = x.k; r.fabric = x.n; uphChanged(r, true); return; }
+});
+$('#pside').addEventListener('input', e => {
+  if (mpCur !== 'uph') return;
+  const f = e.target.dataset.u, r = uphCur(); if (!f || !r) return;
+  r[f] = e.target.value;
+  if (f === 'fabric') { r.key = ''; uphSugg(r); }
+  if (f === 'sup') { r.key = ''; uphChanged(r, true); return; }
+  if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; uphChanged(r, true); return; }
+  uphChanged(r, false);
+});
+
 const mpTabOf = k => MP_TABS.find(t => (t[2] || [t[0]]).includes(k)) || [k];
 function ensureMore(fresh){   // fresh = the sheet was just loaded: give every row a new id (ids from other devices can clash)
   if (!state.more || typeof state.more !== 'object') state.more = {};
+  uphFromOld();
   for (const k of MP_ORDER) { if (!Array.isArray(state.more[k])) state.more[k] = []; state.more[k].forEach(r => { const b = MP[k].blank(); for (const f in b) if (r[f] === undefined) r[f] = b[f]; if (fresh || r.id == null) r.id = uid++; }); }
   state.more.wallpaper.forEach(r => wpRoll(r.roll));
   if (!state.msel || typeof state.msel !== 'object') state.msel = {};
@@ -3998,9 +4119,16 @@ function mpUpdateRow(k, r){
   return c;
 }
 function renderProduct(k){
-  ensureMore(); mpCur = k; const P = MP[k], rows = state.more[k];
+  ensureMore(); mpCur = k; const P = MP[k], rows = state.more[k]; $('#p-table').classList.remove('uwide');
   if (!rows.length) rows.push(P.blank()), rows[0].id = uid++;
   const sel = Math.min(state.msel[k] || 0, rows.length - 1); state.msel[k] = sel;
+  if (P.form) {   // summary table + side form (Upholstery)
+    $('#p-head').innerHTML = `<tr><th class="first">#</th><th>What it is</th><th>Details</th><th class="r">To order</th><th class="r">Rate</th><th class="r">Amount</th><th></th></tr>`;
+    $('#ptb').innerHTML = rows.map(uphRowHTML).join(''); $('#p-seg').hidden = true; $('#p-table').classList.add('uwide');
+    $('#p-note').textContent = P.note; $('#p-add').textContent = P.add; $('#p-hint').textContent = P.hint;
+    $('#p-rules-h').textContent = 'How the upholstery sheet works'; $('#p-rules').innerHTML = P.rules.map(x => `<li>${esc(x)}</li>`).join('');
+    mpTotal(k); mpMarkSel(k); renderPSide(k); return;
+  }
   const groups = []; P.cols.forEach(c => { const g = groups[groups.length - 1]; if (g && g.g === c.g) g.n++; else groups.push({g: c.g, n: 1, res: c.g === 'Result'}); });
   $('#p-head').innerHTML = `<tr>${groups.map((g, i) => `<th class="grp${i ? '' : ' first'}${g.res ? ' res' : ''}" colspan="${g.n}">${esc(g.g)}</th>`).join('')}<th class="grp"></th></tr>
     <tr>${P.cols.map((c, i) => `<th class="${i ? '' : 'first'}${c.out || c.t === 'auto' ? ' r' : ''}${c.how ? ' howh' : ''}">${c.how ? 'How it was worked out' : esc(c.label)}${c.sub ? ` <small>${esc(c.sub)}</small>` : ''}</th>`).join('')}<th></th></tr>`;
@@ -4019,6 +4147,7 @@ function mpTotal(k){
 }
 function mpMarkSel(k){ const r = state.more[k][state.msel[k]]; $('#ptb').querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('sel', !!r && +tr.dataset.id === r.id)); }
 function renderPSide(k){
+  if (MP[k].form) { uphSide(); return; }
   const P = MP[k], rows = state.more[k], r = rows[state.msel[k]] || rows[0], el = $('#pside'); if (!r) { el.innerHTML = ''; return; }
   const i = rows.indexOf(r), c = P.calc(r);
   const title = r.room || r.wall || r.item || r.bed ? [r.room, r.wall || r.item || r.bed].filter(Boolean).join(' · ') : `${P.one[0].toUpperCase() + P.one.slice(1)} ${i + 1}`;
@@ -4080,16 +4209,16 @@ ptb.addEventListener('click', e => {
 // "+ Add" keeps the room's company and type from the row above, like Curtains and Blinds.
 $('#p-add').onclick = () => {
   const k = mpCur, rows = state.more[k], last = rows[rows.length - 1], r = MP[k].blank(); r.id = uid++;
-  // Foam also keeps the room and item: the next row is usually the same sofa's back or arms.
-  if (last) for (const f of ['sup', 'kind', 'roll', 'type', 'lay', 'use', 'who', 'T', 'by', 'foam', ...(k === 'foam' ? ['room', 'item'] : [])]) if (f in r && has(last[f])) r[f] = last[f];
+  if (last && !MP[k].form) for (const f of ['sup', 'kind', 'roll', 'type', 'lay', 'use', 'who', 'T', 'by']) if (f in r && has(last[f])) r[f] = last[f];   // Upholstery: a new line starts empty, "What is it?" first
   rows.push(r); state.msel[k] = rows.length - 1; renderProduct(k); save();
+  if (MP[k].form && !matchMedia('(min-width: 1150px)').matches) $('#pside').scrollIntoView({behavior: 'smooth', block: 'start'});
   const inp = $('#ptb').querySelector(`tr[data-id="${r.id}"] [data-p=room]`); if (inp) inp.focus();
 };
 
 // ================= tabs, copy, start
 const VIEWS = {'dash': 'dash', 'people': 'people', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote',
-  'wallpaper': 'product', 'fabric': 'product', 'flooring': 'product', 'mattress': 'product', 'foam': 'product', 'hcp': 'product'};   // the four product sheets share one section (3 Oct)
-const OLD_VIEW = {measure: 'c-measure', blinds: 'b-measure', prices: 'c-prices', quote: 'quote'};   // tab names before 30 Sep
+  'wallpaper': 'product', 'flooring': 'product', 'mattress': 'product', 'uph': 'product', 'hcp': 'product'};   // the four product sheets share one section (3 Oct)
+const OLD_VIEW = {measure: 'c-measure', blinds: 'b-measure', prices: 'c-prices', quote: 'quote', fabric: 'uph', foam: 'uph'};   // Fabric and Foam became Upholstery (6 Oct)   // tab names before 30 Sep
 let current = 'c-measure', lastMain = 'c';
 function go(v){
   v = OLD_VIEW[v] || v; if (!VIEWS[v] || v === 'none') v = 'c-measure';
@@ -4110,7 +4239,7 @@ function go(v){
   $('#subtabs').hidden = !prices;
   $('#sub-measure').setAttribute('aria-selected', v === 'c-prices' ? 'true' : 'false');
   $('#sub-prices').setAttribute('aria-selected', v === 'b-prices' ? 'true' : 'false');
-  $('#subnote').textContent = v === 'b-prices' ? 'Blinds price lists, motors and remotes, installation.' : 'Stitching, linings, tracks, motor kits and remotes, installation.';
+  $('#subnote').textContent = v === 'b-prices' ? 'Blinds price lists, motors and remotes, installation.' : 'Stitching, linings, tracks, motor kits and remotes, installation, upholstery material.';
   if (v === 'quote') renderQuote();
   if (v === 'clients') renderClients();
   if (v === 'client') renderClientPage();
@@ -4171,4 +4300,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-190626 -->
+<!-- build 20261006-193259 -->
