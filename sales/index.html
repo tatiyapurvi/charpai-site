@@ -2192,7 +2192,7 @@ function qSections(){
     const c = MP.mattress.calc(r); if (!c.ok) return;
     const m = swMat(r), q = Math.max(1, parseInt(r.qty, 10) || 1), size = `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″${c.std ? '' : ' (custom size)'}`;
     add('mattress', {area: [r.room, r.bed].filter(Boolean).join(' · '), product: 'Mattress', what: m && c.each ? `Sleepwell ${m.n} ${inchTxt(parseFloat(r.T))} · ${size}` : [r.sup, r.model, r.T].filter(Boolean).join(' ') + ' · ' + size,
-      hsn: H.mattress || '9404', qty: q, unit: 'PCS', rate: c.each || null, gst: 18, cost: null, incl: true, fix: 'mpick'});
+      hsn: H.mattress || '9404', qty: q, unit: 'PCS', rate: c.each || null, gst: 18, cost: c.cost ?? null, incl: true, fix: 'mpick'});
   });
   const hc = new Map();
   (state.more.hcp || []).forEach(r => { const x = swHcp(r); if (!x) return; const g = hc.get(r.item) || {x, rooms: new Set(), q: 0}; g.rooms.add(r.room || '—'); g.q += Math.max(1, parseInt(r.qty, 10) || 1); hc.set(r.item, g); });
@@ -2593,6 +2593,17 @@ function uphSec(){
     <div class="q-scroll"><table class="pr"><thead><tr><th>Material</th><th>Unit</th><th>HSN</th><th>GST %</th>${canSeeCost ? '<th class="pay">We pay</th>' : ''}<th class="chg">We charge${gstIncl('uph') ? ', GST included' : ', before GST'}</th>${canSeeCost ? '<th style="text-align:right">Margin</th>' : ''}</tr></thead>
     <tbody>${rows}</tbody></table></div></div>`;
 }
+// Sleepwell dealer margins (owner only): what we pay = MRP less this %, before GST. Typed here; stored in costs/current.
+function swMarginSec(){
+  if (!canSeeCost) return '';
+  const M = (costs.swm || {}).m || {}, pin = (k, v, lab, w) => `<input class="money pay" inputmode="decimal" data-swm="${esc(k)}" value="${has(v) ? esc(v) : ''}" placeholder="%" style="max-width:${w || 70}px" aria-label="${esc(lab)}"${canEditPrices ? '' : ' disabled'}>`;
+  const rows = SWM_FAMS.map(f => `<tr><td colspan="4" class="hint" style="padding-top:10px"><b>${esc(f)}</b></td></tr>` + SWM.filter(m => m.fam === f).map(m => { const x = M[m.n] || [];
+    return `<tr><td class="st"><b>${esc(m.n)}</b></td><td><select data-swm="${esc(m.n)}|0" aria-label="${esc(m.n)}: base thickness"${canEditPrices ? '' : ' disabled'}>${selOpts(m.th.map(t => [String(t), inchTxt(t)]), has(x[0]) ? String(x[0]) : '', 'Pick')}</select></td>
+      <td>${pin(m.n + '|1', x[1], m.n + ': margin at base thickness')}</td><td>${pin(m.n + '|2', x[2], m.n + ': margin above base thickness')}</td></tr>`; }).join('')).join('');
+  return `<div class="sec" id="sec-swm"><div class="sec-h"><h2>Sleepwell dealer margin · only you see this</h2><p>What we pay = MRP less the dealer margin, before GST. Sleepwell gives one margin up to a range's base thickness and another (usually 5% more) above it. A blank margin means no cost is shown for that range.</p></div>
+    <div class="q-scroll"><table class="pr"><thead><tr><th>Foam (every Sleepwell foam)</th><th></th><th class="pay">Margin %</th><th></th></tr></thead><tbody><tr><td class="st"><b>All foam sheets and cushions</b></td><td></td><td>${pin('foam', (costs.swm || {}).foam, 'Foam dealer margin')}</td><td></td></tr></tbody></table>
+    <table class="pr" style="margin-top:12px"><thead><tr><th>Mattress range</th><th>Base thickness</th><th class="pay">Margin at base %</th><th class="pay">Margin above base %</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
 function hsnSec(list){
   const H = prices.hsn || {};
   return `<div class="sec" id="sec-hsn"><div class="sec-h"><h2>HSN codes</h2><p>Printed in the HSN column of the quotation. Supplier fabrics carry their own HSN from the price lists.</p></div>
@@ -2708,6 +2719,7 @@ function renderPrices(){
       <div class="q-scroll"><table class="pr"><thead><tr><th>Remote</th><th>For motor</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${remRows}</tbody></table></div></div>
     ${installSec()}
     ${uphSec()}
+    ${swMarginSec()}
     ${hsnSec([['lining', 'Linings'], ['stitching', 'Stitching'], ['track', 'Curtain track'], ['kits', 'Motorised track kits'], ['remotes', 'Curtain motor remotes'], ['install', 'Installation'],
       ['mattress', 'Sleepwell mattresses and pillows (9404 if empty)'], ['foam', 'Sleepwell foam (9404 if empty)'], ['uphFabric', 'Upholstery fabric at our own rate']])}`;
 }
@@ -2720,6 +2732,12 @@ function priceInput(e){
   if (t.dataset.p === 'remotes') { if (!prices.remotes) prices.remotes = remoteDefault(); if (!costs.remotes) costs.remotes = {}; }
   if (t.dataset.p === 'install') { if (!prices.install) prices.install = {piece: 200, motor: 1000}; if (!costs.install) costs.install = {}; }
   if (t.dataset.p === 'uph') { if (!prices.uph) prices.uph = {}; if (!costs.uph) costs.uph = {}; }
+  if (t.dataset.swm) {   // Sleepwell dealer margins (owner only)
+    const S = costs.swm = Object.assign({m: {}}, costs.swm || {}); S.m = S.m || {};
+    if (t.dataset.swm === 'foam') S.foam = num(t.value);
+    else { const [n, i] = t.dataset.swm.split('|'), x = S.m[n] = (S.m[n] || ['', null, null]).slice(); x[+i] = +i ? num(t.value) : t.value; }
+    priceChanged(); return;
+  }
   if (t.dataset.p === 'uphGst' && !prices.uphGst) prices.uphGst = {};
   if (t.dataset.p === 'kits') {
     const [m, z] = t.dataset.k.split('|'), bag = t.dataset.side === 'cost' ? (costs.kits = costs.kits || {}) : (prices.kits = prices.kits || kitDefault());
@@ -3701,6 +3719,12 @@ function selOpts(list, val, blank){
   const body = list.map(x => x && x.g ? `<optgroup label="${esc(x.g)}">${x.items.map(y => o(one(y))).join('')}</optgroup>` : o(one(x))).join('');
   return (blank ? `<option value="">${esc(blank)}</option>` : '') + body + (has(val) && !seen.has(String(val)) ? `<option value="${esc(val)}" selected>${esc(val)}</option>` : '');
 }
+// What we pay Sleepwell (Purvi, 6 Oct): MRP less the dealer margin, before GST. Margins are Sleepwell's dealer terms, so they live in
+// costs/current (owner only, typed on the Prices page), never in this page's code: costs.swm = {m: {range: [base thickness, % at base, % above base]}, foam: %}.
+// "Higher thickness margin applies when size exceeds base thickness" (Sleepwell's dealer margin list). Foam: 25% on every price (Purvi).
+const swMarginOf = (m, t) => { const x = ((costs.swm || {}).m || {})[m.n]; if (!x) return null; const v = t > +x[0] ? x[2] : x[1]; return has(v) ? +v : null; };
+const swCost = (mrp, pct, gst = 18) => mrp && pct != null ? Math.round(mrp * (1 - pct / 100) / (1 + gst / 100)) : null;
+const swFoamMargin = () => has((costs.swm || {}).foam) ? +costs.swm.foam : null;
 let swmSort = 'range';   // price menu: by range or cheapest first
 const ceilQ = v => Math.ceil(v * 4 - 1e-9) / 4;
 const nv = v => parseFloat(v) || 0;
@@ -3865,10 +3889,11 @@ const MP = {
       const name = m ? (m.p[L + 'x' + W] ? MT_W[W] || '' : '') : MT_L.includes(L) ? MT_W[W] || '' : '';
       c.std = m ? !!m.p[L + 'x' + W] : !!name; c.label = `${name || (c.std ? '' : 'Custom')} ${fmt(L)} × ${fmt(W)}`.trim(); c.mmL = mmOf(L); c.mmW = mmOf(W);
       if (p) {
-        c.each = p.v; c.mrp = p.v * q; c.as = p.as; c.std = p.std;
+        c.each = p.v; c.mrp = p.v * q; c.as = p.as; c.std = p.std; c.pct = swMarginOf(m, t); c.cost = swCost(p.v, c.pct);
         c.kpis = [{l: 'Size', v: `${fmt(L)} × ${fmt(W)}`, u: p.std ? 'standard size' : 'custom, priced as ' + p.as},
           {l: 'Mattress', v: `<span style="font-size:19px">${esc(m.n)} ${inchTxt(t)}</span>`, u: `${m.war[ti]} years warranty`},
           {l: q > 1 ? 'MRP total' : 'MRP', v: rs(c.mrp), u: q > 1 ? `${q} × ${rs(p.v)} · incl. GST` : 'incl. GST', m: 1}];
+        if (canSeeCost && c.cost != null) c.kpis.push({l: 'We pay each', v: rs(c.cost), u: `${c.pct}% dealer margin · before GST · only you see this`});
         c.how = p.std ? `<b>${fmt(L)} × ${fmt(W)}</b> is on Sleepwell's list: ${esc(m.n)} ${inchTxt(t)} = <b>${rs(p.v)}</b>.`
           : p.pro ? `<b>${fmt(L)} × ${fmt(W)}</b> is bigger than 84 × 72, so Sleepwell charges the 72 × 36 price × your area ÷ (72 × 36) = <b>${rs(p.v)}</b>.`
           : `<b>${fmt(L)} × ${fmt(W)}</b> is not on the list, so Sleepwell charges the next bigger size, <b>${p.as}</b>, in the same thickness = <b>${rs(p.v)}</b>.`;
@@ -3951,7 +3976,7 @@ const MP = {
         const p = swFPrice(m, L, W, t); if (!p) { c.warn.push(`${m.n} does not come ${inchTxt(t)} thick`); return c; }
         if (p.kind === 'cut') c.warn.push('Cut to size: Sleepwell takes about 2 weeks');
         Object.assign(c, {ok: true, qty: q, u: q > 1 ? 'pieces' : 'piece', each: p.v, tot: p.v * q, what: `Sleepwell ${m.n} · ${fmt(L)} × ${fmt(W)} × ${inchTxt(t)}${p.kind === 'cut' ? ' (cut to size)' : ''}`, how: p.how,
-          q: {product: 'Foam', hsn: H.foam || '9404', unit: 'PCS', rate: p.v, gst: 18, incl: true, cost: null}});
+          q: {product: 'Foam', hsn: H.foam || '9404', unit: 'PCS', rate: p.v, gst: 18, incl: true, cost: swCost(p.v, swFoamMargin())}});
       } else {
         const k = U.opts ? (U.opts.find(o => o[0] === r[U.v]) || [])[1] : U.key, n = nv(r[U.q]), name = UPH_RATES.find(x => x[0] === k);
         if (!k) { c.warn.push(`Pick the ${U.vl.toLowerCase()}`); return c; }
@@ -3965,6 +3990,7 @@ const MP = {
       c.kpis = [{l: 'To order', v: `${fmt(c.qty)} <span style="font-size:15px">${esc(c.u)}</span>`, u: c.what},
         {l: 'Rate', v: c.each ? rs(c.each) : '—', u: c.each ? 'each ' + (c.u === 'm' ? 'metre' : c.u.replace(/s$/, '')) + ', incl. GST' : 'not set'},
         {l: 'Amount', v: c.tot ? rs(c.tot) : '—', u: c.tot ? `${fmt(c.qty)} × ${rs(c.each)}` : 'no price yet', m: 1}];
+      if (canSeeCost && c.q.cost != null) c.kpis.push({l: 'We pay each', v: rs(c.q.cost), u: `${r.p === 'Foam' ? swFoamMargin() + '% dealer margin · ' : ''}before GST · only you see this`});
       return c;
     },
     sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.tot || 0), 0); return m ? `MRP ${rs(m)}` : ''; },
@@ -4300,4 +4326,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-193259 -->
+<!-- build 20261006-194021 -->
