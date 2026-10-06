@@ -3736,9 +3736,9 @@ function wpRollSVG(r, c){
 // What the company's list says about the design (Asian Paints: design no., brand, sample book, repeat as written…)
 function wpFacts(r){
   const it = wpItem(r); if (!it) return '';
-  const rep = it.repcm ? `${fmt(it.repcm)} cm (${fmt(Math.round(it.repcm / 2.54 * 4) / 4)}″)` : 'none listed';
+  const rep = it.repcm ? `${fmt(it.repcm)} cm (${fmt(Math.round(it.repcm / 2.54 * 10) / 10)}″)` : 'none listed';
   const row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
-  return `<div class="sec-h" style="padding:8px 14px 0"><h2 style="font-size:17px">From ${esc(r.sup)}'s list</h2></div><dl class="spec wide">
+  return `<div class="sec-h" style="padding:8px 14px 0"><h2 style="font-size:17px">From ${esc(r.sup)}${/s$/.test(r.sup) ? "'" : "'s"} list</h2></div><dl class="spec wide">
     ${row('Design no.', it.pattern)}${row('Code', it.sku)}${row('Brand', it.vendor)}${row('Collection', it.coll)}${row('Sample book', it.book)}
     ${row('Roll', it.wcm && it.rollm ? `${fmt(it.wcm)} cm × ${fmt(it.rollm)} m` : 'not listed')}${row('Repeat', rep)}${row('Match', WP_MATCH[it.match] || (it.repcm ? 'not said' : ''))}
     ${it.drop ? row('Drop', `${fmt(it.drop)} cm (offset)`) : ''}${row('List says', it.reptxt)}${row('HSN', it.hsn)}</dl>`;
@@ -4397,4 +4397,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-195953 -->
+<!-- build 20261006-200255 -->
