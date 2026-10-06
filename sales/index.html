@@ -1807,9 +1807,9 @@ function bRowHTML(b, i){
     ${loading ? `<td colspan="2" class="hint">${esc(loading)}</td>` : priced ? `
     <td><select data-b="sys" style="width:170px"${b.fam ? '' : ' disabled'}>${bOpts(syss.map(x => [x, x]), b.sys, 'Pick a system')}</select></td>
     <td><select data-b="pid" style="width:280px"${b.sys ? '' : ' disabled'}>${bOpts(designs, b.pid, 'Pick the collection')}</select></td>` : `
-    <td class="hint" style="font-size:12.5px">${b.sup === 'MV' ? 'no price list yet' : 'price list not added yet'}</td>
+    <td class="hint" style="font-size:12.5px">price list not added yet</td>
     <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:220px" aria-label="Series"></td>`}
-    <td><input data-b="shade" value="${esc(b.shade)}"${list ? ` list="${list}"` : ''} placeholder="Shade no." style="width:96px" aria-label="Shade number"></td>
+    <td><input data-b="shade" value="${esc(b.shade)}"${list ? ` list="${list}"` : ''} placeholder="Shade no." title="Type the shade number: the collection fills in" style="width:96px" aria-label="Shade number"></td>
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
     <td><input data-b="qty" class="n" inputmode="numeric" value="${esc(b.qty)}" style="width:52px" aria-label="How many"></td>
@@ -1836,11 +1836,46 @@ function renderBlinds(){
   state.blinds.forEach(bUpdateRow); bMarkSel(); bTotal(); renderBSide();
   if (!$('#b-orders').hidden) renderOrders();
   const ix = BL.info.SAN, mv = BL.info.MV;
-  $('#bnote').textContent = (ix ? `D'Decor Sansaar: ${ix.count.toLocaleString('en-IN')} prices from ${ix.source}. ` : '') + (mv ? `Marvel: ${mv.shades.toLocaleString('en-IN')} shades from its order forms, no prices yet. ` : '') + (BL.info.FC ? `D'Decor FabriCare: ${BL.info.FC.count.toLocaleString('en-IN')} prices from D'Decor's Oct 2026 lists. ` : '') + 'Asian Paints: price list not added yet. Rates are MRP per sq ft, GST included.';
+  const nn = n => n.toLocaleString('en-IN');   // one line per company that has a list; the shade box picks the collection (6 Oct)
+  $('#bnote').textContent = [ix && `D'Decor Sansaar: ${nn(ix.count)} prices`, BL.info.FC && `D'Decor FabriCare: ${nn(BL.info.FC.count)} prices`, BL.info.AP && BL.info.AP.count && `Asian Paints: ${nn(BL.info.AP.count)} prices`,
+    mv && (mv.count ? `Marvel: ${nn(mv.count)} prices and ${nn(mv.shades)} shades` : `Marvel: ${nn(mv.shades)} shades, no prices`)].filter(Boolean).join(' · ') + '. Rates are MRP per sq ft, GST included. Type a shade number and the collection fills in.';
 }
 function bTotal(){ const t = state.blinds.reduce((a, b) => { const c = bCalc(b); return a + (c.ok && c.p ? c.amt + (c.addonAmt || 0) : 0); }, 0); $('#btotal').textContent = t ? 'Blinds total ' + rs(t) + ' incl. GST' : ''; }
 function bMarkSel(){ const b = state.blinds[state.bsel]; $('#btb').querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('sel', !!b && +tr.dataset.id === b.id)); }
 function bSelect(tr){ const i = state.blinds.findIndex(x => x.id === +tr.dataset.id); if (i < 0 || i === state.bsel) return; state.bsel = i; bMarkSel(); renderBSide(); save(); }
+// Typing a shade number picks the collection (Purvi, 6 Oct). It needs the company and type (and system) chosen first.
+// D'Decor FabriCare: the design starts with its number ("47 Blue Grey"). D'Decor Sansaar: designs are number ranges ("10240-245" = 10240 to 10245)
+// or names. Marvel: the shade list gives the series ("Adonia - B/O"), matched to its price collection; B/O, T/L, V/S, D/O, S/S and "5%" pick the
+// right openness when a series is priced more than once (Terra 5%, Rosetta blackout / translucent). An exact match only: a number that is in two
+// collections is not guessed (a message says which). A collection picked this way is cleared again if the shade is changed to one that matches nothing.
+const nrm = x => String(x == null ? '' : x).toLowerCase().replace(/[^a-z0-9]/g, '');
+const sameName = (a, b) => { const x = nrm(a), y = nrm(b); return !!x && !!y && (x === y || (Math.min(x.length, y.length) >= 5 && (x.startsWith(y) || y.startsWith(x)))); };
+const SHADE_OPEN = {'B/O': /^blackout/i, 'T/L': /^translucent/i, 'V/S': /^visible/i, 'D/O': /^dimout/i, 'S/S': /^\d+%/};
+function shadeRange(txt){ const m = /^(\d+)-(\d+)$/.exec(String(txt).trim()); if (!m) return null; const lo = +m[1], hi = +(m[1].slice(0, m[1].length - m[2].length) + m[2]); return hi >= lo ? [lo, hi] : null; }
+function shadeRows(b){
+  const typed = String(b.shade || '').trim(); if (!typed || !b.fam) return [];
+  const rows = BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam), n = /^\d+$/.test(typed) ? +typed : null, tn = nrm(typed);
+  const t = blindType(b.sup, b.fam), list = t && t.shades && (BL.shades[b.sup] || {})[t.shades], hit = list && list.find(x => x[0] === typed);
+  if (hit) {
+    const m = /^(.+?)(?:\s+(\d+%))?(?:\s+-\s+([A-Z]\/[A-Z]))?$/.exec(hit[1].trim()) || [0, hit[1], '', ''];
+    let c = rows.filter(r => String(r.coll).split(',').some(x => sameName(x, m[1])));
+    const keep = f => { const k = c.filter(f); if (k.length) c = k; };
+    if (m[2]) keep(r => String(r.extra).startsWith(m[2])); else if (m[3] && SHADE_OPEN[m[3]]) keep(r => SHADE_OPEN[m[3]].test(String(r.extra)));
+    return c;
+  }
+  return rows.filter(r => { const d = String(r.design || ''), rg = shadeRange(d), lead = /^\s*(\d+)\b/.exec(d);
+    return (n != null && ((rg && n >= rg[0] && n <= rg[1]) || (lead && +lead[1] === n) || d.trim() === typed)) || nrm(d) === tn || nrm(r.coll) === tn; });
+}
+// Sets b.pid when exactly one collection fits. Returns true when it changed the pick.
+function shadePick(b){
+  const c = shadeRows(b), here = c.filter(r => !b.sys || r.sys === b.sys), pairs = uniq(here.map(r => r.coll + '|' + r.design));
+  if (!c.length) { if (b.pidAuto && b.pid) { b.pid = ''; b.pidAuto = false; return true; } return false; }
+  // The shade is in one system only (FabriCare: the system is the quality, e.g. 47 = Dim Glow): set the system too.
+  if (!here.length || !b.sys) { const one = uniq(c.map(r => r.id)); if (one.length === 1) { const r = c[0]; if (b.sys !== r.sys || b.pid !== r.id) { b.sys = r.sys; b.pid = r.id; b.pidAuto = true; return true; } return false; } }
+  if (pairs.length === 1 && b.sys) { const r = here.find(x => x.sys === b.sys); if (r && b.pid !== r.id) { b.pid = r.id; b.pidAuto = true; return true; } return false; }
+  if (pairs.length > 1 && !here.some(r => r.id === b.pid) && String(b.shade).trim().length >= 3) toast(`Shade ${String(b.shade).trim()} is in ${uniq(here.map(r => r.coll)).slice(0, 4).join(', ')}: pick the collection`);
+  return false;
+}
 const btb = $('#btb');
 btb.addEventListener('input', e => {
   const f = e.target.dataset.b; if (!f) return;
@@ -1848,8 +1883,13 @@ btb.addEventListener('input', e => {
   b[f] = e.target.value;
   if (f === 'sup') { b.fam = b.sys = b.pid = b.addon = ''; }
   if (f === 'fam') { b.sys = b.pid = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; }
-  if (f === 'sys') b.pid = '';
-  if (f === 'shade') { const t = blindType(b.sup, b.fam), l = t && t.shades && (BL.shades[b.sup] || {})[t.shades]; const hit = l && l.find(x => x[0] === b.shade.trim()); if (hit) { b.series = hit[1]; const si = tr.querySelector('[data-b=series]'); if (si) si.value = hit[1]; } }
+  if (f === 'sys') { b.pid = ''; b.pidAuto = false; shadePick(b); }
+  if (f === 'pid') b.pidAuto = false;
+  if (f === 'shade') { const t = blindType(b.sup, b.fam), l = t && t.shades && (BL.shades[b.sup] || {})[t.shades]; const hit = l && l.find(x => x[0] === b.shade.trim()); if (hit) { b.series = hit[1]; const si = tr.querySelector('[data-b=series]'); if (si) si.value = hit[1]; }
+    const sys0 = b.sys;
+    if (shadePick(b)) {
+      if (b.sys !== sys0) { const i = state.blinds.indexOf(b); tr.outerHTML = bRowHTML(b, i); bMarkSel(); const ni = $('#btb').querySelector(`tr[data-id="${b.id}"] [data-b=shade]`); if (ni) { ni.focus(); try { ni.setSelectionRange(ni.value.length, ni.value.length); } catch (_) {} } }   // the system changed: redraw the row
+      else { const ps = tr.querySelector('[data-b=pid]'); if (ps) ps.value = b.pid; } } }
   if (['sup', 'fam', 'sys'].includes(f)) { const i = state.blinds.indexOf(b); tr.outerHTML = bRowHTML(b, i); bMarkSel(); }
   bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save();
 });
@@ -3894,4 +3934,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-174735 -->
+<!-- build 20261006-181125 -->
