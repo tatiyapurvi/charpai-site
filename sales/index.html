@@ -3663,9 +3663,9 @@ function wpSuggest(r){
   const L = WPL[r.sup], dl = $('#wpl-dyn'); if (!L || !dl) return;
   const q = String(r.design || '').split('·')[0].toLowerCase().split(/\s+/).filter(Boolean);
   if (!q.length) { dl.innerHTML = ''; return; }
-  L.idx = L.idx || [...L.items.values()].map(x => [[x.sku, x.name, x.coll, x.vendor, x.colour].join(' ').toLowerCase(), x]);
+  L.idx = L.idx || [...L.items.values()].map(x => [[x.sku, x.name, x.coll, x.vendor, x.colour, x.pattern, x.book].join(' ').toLowerCase(), x]);
   const out = []; for (const [t, x] of L.idx) if (q.every(w => t.includes(w))) { out.push(x); if (out.length >= 40) break; }
-  dl.innerHTML = out.map(x => `<option value="${esc(x.sku + ' · ' + x.name)}">${esc([x.coll, x.vendor, x.colour].filter(Boolean).join(' · '))}</option>`).join('');
+  dl.innerHTML = out.map(x => `<option value="${esc(x.sku + ' · ' + x.name)}">${esc([x.pattern && 'no. ' + x.pattern, x.coll, x.vendor, x.colour].filter(Boolean).join(' · '))}</option>`).join('');
 }
 // Company flooring lists (6 Oct): catalog/fl-<id> + catcost/fl-<id>, priced per sq ft. First: F&F's Divine carpets.
 const FLL = {}, FLC = new Map();
@@ -3682,7 +3682,72 @@ function wpPicked(r){
   const it = wpItem(r), k = it && wpRollKey(it); if (!it) return false;
   r.kind = 'Roll'; if (k) r.roll = k;
   r.rep = it.perBox === 1 && !it.panel && it.repcm ? String(Math.ceil(it.repcm / 2.54)) : '';
+  r.match = WP_MATCH[it.match] || '';   // straight / offset / free… as the list says (6 Oct night)
   return true;
+}
+// ---- wallpaper drawing (Purvi, 6 Oct night: "wallpaper isnt shown visually on the right like curtains and blinds")
+// Front view: the wall with its strips at the roll's width, numbered; the last strip is cut to fit. Pattern repeat marks run down each
+// strip, and with an offset (half-drop) match every other strip starts half a repeat lower. Under it: one roll cut into its strips.
+const WP_MATCH = {Straight: 'Straight', Offset: 'Offset (half drop)', Free: 'Free match', Random: 'Random', Mural: 'Mural panels'};
+const wpNoRep = r => /^(Free|Random)/.test(r.match || '');
+function wpWallSVG(r, c){
+  const H = nv(r.H), W = nv(r.W), VW = 640, L = 84, T = 34, aw = VW - L - 34, ah = 300, s = Math.min(aw / W, ah / H);
+  const w = W * s, h = H * s, x0 = L + (aw - w) / 2, y0 = T, yb = y0 + h;
+  let g = `<rect class="roll" x="${x0}" y="${y0}" width="${w}" height="${h}"/>`;
+  if (r.kind !== 'Roll') {   // mural: one picture, made 2″ bigger on every side
+    const e = 2 * s;
+    g += `<rect class="f-main" x="${x0}" y="${y0}" width="${w}" height="${h}"/><rect class="spare" fill="none" x="${x0 - e}" y="${y0 - e}" width="${w + 2 * e}" height="${h + 2 * e}"/>`;
+    g += `<text x="${x0 + w / 2}" y="${y0 + h / 2 + 6}" text-anchor="middle" class="t-dim">mural ${fmt(H + 4)}″ × ${fmt(W + 4)}″</text><text x="${x0 + w / 2}" y="${y0 - e - 8}" text-anchor="middle" class="t-mut">dashed = 2″ extra on every side for trimming</text>`;
+  } else {
+    const [wcm] = wpRoll(r.roll) || [53], win = wcm / 2.54, sw = win * s, n = c.strips || Math.ceil(W / win - 1e-9), rep = wpNoRep(r) ? 0 : nv(r.rep), off = /^Offset/.test(r.match || '');
+    const t2 = 2 * s;
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * sw, vis = Math.min(sw, x0 + w - x);
+      g += `<rect class="f-main" x="${x}" y="${y0}" width="${vis}" height="${h}"${i % 2 ? ' fill-opacity=".6"' : ''}/>`;
+      if (vis < sw - .5) g += `<rect class="spare" fill="none" x="${x + vis}" y="${y0}" width="${sw - vis}" height="${h}"/>`;   // the part cut off the last strip
+      if (rep > 0) { const step = rep * s, start = off && i % 2 ? step / 2 : 0, cx = x + sw / 2;
+        if (step >= 6) for (let y = start; y <= h + .1; y += step) { if (cx > x0 + w) break;
+          g += `<path class="fold-main" stroke-width="1" d="M${x},${y0 + y}h${vis}"/><path fill="var(--main-fold)" d="M${cx},${y0 + y - 5}l5,5l-5,5l-5,-5z"/>`; } }
+      if (sw > 16) g += `<text x="${x + Math.min(sw, vis) / 2}" y="${y0 - 8}" text-anchor="middle" class="t-mut">${i + 1}</text>`;
+    }
+    g += `<path class="s-dim" stroke-dasharray="4 3" d="M${x0},${y0 - t2}h${w}M${x0},${yb + t2}h${w}"/>`;
+    const last = W - (n - 1) * win;
+    if (last < win - .5) g += `<text x="${x0 + w}" y="${yb + 66}" text-anchor="end" class="t-mut">strip ${n} cut to ${fmt(Math.round(last * 4) / 4)}″</text>`;
+    if (rep > 0) g += `<text x="${x0}" y="${yb + 66}" class="t-mut">◆ repeat ${fmt(rep)}″${off ? ', every other strip ' + fmt(rep / 2) + '″ lower' : ''}</text>`;
+  }
+  const wy = yb + 22;
+  g += arrow(x0, wy, x0 + w, wy) + `<text x="${x0 + w / 2}" y="${wy + 22}" text-anchor="middle" class="t-dimb">${fmt(W)}″ wide</text>`;
+  g += arrow(x0 - 26, y0, x0 - 26, yb) + `<text transform="translate(${x0 - 36},${(y0 + yb) / 2}) rotate(-90)" text-anchor="middle" class="t-dimb">${fmt(H)}″ high</text>`;
+  return `<svg viewBox="0 0 ${VW} ${wy + 52}" role="img" aria-label="Front view of the wall, ${fmt(H)} by ${fmt(W)} inches">${g}</svg>`;
+}
+function wpRollSVG(r, c){
+  const [, lm] = wpRoll(r.roll) || [53, 10], len = lm * 39.37, drop = nv(r.H) + 4 + (wpNoRep(r) ? 0 : nv(r.rep)), VW = 640, x0 = 20, aw = VW - 40, sx = aw / len, y0 = 30, rh = 34;
+  let g = `<rect class="roll" x="${x0}" y="${y0}" width="${aw}" height="${rh}"/>`;
+  for (let i = 0; i < c.per; i++) { const x = x0 + i * drop * sx;
+    g += `<rect class="f-main" x="${x}" y="${y0}" width="${drop * sx - 2}" height="${rh}"/>`;
+    if (drop * sx > 30) g += `<text x="${x + drop * sx / 2}" y="${y0 + rh / 2 + 5}" text-anchor="middle" class="t-dim">${drop * sx > 70 ? fmt(drop) + '″' : i + 1}</text>`; }
+  const sp = len - c.per * drop;
+  if (sp * sx > 1) { g += `<rect class="spare" fill="none" x="${x0 + c.per * drop * sx}" y="${y0}" width="${sp * sx}" height="${rh}"/>`;
+    if (sp * sx > 44) g += `<text x="${x0 + c.per * drop * sx + sp * sx / 2}" y="${y0 + rh / 2 + 5}" text-anchor="middle" class="t-mut">spare ${fmt(Math.round(sp))}″</text>`; }
+  g += `<text x="${x0}" y="${y0 - 10}" class="t-dim">one ${lm} m roll (${fmt(Math.round(len))}″) → ${c.per} strip${c.per > 1 ? 's' : ''} of ${fmt(drop)}″</text>`;
+  g += `<text x="${x0 + aw}" y="${y0 + rh + 22}" text-anchor="end" class="t-dimb">× ${c.rolls} roll${c.rolls > 1 ? 's' : ''}  = ${c.per * c.rolls} strips · the wall needs ${c.strips}</text>`;
+  return `<svg viewBox="0 0 ${VW} ${y0 + rh + 32}" role="img" aria-label="How one roll is cut into strips">${g}</svg>`;
+}
+// What the company's list says about the design (Asian Paints: design no., brand, sample book, repeat as written…)
+function wpFacts(r){
+  const it = wpItem(r); if (!it) return '';
+  const rep = it.repcm ? `${fmt(it.repcm)} cm (${fmt(Math.round(it.repcm / 2.54 * 4) / 4)}″)` : 'none listed';
+  const row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
+  return `<div class="sec-h" style="padding:8px 14px 0"><h2 style="font-size:17px">From ${esc(r.sup)}'s list</h2></div><dl class="spec wide">
+    ${row('Design no.', it.pattern)}${row('Code', it.sku)}${row('Brand', it.vendor)}${row('Collection', it.coll)}${row('Sample book', it.book)}
+    ${row('Roll', it.wcm && it.rollm ? `${fmt(it.wcm)} cm × ${fmt(it.rollm)} m` : 'not listed')}${row('Repeat', rep)}${row('Match', WP_MATCH[it.match] || (it.repcm ? 'not said' : ''))}
+    ${it.drop ? row('Drop', `${fmt(it.drop)} cm (offset)`) : ''}${row('List says', it.reptxt)}${row('HSN', it.hsn)}</dl>`;
+}
+function wpFig(r, c){
+  if (!c.ok) return '';
+  let h = `<div class="fig"><h4>Front view <span>${r.kind === 'Roll' ? `${c.strips || ''} strips at the roll's width` : 'mural made to size'}</span></h4>${wpWallSVG(r, c)}`;
+  if (r.kind === 'Roll' && c.per) h += `<h4>From each roll <span>how the strips are cut</span></h4>${wpRollSVG(r, c)}`;
+  return h + '</div>' + wpFacts(r);
 }
 const FL_WASTE = {'Laminate': 10, 'Engineered wood': 10, 'Solid wood': 10, 'Vinyl (SPC / LVT)': 8, 'Wall-to-wall carpet': 15, 'Carpet tiles': 5};
 const FL_LAY = {'Straight': 0, 'Diagonal': 5, 'Herringbone / chevron': 10};
@@ -3732,7 +3797,8 @@ const MP = {
   wallpaper: {name: 'Wallpaper', one: 'wall', many: 'walls', add: '+ Add wall',
     note: 'One row per wall. Height and width in inches, as measured.',
     hint: 'Tap a row to see its rolls and checks. A typed roll count shows in orange; ↺ puts it back.',
-    blank: () => ({room: '', wall: '', sup: '', design: '', kind: 'Roll', roll: '53 cm × 10 m', rep: '', H: '', W: '', open: '', cond: '', rolls: '', remarks: ''}),
+    blank: () => ({room: '', wall: '', sup: '', design: '', kind: 'Roll', roll: '53 cm × 10 m', rep: '', match: '', H: '', W: '', open: '', cond: '', rolls: '', remarks: ''}),
+    fig: wpFig,
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
       {g: 'Where', k: 'wall', label: 'Wall', t: 'text', ph: 'e.g. behind the bed', w: 150},
@@ -3741,6 +3807,7 @@ const MP = {
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
       {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: WP_ROLL_OPTS, w: 150, off: r => r.kind !== 'Roll'},
       {g: 'Wallpaper', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
+      {g: 'Wallpaper', k: 'match', label: 'Match', t: 'sel', opts: Object.values(WP_MATCH), blank: 'Not known', w: 150, off: r => r.kind !== 'Roll'},
       {g: 'Size', k: 'H', label: 'Height', sub: '″', t: 'num', key: 1},
       {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
       {g: 'The wall', k: 'cond', label: 'Condition', t: 'sel', opts: ['Flat and dry', 'Bumps or cracks', 'Damp or leakage', 'Fresh plaster or paint'], blank: 'Check the wall', todo: 1, w: 190},
@@ -3764,7 +3831,7 @@ const MP = {
         { const it = wpItem(r); if (wpSq(it)) wpSqInfo(c, r, it); }
         return c;
       }
-      const [wcm, lm] = wpRoll(r.roll) || WP_ROLLS['53 cm × 10 m'], win = wcm / 2.54, rep = nv(r.rep);
+      const [wcm, lm] = wpRoll(r.roll) || WP_ROLLS['53 cm × 10 m'], win = wcm / 2.54, rep = wpNoRep(r) ? 0 : nv(r.rep);   // free / random match: no repeat to allow for
       const drop = H + 4 + rep, per = Math.floor(lm * 39.37 / drop), strips = Math.ceil(W / win - 1e-9);
       c.strips = strips; c.per = per;
       if (!per) { c.warn.push(`Wall is taller than one ${lm} m roll: order a mural or a longer roll`); c.how = `Each strip is ${fmt(drop)}″, longer than the roll.`; return c; }
@@ -3773,6 +3840,8 @@ const MP = {
       const sq = wpSq(it);
       if ((it && !sq) || inBox > 1) c.boxes = Math.ceil(c.rolls / inBox);
       c.how = `Width <b>${fmt(W)}″</b> ÷ roll width ${fmt(r2(win))}″ = <b>${strips} strips</b>. Each strip = height ${fmt(H)}″ + 4″ trimming${rep ? ` + ${fmt(rep)}″ repeat` : ''} = ${fmt(drop)}″, so one ${lm} m roll gives <b>${per} strips</b>. ${strips} ÷ ${per} = <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>.`;
+      if (/^Offset/.test(r.match || '') && rep) c.how += ` Offset match: every other strip starts ${fmt(rep / 2)}″ lower, so cut the strips from the roll in turn and keep them in order.`;
+      if (wpNoRep(r) && nv(r.rep)) c.how += ` ${r.match}: no repeat to allow for.`;
       c.kpis = [{l: 'Strips', v: strips, u: `${per} per roll`}, {l: 'Wall area', v: cpF(c.area), u: 'sq ft'}, {l: 'Rolls to order', v: c.rolls, u: +r.rolls > 0 ? 'typed in' : r.roll, m: 1}];
       if (c.boxes && !byRoll) { c.kpis.push({l: 'Boxes to order', v: c.boxes, u: inBox > 1 ? `${inBox} rolls in a box` : '1 roll in a box', m: 1});
         if (inBox > 1) c.how += ` Sold in boxes of ${inBox}: ${c.rolls} ÷ ${inBox} = <b>${c.boxes} box${c.boxes > 1 ? 'es' : ''}</b>.`; }
@@ -3791,7 +3860,8 @@ const MP = {
     rules: ['Strips = wall width ÷ the roll width, rounded up.', 'Each strip = wall height + 4″ for trimming, plus one pattern repeat if the design has one.', 'Strips from one roll = roll length ÷ strip length, rounded down. Rolls = strips ÷ strips per roll, rounded up.',
       'Doors and windows are not taken off: the leftover covers matching and mistakes.', 'Murals are made to size: the wall plus 2″ on every side.',
       'Order every roll in one go so they come from the same batch, and count the rolls that arrive before cutting any.',
-      'When a company has a price list here, pick the design from the list: its roll size, repeat and price per box fill in, and boxes are counted.'],
+      'When a company has a price list here, pick the design from the list: its roll size, repeat, match and price fill in, and boxes are counted.',
+      'Match: straight = the pattern lines up across strips; offset (half drop) = every other strip starts half a repeat lower; free match or random = no repeat to allow for.'],
   },
   flooring: {name: 'Flooring', one: 'area', many: 'areas', add: '+ Add area',
     note: 'One row per room or area. Length and width in inches, as measured.',
@@ -4184,6 +4254,7 @@ function renderPSide(k){
   }).join('') + (r.remarks ? `<dt>Remarks</dt><dd class="note">${esc(r.remarks)}</dd>` : '');
   el.innerHTML = `<div class="side-h"><h2>${esc(title)}</h2><span class="sub">${P.name} · #${i + 1}</span></div>
     ${c.kpis.length ? `<div class="kpis">${c.kpis.map(x => `<div class="kpi${x.m ? ' m' : ''}"><small>${esc(x.l)}</small><b class="num">${x.v}</b><small>${esc(x.u || '')}</small></div>`).join('')}</div>` : `<div class="p-empty-tip">${P.empty || `Type the ${P.cols.filter(x => x.key).map(x => x.label.toLowerCase()).join(' and ')} to see the numbers.`}</div>`}
+    ${P.fig ? P.fig(r, c) : ''}
     <div class="chips">${c.warn.map(w => `<span class="chip warn">${esc(w)}</span>`).join('') || '<span class="chip good">All checks done</span>'}</div>
     ${c.how && P.extra ? `<div class="how"><b>How it was worked out</b>${c.how.replace(/<b>/g, '<b class="n">')}</div>` : ''}${P.extra ? P.extra(r, c) : ''}
     <dl class="spec wide">${spec}</dl>
@@ -4326,4 +4397,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-194021 -->
+<!-- build 20261006-195953 -->
