@@ -1079,8 +1079,8 @@ const BLIND_NAMES = {
 // D'Decor FabriCare: its own names from its Oct 2026 price lists. Zebra = duplex; Zafari and Square (Quadra Roman, Tessela)
 // are read as sheer horizon and duplex from their names only: not confirmed by Purvi.
 BLIND_NAMES.FC = [['Zebra', 'duplex'], ['Zafari', 'sheer'], ['Square', 'duplex'], ['Hive', 'honeycomb'], ['Wooden', 'wooden'], ['Roman (making)', 'roman']];
-// Asian Paints: its own names come with its price list. Until then, the common names.
-BLIND_NAMES.AP = Object.entries(BLIND_TYPES).map(([k, t]) => [t.name, k]);
+// Asian Paints: the common names, plus the names in its 2026 price list (6 Oct): Fifty50 = their zebra, Wooden, Roman making.
+BLIND_NAMES.AP = Object.entries(BLIND_TYPES).map(([k, t]) => [t.name, k]).concat([['Fifty50 (Zebra)', 'duplex'], ['Wooden', 'wooden'], ['Roman (making)', 'roman']]);
 const blindType = (sup, fam) => { const n = (BLIND_NAMES[sup] || []).find(x => x[0] === fam); return n ? Object.assign({key: n[1], shades: n[2]}, BLIND_TYPES[n[1]]) : null; };
 // Order-form columns: Marvel's order (width before drop, as on Marvel's form), the same for everyone. Special keys: shade, series, W, H, motor, loc, qty.
 const ORDER_COLS = {
@@ -1794,7 +1794,7 @@ const bOpts = (list, val, blank) => (blank ? `<option value="">${blank}</option>
 const shadeListId = (b, t) => t && t.shades && (BL.shades[b.sup] || {})[t.shades] ? `sh-${b.sup}-${t.shades}` : '';
 function bRowHTML(b, i){
   const rows = BL.rows.filter(r => r.sup === b.sup), priced = rows.length > 0, t = blindType(b.sup, b.fam);
-  const loading = (b.sup === 'SAN' || b.sup === 'FC') && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
+  const loading = (b.sup === 'SAN' || b.sup === 'FC' || b.sup === 'AP') && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
   const syss = uniq(rows.filter(r => r.fam === b.fam).map(r => r.sys));
   const designs = rows.filter(r => r.fam === b.fam && r.sys === b.sys).map(r => [r.id, `${r.coll} · ${r.design}${r.extra ? ' (' + r.extra + ')' : ''}`]);
   const adds = BL.addons.filter(a => a.sup === b.sup).map(a => [a.key, `${a.group}: ${a.name} · ₹${a.rrp.toLocaleString('en-IN')} ${a.uom}`]);
@@ -2461,7 +2461,7 @@ let bpSup = 'SAN', bpFam = '', bpQ = '';
 const BP_NOTE = {
   SAN: '',
   FC: 'From D\'Decor\'s Oct 2026 lists (Designer, Hive, Wooden, motors). No minimum size printed. Wooden 40–52 missing from D\'Decor\'s file. Roman making charges: price to confirm.',
-  AP: 'Asian Paints MyAwaaz sells only fabric, wallpaper, rugs and bedsheets; blinds there are sample books. Needs AP\'s blinds price list.',
+  AP: 'From the Asian Paints 2026 price list (Illumin8): Roller, Fifty50 (Zebra), Honeycomb, Wooden, Roman making; motors, remotes, Roman fabric per metre. List price only, no dealer price. Minimum 1 sq m.',
   MV: 'Order-form details and shade lists are loaded. The Marvel portal has no prices: needs Marvel\'s price list.'};
 function renderBPrices(){
   const rows = BL.rows.filter(r => r.sup === bpSup && (!bpFam || r.fam === bpFam) && (!bpQ || (r.coll + ' ' + r.design + ' ' + r.sys).toLowerCase().includes(bpQ.toLowerCase())));
@@ -3855,4 +3855,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-171722 -->
+<!-- build 20261006-173147 -->
