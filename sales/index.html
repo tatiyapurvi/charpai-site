@@ -778,6 +778,7 @@ tr.dash-r:hover td{background:var(--sel)}
 <datalist id="fablist"></datalist>
 <datalist id="linlist"></datalist>
 <div id="shadelists" hidden></div>
+<div id="wplists" hidden></div>
 <datalist id="roomlist"><option value="Living"><option value="Dining"><option value="Master bedroom"><option value="Bedroom 2"><option value="Kids room"><option value="Guest room"><option value="Study"><option value="Puja room"><option value="Staircase"><option value="Balcony door"></datalist>
 
 <script>
@@ -2681,14 +2682,19 @@ async function loadCatalog(){
     for (const d of snap.docs) {
       const b = unpack(d);
       if (d.id === 'index') { CAT.index = b.sups || {}; continue; }
+      if (d.id.startsWith('wp-')) { const ix = Object.fromEntries(b.cols.map((c, i) => [c, i])), items = new Map();   // wallpaper lists
+        for (const x of b.wp || []) { const o = Object.fromEntries(b.cols.map(c => [c, x[ix[c]]])); if (!items.has(o.sku)) items.set(o.sku, o); }
+        WPL[b.name] = {id: d.id, brand: b.brand, date: b.date, uom: b.uom, items}; continue; }
       (rows[b.sup] = rows[b.sup] || []).push(...b.rows.map(([k, n, w, r, h, g]) => ({k, n, w, r, h, g, sup: b.sup, s: (n + ' ' + k).toLowerCase()})));
     }
-    CAT.rows = rows; CAT.byKey = new Map();
+    CAT.rows = rows; CAT.byKey = new Map(); fillWPLists();
     for (const [sup, list] of Object.entries(rows)) for (const x of list) CAT.byKey.set(sup + '|' + x.k, x);
     CAT.state = 'ready';
     if (canSeeCost) {
       const cs = await db.collection('catcost').get();
-      for (const d of cs.docs) { const b = unpack(d); if (d.id.startsWith('blinds-')) { BL.costDocs.push(b); continue; } for (const [k, c] of b.rows) CAT.cost.set(b.sup + '|' + k, c); }
+      const wpName = Object.fromEntries(Object.entries(WPL).map(([n, L]) => [L.id, n]));
+      for (const d of cs.docs) { const b = unpack(d); if (d.id.startsWith('blinds-')) { BL.costDocs.push(b); continue; }
+        if (d.id.startsWith('wp-')) { for (const [k, c] of b.wp || []) WPC.set(wpName[d.id] + '|' + k, c); continue; } for (const [k, c] of b.rows) CAT.cost.set(b.sup + '|' + k, c); }
     }
   } catch (e) { CAT.state = 'error'; }
   try {
@@ -2725,6 +2731,7 @@ function refreshAll(){
   if (current === 'quote' && !busy($('#v-quote'))) renderQuote();
   if (current === 'b-measure' && !busy($('#v-blinds'))) renderBlinds();
   if (current === 'c-measure') { state.rows.forEach(updateRow); renderSide(); }
+  if (current === 'wallpaper' && !busy($('#v-product'))) renderProduct('wallpaper');
 }
 
 // ================= clients (Purvi, 1 Oct): the home page.
@@ -3435,7 +3442,24 @@ function askPerson(id){
 // Fields come from the research brain: wall flat / leakage / bumps (FigJam 107:2981), skirting or beading (107:2973),
 // mattress measured on a raw bed before the headboard foam (107:2957, 107:2965), customer-told sizes (240:4749),
 // fabric for our upholstery vs made outside (235:4567, 235:4574), a double-ordered ₹35,000 wallpaper roll (261:5572).
-const WP_ROLLS = {'53 cm × 10 m': [53, 10], '70 cm × 10 m': [70, 10], '100 cm × 10 m': [100, 10], '106 cm × 10 m': [106, 10], '106 cm × 15.6 m': [106, 15.6]};
+const WP_ROLLS = {'53 cm × 10 m': [53, 10], '70 cm × 10 m': [70, 10], '100 cm × 10 m': [100, 10], '106 cm × 10 m': [106, 10], '106 cm × 15.6 m': [106, 15.6],
+  '52 cm × 3 m (box of 3)': [52, 3, 3], '52 cm × 9 m': [52, 9], '52 cm × 10 m': [52, 10], '48.7 cm × 9 m': [48.7, 9]};   // [width cm, length m, rolls per box]
+// Company wallpaper lists (6 Oct): catalog/wp-<id> (everyone) + catcost/wp-<id> (what we pay, owner only), priced per box.
+// WPL[company name] = {brand, date, uom, items: Map sku → item}. First list: F&F (brand Mind The Gap), shared 25 Mar 2026.
+const WPL = {}, WPC = new Map();
+const wpItem = r => { const L = WPL[r.sup], m = L && /^\s*([A-Z]{1,4}\d{3,})/i.exec(r.design || ''); return m ? L.items.get(m[1].toUpperCase()) || null : null; };
+const wpRollKey = it => Object.keys(WP_ROLLS).find(k => { const [w, l, b] = WP_ROLLS[k]; return w === it.wcm && l === it.rollm && (b || 1) === it.perBox; }) || null;
+function fillWPLists(){
+  $('#wplists').innerHTML = Object.entries(WPL).map(([n, L], i) => `<datalist id="wpl-${i}">${[...L.items.values()].map(x => `<option value="${esc(x.sku + ' · ' + x.name)}">${esc(x.coll + (x.colour ? ' · ' + x.colour : ''))}</option>`).join('')}</datalist>`).join('');
+}
+const wpListId = r => { const i = Object.keys(WPL).indexOf(r.sup); return i < 0 ? null : 'wpl-' + i; };
+// Picking a design from a company list fills its roll size and repeat (panels printed over 3 rolls get no repeat).
+function wpPicked(r){
+  const it = wpItem(r), k = it && wpRollKey(it); if (!it) return false;
+  r.kind = 'Roll'; if (k) r.roll = k;
+  r.rep = it.perBox === 1 && !it.panel && it.repcm ? String(Math.ceil(it.repcm / 2.54)) : '';
+  return true;
+}
 const FL_WASTE = {'Laminate': 10, 'Engineered wood': 10, 'Solid wood': 10, 'Vinyl (SPC / LVT)': 8, 'Wall-to-wall carpet': 15, 'Carpet tiles': 5};
 const FL_LAY = {'Straight': 0, 'Diagonal': 5, 'Herringbone / chevron': 10};
 const MT_W = {30: 'Single', 35: 'Single', 36: 'Single', 48: 'Double', 60: 'Queen', 72: 'King'}, MT_L = [72, 75, 78];
@@ -3450,8 +3474,8 @@ const MP = {
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
       {g: 'Where', k: 'wall', label: 'Wall', t: 'text', ph: 'e.g. behind the bed', w: 150},
-      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'Other'], blank: 'Pick', w: 160},
-      {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: 'Collection · design no.', w: 210},
+      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},
+      {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or WP no.' : 'Collection · design no.', list: wpListId, w: 230},
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
       {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: Object.keys(WP_ROLLS), w: 150, off: r => r.kind !== 'Roll'},
       {g: 'Wallpaper', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
@@ -3482,14 +3506,25 @@ const MP = {
       c.strips = strips; c.per = per;
       if (!per) { c.warn.push(`Wall is taller than one ${lm} m roll: order a mural or a longer roll`); c.how = `Each strip is ${fmt(drop)}″, longer than the roll.`; return c; }
       c.calcRolls = Math.ceil(strips / per); c.rolls = +r.rolls > 0 ? +r.rolls : c.calcRolls;
+      const it = wpItem(r), inBox = (WP_ROLLS[r.roll] || [])[2] || 1;
+      if (it || inBox > 1) c.boxes = Math.ceil(c.rolls / inBox);
       c.how = `Width <b>${fmt(W)}″</b> ÷ roll width ${fmt(r2(win))}″ = <b>${strips} strips</b>. Each strip = height ${fmt(H)}″ + 4″ trimming${rep ? ` + ${fmt(rep)}″ repeat` : ''} = ${fmt(drop)}″, so one ${lm} m roll gives <b>${per} strips</b>. ${strips} ÷ ${per} = <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>.`;
       c.kpis = [{l: 'Strips', v: strips, u: `${per} per roll`}, {l: 'Wall area', v: cpF(c.area), u: 'sq ft'}, {l: 'Rolls to order', v: c.rolls, u: +r.rolls > 0 ? 'typed in' : r.roll, m: 1}];
+      if (c.boxes) { c.kpis.push({l: 'Boxes to order', v: c.boxes, u: inBox > 1 ? `${inBox} rolls in a box` : '1 roll in a box', m: 1});
+        if (inBox > 1) c.how += ` Sold in boxes of ${inBox}: ${c.rolls} ÷ ${inBox} = <b>${c.boxes} box${c.boxes > 1 ? 'es' : ''}</b>.`; }
+      if (it) { const mrp = Math.round(it.rrp * (1 + it.gst / 100)), dp = WPC.get(r.sup + '|' + it.sku);
+        c.mrp = mrp * c.boxes; c.kpis.push({l: 'MRP per box', v: rs(mrp), u: `incl. ${it.gst}% GST`}, {l: 'MRP total', v: rs(c.mrp), u: `${c.boxes} × ${rs(mrp)}`, m: 1});
+        if (canSeeCost && dp != null) c.kpis.push({l: 'We pay per box', v: rs(dp), u: 'before GST · only you see this'});
+        if (it.panel) c.warn.push('Picture printed over 3 rolls: order whole boxes, and check the picture fits this wall'); }
+      else if (WPL[r.sup] && r.design) c.warn.push(`Design not found in ${r.sup}'s list: pick it from the list to get its price`);
       return c;
     },
-    sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.rolls || 0), 0); return n ? `${n} roll${n > 1 ? 's' : ''} to order` : ''; },
+    sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.rolls || 0), 0), b = cs.reduce((a, c) => a + (c.boxes || 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0);
+      return n ? `${n} roll${n > 1 ? 's' : ''} to order${b ? ` · ${b} box${b > 1 ? 'es' : ''}` : ''}${m ? ` · MRP ${rs(m)}` : ''}` : ''; },
     rules: ['Strips = wall width ÷ the roll width, rounded up.', 'Each strip = wall height + 4″ for trimming, plus one pattern repeat if the design has one.', 'Strips from one roll = roll length ÷ strip length, rounded down. Rolls = strips ÷ strips per roll, rounded up.',
       'Doors and windows are not taken off: the leftover covers matching and mistakes.', 'Murals are made to size: the wall plus 2″ on every side.',
-      'Order every roll in one go so they come from the same batch, and count the rolls that arrive before cutting any.'],
+      'Order every roll in one go so they come from the same batch, and count the rolls that arrive before cutting any.',
+      'F&F sells by the box (3 rolls of 3 m, or 1 roll of 9–10 m). Pick the design from the list: its roll size, repeat and price per box fill in.'],
   },
   fabric: {name: 'Fabric', one: 'item', many: 'items', add: '+ Add item',
     note: 'Fabric sold by the metre: sofas, chairs, cushions, headboards. One row per item.',
@@ -3630,7 +3665,8 @@ function mpCellHTML(k, col, r){
   if (col.t === 'sel') return `<td><select data-p="${col.k}"${w}${dis} aria-label="${esc(col.label)}"${col.todo && !r[col.k] ? ' class="ovr"' : ''}>${bOpts(col.opts.map(x => [x, x]), r[col.k], col.blank)}</select></td>`;
   if (col.t === 'auto') return `<td><span class="auto-wrap"><input data-p="${col.k}" class="n auto big" inputmode="decimal" style="width:76px"${dis} aria-label="${esc(col.label)}"><button class="reset" data-reset="${col.k}" title="Put back the worked-out value">↺</button></span></td>`;
   if (col.t === 'num') return `<td><input data-p="${col.k}" class="n${col.key ? ' key' : ''}" inputmode="decimal" value="${esc(r[col.k])}" placeholder="${col.key ? '0' : ''}" style="width:${col.w || 80}px"${dis} aria-label="${esc(col.label)}"></td>`;
-  return `<td><input data-p="${col.k}" value="${esc(r[col.k])}" placeholder="${esc(col.ph || '')}"${w}${dis} aria-label="${esc(col.label)}"></td>`;
+  const ph = typeof col.ph === 'function' ? col.ph(r) : col.ph, ls = col.list && col.list(r);
+  return `<td><input data-p="${col.k}" value="${esc(r[col.k])}" placeholder="${esc(ph || '')}"${ls ? ` list="${ls}" autocomplete="off"` : ''}${w}${dis} aria-label="${esc(col.label)}"></td>`;
 }
 function mpRowHTML(k, r){
   return `<tr class="row" data-id="${r.id}">${MP[k].cols.map(col => mpCellHTML(k, col, r)).join('')}
@@ -3690,6 +3726,7 @@ ptb.addEventListener('input', e => {
   const k = mpCur, tr = e.target.closest('tr'), r = state.more[k].find(x => x.id === +tr.dataset.id); if (!r) return;
   r[f] = e.target.value;
   const col = MP[k].cols.find(c => c.k === f);
+  if (k === 'wallpaper' && f === 'design' && wpPicked(r)) { for (const g of ['kind', 'roll', 'rep']) { const x = tr.querySelector(`[data-p=${g}]`); if (x) x.value = r[g]; } const rs_ = tr.querySelector('[data-p=roll]'); if (rs_) rs_.disabled = false; }
   if (e.target.tagName === 'SELECT') { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); }
   else if (col && col.todo) e.target.classList.toggle('ovr', !r[f]);
   mpUpdateRow(k, r); mpTotal(k); if (r === state.more[k][state.msel[k]]) renderPSide(k); save();
@@ -3801,4 +3838,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261005-214600 -->
+<!-- build 20261006-151525 -->
