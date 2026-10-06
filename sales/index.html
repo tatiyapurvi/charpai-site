@@ -2005,7 +2005,7 @@ const TNC = ['50% ADVANCE AGAINST ORDER & REST 50% BEFORE DELIVERY OF THE PRODUC
   'ALL DISPUTES ARE SUBJECT TO JODHPUR JURISDICTION.', 'PAYMENT MODE SHOULD BE ONLINE & CHEQUE.'];
 // Product column names a customer can read: "D'Decor motor" → "Blind motor" (the brand is in the details column).
 const addonProduct = g => { const k = g.replace(/^(D'Decor|Somfy|FabriCare) /i, ''); return /^skylight/i.test(k) ? 'Skylight blind fitting' : /assembly/i.test(k) ? 'Motorised blind assembly' : 'Blind ' + k.toLowerCase(); };
-const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['hw', 'Accessories and installation']];   // Wallpaper after Blinds (Purvi, 6 Oct)
+const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['flooring', 'Flooring'], ['hw', 'Accessories and installation']];   // Wallpaper after Blinds, then Flooring (Purvi, 6 Oct)
 // Accessories and installation splits into Manual and Motorised when a quote has both (Purvi, 2 Oct). Lines carry grp 'man' | 'mot'.
 // Returns null (no split) for other sections, a quote with only one kind, or an old saved version without grp.
 const HW_PARTS = [['man', 'Manual (non-motorised)'], ['mot', 'Motorised']];
@@ -2024,7 +2024,7 @@ function fabricName(row){
   return `${QCODE[row.sup]} ${base}`;
 }
 function qSections(){
-  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
+  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
   // Supplier list prices (fabric RRP, blinds per m²) are before GST, so GST is added. Our own tables follow their GST switch (gstIncl).
   const add = (sec, l) => { l.mrp = l.incl ? (has(l.rate) ? Math.round(l.rate) : null) : mrpOf2(l.rate, l.gst); l.amt = l.mrp == null ? null : Math.round(l.qty * l.mrp); l.camt = has(l.cost) ? l.qty * l.cost : null; S[sec].push(l); };
   const stitch = new Map(); let pieces = 0, kits = 0;
@@ -2080,6 +2080,19 @@ function qSections(){
       rate: it.rrp, gst: it.gst, cost: WPC.has(r.sup + '|' + it.sku) ? WPC.get(r.sup + '|' + it.sku) : null, fix: 'wpick'});
     else add('wallpaper', {area: roomsTxt(g.rooms), product: g.mural ? 'Wallpaper mural' : 'Wallpaper', what, hsn: H.wallpaper || '', qty: g.mural ? r2(g.sqft) : g.rolls, unit: g.mural ? 'SQ FT' : 'ROLL',
       rate: null, gst: 18, cost: null, fix: 'wpick'});
+  }
+  // Flooring (Purvi, 6 Oct): one line per product, rooms of the same product clubbed; quantity = sq ft to order (area + wastage).
+  // A product from a company list is priced per sq ft (RRP + GST); anything else shows its sq ft with no price yet. Skirting is not priced yet.
+  const fl = new Map();
+  (state.more.flooring || []).forEach(r => {
+    const c = MP.flooring.calc(r); if (!c.ok || !c.order) return;
+    const it = flItem(r), k = it ? r.sup + '|' + it.code : [r.sup, r.type, r.product].join('|'), g = fl.get(k) || {rooms: new Set(), sqft: 0, r, it};
+    g.rooms.add(r.room || '—'); g.sqft += c.order; fl.set(k, g);
+  });
+  for (const g of fl.values()) {
+    const {r, it} = g, what = it ? `${r.sup} ${FLL[r.sup].brand || ''} ${it.name}${it.rollm ? ` (${it.rollm} m roll)` : it.tile ? ` (${it.tile} tiles)` : ''}`.replace(/\s+/g, ' ') : [r.sup, r.product].filter(Boolean).join(' ') || 'Product not named';
+    add('flooring', {area: roomsTxt(g.rooms), product: (it ? it.type : r.type) || 'Flooring', what, hsn: it ? it.hsn : '', qty: g.sqft, unit: 'SQ FT',
+      rate: it ? it.rrp : null, gst: it ? it.gst : 18, cost: it && FLC.has(r.sup + '|' + it.code.toUpperCase()) ? FLC.get(r.sup + '|' + it.code.toUpperCase()) : null, fix: 'fpick'});
   }
   for (const l of club.values()) { l.qty = r2(l.qty); l.area = roomsTxt(l.rooms); delete l.rooms; add('hw', l); }
   motor.forEach(l => add('hw', l));
@@ -2182,7 +2195,7 @@ $('#q-head').addEventListener('input', e => {
   save(); renderPaper();
 });
 function lineHTML(l, n, showC, ro){
-  const rate = l.mrp == null ? ro ? '—' : PF && !IS_ADMIN && !['pick', 'remote', 'wpick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>` : inr(l.mrp);
+  const rate = l.mrp == null ? ro ? '—' : PF && !IS_ADMIN && !['pick', 'remote', 'wpick', 'fpick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'fpick' ? 'Pick the product from a list' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>` : inr(l.mrp);
   return `<tr><td class="c">${n}</td><td>${esc(l.area || '')}</td><td>${esc(l.product)}</td><td>${esc(l.what)}</td><td class="c">${esc(l.hsn || '')}</td>
     <td class="r">${cpF(r2(l.qty))}</td><td class="c">${esc(l.unit)}</td><td class="r">${rate}</td><td class="r"><b>${l.amt == null ? '—' : inr(l.amt)}</b></td>
     ${showC ? `<td class="r cost">${l.camt == null ? '—' : inr(l.camt)}</td>` : ''}</tr>`;
@@ -2337,6 +2350,7 @@ document.addEventListener('click', e => {
   const to = g.dataset.go;
   if (to === 'pick' || to === 'remote') { go('c-measure'); return; }
   if (to === 'wpick') { go('wallpaper'); return; }
+  if (to === 'fpick') { go('flooring'); return; }
   const blinds = ['bprice', 'marvel'].includes(to);
   go(blinds ? 'b-prices' : 'c-prices');
   setTimeout(() => { const s = document.getElementById('sec-' + to); if (s) s.scrollIntoView({block: 'start'}); }, 50);
@@ -2375,7 +2389,7 @@ document.addEventListener('click', async e => {
 // downloading again with no change keeps the same number. Kept with the sheet, so Clear sheet starts again at v1.
 function quoteSig(t){
   const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''),
-    SECTIONS.filter(([k]) => k !== 'wallpaper' || t.S[k].length).map(([k]) => t.S[k].map(l => [l.area, l.product, l.what, l.hsn, l.qty, l.unit, l.mrp, l.amt])), t.total, t.disc]);
+    SECTIONS.filter(([k]) => !['wallpaper', 'flooring'].includes(k) || t.S[k].length).map(([k]) => t.S[k].map(l => [l.area, l.product, l.what, l.hsn, l.qty, l.unit, l.mrp, l.amt])), t.total, t.disc]);
   let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 ^ txt.charCodeAt(i)) >>> 0;
   return h.toString(36);
 }
@@ -3880,4 +3894,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261006-174139 -->
+<!-- build 20261006-174735 -->
