@@ -1372,6 +1372,8 @@ function calc(row){
   const tr = TRACKS.find(t => t.n === row.track) || {k:''};
   const base = {W, H, fabric: fab, style: {mx:0, mn:0}, trackKind: tr.k, panelTxt: row.panelTxt, allowTxt: row.allowTxt, hand: row.hand};
   const res = curtain(base, R); res.kitMin = tr.min || 1.5; res.kitBy = tr.mb ? 'Marvel' : "D'Decor";
+  // Manual tracks come at most 15 ft long (Purvi, 7 Oct): a longer track is made of equal pieces joined end to end
+  if (res.trackUnit === 'ft' && res.track > TRACK_MAX_FT) { res.trackPieces = Math.ceil(res.track / TRACK_MAX_FT - 1e-9); res.trackPieceFt = Math.round(res.track / res.trackPieces * 100) / 100; }
   const d = {W, H, roll: fab.r, rep: fab.p, noTurn: fab.t, wide: fab.r >= 250};
   // One piece off the roll: 300 cm rolls under 109″ = panels × 1.4 m (300 cm as the height, Purvi 2 Oct); 140 cm turned = W × 2.25 + side hems.
   d.fl = R.curtain_turn_fullness || 2.25;
@@ -1616,7 +1618,8 @@ function renderTable(){
   state.rows.forEach(updateRow);
   markSel();
 }
-const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' : (kitSize(res.track, res.kitMin) ? kitSize(res.track, res.kitMin) + ' m kit' : 'over 9 m: ask ' + res.kitBy);
+const TRACK_MAX_FT = 15;
+const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' + (res.trackPieces ? ` (${res.trackPieces} × ${cpF(res.trackPieceFt)} ft)` : '') : (kitSize(res.track, res.kitMin) ? kitSize(res.track, res.kitMin) + ' m kit' : 'over 9 m: ask ' + res.kitBy);
 // Numbers (with their unit) in bold, so the How column can be read at a glance.
 const boldNums = t => esc(t).replace(/\d+(?:\.\d+)?(?:–\d+(?:\.\d+)?)?(?:″| cm\b| m\b| ft\b)?/g, '<b class="n">$&</b>');
 const linHowOf = lin => lin ? ` Lining (${lin.name}): ${lin.drops} × ${cpF(lin.cut)}″ = ${f2(lin.raw)} m, rounded up to ${cpF(lin.m)} m.` : '';
@@ -1832,6 +1835,10 @@ function elevation(row, res, d, lin){
   const tr = TRACKS.find(t => t.n === row.track) || {k:''};
   if (tr.k) {
     g += `<path stroke="var(--ink)" stroke-width="${st === 'Eyelet' ? 3 : 4}" stroke-linecap="round" d="M${x0-8},${y0-3}H${x0+cw+8}"/>`;
+    if (res.trackPieces) for (let j = 1; j < res.trackPieces; j++) {   // where the equal track pieces meet
+      const jx = x0 - 8 + (cw + 16) * j / res.trackPieces;
+      g += `<path stroke="var(--paper)" stroke-width="7" d="M${jx},${y0 - 9}V${y0 + 3}"/><path fill="var(--warn)" d="M${jx},${y0 - 12}l6,9l-6,9l-6,-9z"/>`
+        + `<rect x="${jx - 24}" y="${y0 + 10}" width="48" height="18" rx="4" fill="var(--paper)" stroke="var(--warn)"/><text x="${jx}" y="${y0 + 23}" text-anchor="middle" class="t-dim" style="fill:var(--warn)!important;font-size:13px">joint</text>`; }
     g += `<text x="${x0}" y="${y0 - 12}" class="t-dim">${esc(row.track)} · ${trackStr(res)}</text>`;
   } else g += `<text x="${x0}" y="${y0 - 10}" class="t-mut">${row.track ? 'No track on this row' : 'Track not picked yet'}</text>`;
   const cy = yb + 14;
@@ -1936,6 +1943,7 @@ function rollView(o){
 function chips(row, res, d){
   const c = [];
   c.push(`<span class="chip">${cpF(d.roll)} cm roll${d.rep ? ` · repeat ${fmt(d.rep)}″` : ' · no repeat'}</span>`);
+  if (res.trackPieces) c.push(`<span class="chip warn">Track over ${TRACK_MAX_FT} ft: ${res.trackPieces} equal pieces of ${cpF(res.trackPieceFt)} ft, joined (${res.trackPieces - 1} joint${res.trackPieces > 2 ? 's' : ''})${mvFam(row.track) && MV_PARTS.some(x => x.fam === mvFam(row.track) && x.n === 'Jointer') ? `: add ${res.trackPieces - 1} jointer${res.trackPieces > 2 ? 's' : ''} in Marvel parts` : ''}</span>`);
   if (d.wide) c.push(res.rotated ? `<span class="chip">Turned: ${cpF(d.roll)} cm across the width (${d.H >= d.maxH ? `window is ${fmt(d.H)}″, ${fmt(d.maxH)}″ or more` : `turned by hand; ${cpF(d.turnQty)} m as the height`})</span>`
     : `<span class="chip good">${cpF(d.roll)} cm as the height: window under ${fmt(d.maxH)}″ (turned would be ${cpF(d.rotQty)} m)</span>`);
   else if (res.turned) c.push(`<span class="chip good">Turned sideways: saves ${cpF(Math.round((d.upQty - res.qty)*100)/100)} m (${cpF(d.upQty)} m upright)</span>`);
@@ -2480,7 +2488,7 @@ function qSections(){
     const s = stitch.get(k) || {rooms: new Set(), panels: 0, k, style: row.style, lins: new Set()}; s.rooms.add(row.room || '—'); s.panels += res.panels; if (lin) s.lins.add(lin.name); stitch.set(k, s);
     if (res.track) {
       const t = TRACKS.find(x => x.n === row.track) || {};
-      if (res.trackUnit === 'ft') { pieces++; const tr_ = trackRate(row.track); hw(row.room, {grp: 'man', product: 'Curtain track (manual)', what: row.track, hsn: H.track || '', qty: res.track, unit: 'RFT', rate: tr_.rate, gst: +G.track, cost: costs.track[row.track], incl: tr_.incl, fix: 'track'}); }
+      if (res.trackUnit === 'ft') { pieces++; const tr_ = trackRate(row.track); hw(row.room, {grp: 'man', product: 'Curtain track (manual)', what: row.track + (res.trackPieces ? ` · ${res.trackPieces} pieces of ${cpF(res.trackPieceFt)} ft` : ''), hsn: H.track || '', qty: res.track, unit: 'RFT', rate: tr_.rate, gst: +G.track, cost: costs.track[row.track], incl: tr_.incl, fix: 'track'}); }
       else { kits++; const z = kitSize(res.track, res.kitMin), K = kitPrices(), KC = costs.kits || {};
         mo(row.room, {grp: 'mot', product: 'Motorised curtain track', what: t.mb ? `${row.track.replace('Marvel motorised · ', 'Marvel ')} (${z ? z + ' MTR' : 'over 9 MTR: ask Marvel'})` : `${row.track.replace('Motorised · ', '')} with motor (${z ? z + ' MTR' : 'over 9 MTR: ask D\'Decor'})`, hsn: H.kits || '', qty: 1, unit: 'PCS',
           rate: z && K[t.m] ? K[t.m][z] : null, gst: +G.track, cost: z && KC[t.m] ? KC[t.m][z] : null, incl: gstIncl('kits'), fix: 'track'});
@@ -5019,4 +5027,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-172017 -->
+<!-- build 20261007-180813 -->
