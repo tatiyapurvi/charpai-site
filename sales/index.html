@@ -1503,7 +1503,11 @@ tb.addEventListener('input', e => {
     t.classList.toggle('ovr', !!r[f]);
   } else r[f] = f === 'roll' ? +t.value : t.value;
   if (f === 'fabric') { r.key = ''; t.className = fabricState(r); openSugg(t, r); }
-  if (f === 'sup') { r.key = ''; const fi = tr.querySelector('[data-f=fabric]'); fi.className = fabricState(r); }
+  if (f === 'sup') {   // a new company: the old company's fabric and what came with it go (Purvi, 7 Oct)
+    const fi = tr.querySelector('[data-f=fabric]'), was = !!r.key;
+    r.key = ''; r.fabric = ''; fi.value = ''; fi.className = fabricState(r);
+    if (was) { if (!+r.rollOwn) { r.roll = 140; const sel = tr.querySelector('[data-f=roll]'); if (sel) sel.innerHTML = rollOptHTML(r); } r.repeat = ''; const rp = tr.querySelector('[data-f=repeat]'); if (rp) rp.value = ''; }
+  }
   if (false) {
     const sel = tr.querySelector('[data-f=roll]');
     if (![...sel.options].some(o => +o.value === +r.roll)) sel.insertAdjacentHTML('beforeend', `<option value="${r.roll}">${r.roll} cm</option>`);
@@ -4293,7 +4297,7 @@ $('#pside').addEventListener('input', e => {
   const f = e.target.dataset.u, r = uphCur(); if (!f || !r) return;
   r[f] = e.target.value;
   if (f === 'fabric') { r.key = ''; uphSugg(r); }
-  if (f === 'sup') { r.key = ''; uphChanged(r, true); return; }
+  if (f === 'sup') { r.key = ''; r.fabric = ''; uphChanged(r, true); return; }   // a new company clears the old company's fabric (7 Oct)
   if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; uphChanged(r, true); return; }
   uphChanged(r, false);
 });
@@ -4523,8 +4527,12 @@ const ptb = $('#ptb');
 ptb.addEventListener('input', e => {
   const f = e.target.dataset.p; if (!f) return;
   const k = mpCur, tr = e.target.closest('tr'), r = state.more[k].find(x => x.id === +tr.dataset.id); if (!r) return;
-  r[f] = e.target.value;
+  const old = r[f]; r[f] = e.target.value;
   const col = MP[k].cols.find(c => c.k === f);
+  if (k === 'wallpaper' && f === 'sup') {   // a new company clears the old company's design, and the roll size, repeat and match it brought (7 Oct)
+    if (wpItem(Object.assign({}, r, {sup: old}))) { r.roll = MP.wallpaper.blank().roll; r.rep = ''; r.match = ''; }
+    r.design = ''; }
+  if (k === 'flooring' && f === 'sup' && r.product) { r.product = ''; const pi = tr.querySelector('[data-p=product]'); if (pi) pi.value = ''; }   // same for flooring
   if (k === 'mattress' && (f === 'model' || f === 'sup')) { const m = swMat(r); if (m && r.T && !m.th.includes(parseFloat(r.T))) r.T = ''; }
   if (k === 'foam' && f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; }
   if (k === 'flooring' && f === 'product' && flPicked(r)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
@@ -4646,4 +4654,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-115103 -->
+<!-- build 20261007-115536 -->
