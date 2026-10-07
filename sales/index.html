@@ -3901,7 +3901,7 @@ const MP = {
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
       // 'Wall' column removed 7 Oct (Purvi); r.wall kept in old rows and still shows in the side panel title
-      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},
+      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor", "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},   // "D'Decor" = D'Decor's own list (7 Oct)
       {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or design no.' : 'Collection · design no.', list: wpListId, w: 230},
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
       {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: wpRollOpts, w: 150, off: r => r.kind !== 'Roll'},
@@ -4601,4 +4601,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-112207 -->
+<!-- build 20261007-112855 -->
