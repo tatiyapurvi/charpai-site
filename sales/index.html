@@ -1360,7 +1360,7 @@ function openSugg(input, row){
 function closeSugg(){ sugg.hidden = true; suggFor = null; }
 function pickSugg(i){
   const x = suggItems[i]; if (!x || !suggFor) return;
-  if (suggFor.wp) { const {input} = suggFor; closeSugg(); input.value = x.sku + ' · ' + x.name; input.dispatchEvent(new Event('input', {bubbles: true})); return; }   // the sheet's own input handler fills the row
+  if (suggFor.mp) { const {input, val} = suggFor; closeSugg(); input.value = val(x); input.dispatchEvent(new Event('input', {bubbles: true})); return; }   // the sheet's own input handler fills the row
   const {input, row} = suggFor, tr = input.closest('tr');
   { row.sup = x.sup; row.key = x.k; row.fabric = x.n; row.roll = listedRoll(row) || 140; row.rollOwn = ''; row.repeat = ''; row.turn = 'Yes'; }
   input.value = row.fabric; input.className = fabricState(row);
@@ -1379,6 +1379,7 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
   else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
+  else if (flProductInput(e.target)) flOpenSugg(e.target);
   else if (!sugg.contains(e.target)) closeSugg(); });
 document.addEventListener('scroll', e => { if (!sugg.hidden && e.target !== sugg) closeSugg(); }, true);
 
@@ -3671,7 +3672,7 @@ const wpDesignInput = el => !!(el && el.dataset && el.dataset.p === 'design' && 
 function wpOpenSugg(input){
   const r = state.more.wallpaper.find(x => x.id === +input.closest('tr').dataset.id), L = r && WPL[r.sup];
   if (!L) { closeSugg(); return; }
-  suggFor = {input, row: r, wp: true}; suggItems = []; suggOn = 0;
+  suggFor = {input, row: r, mp: true, val: x => x.sku + ' · ' + x.name}; suggItems = []; suggOn = 0;
   const q = String(input.value || '').split('·')[0].trim().toLowerCase(), toks = q.split(/\s+/).filter(Boolean);
   let html;
   if (q.length < 2) html = `<div class="msg">Type 2 letters or more: a collection, a design no. or a code.</div>`;
@@ -3700,7 +3701,26 @@ function fillFLLists(){
   $('#fllists').innerHTML = `<datalist id="flsups">${Object.keys(FLL).map(n => `<option value="${esc(n)}">${esc(FLL[n].brand || '')}</option>`).join('')}</datalist>` +
     Object.entries(FLL).map(([n, L], i) => `<datalist id="fll-${i}">${[...L.items.values()].map(x => `<option value="${esc(x.code + ' · ' + L.brand)}">${esc(x.type + ' · ' + x.cons + (x.rollm ? ` · ${x.rollm} m roll` : x.tile ? ' · ' + x.tile : ''))}</option>`).join('')}</datalist>`).join('');
 }
-const flListId = r => { const i = Object.keys(FLL).indexOf(r.sup); return i < 0 ? null : 'fll-' + i; };
+const flListId = r => null;   // no browser datalist: flOpenSugg shows the app's own box (7 Oct)
+// Carpet suggestions in the same box as curtain fabric (7 Oct, Purvi: "switch flooring to the curtains style box too").
+const flProductInput = el => !!(el && el.dataset && el.dataset.p === 'product' && mpCur === 'flooring' && el.closest('#ptb'));
+function flOpenSugg(input){
+  const r = state.more.flooring.find(x => x.id === +input.closest('tr').dataset.id), L = r && FLL[r.sup];
+  if (!L) { closeSugg(); return; }
+  suggFor = {input, row: r, mp: true, val: x => x.code + ' · ' + L.brand}; suggOn = 0;
+  const toks = String(input.value || '').split('·')[0].trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const all = [...L.items.values()].sort((a, b) => (b.type === r.type) - (a.type === r.type)), hit = x => [x.code, x.name, x.type, x.cons, x.tile].join(' ').toLowerCase();
+  suggItems = (toks.length ? all.filter(x => toks.every(w => hit(x).includes(w))) : all).slice(0, 60);
+  sugg.innerHTML = suggItems.length ? suggItems.map((x, i) => {
+    const mrp = Math.round(x.rrp * (1 + x.gst / 100)), dp = canSeeCost ? FLC.get(r.sup + '|' + x.code.toUpperCase()) : null;
+    return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.name)}</b> <small>${esc(x.type)}</small><br><small>${esc([x.cons, x.rollm ? `${x.rollm} m roll` : x.tile].filter(Boolean).join(' · '))}</small></span><span class="pr">MRP ${rs(mrp)}<small>per sq ft${dp != null ? ` · we pay ${rs(dp)}` : ''}</small></span></div>`;
+  }).join('') : `<div class="msg">No carpet matches “${esc(toks.join(' '))}” in ${esc(r.sup)}'s list.</div>`;
+  const rc = input.getBoundingClientRect();
+  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
+  sugg.hidden = false;
+  const below = innerHeight - rc.bottom;
+  sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+}
 function flPicked(r){ const it = flItem(r); if (!it) return false; r.type = it.type; return true; }
 const wpListId = r => null;   // no browser datalist: wpOpenSugg shows the app's own box (7 Oct)
 // Picking a design from a company list fills its roll size and repeat (panels printed over 3 rolls get no repeat).
@@ -4507,7 +4527,8 @@ ptb.addEventListener('input', e => {
   if (k === 'mattress' && (f === 'model' || f === 'sup')) { const m = swMat(r); if (m && r.T && !m.th.includes(parseFloat(r.T))) r.T = ''; }
   if (k === 'foam' && f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; }
   if (k === 'flooring' && f === 'product' && flPicked(r)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
-  if (k === 'flooring' && f === 'sup' && e.target.tagName === 'INPUT' && FLL[r.sup]) { const pi = tr.querySelector('[data-p=product]'); if (pi) { pi.setAttribute('list', flListId(r)); pi.placeholder = 'Type a carpet name'; } }
+  if (k === 'flooring' && f === 'sup' && e.target.tagName === 'INPUT' && FLL[r.sup]) { const pi = tr.querySelector('[data-p=product]'); if (pi) pi.placeholder = 'Type a carpet name'; }
+  if (k === 'flooring' && f === 'product' && e.isTrusted && document.activeElement === e.target) flOpenSugg(e.target);
   if (k === 'wallpaper' && f === 'design' && e.isTrusted && document.activeElement === e.target) wpOpenSugg(e.target);
   if (k === 'wallpaper' && (f === 'design' || f === 'sup')) { wpPicked(r); const rsel = tr.querySelector('[data-p=roll]'); if (rsel && rsel.tagName === 'SELECT') rsel.innerHTML = selOpts(wpRollOpts(r), r.roll); }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r) && ![...tr.querySelectorAll('[data-p=roll] option')].some(o => o.value === r.roll)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
@@ -4624,4 +4645,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-113731 -->
+<!-- build 20261007-114056 -->
