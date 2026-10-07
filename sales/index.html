@@ -1442,7 +1442,7 @@ function openSugg(input, row){
 }
 function closeSugg(){
   // left without a pick: a box that shows a picked item goes back to it (blind collection)
-  if (suggFor && suggFor.input && suggFor.input.dataset.bcoll && suggFor.row && suggFor.row.pid) suggFor.input.value = bCollLabel(BL.byId.get(suggFor.row.pid));
+  if (suggFor && suggFor.restore) suggFor.restore();
   sugg.hidden = true; suggFor = null; }
 // One standard for every type-to-search list in the app (Purvi, 7 Oct: "these small small things i shouldn't have to tell you"):
 // opens on focus AND on every click in its box (also when the box already has the cursor), follows the box when the page or table
@@ -1461,6 +1461,7 @@ function suggOpener(el){
   if (el.dataset.f === 'fabric') return () => openSugg(el, rowById(el.closest('tr').dataset.id));
   if (wpDesignInput(el)) return () => wpOpenSugg(el);
   if (flProductInput(el)) return () => flOpenSugg(el);
+  if (el.dataset.bfam) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bFamSugg(el, b); };
   if (el.dataset.bcoll) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bCollSugg(el, b); };
   if (el.dataset.b === 'shade') return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bShadeSugg(el, b); };
   if (el.dataset.bpick) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bOpenSugg(el, b, el.dataset.bpick); };
@@ -1496,6 +1497,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
   else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
   else if (flProductInput(e.target)) flOpenSugg(e.target);
+  else if (e.target.dataset && e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.bcoll) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bCollSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.b === 'shade' && !e.target.dataset.quiet) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bShadeSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); }
@@ -1999,8 +2001,8 @@ function bRowHTML(b, i){
   const list = shadeListId(b, t);
   return `<tr class="row" data-id="${b.id}">
     <td class="first"><div class="cell"><span class="idx">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:130px"></div></td>
-    <td><select data-b="sup" style="width:160px">${bOpts(Object.entries(BSUPS), b.sup)}</select></td>
-    <td><select data-b="fam" style="width:170px">${bOpts(bFams(b.sup).map(f => [f, f]), b.fam, 'Pick a type')}</select></td>
+    <td><select data-b="sup" style="width:160px">${selOpts(Object.entries(BSUPS).map(([k, n]) => [k, n, BL.state === 'ready' && !bPriced(k) && b.sup !== k]), b.sup)}</select></td>
+    <td><input data-bfam="1" value="${esc(b.fam)}" autocomplete="off" placeholder="Pick a type" style="width:190px" aria-label="Blind type"></td>
     ${loading ? `<td class="hint">${esc(loading)}</td>` : priced ? `
     <td><select data-b="sys" style="width:170px"${b.fam ? '' : ' disabled'}>${bOpts(syss.map(x => [x, x]), b.sys, 'Pick a system')}</select></td>` : `
     <td class="hint" style="font-size:12.5px">price list not added yet</td>`}
@@ -2037,6 +2039,25 @@ function bOpenSugg(input, b, kind){
     : `<div class="msg">No ${kind === 'extra' ? 'extra' : kind} matches “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s list.</div>`;
   placeSugg(input);
 }
+// Blind type in the same box (7 Oct, Purvi: "blind type list is still chrome's list not ours"): the company's types, each with how many
+// collections and the lowest MRP per sq ft. Picking a type clears the system and collection (one system = picked by itself).
+function bSetFam(b, v){
+  if (b.fam === v) return; b.fam = v; b.sys = b.pid = ''; b.pidAuto = false;
+  const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0];
+  bRedraw(b);
+}
+function bFamSugg(input, b){
+  const q = input.value.trim() === b.fam ? '' : input.value.trim().toLowerCase();
+  const L = bFams(b.sup).filter(f => !q || f.toLowerCase().includes(q)).sort((x, y) => q ? x.toLowerCase().startsWith(q) ? -1 : y.toLowerCase().startsWith(q) ? 1 : 0 : 0);
+  const info = f => { const rs_ = BL.rows.filter(r => r.sup === b.sup && r.fam === f); if (!rs_.length) return ['', '']; const lo = Math.min(...rs_.map(r => Math.round(r.sqm * (1 + r.gst / 100) / SQFT)));
+    return [`${uniq(rs_.map(r => r.coll || r.design)).length} collections · ${uniq(rs_.map(r => r.sys)).length} system${uniq(rs_.map(r => r.sys)).length > 1 ? 's' : ''}`, `from ₹${lo}`]; };
+  suggFor = {input, row: b, restore: () => { input.value = b.fam; }, pick: f => { input.value = f; bSetFam(b, f); }};
+  suggItems = L; suggOn = Math.max(0, L.indexOf(b.fam));
+  sugg.innerHTML = L.length ? L.map((f, i) => { const [a, p] = info(f); return `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(f)}</b><br><small>${esc(a || 'order form only, no prices yet')}</small></span><span class="pr">${p}${p ? '<small>per sq ft · incl. GST</small>' : ''}</span></div>`; }).join('')
+    : `<div class="msg">No blind type matches “${esc(input.value.trim())}” at ${esc(BSUPS[b.sup])}.</div>`;
+  placeSugg(input);
+  const on = sugg.querySelector('.it.on'); if (on) on.scrollIntoView({block: 'nearest'});
+}
 // Collection in the same box (7 Oct, Purvi: "shades be first and then collection/series … its list should also be in the same format").
 // Shade no. now comes before it: typing the shade still fills it in. The list is that company's type + system; when the box shows the
 // picked collection, a click lists them all (it filters only once something new is typed).
@@ -2045,7 +2066,7 @@ function bCollSugg(input, b){
   const L0 = BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam && r.sys === b.sys), cur = bCollLabel(BL.byId.get(b.pid));
   const q = input.value.trim() === cur ? '' : input.value.trim().toLowerCase(), toks = q.split(/\s+/).filter(Boolean);
   const L = toks.length ? L0.filter(r => toks.every(t => bCollLabel(r).toLowerCase().includes(t))).sort((a, c) => bCollLabel(c).toLowerCase().startsWith(toks[0]) - bCollLabel(a).toLowerCase().startsWith(toks[0])) : L0;
-  suggFor = {input, row: b, pick: r => { b.pid = r.id; b.pidAuto = false; input.value = bCollLabel(r); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); }};
+  suggFor = {input, row: b, restore: () => { if (b.pid) input.value = bCollLabel(BL.byId.get(b.pid)); }, pick: r => { b.pid = r.id; b.pidAuto = false; input.value = bCollLabel(r); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); }};
   suggItems = L.slice(0, 80); suggOn = Math.max(0, suggItems.findIndex(r => r.id === b.pid));
   sugg.innerHTML = suggItems.length ? suggItems.map((r, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(r.coll || r.design)}</b><br><small>${esc([r.coll && r.design, r.extra].filter(Boolean).join(' · ') || r.sys)}</small></span><span class="pr">₹${Math.round(r.sqm * (1 + r.gst / 100) / SQFT)}<small>per sq ft · incl. GST</small></span></div>`).join('')
     : `<div class="msg">No collection matches “${esc(input.value.trim())}” in ${esc(b.fam)} · ${esc(b.sys)}.</div>`;
@@ -2125,6 +2146,7 @@ function shadePick(b){
 const btb = $('#btb');
 btb.addEventListener('input', e => {
   if (e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); return; }
+  if (e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); return; }
   if (e.target.dataset.bcoll) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return;
     if (!e.target.value.trim() && b.pid) { b.pid = ''; b.pidAuto = false; bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); save(); }   // emptied: no collection
     bCollSugg(e.target, b); return; }
@@ -4867,4 +4889,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-132249 -->
+<!-- build 20261007-132838 -->
