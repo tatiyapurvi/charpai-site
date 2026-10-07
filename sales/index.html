@@ -329,6 +329,14 @@ svg text{font-family:var(--num);fill:var(--ink)}
 .spare{stroke:var(--faint);stroke-dasharray:3 3}
 .hatchline{stroke:var(--faint)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px}
+.pk{display:flex;flex-direction:column;gap:4px;min-width:220px}
+.pk .pc{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:4px 6px 4px 9px;background:var(--paper);font-size:13px;line-height:1.25}
+.pk .pc b{font-weight:600;flex:1;min-width:0}
+.pk .pc small{color:var(--muted);display:block;font-weight:400}
+.pk .pc input{width:44px;text-align:right;padding:4px 6px}
+.pk .pc .x{border:0;background:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px}
+.pk .pc .x:hover{color:var(--warn)}
+.pk input.find{width:100%}
 .chip{font-size:12.5px;border:1px solid var(--line);border-radius:20px;padding:3px 10px;color:var(--muted)}
 .chip.good{border-color:var(--good);color:var(--good)}
 .chip.warn{border-color:var(--warn);color:var(--warn)}
@@ -779,7 +787,7 @@ tr.dash-r:hover td{background:var(--sel)}
         <div class="panel">
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
           <div class="tbl-scroll"><table class="sheet" style="min-width:1960px"><thead>
-            <tr><th class="first">Room</th><th>Company</th><th>Blind type <small>company's own name</small></th><th>System</th><th>Collection / series</th><th>Shade no.</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Qty</th><th>Motor / remote</th><th>Qty</th><th class="r">Size <small>H × W mm</small></th><th class="r">Area</th><th class="r">MRP / sq ft</th><th class="r">Amount</th><th>For the order</th><th></th></tr>
+            <tr><th class="first">Room</th><th>Company</th><th>Blind type <small>company's own name</small></th><th>System</th><th>Collection / series</th><th>Shade no.</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Qty</th><th>Motor</th><th>Remote</th><th>Extras <small>brackets, chargers…</small></th><th class="r">Size <small>H × W mm</small></th><th class="r">Area</th><th class="r">MRP / sq ft</th><th class="r">Amount</th><th>For the order</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span></div>
         </div>
@@ -1187,6 +1195,44 @@ function motorSel(r){
   const list = motorsFor(r); if (!list) return '';
   return `<select id="r${r.id}-motor" data-f="motor" style="width:250px;margin-top:6px" class="${r.motor ? '' : 'todo'}" aria-label="Motor"><option value="">Pick a motor</option>${opt(list, r.motor)}</select>`;
 }
+// Marvel track parts (pages 24–26, RRP before 18% GST; Purvi, 7 Oct: "add the track parts as extras too"). A Marvel track offers its
+// own family's parts first, then wands and bends that fit any track. Row field r.extras = [{k: part name, q}].
+const MV_PARTS = (() => { const L = [], add = (fam, list) => list.forEach(([n, p, u]) => L.push({k: (fam ? fam + ' · ' : '') + n, fam, n, p, u}));
+  add('Dura', [['2 track holder', 280, 'pc'], ['Jointer', 280, 'pc'], ['Medium duty master carrier, overlap arm', 868, 'pc'], ['Medium duty master carrier, small arm', 952, 'pc'],
+    ['Ripple master carrier, one-way opening', 1064, 'pc'], ['Ripple overlap arm and small arm', 1974, 'set'], ['Intermediate stop', 24, 'pc'], ['Hook', 1, 'pc'], ['Ready 90° bend', 1700, 'bend']]);
+  add('Easyglide', [['Long wall holder', 126, 'pc'], ['2 track holder', 266, 'pc'], ['Long 2 track holder', 490, 'pc'], ['Jointer', 154, 'pc'], ['Over lapper', 308, 'pair'],
+    ['Ripple over lapper', 644, 'pair'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc'], ['Ready 90° bend', 1320, 'bend']]);
+  add('Power', [['Long wall holder', 123, 'pc'], ['2 track holder', 168, 'pc'], ['3 track holder', 230, 'pc'], ['Long 2 track holder', 288, 'pc'], ['Jointer', 154, 'pc'],
+    ['Over lapper', 364, 'pair'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc'], ['Ready 90° bend', 1350, 'bend']]);
+  add('Mini', [['Long wall holder', 137, 'pc'], ['2 track holder', 300, 'pc'], ['Long 2 track holder', 518, 'pc'], ['Jointer', 154, 'pc'], ['Over lapper', 322, 'pair'],
+    ['Ripple over lapper', 658, 'pair'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc']]);
+  add('Flexi', [['Long wall holder', 174, 'pc'], ['2 track holder', 364, 'pc'], ['Long 2 track holder', 574, 'pc'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc']]);
+  add('Hospital', [['Jointer', 170, 'pc'], ['T jointer', 150, 'pc'], ['Wall holder', 260, 'pc'], ['Long wall holder', 200, 'pc'], ['Ready 90° bend', 1480, 'bend']]);
+  add('', [['Wand, plastic white 10 mm · 1.25 m', 1008, 'pc'], ['Wand, plain 12 mm · 1.5 m', 1652, 'pc'], ['Wand, plain 15 mm · 1.5 m', 1946, 'pc'], ['Track bending charge', 1000, 'bend']]);
+  return L; })();
+const mvFam = track => { const m = /^Marvel.*?(Dura|Easyglide|Power|Mini|Flexi|Hospital)/.exec(track || ''); return m ? m[1] : null; };
+const partsFor = r => { const f = mvFam(r.track); return f ? MV_PARTS.filter(x => x.fam === f || !x.fam) : []; };
+const PART_UNIT = {pc: 'PCS', pair: 'PAIR', set: 'SET', bend: 'BEND'};
+const partsOf = r => (r.extras || []).map((x, i) => { const p = MV_PARTS.find(y => y.k === x.k); return p ? {i, p, q: Math.max(1, parseInt(x.q, 10) || 1)} : null; }).filter(Boolean);
+function partsHTML(r){
+  if (!mvFam(r.track)) return '';
+  const cards = partsOf(r).map(({i, p}) => `<div class="pc"><b>${esc(p.k)}<small>₹${mrpOf2(p.p, 18).toLocaleString('en-IN')} a ${p.u} · incl. GST</small></b><input class="n" data-cq="${i}" inputmode="numeric" value="${esc(r.extras[i].q)}" placeholder="1" aria-label="How many"><button class="x" data-cx="${i}" title="Take it off" aria-label="Remove ${esc(p.k)}">✕</button></div>`).join('');
+  return `<div class="pk" style="width:250px;margin-top:6px">${cards}<input class="find" data-cpick="1" placeholder="Add Marvel parts (holders, hooks…)" autocomplete="off" aria-label="Add Marvel track parts"></div>`;
+}
+function cOpenSugg(input, r){
+  const f = mvFam(r.track), toks = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const L = partsFor(r).filter(x => toks.every(t => x.k.toLowerCase().includes(t)));
+  suggFor = {input, row: r, pick: x => { r.extras = r.extras || []; const had = r.extras.find(y => y.k === x.k); if (had) had.q = String((parseInt(had.q, 10) || 1) + 1); else r.extras.push({k: x.k, q: ''}); partsRedraw(r); }}; suggItems = L; suggOn = 0;
+  sugg.innerHTML = L.length ? L.map((x, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.n)}</b><br><small>${x.fam ? esc(x.fam) + ' Track' : 'Any Marvel track'} · per ${x.u}</small></span><span class="pr">MRP ₹${mrpOf2(x.p, 18).toLocaleString('en-IN')}<small>Marvel ₹${x.p.toLocaleString('en-IN')} + GST</small></span></div>`).join('')
+    : `<div class="msg">No ${esc(f)} Track part matches “${esc(input.value.trim())}”.</div>`;
+  const rc = input.getBoundingClientRect();
+  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px'; sugg.hidden = false;
+  const below = innerHeight - rc.bottom; sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+}
+function partsRedraw(r, refocus = true){
+  const tr = tb.querySelector(`tr[data-id="${r.id}"]`); if (!tr) return; const box = tr.querySelector('[data-xp]'); if (box) box.innerHTML = partsHTML(r);
+  changed(r); if (refocus) { const f = tr.querySelector('[data-cpick]'); if (f) setTimeout(() => f.focus(), 0); }
+}
 // A Marvel manual track uses Marvel's rate (before GST) until we type our own "we charge" rate in Prices.
 const trackRate = n => { const t = TRACKS.find(x => x.n === n) || {}, p = (prices.track || {})[n]; return has(p) ? {rate: p, incl: gstIncl('track')} : {rate: t.mv ?? p, incl: false}; };
 const KIT_SIZES = ['1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9'];
@@ -1265,7 +1311,7 @@ const findFabric = name => prices.fabrics.find(f => f.n.toLowerCase() === String
 
 // ================= the sheet: kept on this device
 let uid = 1;
-function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', motor:'', fixing:'', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
+function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', motor:'', extras:[], fixing:'', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
 function fillFabric(row){
   const f = findFabric(row.fabric);
   if (!f) return false;
@@ -1292,6 +1338,7 @@ function migrate(r){
   if (OLD_TRACK[r.track]) r.track = OLD_TRACK[r.track];
   if (r.remote === undefined) r.remote = '';
   if (r.motor === undefined) r.motor = '';
+  if (!Array.isArray(r.extras)) r.extras = [];
   for (const f of ['fixing', 'parts', 'remarks']) if (r[f] === undefined) r[f] = '';
   r.id = uid++;
 }
@@ -1398,6 +1445,7 @@ function openSugg(input, row){
 function closeSugg(){ sugg.hidden = true; suggFor = null; }
 function pickSugg(i){
   const x = suggItems[i]; if (!x || !suggFor) return;
+  if (suggFor.pick) { const f = suggFor.pick; closeSugg(); f(x); return; }
   if (suggFor.mp) { const {input, val} = suggFor; closeSugg(); input.value = val(x); input.dispatchEvent(new Event('input', {bubbles: true})); return; }   // the sheet's own input handler fills the row
   const {input, row} = suggFor, tr = input.closest('tr');
   { row.sup = x.sup; row.key = x.k; row.fabric = x.n; row.roll = listedRoll(row) || 140; row.rollOwn = ''; row.repeat = ''; row.turn = 'Yes'; }
@@ -1418,6 +1466,8 @@ document.addEventListener('keydown', e => {
 document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
   else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
   else if (flProductInput(e.target)) flOpenSugg(e.target);
+  else if (e.target.dataset && e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); }
+  else if (e.target.dataset && e.target.dataset.cpick) { const r = rowById(e.target.closest('tr').dataset.id); if (r) cOpenSugg(e.target, r); }
   else if (!sugg.contains(e.target)) closeSugg(); });
 document.addEventListener('scroll', e => { if (!sugg.hidden && e.target !== sugg) closeSugg(); }, true);
 
@@ -1449,7 +1499,7 @@ function rowHTML(r, i){
     <td><select id="${id('style')}" data-f="style" style="width:215px">${opt(STYLES, r.style)}</select></td>
     <td><input id="${id('H')}" data-f="H" class="n key" inputmode="decimal" value="${esc(r.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input id="${id('W')}" data-f="W" class="n key" inputmode="decimal" value="${esc(r.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
-    <td><select id="${id('track')}" data-f="track" style="width:250px" class="${r.track ? '' : 'todo'}"><option value="">Pick a track</option>${trackOptHTML(r.track)}</select><div data-motor>${motorSel(r)}</div><div data-remote>${remoteSel(r)}</div></td>
+    <td><select id="${id('track')}" data-f="track" style="width:250px" class="${r.track ? '' : 'todo'}"><option value="">Pick a track</option>${trackOptHTML(r.track)}</select><div data-motor>${motorSel(r)}</div><div data-remote>${remoteSel(r)}</div><div data-xp>${partsHTML(r)}</div></td>
     <td><select id="${id('fixing')}" data-f="fixing" style="width:140px" class="${r.fixing ? '' : 'todo'}" aria-label="Ceiling or face fixing"><option value="">Pick fixing</option>${opt(FIXINGS, r.fixing)}</select></td>
     <td>${autoCell(r, 'panelTxt', 64)}</td>
     <td>${autoCell(r, 'allowTxt', 56)}</td>
@@ -1525,6 +1575,8 @@ tb.addEventListener('focusout', e => {
   const r = rowById(t.closest('tr').dataset.id); setTimeout(() => updateRow(r), 0);
 });
 tb.addEventListener('input', e => {
+  if (e.target.dataset.cpick) { const r = rowById(e.target.closest('tr').dataset.id); if (r) cOpenSugg(e.target, r); return; }
+  if (e.target.dataset.cq) { const r = rowById(e.target.closest('tr').dataset.id); if (!r) return; r.extras[+e.target.dataset.cq].q = e.target.value.trim(); changed(r); return; }
   const t = e.target, f = t.dataset.f; if (!f) return;
   const tr = t.closest('tr'), r = rowById(tr.dataset.id);
   if (f === 'roll' && t.value === 'other') {   // "Type a width…": a box to type the width in cm
@@ -1565,6 +1617,8 @@ tb.addEventListener('change', e => {
     e.target.closest('td').querySelector('[data-remote]').innerHTML = remoteSel(r);
     const ml = motorsFor(r); if (!ml || !ml.includes(r.motor)) r.motor = '';   // and the motor
     e.target.closest('td').querySelector('[data-motor]').innerHTML = motorSel(r);
+    const fit = new Set(partsFor(r).map(x => x.k)); r.extras = (r.extras || []).filter(x => fit.has(x.k));   // and parts that don't fit the new track
+    e.target.closest('td').querySelector('[data-xp]').innerHTML = partsHTML(r);
   }
   if (f === 'remote') e.target.classList.toggle('todo', !r.remote);
   if (f === 'motor') e.target.classList.toggle('todo', !r.motor);
@@ -1573,6 +1627,7 @@ tb.addEventListener('change', e => {
 });
 tb.addEventListener('click', e => {
   const tr = e.target.closest('tr'); if (!tr) return;
+  const cx = e.target.closest('[data-cx]'); if (cx) { const r = rowById(tr.dataset.id); r.extras.splice(+cx.dataset.cx, 1); partsRedraw(r, false); return; }
   const r = rowById(tr.dataset.id);
   const rz = e.target.closest('[data-reset]');
   if (rz) { r[rz.dataset.reset] = ''; changed(r); tr.querySelector(`[data-f=${rz.dataset.reset}]`)?.blur(); updateRow(r); return; }
@@ -1809,6 +1864,7 @@ function rowAmount(row, c){
     else { const z = kitSize(c.res.track, c.res.kitMin), K = kitPrices(); add(t.mb ? 'Motorised track' : 'Motor track kit', 1, z ? z + ' m' : 'kit', z && K[t.m] ? K[t.m][z] : null, +G.track, gstIncl('kits'));
       if (t.mb) add('Motor', 1, 'pc', row.motor ? motorRate(row.motor) : null, +G.track, gstIncl('motors'));
       if (row.remote && row.remote !== NO_REMOTE) add('Remote', 1, 'pc', remoteRate(row.remote), +G.track, gstIncl('remotes')); }
+    partsOf(row).forEach(({p, q}) => add(p.n, q, p.u, p.p, 18, false));   // Marvel track parts
   }
   return {items, total: items.reduce((a, x) => a + (x.amt || 0), 0), missing: items.filter(x => x.amt == null).length};
 }
@@ -1865,8 +1921,15 @@ const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti']);   // sq ft
 const uniq = a => [...new Set(a)];
 const mmOf = inch => Math.round(inch * 25.4);
 const r2 = v => Math.round(v * 100) / 100;
-function bBlank(){ return {id: uid++, room: '', sup: 'SAN', fam: '', sys: '', pid: '', shade: '', series: '', W: '', H: '', qty: 1, addon: '', addonQty: 1, motor: '', o: {}}; }
-function bMigrate(b){ b.id = uid++; if (!b.o) b.o = {}; for (const k of ['shade', 'series', 'motor']) if (b[k] === undefined) b[k] = ''; }
+function bBlank(){ return {id: uid++, room: '', sup: 'SAN', fam: '', sys: '', pid: '', shade: '', series: '', W: '', H: '', qty: 1, adds: [], motor: '', o: {}}; }
+// 7 Oct (Purvi: "why is motor/remote one column … why cant i type"): a blind holds any number of extras, b.adds = [{k, q}]
+// (k = add-on key, q = typed quantity or '' = worked out). The old single add-on (b.addon, b.addonQty) moves in once.
+function bMigrate(b){ b.id = uid++; if (!b.o) b.o = {}; for (const k of ['shade', 'series', 'motor']) if (b[k] === undefined) b[k] = '';
+  if (!Array.isArray(b.adds)) { b.adds = b.addon ? [{k: b.addon, q: has(b.addonQty) ? String(b.addonQty) : ''}] : []; } delete b.addon; delete b.addonQty; }
+// Which box an add-on goes in: motors, remotes and controls, everything else (brackets, chargers, side channels, Roman fabric…)
+const bAddKind = a => a.uom !== 'each' ? 'extra' : /motor/i.test(a.group) ? 'motor'
+  : /remote|switch|control|hub|bridge|transmitter|receiver|connexoon|tahoma|beacon/i.test(a.group + ' ' + a.name) && !/charger|bracket|cable|adaptor/i.test(a.name) ? 'remote' : 'extra';
+const B_KIND = {motor: 'motor', remote: 'remote', extra: 'extra'};
 state.blinds.forEach(bMigrate);
 if (state.bsel == null) state.bsel = 0;
 const bPriced = sup => BL.rows.some(r => r.sup === sup);
@@ -1884,12 +1947,12 @@ function bCalc(b){
   c.charge = Math.ceil(Math.max(c.sqft, minSqft) * 2 - 1e-9) / 2;   // rounded up to the next ½ sq ft, as in the quotations
   c.minApplied = !!p && c.sqft < minSqft;
   if (p) { c.gst = p.gst; c.mrp = Math.round(p.sqm * (1 + p.gst / 100) / SQFT); c.amt = c.charge * c.q * c.mrp; }
-  const a = BL.addons.find(x => x.key === b.addon);
-  if (a) {
-    c.addon = a;
-    c.addonUnits = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : a.uom === 'per m width' ? W * 0.0254 * q : Math.max(1, parseInt(b.addonQty, 10) || 1));
-    c.addonMrp = Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)); c.addonAmt = c.addonUnits * c.addonMrp;
-  }
+  // Extras: each is priced on its own unit; "each" items use the typed number, else 1 (a motor: one per blind)
+  c.adds = (b.adds || []).map((x, i) => { const a = BL.addons.find(y => y.key === x.k); if (!a) return null;
+    const units = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : a.uom === 'per m width' ? W * 0.0254 * q
+      : Math.max(1, parseInt(x.q, 10) || (bAddKind(a) === 'motor' ? q : 1)));
+    const mrp = Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)); return {i, a, units, mrp, amt: units * mrp}; }).filter(Boolean);
+  c.addonAmt = c.adds.reduce((t, x) => t + x.amt, 0);
   c.warn = t ? t.rules.map(f => f({W: c.mmW, H: c.mmH}, o, (b.series || '') + ' ' + (p ? p.coll : ''))).filter(Boolean) : [];
   return c;
 }
@@ -1900,7 +1963,7 @@ function bRowHTML(b, i){
   const loading = ['SAN', 'FC', 'AP', 'MV'].includes(b.sup) && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
   const syss = uniq(rows.filter(r => r.fam === b.fam).map(r => r.sys));
   const designs = rows.filter(r => r.fam === b.fam && r.sys === b.sys).map(r => [r.id, [r.coll, r.design].filter(Boolean).join(' · ') + (r.extra ? ` (${r.extra})` : '')]);
-  const adds = BL.addons.filter(a => a.sup === b.sup).map(a => [a.key, `${a.group}: ${a.name} · ₹${a.rrp.toLocaleString('en-IN')} ${a.uom}`]);
+  const adds = BL.addons.filter(a => a.sup === b.sup);
   const list = shadeListId(b, t);
   return `<tr class="row" data-id="${b.id}">
     <td class="first"><div class="cell"><span class="idx">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:130px"></div></td>
@@ -1915,12 +1978,37 @@ function bRowHTML(b, i){
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
     <td><input data-b="qty" class="n" inputmode="numeric" value="${esc(b.qty)}" style="width:52px" aria-label="How many"></td>
-    <td>${adds.length ? `<select data-b="addon" style="width:240px">${bOpts(adds, b.addon, 'None')}</select>` : `<input data-b="motor" value="${esc(b.motor)}" placeholder="None" style="width:200px" aria-label="Motor, remote or accessories">`}</td>
-    <td>${adds.length ? `<input data-b="addonQty" class="n" inputmode="numeric" value="${esc(b.addonQty)}" style="width:52px" aria-label="Add-on quantity">` : ''}</td>
+    ${adds.length ? ['motor', 'remote', 'extra'].map(k => `<td>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
     <td class="out" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>
     <td data-o="det"></td>
     <td class="acts"><button class="ico" data-ba="dup" title="Copy this blind">⧉</button><button class="ico" data-ba="del" title="Delete this blind">✕</button></td>
   </tr>`;
+}
+// The Motor / Remote / Extras boxes: what is picked shows as a card (name, price, how many, ✕); the box below is typed in and
+// opens the same suggestion list as curtain fabric (bOpenSugg). Motor and remote take one each; extras any number.
+const B_PH = {motor: 'Type to find a motor', remote: 'Type to find a remote', extra: 'Add an extra'};
+function bPickHTML(b, kind){
+  const c = bCalc(b), mine = (c.adds || []).filter(x => bAddKind(x.a) === kind);
+  const cards = mine.map(x => `<div class="pc"><b>${esc(x.a.name)}<small>₹${x.mrp.toLocaleString('en-IN')} ${x.a.uom === 'each' ? 'each' : x.a.uom} · incl. GST</small></b>${x.a.uom === 'each' ? `<input class="n" data-bq="${x.i}" inputmode="numeric" value="${esc(b.adds[x.i].q)}" placeholder="${x.units}" aria-label="How many">` : `<small>${cpF(x.units)}</small>`}<button class="x" data-bx="${x.i}" title="Take it off" aria-label="Remove ${esc(x.a.name)}">✕</button></div>`).join('');
+  const box = kind === 'extra' || !mine.length ? `<input class="find" data-bpick="${kind}" placeholder="${B_PH[kind]}" autocomplete="off" aria-label="${B_PH[kind]}">` : '';
+  return `<div class="pk" style="width:${kind === 'extra' ? 260 : 240}px">${cards}${box}</div>`;
+}
+function bOpenSugg(input, b, kind){
+  const fam = String(b.fam || '').toLowerCase().split(/[\s(]/)[0], toks = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const fits = a => fam && (a.group + ' ' + a.name).toLowerCase().includes(fam);
+  let L = BL.addons.filter(a => a.sup === b.sup && bAddKind(a) === kind && toks.every(t => (a.group + ' ' + a.name).toLowerCase().includes(t)));
+  L = L.filter(fits).concat(L.filter(a => !fits(a))).slice(0, 60);
+  suggFor = {input, row: b, pick: a => { b.adds.push({k: a.key, q: ''}); bRedraw(b, kind); }}; suggItems = L; suggOn = 0;
+  sugg.innerHTML = L.length ? L.map((a, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(a.name)}</b><br><small>${esc(a.group)}${fits(a) ? ' · fits ' + esc(b.fam) : ''}</small></span><span class="pr">MRP ₹${Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)).toLocaleString('en-IN')}<small>${esc(a.uom)}</small></span></div>`).join('')
+    : `<div class="msg">No ${kind === 'extra' ? 'extra' : kind} matches “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s list.</div>`;
+  const rc = input.getBoundingClientRect();
+  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px'; sugg.hidden = false;
+  const below = innerHeight - rc.bottom; sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+}
+function bRedraw(b, focusKind){
+  const i = state.blinds.indexOf(b), tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (!tr) return;
+  tr.outerHTML = bRowHTML(b, i); bMarkSel(); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save();
+  if (focusKind === 'extra') { const f = $('#btb').querySelector(`tr[data-id="${b.id}"] [data-bpick=extra]`); if (f) setTimeout(() => f.focus(), 0); }
 }
 function bUpdateRow(b){
   const tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (!tr) return;
@@ -1928,7 +2016,7 @@ function bUpdateRow(b){
   o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>` : '';
   o('area').innerHTML = c.ok ? `${cpF(c.charge * c.q)}<span class="u"> sq ft</span>${c.minApplied ? `<span class="tag" style="color:var(--warn)">minimum ${cpF(r2(c.p.min * SQFT))} sq ft</span>` : c.q > 1 ? `<span class="tag" style="color:var(--muted)">${c.q} × ${cpF(c.charge)}</span>` : ''}` : '';
   o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.p.gst}% GST</span>${c.p.extra === 'to confirm' ? '<span class="tag" style="color:var(--warn)">price to confirm</span>' : ''}` : '';
-  o('amt').innerHTML = c.ok && c.p ? `<span class="v">${rs(c.amt + (c.addonAmt || 0))}</span>${c.addon ? `<span class="tag" style="color:var(--muted)">incl. add-on ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
+  o('amt').innerHTML = c.ok && c.p ? `<span class="v">${rs(c.amt + (c.addonAmt || 0))}</span>${c.addonAmt ? `<span class="tag" style="color:var(--muted)">incl. extras ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
   o('det').innerHTML = c.t ? `<button class="miss${c.done === c.need && !c.warn?.length ? ' ok' : ''}" data-ba="det">${c.done === c.need ? 'Order details ✓' : `Order details ${c.done}/${c.need}`}${c.warn && c.warn.length ? ' · check' : ''}</button>` : '';
 }
 function renderBlinds(){
@@ -1980,10 +2068,12 @@ function shadePick(b){
 }
 const btb = $('#btb');
 btb.addEventListener('input', e => {
+  if (e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); return; }
+  if (e.target.dataset.bq) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return; b.adds[+e.target.dataset.bq].q = e.target.value.trim(); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); return; }
   const f = e.target.dataset.b; if (!f) return;
   const tr = e.target.closest('tr'), b = state.blinds.find(x => x.id === +tr.dataset.id);
   b[f] = e.target.value;
-  if (f === 'sup') { b.fam = b.sys = b.pid = b.addon = ''; }
+  if (f === 'sup') { b.fam = b.sys = b.pid = ''; b.adds = []; }   // another company's motors and extras don't fit
   if (f === 'fam') { b.sys = b.pid = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; }
   if (f === 'sys') { b.pid = ''; b.pidAuto = false; shadePick(b); }
   if (f === 'pid') b.pidAuto = false;
@@ -1999,6 +2089,7 @@ btb.addEventListener('focusin', e => { const tr = e.target.closest('tr'); if (tr
 btb.addEventListener('mouseup', e => { const t = e.target; if (t._sel) { e.preventDefault(); t._sel = false; } });
 btb.addEventListener('click', e => {
   const tr = e.target.closest('tr'); if (!tr) return;
+  const bx = e.target.closest('[data-bx]'); if (bx) { const b = state.blinds.find(x => x.id === +tr.dataset.id); b.adds.splice(+bx.dataset.bx, 1); bRedraw(b); return; }
   const a = e.target.closest('[data-ba]'); if (!a) { bSelect(tr); return; }
   const b = state.blinds.find(x => x.id === +tr.dataset.id), i = state.blinds.indexOf(b);
   if (a.dataset.ba === 'det') { bSelect(tr); const s = $('#bside'); if (s.getBoundingClientRect().top > innerHeight || s.getBoundingClientRect().bottom < 0) s.scrollIntoView({block: 'start'}); const f = s.querySelector('[data-bo]'); if (f) f.focus(); return; }
@@ -2090,7 +2181,7 @@ function orderHead(gr, col){ return col === 'sys' ? 'System' : ORDER_HEAD[col] |
 function orderCell(col, {b, c}){
   switch (col) {
     case 'shade': return b.shade; case 'series': return c.p ? c.p.coll : b.series; case 'sys': return b.sys; case 'W': return c.mmW; case 'H': return c.mmH;
-    case 'motor': return c.addon ? c.addon.name + (c.addonUnits > 1 && c.addon.uom === 'each' ? ' × ' + c.addonUnits : '') : b.motor; case 'loc': return b.room; case 'qty': return c.q;
+    case 'motor': return (c.adds || []).filter(x => bAddKind(x.a) !== 'extra').map(x => x.a.name + (x.units > 1 && x.a.uom === 'each' ? ' × ' + x.units : '')).join(', ') || b.motor; case 'loc': return b.room; case 'qty': return c.q;
     default: return (b.o || {})[col] || '';
   }
 }
@@ -2198,6 +2289,7 @@ function qSections(){
           rate: row.motor ? motorRate(row.motor) : null, gst: +G.track, cost: row.motor ? (costs.motors || {})[row.motor] : null, incl: gstIncl('motors'), fix: 'track'});
         if (row.remote !== NO_REMOTE) mo(row.room, {grp: 'mot', product: 'Curtain motor remote', what: row.remote || 'Remote not picked yet', hsn: H.remotes || '', qty: 1, unit: 'PCS',
           rate: row.remote ? remoteRate(row.remote) : null, gst: +G.track, cost: row.remote ? (costs.remotes || {})[row.remote] : null, incl: gstIncl('remotes'), fix: row.remote ? 'track' : 'remote'}); }
+      partsOf(row).forEach(({p, q}) => (res.trackUnit === 'ft' ? hw : mo)(row.room, {grp: res.trackUnit === 'ft' ? 'man' : 'mot', product: 'Curtain track parts', what: `Marvel ${p.k}`, hsn: H.track || '', qty: q, unit: PART_UNIT[p.u], rate: p.p, gst: 18, cost: null, incl: false, fix: 'track'}));
     }
   });
   for (const s of stitch.values()) add('stitch', {area: roomsTxt(s.rooms, s.lins.size > 0), product: 'Curtain stitching', what: `${s.style} curtain${s.lins.size ? ' with ' + [...s.lins].join(' / ') : ''}`, hsn: H.stitching || '',
@@ -2207,8 +2299,8 @@ function qSections(){
     pieces += c.q; const p = c.p;
     add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}`,
       hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
-    if (c.addon) hw(b.room, {grp: isMotorAddon(c.addon.group) ? 'mot' : 'man', product: addonProduct(c.addon.group), what: c.addon.name, hsn: H.blindAddons || '', qty: c.addonUnits, unit: c.addon.uom === 'each' ? 'PCS' : c.addon.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: c.addon.rrp, gst: c.addon.gst, cost: BL.cost.has(c.addon.key) ? BL.cost.get(c.addon.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'});
-    else if (String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
+    (c.adds || []).forEach(({a, units}) => { const k = bAddKind(a); hw(b.room, {grp: k !== 'extra' || isMotorAddon(a.group) ? 'mot' : 'man', product: k === 'remote' ? 'Blind motor remote' : k === 'motor' && !/motor/i.test(addonProduct(a.group)) ? 'Blind motor' : addonProduct(a.group), what: a.name, hsn: H.blindAddons || '', qty: units, unit: a.uom === 'each' ? 'PCS' : a.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: a.rrp, gst: a.gst, cost: BL.cost.has(a.key) ? BL.cost.get(a.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'}); });
+    if (!(c.adds || []).length && String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
   });
   // Wallpaper (Purvi, 6 Oct): one line per design, walls of the same design clubbed so boxes are counted on the total rolls.
   // A design from a company list is priced per box (RRP + GST); anything else shows its rolls (or a mural's sq ft) with no price yet.
@@ -4723,4 +4815,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-124707 -->
+<!-- build 20261007-125953 -->
