@@ -3947,7 +3947,6 @@ const MP = {
     fig: wpFig,
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
-      // 'Wall' column removed 7 Oct (Purvi); r.wall kept in old rows and still shows in the side panel title
       {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},   // D'Decor's wallpaper list = FabriCare / Home Ideas (Purvi, 7 Oct)
       {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or design no.' : 'Collection · design no.', list: wpListId, w: 230},
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
@@ -3962,6 +3961,7 @@ const MP = {
       {g: 'Result', k: 'rolls', label: 'Rolls', t: 'auto', def: c => c.calcRolls, off: r => r.kind !== 'Roll'},
       {g: 'Result', k: 'how', how: 1},
       {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
+      {g: '', k: 'wall', label: 'Wall', sub: 'optional', t: 'text', ph: 'e.g. behind the bed', w: 160},   // back after Remarks, optional (Purvi, 7 Oct)
     ],
     calc(r){
       const H = nv(r.H), W = nv(r.W), c = {ok: !!(H && W), warn: [], kpis: []};
@@ -4657,4 +4657,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-115910 -->
+<!-- build 20261007-120354 -->
