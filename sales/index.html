@@ -3636,6 +3636,9 @@ const WP_ROLLS = {'53 cm × 10 m': [53, 10], '70 cm × 10 m': [70, 10], '100 cm 
 // A company list can bring other sizes ("53 cm × 10.05 m"). wpRoll() reads any "W cm × L m" key and adds it to the drop-down, so a saved
 // sheet still works on a device that has not loaded the list yet.
 const WP_ROLL_OPTS = Object.keys(WP_ROLLS);
+// A design from a company list comes in one roll size only (Asian Paints: every product code has one size), so only that size
+// is offered (Purvi, 7 Oct: "only show the roll size that is available for that sku"). Typed or unlisted designs keep every size.
+function wpRollOpts(r){ const it = WPL[r.sup] && wpItem(r), k = it && wpRollKey(it); return k ? [k] : WP_ROLL_OPTS; }
 const wpRoll = key => { let v = WP_ROLLS[key]; if (v) return v; const m = /^([\d.]+) cm × ([\d.]+) m$/.exec(key || ''); if (!m) return null; v = WP_ROLLS[key] = [+m[1], +m[2]]; WP_ROLL_OPTS.push(key); return v; };
 // Company wallpaper lists (6 Oct): catalog/wp-<id> (everyone) + catcost/wp-<id> (what we pay, owner only), priced per box.
 // WPL[company name] = {brand, date, uom, items: Map sku → item}. No list loaded since F&F's Mind The Gap was removed (6 Oct); an empty list is skipped.
@@ -3901,7 +3904,7 @@ const MP = {
       {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},
       {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or design no.' : 'Collection · design no.', list: wpListId, w: 230},
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
-      {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: WP_ROLL_OPTS, w: 150, off: r => r.kind !== 'Roll'},
+      {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: wpRollOpts, w: 150, off: r => r.kind !== 'Roll'},
       {g: 'Wallpaper', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
       {g: 'Wallpaper', k: 'match', label: 'Match', t: 'sel', opts: Object.values(WP_MATCH), blank: 'Not known', w: 150, off: r => r.kind !== 'Roll'},
       {g: 'Size', k: 'H', label: 'Height', sub: '″', t: 'num', key: 1},
@@ -4483,6 +4486,7 @@ ptb.addEventListener('input', e => {
   if (k === 'flooring' && f === 'product' && flPicked(r)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
   if (k === 'flooring' && f === 'sup' && e.target.tagName === 'INPUT' && FLL[r.sup]) { const pi = tr.querySelector('[data-p=product]'); if (pi) { pi.setAttribute('list', flListId(r)); pi.placeholder = 'Type a carpet name'; } }
   if (k === 'wallpaper' && f === 'design') wpSuggest(r);
+  if (k === 'wallpaper' && (f === 'design' || f === 'sup')) { wpPicked(r); const rsel = tr.querySelector('[data-p=roll]'); if (rsel && rsel.tagName === 'SELECT') rsel.innerHTML = selOpts(wpRollOpts(r), r.roll); }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r) && ![...tr.querySelectorAll('[data-p=roll] option')].some(o => o.value === r.roll)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r)) { for (const g of ['kind', 'roll', 'rep']) { const x = tr.querySelector(`[data-p=${g}]`); if (x) x.value = r[g]; } const rs_ = tr.querySelector('[data-p=roll]'); if (rs_) rs_.disabled = false; }
   if (e.target.tagName === 'SELECT') { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); }
@@ -4597,4 +4601,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-111343 -->
+<!-- build 20261007-112207 -->
