@@ -1466,6 +1466,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
   else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
   else if (flProductInput(e.target)) flOpenSugg(e.target);
+  else if (e.target.dataset && e.target.dataset.b === 'shade' && !e.target.dataset.quiet) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bShadeSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); }
   else if (e.target.dataset && e.target.dataset.cpick) { const r = rowById(e.target.closest('tr').dataset.id); if (r) cOpenSugg(e.target, r); }
   else if (!sugg.contains(e.target)) closeSugg(); });
@@ -1974,7 +1975,7 @@ function bRowHTML(b, i){
     <td><select data-b="pid" style="width:280px"${b.sys ? '' : ' disabled'}>${bOpts(designs, b.pid, 'Pick the collection')}</select></td>` : `
     <td class="hint" style="font-size:12.5px">price list not added yet</td>
     <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:220px" aria-label="Series"></td>`}
-    <td><input data-b="shade" value="${esc(b.shade)}"${list ? ` list="${list}"` : ''} placeholder="Shade no." title="Type the shade number: the collection fills in" style="width:96px" aria-label="Shade number"></td>
+    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="Shade no." title="Type the shade number: the collection fills in" style="width:96px" aria-label="Shade number"></td>
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
     <td><input data-b="qty" class="n" inputmode="numeric" value="${esc(b.qty)}" style="width:52px" aria-label="How many"></td>
@@ -2001,6 +2002,17 @@ function bOpenSugg(input, b, kind){
   suggFor = {input, row: b, pick: a => { b.adds.push({k: a.key, q: ''}); bRedraw(b, kind); }}; suggItems = L; suggOn = 0;
   sugg.innerHTML = L.length ? L.map((a, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(a.name)}</b><br><small>${esc(a.group)}${fits(a) ? ' · fits ' + esc(b.fam) : ''}</small></span><span class="pr">MRP ₹${Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)).toLocaleString('en-IN')}<small>${esc(a.uom)}</small></span></div>`).join('')
     : `<div class="msg">No ${kind === 'extra' ? 'extra' : kind} matches “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s list.</div>`;
+  const rc = input.getBoundingClientRect();
+  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px'; sugg.hidden = false;
+  const below = innerHeight - rc.bottom; sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+}
+// Shade numbers in the curtain-fabric style box (7 Oct): the company's shade list for this type, matching what is typed.
+function bShadeSugg(input, b){
+  const t = blindType(b.sup, b.fam), l = t && t.shades && (BL.shades[b.sup] || {})[t.shades];
+  if (!l) { closeSugg(); return; }
+  const q = input.value.trim().toLowerCase(), L = (q ? l.filter(([c, n]) => String(c).toLowerCase().startsWith(q)).concat(l.filter(([c, n]) => !String(c).toLowerCase().startsWith(q) && (c + ' ' + n).toLowerCase().includes(q))) : l).slice(0, 40);
+  suggFor = {input, row: b, mp: true, val: x => x[0]}; suggItems = L; suggOn = 0;
+  sugg.innerHTML = L.length ? L.map(([c, n], i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(c)}</b><br><small>${esc(n)}</small></span><span class="pr"></span></div>`).join('') : `<div class="msg">No shade “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s ${esc(b.fam)} list.</div>`;
   const rc = input.getBoundingClientRect();
   sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px'; sugg.hidden = false;
   const below = innerHeight - rc.bottom; sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
@@ -2072,6 +2084,7 @@ btb.addEventListener('input', e => {
   if (e.target.dataset.bq) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return; b.adds[+e.target.dataset.bq].q = e.target.value.trim(); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); return; }
   const f = e.target.dataset.b; if (!f) return;
   const tr = e.target.closest('tr'), b = state.blinds.find(x => x.id === +tr.dataset.id);
+  if (f === 'shade' && e.isTrusted && document.activeElement === e.target) bShadeSugg(e.target, b);
   b[f] = e.target.value;
   if (f === 'sup') { b.fam = b.sys = b.pid = ''; b.adds = []; }   // another company's motors and extras don't fit
   if (f === 'fam') { b.sys = b.pid = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; }
@@ -2080,7 +2093,7 @@ btb.addEventListener('input', e => {
   if (f === 'shade') { const t = blindType(b.sup, b.fam), l = t && t.shades && (BL.shades[b.sup] || {})[t.shades]; const hit = l && l.find(x => x[0] === b.shade.trim()); if (hit) { b.series = hit[1]; const si = tr.querySelector('[data-b=series]'); if (si) si.value = hit[1]; }
     const sys0 = b.sys;
     if (shadePick(b)) {
-      if (b.sys !== sys0) { const i = state.blinds.indexOf(b); tr.outerHTML = bRowHTML(b, i); bMarkSel(); const ni = $('#btb').querySelector(`tr[data-id="${b.id}"] [data-b=shade]`); if (ni) { ni.focus(); try { ni.setSelectionRange(ni.value.length, ni.value.length); } catch (_) {} } }   // the system changed: redraw the row
+      if (b.sys !== sys0) { const i = state.blinds.indexOf(b); tr.outerHTML = bRowHTML(b, i); bMarkSel(); const ni = $('#btb').querySelector(`tr[data-id="${b.id}"] [data-b=shade]`); if (ni) { ni.dataset.quiet = '1'; ni.focus(); delete ni.dataset.quiet; try { ni.setSelectionRange(ni.value.length, ni.value.length); } catch (_) {} } }   // the system changed: redraw the row
       else { const ps = tr.querySelector('[data-b=pid]'); if (ps) ps.value = b.pid; } } }
   if (['sup', 'fam', 'sys'].includes(f)) { const i = state.blinds.indexOf(b); tr.outerHTML = bRowHTML(b, i); bMarkSel(); }
   bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save();
@@ -4815,4 +4828,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-125953 -->
+<!-- build 20261007-130236 -->
