@@ -329,14 +329,18 @@ svg text{font-family:var(--num);fill:var(--ink)}
 .spare{stroke:var(--faint);stroke-dasharray:3 3}
 .hatchline{stroke:var(--faint)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px}
-.pk{display:flex;flex-direction:column;gap:4px;min-width:220px}
-.pk .pc{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:4px 6px 4px 9px;background:var(--paper);font-size:13px;line-height:1.25}
-.pk .pc b{font-weight:600;flex:1;min-width:0}
-.pk .pc small{color:var(--muted);display:block;font-weight:400}
-.pk .pc input{width:44px;text-align:right;padding:4px 6px}
-.pk .pc .x{border:0;background:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px}
-.pk .pc .x:hover{color:var(--warn)}
-.pk input.find{width:100%}
+.pk{display:flex;flex-direction:column;gap:6px;width:260px}
+/* one card for every picked item (motor, remote, extra, track part): same height, name on one line, price under it,
+   the amount box always 52px wide in the same place, then the remove button (Purvi, 7 Oct: "extras dont have standardised look") */
+.pk .pc{display:grid;grid-template-columns:minmax(0,1fr) 52px 28px;align-items:center;gap:6px;height:46px;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:0 4px 0 10px;background:var(--field)}
+.pk .pc .nm{min-width:0;line-height:1.2}
+.pk .pc .nm b{display:block;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk .pc .nm small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk .pc input,.pk .pc .q{width:52px;height:32px;box-sizing:border-box;text-align:right;padding:0 8px;font:600 15px var(--num);border-radius:6px}
+.pk .pc .q{display:flex;align-items:center;justify-content:flex-end;background:var(--bg);color:var(--muted);border:1px solid var(--line2)}
+.pk .pc .x{width:28px;height:32px;border:0;background:none;color:var(--muted);font-size:16px;cursor:pointer;border-radius:6px}
+.pk .pc .x:hover{color:var(--warn);background:var(--warn-soft)}
+.pk input.find{width:100%;height:46px;box-sizing:border-box}
 .chip{font-size:12.5px;border:1px solid var(--line);border-radius:20px;padding:3px 10px;color:var(--muted)}
 .chip.good{border-color:var(--good);color:var(--good)}
 .chip.warn{border-color:var(--warn);color:var(--warn)}
@@ -1216,7 +1220,7 @@ const PART_UNIT = {pc: 'PCS', pair: 'PAIR', set: 'SET', bend: 'BEND'};
 const partsOf = r => (r.extras || []).map((x, i) => { const p = MV_PARTS.find(y => y.k === x.k); return p ? {i, p, q: Math.max(1, parseInt(x.q, 10) || 1)} : null; }).filter(Boolean);
 function partsHTML(r){
   if (!mvFam(r.track)) return '';
-  const cards = partsOf(r).map(({i, p}) => `<div class="pc"><b>${esc(p.k)}<small>₹${mrpOf2(p.p, 18).toLocaleString('en-IN')} a ${p.u} · incl. GST</small></b><input class="n" data-cq="${i}" inputmode="numeric" value="${esc(r.extras[i].q)}" placeholder="1" aria-label="How many"><button class="x" data-cx="${i}" title="Take it off" aria-label="Remove ${esc(p.k)}">✕</button></div>`).join('');
+  const cards = partsOf(r).map(({i, p}) => `<div class="pc" title="${esc(p.k)}"><span class="nm"><b>${esc(p.k)}</b><small>₹${mrpOf2(p.p, 18).toLocaleString('en-IN')} a ${p.u} · incl. GST</small></span><input class="n" data-cq="${i}" inputmode="numeric" value="${esc(r.extras[i].q)}" placeholder="1" aria-label="How many"><button class="x" data-cx="${i}" title="Take it off" aria-label="Remove ${esc(p.k)}">✕</button></div>`).join('');
   return `<div class="pk" style="width:250px;margin-top:6px">${cards}<input class="find" data-cpick="1" placeholder="Add Marvel parts (holders, hooks…)" autocomplete="off" aria-label="Add Marvel track parts"></div>`;
 }
 function cOpenSugg(input, r){
@@ -1225,9 +1229,7 @@ function cOpenSugg(input, r){
   suggFor = {input, row: r, pick: x => { r.extras = r.extras || []; const had = r.extras.find(y => y.k === x.k); if (had) had.q = String((parseInt(had.q, 10) || 1) + 1); else r.extras.push({k: x.k, q: ''}); partsRedraw(r); }}; suggItems = L; suggOn = 0;
   sugg.innerHTML = L.length ? L.map((x, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.n)}</b><br><small>${x.fam ? esc(x.fam) + ' Track' : 'Any Marvel track'} · per ${x.u}</small></span><span class="pr">MRP ₹${mrpOf2(x.p, 18).toLocaleString('en-IN')}<small>Marvel ₹${x.p.toLocaleString('en-IN')} + GST</small></span></div>`).join('')
     : `<div class="msg">No ${esc(f)} Track part matches “${esc(input.value.trim())}”.</div>`;
-  const rc = input.getBoundingClientRect();
-  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px'; sugg.hidden = false;
-  const below = innerHeight - rc.bottom; sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+  placeSugg(input);
 }
 function partsRedraw(r, refocus = true){
   const tr = tb.querySelector(`tr[data-id="${r.id}"]`); if (!tr) return; const box = tr.querySelector('[data-xp]'); if (box) box.innerHTML = partsHTML(r);
@@ -1436,13 +1438,37 @@ function openSugg(input, row){
     }).join('') : `<div class="msg">No fabric matches “${esc(q)}”${sup ? ' at ' + esc(SUPS[sup]) : ''}. Check the spelling, or pick another company.</div>`;
   }
   sugg.innerHTML = html;
+  placeSugg(input);
+}
+function closeSugg(){ sugg.hidden = true; suggFor = null; }
+// One standard for every type-to-search list in the app (Purvi, 7 Oct: "these small small things i shouldn't have to tell you"):
+// opens on focus AND on every click in its box (also when the box already has the cursor), follows the box when the page or table
+// scrolls (closes only when the box leaves the screen), closes on a click anywhere else, on Escape, on Tab, and after a pick.
+function placeSugg(input){
   const rc = input.getBoundingClientRect();
-  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
+  if (rc.bottom < 0 || rc.top > innerHeight || rc.right < 0 || rc.left > innerWidth) { closeSugg(); return; }
   sugg.hidden = false;
+  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
   const below = innerHeight - rc.bottom;
   sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
 }
-function closeSugg(){ sugg.hidden = true; suggFor = null; }
+// Which list a box opens (the same as on focus); null = it isn't a search box
+function suggOpener(el){
+  if (!el || !el.dataset) return null;
+  if (el.dataset.f === 'fabric') return () => openSugg(el, rowById(el.closest('tr').dataset.id));
+  if (wpDesignInput(el)) return () => wpOpenSugg(el);
+  if (flProductInput(el)) return () => flOpenSugg(el);
+  if (el.dataset.b === 'shade') return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bShadeSugg(el, b); };
+  if (el.dataset.bpick) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bOpenSugg(el, b, el.dataset.bpick); };
+  if (el.dataset.cpick) return () => { const r = rowById(el.closest('tr').dataset.id); if (r) cOpenSugg(el, r); };
+  return null;
+}
+document.addEventListener('pointerdown', e => {
+  if (sugg.contains(e.target)) return;
+  const open = suggOpener(e.target);
+  if (open) { if (sugg.hidden || !suggFor || suggFor.input !== e.target) setTimeout(open, 0); return; }   // a click in the box: (re)open
+  if (!sugg.hidden) closeSugg();   // a click anywhere else closes it
+}, true);
 function pickSugg(i){
   const x = suggItems[i]; if (!x || !suggFor) return;
   if (suggFor.pick) { const f = suggFor.pick; closeSugg(); f(x); return; }
@@ -1461,7 +1487,7 @@ document.addEventListener('keydown', e => {
   const its = sugg.querySelectorAll('.it');
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!its.length) return; suggOn = (suggOn + (e.key === 'ArrowDown' ? 1 : its.length - 1)) % its.length; its.forEach((el, i) => el.classList.toggle('on', i === suggOn)); its[suggOn].scrollIntoView({block: 'nearest'}); }
   else if (e.key === 'Enter') { if (its.length) { e.preventDefault(); pickSugg(suggOn); } }
-  else if (e.key === 'Escape') closeSugg();
+  else if (e.key === 'Escape' || e.key === 'Tab') closeSugg();
 });
 document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
   else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
@@ -1470,7 +1496,8 @@ document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dat
   else if (e.target.dataset && e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); }
   else if (e.target.dataset && e.target.dataset.cpick) { const r = rowById(e.target.closest('tr').dataset.id); if (r) cOpenSugg(e.target, r); }
   else if (!sugg.contains(e.target)) closeSugg(); });
-document.addEventListener('scroll', e => { if (!sugg.hidden && e.target !== sugg) closeSugg(); }, true);
+document.addEventListener('scroll', e => { if (!sugg.hidden && e.target !== sugg && suggFor && suggFor.input) { if (suggFor.input.isConnected) placeSugg(suggFor.input); else closeSugg(); } }, true);
+addEventListener('resize', () => { if (!sugg.hidden && suggFor && suggFor.input && suggFor.input.isConnected) placeSugg(suggFor.input); });
 
 // ================= measure table
 const tb = $('#tb');
@@ -1951,7 +1978,7 @@ function bCalc(b){
   // Extras: each is priced on its own unit; "each" items use the typed number, else 1 (a motor: one per blind)
   c.adds = (b.adds || []).map((x, i) => { const a = BL.addons.find(y => y.key === x.k); if (!a) return null;
     const units = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : a.uom === 'per m width' ? W * 0.0254 * q
-      : Math.max(1, parseInt(x.q, 10) || (bAddKind(a) === 'motor' ? q : 1)));
+      : a.uom === 'each' ? Math.max(1, parseInt(x.q, 10) || (bAddKind(a) === 'motor' ? q : 1)) : Math.max(0, parseFloat(x.q) || 1));   // "per m (type metres)": the metres typed
     const mrp = Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)); return {i, a, units, mrp, amt: units * mrp}; }).filter(Boolean);
   c.addonAmt = c.adds.reduce((t, x) => t + x.amt, 0);
   c.warn = t ? t.rules.map(f => f({W: c.mmW, H: c.mmH}, o, (b.series || '') + ' ' + (p ? p.coll : ''))).filter(Boolean) : [];
@@ -1990,9 +2017,10 @@ function bRowHTML(b, i){
 const B_PH = {motor: 'Type to find a motor', remote: 'Type to find a remote', extra: 'Add an extra'};
 function bPickHTML(b, kind){
   const c = bCalc(b), mine = (c.adds || []).filter(x => bAddKind(x.a) === kind);
-  const cards = mine.map(x => `<div class="pc"><b>${esc(x.a.name)}<small>₹${x.mrp.toLocaleString('en-IN')} ${x.a.uom === 'each' ? 'each' : x.a.uom} · incl. GST</small></b>${x.a.uom === 'each' ? `<input class="n" data-bq="${x.i}" inputmode="numeric" value="${esc(b.adds[x.i].q)}" placeholder="${x.units}" aria-label="How many">` : `<small>${cpF(x.units)}</small>`}<button class="x" data-bx="${x.i}" title="Take it off" aria-label="Remove ${esc(x.a.name)}">✕</button></div>`).join('');
+  const U = {'per sq m': 'sq m', 'per running m': 'm', 'per m width': 'm'};
+  const cards = mine.map(x => `<div class="pc" title="${esc(x.a.name)}"><span class="nm"><b>${esc(x.a.name)}</b><small>₹${x.mrp.toLocaleString('en-IN')} ${x.a.uom === 'each' ? 'each' : x.a.uom.replace(/ \(.*\)/, '')} · incl. GST</small></span>${!U[x.a.uom] ? `<input class="n" data-bq="${x.i}" inputmode="decimal" value="${esc(b.adds[x.i].q)}" placeholder="${x.units}" aria-label="${x.a.uom === 'each' ? 'How many' : 'How many metres'}">` : `<span class="q" title="Worked out from the size: ${cpF(x.units)} ${U[x.a.uom] || ''}">${cpF(x.units)}</span>`}<button class="x" data-bx="${x.i}" title="Take it off" aria-label="Remove ${esc(x.a.name)}">✕</button></div>`).join('');
   const box = kind === 'extra' || !mine.length ? `<input class="find" data-bpick="${kind}" placeholder="${B_PH[kind]}" autocomplete="off" aria-label="${B_PH[kind]}">` : '';
-  return `<div class="pk" style="width:${kind === 'extra' ? 260 : 240}px">${cards}${box}</div>`;
+  return `<div class="pk">${cards}${box}</div>`;
 }
 function bOpenSugg(input, b, kind){
   const fam = String(b.fam || '').toLowerCase().split(/[\s(]/)[0], toks = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -2002,9 +2030,7 @@ function bOpenSugg(input, b, kind){
   suggFor = {input, row: b, pick: a => { b.adds.push({k: a.key, q: ''}); bRedraw(b, kind); }}; suggItems = L; suggOn = 0;
   sugg.innerHTML = L.length ? L.map((a, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(a.name)}</b><br><small>${esc(a.group)}${fits(a) ? ' · fits ' + esc(b.fam) : ''}</small></span><span class="pr">MRP ₹${Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)).toLocaleString('en-IN')}<small>${esc(a.uom)}</small></span></div>`).join('')
     : `<div class="msg">No ${kind === 'extra' ? 'extra' : kind} matches “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s list.</div>`;
-  const rc = input.getBoundingClientRect();
-  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px'; sugg.hidden = false;
-  const below = innerHeight - rc.bottom; sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+  placeSugg(input);
 }
 // Shade numbers in the curtain-fabric style box (7 Oct): the company's shade list for this type, matching what is typed.
 function bShadeSugg(input, b){
@@ -2013,9 +2039,7 @@ function bShadeSugg(input, b){
   const q = input.value.trim().toLowerCase(), L = (q ? l.filter(([c, n]) => String(c).toLowerCase().startsWith(q)).concat(l.filter(([c, n]) => !String(c).toLowerCase().startsWith(q) && (c + ' ' + n).toLowerCase().includes(q))) : l).slice(0, 40);
   suggFor = {input, row: b, mp: true, val: x => x[0]}; suggItems = L; suggOn = 0;
   sugg.innerHTML = L.length ? L.map(([c, n], i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(c)}</b><br><small>${esc(n)}</small></span><span class="pr"></span></div>`).join('') : `<div class="msg">No shade “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s ${esc(b.fam)} list.</div>`;
-  const rc = input.getBoundingClientRect();
-  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px'; sugg.hidden = false;
-  const below = innerHeight - rc.bottom; sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+  placeSugg(input);
 }
 function bRedraw(b, focusKind){
   const i = state.blinds.indexOf(b), tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (!tr) return;
@@ -3854,11 +3878,7 @@ function wpOpenSugg(input){
     }).join('') : `<div class="msg">No design matches “${esc(q)}” in ${esc(r.sup)}'s list.</div>`;
   }
   sugg.innerHTML = html;
-  const rc = input.getBoundingClientRect();
-  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
-  sugg.hidden = false;
-  const below = innerHeight - rc.bottom;
-  sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+  placeSugg(input);
 }
 // Company flooring lists (6 Oct): catalog/fl-<id> + catcost/fl-<id>, priced per sq ft. First: F&F's Divine carpets.
 const FLL = {}, FLC = new Map();
@@ -3881,11 +3901,7 @@ function flOpenSugg(input){
     const mrp = Math.round(x.rrp * (1 + x.gst / 100)), dp = canSeeCost ? FLC.get(r.sup + '|' + x.code.toUpperCase()) : null;
     return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.name)}</b> <small>${esc(x.type)}</small><br><small>${esc([x.cons, x.yarn, x.rollm ? `${x.rollm} m roll` : x.tile].filter(Boolean).join(' · '))}</small></span><span class="pr">MRP ${rs(mrp)}<small>per sq ft${dp != null ? ` · we pay ${rs(dp)}` : ''}</small></span></div>`;
   }).join('') : `<div class="msg">No carpet matches “${esc(toks.join(' '))}” in ${esc(r.sup)}'s list.</div>`;
-  const rc = input.getBoundingClientRect();
-  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
-  sugg.hidden = false;
-  const below = innerHeight - rc.bottom;
-  sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+  placeSugg(input);
 }
 function flPicked(r){ const it = flItem(r); if (!it) return false; r.type = it.type; return true; }
 const wpListId = r => null;   // no browser datalist: wpOpenSugg shows the app's own box (7 Oct)
@@ -4828,4 +4844,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-130236 -->
+<!-- build 20261007-131429 -->
