@@ -3926,7 +3926,7 @@ const SWH = SW.hcp.items, hcpId = x => `${x.n} · ${x.s}″`, swHcp = r => SWH.f
 // Select options can be plain strings, [value, label] pairs, or {g: group, items: [...]}. A saved value that is not in the list stays shown.
 function selOpts(list, val, blank){
   const one = x => Array.isArray(x) ? x : [x, x], seen = new Set();
-  const o = ([v, t]) => { seen.add(String(v)); return `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(t)}</option>`; };
+  const o = ([v, t, off]) => { seen.add(String(v)); return `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(t)}</option>`; };   // [value, label, greyed out]
   const body = list.map(x => x && x.g ? `<optgroup label="${esc(x.g)}">${x.items.map(y => o(one(y))).join('')}</optgroup>` : o(one(x))).join('');
   return (blank ? `<option value="">${esc(blank)}</option>` : '') + body + (has(val) && !seen.has(String(val)) ? `<option value="${esc(val)}" selected>${esc(val)}</option>` : '');
 }
@@ -3947,7 +3947,7 @@ const MP = {
     fig: wpFig,
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
-      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},   // D'Decor's wallpaper list = FabriCare / Home Ideas (Purvi, 7 Oct)
+      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: () => ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F'].map(n => [n, n, !WPL[n]]).concat(['Other']), blank: 'Pick', w: 160},   // greyed out until the company has a wallpaper list here (Purvi, 7 Oct)   // D'Decor's wallpaper list = FabriCare / Home Ideas (Purvi, 7 Oct)
       {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or design no.' : 'Collection · design no.', list: wpListId, w: 230},
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
       {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: wpRollOpts, w: 150, off: r => r.kind !== 'Roll'},
@@ -4656,4 +4656,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-122534 -->
+<!-- build 20261007-123025 -->
