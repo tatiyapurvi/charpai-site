@@ -2031,6 +2031,18 @@ const B_KIND = {motor: 'motor', remote: 'remote', extra: 'extra'};
 state.blinds.forEach(bMigrate);
 if (state.bsel == null) state.bsel = 0;
 const bPriced = sup => BL.rows.some(r => r.sup === sup);
+// Roll width of a blind's fabric (Purvi, 7 Oct: "if a space's width is larger than the roll's width … the blind will be made in 2 or 3 or more
+// parts … all parts are equal parts always"). Marvel and Sansaar write it on the price ("3.00 m roll", "300 cm"); Asian Paints lists it per
+// fabric in its "Roller / Fifty50 Fabric Specifications" pages (8–10, 18–19 of 008 - AP Pricelist_RRP_2026_FINAL.pdf), kept here in mm.
+// D'Decor FabriCare: no roll width in its lists yet.
+const BLIND_ROLL_AP = {"astin1%":3000,"astin3%":3000,"astin5%":3000,"astinblackout":3000,"astintexture8%":3000,"astintexture5%":3000,"auden5%":3000,"avril":2800,"bisley":2500,"books":3000,"brene":2800,"britannia":2800,"buckley":2800,"campbell":2800,"cavendish":2800,"charli":3000,"claudionsh":2500,"colesonfoc":2800,"daltontbo":2800,"darwin":2500,"dennisonpbo":2800,"dreamitmultisc5":3000,"ealeysty":2800,"eduardosc5":3000,"esska5%":3000,"evelinfoc":2800,"flamingosfoc":2800,"focal":2800,"frasersty":2800,"geotbo":2800,"glamourtbo":2800,"hackneysc5":3000,"henzelsty":2800,"inca5%":3000,"isha":3000,"kierasty":2800,"laurierfoc":2800,"leena":2800,"lennie":3000,"lewis":3000,"libertybsh":2500,"lohansty":2800,"londonmultipbo":2800,"luisasty":2800,"lutecatbo":2800,"maevenbsh":2500,"margo":2800,"marlinbsh":2500,"maya":3000,"mira":3000,"morton":3000,"newyorkmultipbo":2800,"nightskytbo":2800,"oleandrosty":2800,"olisa":3000,"orlando":3000,"ozorosty":2800,"penrose":2750,"pompomspotsty":2800,"posie":2800,"rainbowmultitbo":2800,"rainbowmultisty":2800,"raynorfoc":2800,"redbusmultitbo":2800,"riannansh":2500,"romea":3000,"shiltonfoc":2800,"shipleyfr":3000,"shipley":2800,"shiritbo":2800,"simpsonpbo":2800,"sinclairfoc":2800,"stampsmultisc5":3000,"starstringfoc":2800,"style":2800,"sydneytbo":2800,"travissty":2800,"yara":3000,"yellowtaximultipbo":2800,"hayton":2800,"molton":2800,"carden":2800,"kempton":2800,"andrena":2800,"ardingly":2800,"alberta":2800,"thorpe":2800,"langham":2800,"corston":2800,"huxley":2800,"coranavy":2800,"iris":2800,"arielink":2800,"safiyyah":2800,"adelaide":2800,"miaolive":2800,"ariel":2800,"chloe":2800,"coraash":2800,"aafiyah":2800,"miaocean":2800,"brielle":2800,"mari":2800};
+const bNorm = s => String(s || '').toLowerCase().replace(/[^a-z0-9%]/g, '');
+function bRollMm(p){
+  if (!p) return 0;
+  const t = String(p.extra || '') + ' ' + String(p.design || ''), m = /(\d+(?:\.\d+)?)\s*m roll/i.exec(t) || /(\d{3})\s*cm\b/i.exec(t);
+  if (m) return Math.round(parseFloat(m[1]) * (/cm/i.test(m[0]) ? 10 : 1000));
+  return p.sup === 'AP' ? BLIND_ROLL_AP[bNorm(p.coll)] || 0 : 0;
+}
 function bFams(sup){ return bPriced(sup) ? uniq(BL.rows.filter(r => r.sup === sup).map(r => r.fam)) : (BLIND_NAMES[sup] || []).map(n => n[0]); }
 function bCalc(b){
   const p = BL.byId.get(b.pid), W = parseFloat(b.W) || 0, H = parseFloat(b.H) || 0, q = Math.max(1, parseInt(b.qty, 10) || 1);
@@ -2052,6 +2064,10 @@ function bCalc(b){
     const mrp = Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)); return {i, a, units, mrp, amt: units * mrp}; }).filter(Boolean);
   c.addonAmt = c.adds.reduce((t, x) => t + x.amt, 0);
   c.warn = t ? t.rules.map(f => f({W: c.mmW, H: c.mmH}, o, (b.series || '') + ' ' + (p ? p.coll : ''))).filter(Boolean) : [];
+  // Wider than the fabric roll: made in equal parts side by side
+  c.rollMm = bRollMm(p);
+  if (c.rollMm && c.mmW > c.rollMm) { c.parts = Math.ceil(c.mmW / c.rollMm - 1e-9); c.partMm = Math.round(c.mmW / c.parts);
+    c.warn.push(`Wider than the ${fmt(c.rollMm / 1000)} m roll: made in ${c.parts} equal parts of ${c.partMm} mm (${fmt(Math.round(c.partMm / 25.4 * 10) / 10)}″) each. Tell the client.`); }
   return c;
 }
 const bOpts = (list, val, blank) => (blank ? `<option value="">${blank}</option>` : '') + list.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(t)}</option>`).join('');
@@ -2153,7 +2169,7 @@ function bRedraw(b, focusKind){
 function bUpdateRow(b){
   const tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (!tr) return;
   const c = bCalc(b), o = k => tr.querySelector(`[data-o=${k}]`);
-  o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>` : '';
+  o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>${c.parts > 1 ? `<span class="tag" style="color:var(--warn)">${c.parts} parts of ${c.partMm}</span>` : ''}` : '';
   o('area').innerHTML = c.ok ? `${cpF(c.charge * c.q)}<span class="u"> sq ft</span>${c.minApplied ? `<span class="tag" style="color:var(--warn)">minimum ${cpF(r2(c.p.min * SQFT))} sq ft</span>` : c.q > 1 ? `<span class="tag" style="color:var(--muted)">${c.q} × ${cpF(c.charge)}</span>` : ''}` : '';
   o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.p.gst}% GST</span>${c.p.extra === 'to confirm' ? '<span class="tag" style="color:var(--warn)">price to confirm</span>' : ''}` : '';
   o('amt').innerHTML = c.ok && c.p ? `<span class="v">${rs(c.amt + (c.addonAmt || 0))}</span>${c.addonAmt ? `<span class="tag" style="color:var(--muted)">incl. extras ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
@@ -2274,6 +2290,11 @@ function blindSVG(b, c){
     if (k === 'roller' || k === 'duplex' || k === 'sheer') g += `<rect x="${x0 - 2}" y="${yb - 5}" width="${w + 4}" height="6" rx="2" fill="var(--ink)"/>`;
     if (k === 'honeycomb' && o.kind === 'Day & Night') g += `<rect class="f-lining" x="${x0}" y="${y0 + h * .55}" width="${w}" height="${h * .45}"/>`;
   }
+  if (c.parts > 1) for (let j = 0; j < c.parts; j++) {   // equal parts: a gap line between them and each part's width
+    const px = x0 + w * j / c.parts;
+    if (j) g += `<path stroke="var(--paper)" stroke-width="5" d="M${px},${y0}V${yb}"/><path stroke="var(--warn)" stroke-width="2" stroke-dasharray="7 4" d="M${px},${y0}V${yb}"/>`;
+    g += `<text x="${px + w / c.parts / 2}" y="${y0 + 22}" text-anchor="middle" class="t-dim" style="fill:var(--warn)!important">part ${j + 1} · ${c.partMm} mm</text>`;
+  }
   if (!/^sky/.test(k)) g += `<rect x="${x0 - 6}" y="${y0 - 10}" width="${w + 12}" height="10" rx="2" fill="var(--ink)"/>`;
   if (o.control) { const cx = o.control === 'L' ? x0 + 8 : x0 + w - 8; g += `<path stroke="var(--dim)" stroke-width="2" stroke-dasharray="1 4" stroke-linecap="round" d="M${cx},${y0}V${y0 + h * .62}"/><text x="${cx}" y="${y0 + h * .62 + 16}" text-anchor="middle" class="t-dim">${o.op === 'Motorized' || o.op === 'Motorised' ? 'motor' : 'control'} ${o.control}</text>`; }
   const wy = yb + 30;
@@ -2297,6 +2318,7 @@ function renderBSide(){
     <div class="kpis">
       <div class="kpi"><small>Size for the order</small><b class="num">${c.ok ? `${c.mmH} × ${c.mmW}` : '—'}</b><small>mm, height × width</small></div>
       <div class="kpi"><small>Charged</small><b class="num">${c.ok ? cpF(c.charge * c.q) : '—'}</b><small>sq ft${c.q > 1 ? ` (${c.q} blinds)` : ''}</small></div>
+      ${c.parts > 1 ? `<div class="kpi" style="border-color:var(--warn)"><small>Made in</small><b class="num" style="color:var(--warn)">${c.parts} parts</b><small>${c.partMm} mm each · roll ${fmt(c.rollMm / 1000)} m</small></div>` : ''}
       <div class="kpi m"><small>Amount incl. GST</small><b class="num">${c.ok && c.p ? rs(c.amt + (c.addonAmt || 0)) : '—'}</b></div>
     </div>
     <div id="bfig" class="fig">${c.ok ? `<h4>Front view <span>as the company will make it</span></h4>${blindSVG(b, c)}` : '<div class="empty">Type the height and the width in inches to see the drawing.</div>'}</div>
@@ -2474,7 +2496,7 @@ function qSections(){
   state.blinds.forEach(b => {
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
-    add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}`,
+    add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
       hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
     (c.adds || []).forEach(({a, units}) => { const k = bAddKind(a); hw(b.room, {grp: k !== 'extra' || isMotorAddon(a.group) ? 'mot' : 'man', product: k === 'remote' ? 'Blind motor remote' : k === 'motor' && !/motor/i.test(addonProduct(a.group)) ? 'Blind motor' : addonProduct(a.group), what: a.name, hsn: H.blindAddons || '', qty: units, unit: a.uom === 'each' ? 'PCS' : a.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: a.rrp, gst: a.gst, cost: BL.cost.has(a.key) ? BL.cost.get(a.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'}); });
     if (!(c.adds || []).length && String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
@@ -4997,4 +5019,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-163435 -->
+<!-- build 20261007-172017 -->
