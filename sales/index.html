@@ -437,6 +437,12 @@ table.pr{width:100%;border-collapse:collapse}
 .sugg .it .pr{font:600 15px var(--num);text-align:right;white-space:nowrap}
 .sugg .it .pr small{display:block;font:500 11.5px var(--body)}
 .sugg .msg{padding:10px 12px;color:var(--muted);font-size:13.5px}
+.sugg .grp{padding:9px 12px 4px;font:600 11.5px var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;background:var(--bg)}
+.sugg .dis{padding:8px 12px;color:var(--faint);font-size:14px;cursor:not-allowed;border-bottom:1px solid var(--line2)}
+.sugg .dis small{display:block;font-size:12px}
+.sugg .it.cur b::after{content:' ✓';color:var(--good)}
+.sugg .it.blank b{font-weight:500;color:var(--muted)}
+.sugg .q{padding:7px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line)}
 .sheet select.todo{border:2px dashed var(--warn)}
 .sheet input.bad{border:2px dashed var(--warn)}
 .sheet input.picked{border-color:var(--good)}
@@ -1446,11 +1452,12 @@ function openSugg(input, row){
 function closeSugg(){
   // left without a pick: a box that shows a picked item goes back to it (blind collection)
   if (suggFor && suggFor.restore) suggFor.restore();
-  sugg.hidden = true; suggFor = null; }
+  sugg.hidden = true; suggFor = null; sugg.style.width = ''; }
 // One standard for every type-to-search list in the app (Purvi, 7 Oct: "these small small things i shouldn't have to tell you"):
 // opens on focus AND on every click in its box (also when the box already has the cursor), follows the box when the page or table
 // scrolls (closes only when the box leaves the screen), closes on a click anywhere else, on Escape, on Tab, and after a pick.
 function placeSugg(input){
+  const host = input.closest('dialog') || document.body; if (sugg.parentNode !== host) host.appendChild(sugg);   // inside a dialog: show above it
   const rc = input.getBoundingClientRect();
   if (rc.bottom < 0 || rc.top > innerHeight || rc.right < 0 || rc.left > innerWidth) { closeSugg(); return; }
   sugg.hidden = false;
@@ -1459,8 +1466,44 @@ function placeSugg(input){
   sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
 }
 // Which list a box opens (the same as on focus); null = it isn't a search box
+// Every dropdown (<select>) and every typed box with suggestions (<input list>) opens our list too (Purvi, 7 Oct: "on all the 6 product
+// types, each column/field should open the list in our format not chrome's format"). The <select> stays in the page and keeps its value,
+// so all the existing rules still run: a pick sets the value and sends the same input + change events a real choice would.
+const ourSelect = el => !!(el && el.tagName === 'SELECT' && !el.multiple && !el.disabled);
+function selOpen(sel, q = ''){
+  const items = [], rows = [], ql = q.toLowerCase();
+  const optRow = o => { if (o.hidden || (o.value === '' && o.selected)) return;   // the empty "Pick…" line only shows once something is picked (to undo it) if (ql && !o.textContent.toLowerCase().includes(ql)) return;
+    if (o.disabled) { rows.push(`<div class="dis">${esc(o.textContent)}<small>no list yet</small></div>`); return; }
+    const i = items.length; items.push(o);
+    rows.push(`<div class="it${o.selected ? ' on cur' : ''}${o.value === '' ? ' blank' : ''}" data-i="${i}"><span><b>${esc(o.textContent)}</b></span><span></span></div>`); };
+  for (const ch of sel.children) {
+    if (ch.tagName === 'OPTGROUP') { const before = rows.length; rows.push(`<div class="grp">${esc(ch.label)}</div>`); [...ch.children].forEach(optRow); if (rows.length === before + 1) rows.pop(); }
+    else optRow(ch);
+  }
+  suggFor = {input: sel, sel: true, q, pick: o => { if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('input', {bubbles: true})); sel.dispatchEvent(new Event('change', {bubbles: true})); } }};
+  suggItems = items; suggOn = Math.max(0, items.findIndex(o => o.selected));
+  sugg.innerHTML = (q ? `<div class="q">Showing “${esc(q)}”</div>` : '') + (rows.length ? rows.join('') : `<div class="msg">Nothing matches “${esc(q)}”.</div>`);
+  sugg.style.width = Math.max(sel.offsetWidth, 220) + 'px';
+  placeSugg(sel);
+  const on = sugg.querySelector('.it.on'); if (on) on.scrollIntoView({block: 'nearest'});
+}
+function dlOpen(input){
+  const id = input.dataset.dl || input.getAttribute('list'); if (!id) return;
+  if (input.hasAttribute('list')) { input.dataset.dl = id; input.removeAttribute('list'); input.setAttribute('autocomplete', 'off'); }   // no Chrome list from now on
+  const dl = document.getElementById(id); if (!dl) return;
+  const q = input.value.trim().toLowerCase(), all = [...dl.options].map(o => ({v: o.value, t: o.label && o.label !== o.value ? o.label : ''}));
+  const L = (q ? all.filter(x => (x.v + ' ' + x.t).toLowerCase().includes(q)).sort((a, b) => a.v.toLowerCase().startsWith(q) ? -1 : b.v.toLowerCase().startsWith(q) ? 1 : 0) : all).slice(0, 60);
+  if (!L.length) { closeSugg(); return; }   // nothing to suggest: just a typing box
+  suggFor = {input, dl: true, pick: x => { input.value = x.v; input.dispatchEvent(new Event('input', {bubbles: true})); input.dispatchEvent(new Event('change', {bubbles: true})); }};
+  suggItems = L; suggOn = 0;
+  sugg.innerHTML = L.map((x, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.v)}</b>${x.t ? `<br><small>${esc(x.t)}</small>` : ''}</span><span></span></div>`).join('');
+  sugg.style.width = Math.max(input.offsetWidth, 220) + 'px';
+  placeSugg(input);
+}
 function suggOpener(el){
   if (!el || !el.dataset) return null;
+  if (ourSelect(el)) return () => selOpen(el);
+  if (el.tagName === 'INPUT' && (el.getAttribute('list') || el.dataset.dl)) return () => dlOpen(el);
   if (el.dataset.f === 'fabric') return () => openSugg(el, rowById(el.closest('tr').dataset.id));
   if (wpDesignInput(el)) return () => wpOpenSugg(el);
   if (flProductInput(el)) return () => flOpenSugg(el);
@@ -1474,6 +1517,7 @@ function suggOpener(el){
 document.addEventListener('pointerdown', e => {
   if (sugg.contains(e.target)) return;
   const open = suggOpener(e.target);
+  if (open && ourSelect(e.target) && !sugg.hidden && suggFor && suggFor.input === e.target) { closeSugg(); return; }   // a second click on a dropdown closes it
   if (open) { if (sugg.hidden || !suggFor || suggFor.input !== e.target) setTimeout(open, 0); return; }   // a click in the box: (re)open
   if (!sugg.hidden) closeSugg();   // a click anywhere else closes it
 }, true);
@@ -1503,9 +1547,22 @@ document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dat
   else if (e.target.dataset && e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.bcoll) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bCollSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.b === 'shade' && !e.target.dataset.quiet) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bShadeSugg(e.target, b); }
+  else if (e.target.tagName === 'INPUT' && (e.target.getAttribute('list') || e.target.dataset.dl)) dlOpen(e.target);
   else if (e.target.dataset && e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); }
   else if (e.target.dataset && e.target.dataset.cpick) { const r = rowById(e.target.closest('tr').dataset.id); if (r) cOpenSugg(e.target, r); }
   else if (!sugg.contains(e.target)) closeSugg(); });
+document.addEventListener('mousedown', e => { if (ourSelect(e.target)) { e.preventDefault(); e.target.focus(); } }, true);   // no Chrome dropdown
+document.addEventListener('touchstart', e => { if (ourSelect(e.target)) { e.preventDefault(); e.target.focus(); } }, {capture: true, passive: false});   // phones: no native picker either
+// Keyboard on a dropdown: Space / Enter / arrows open our list; letters filter it; Backspace undoes a letter
+document.addEventListener('keydown', e => {
+  const t = e.target; if (!ourSelect(t)) return;
+  const open = !sugg.hidden && suggFor && suggFor.input === t;
+  if (!open && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t); return; }
+  if (open && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '') + e.key); return; }
+  if (open && e.key === 'Backspace') { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '').slice(0, -1)); return; }
+  if (!open && e.key.length === 1 && !e.ctrlKey && !e.metaKey) e.preventDefault();   // no silent change by typing on a closed dropdown
+}, true);
+document.addEventListener('input', e => { const t = e.target; if (e.isTrusted && t.dataset && t.dataset.dl && document.activeElement === t) dlOpen(t); }, true);
 document.addEventListener('scroll', e => { if (!sugg.hidden && e.target !== sugg && suggFor && suggFor.input) { if (suggFor.input.isConnected) placeSugg(suggFor.input); else closeSugg(); } }, true);
 addEventListener('resize', () => { if (!sugg.hidden && suggFor && suggFor.input && suggFor.input.isConnected) placeSugg(suggFor.input); });
 
@@ -4922,4 +4979,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-152135 -->
+<!-- build 20261007-153615 -->
