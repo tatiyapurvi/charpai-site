@@ -3774,7 +3774,7 @@ function flOpenSugg(input){
   suggItems = (toks.length ? all.filter(x => toks.every(w => hit(x).includes(w))) : all).slice(0, 60);
   sugg.innerHTML = suggItems.length ? suggItems.map((x, i) => {
     const mrp = Math.round(x.rrp * (1 + x.gst / 100)), dp = canSeeCost ? FLC.get(r.sup + '|' + x.code.toUpperCase()) : null;
-    return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.name)}</b> <small>${esc(x.type)}</small><br><small>${esc([x.cons, x.rollm ? `${x.rollm} m roll` : x.tile].filter(Boolean).join(' · '))}</small></span><span class="pr">MRP ${rs(mrp)}<small>per sq ft${dp != null ? ` · we pay ${rs(dp)}` : ''}</small></span></div>`;
+    return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.name)}</b> <small>${esc(x.type)}</small><br><small>${esc([x.cons, x.yarn, x.rollm ? `${x.rollm} m roll` : x.tile].filter(Boolean).join(' · '))}</small></span><span class="pr">MRP ${rs(mrp)}<small>per sq ft${dp != null ? ` · we pay ${rs(dp)}` : ''}</small></span></div>`;
   }).join('') : `<div class="msg">No carpet matches “${esc(toks.join(' '))}” in ${esc(r.sup)}'s list.</div>`;
   const rc = input.getBoundingClientRect();
   sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
@@ -3948,10 +3948,20 @@ function flBuySVG(r, c){
   }
   return '';
 }
+// What the company's list says about the carpet (7 Oct: Divine's pile height, weight and yarn). Shown even before the size is typed.
+function flFacts(r){
+  const it = flItem(r); if (!it) return '';
+  const L = FLL[r.sup], row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
+  return `<div class="sec-h" style="padding:8px 14px 0"><h2 style="font-size:17px">From ${esc(r.sup)}${/s$/.test(r.sup) ? "'" : "'s"} list</h2></div><dl class="spec wide">
+    ${row('Carpet', `${it.name}${L && L.brand ? ' · ' + L.brand : ''}`)}${row('Type', it.type)}${row('Made as', it.cons)}
+    ${row(it.rollm ? 'Roll width' : 'Tile size', it.rollm ? `${fmt(it.rollm)} m (${fmt(Math.round(it.rollm * 39.37))}″)` : it.tile)}
+    ${row('Pile height', it.pileh ? `${it.pileh} mm${it.toth ? ` · ${it.toth} mm in all` : ''}` : '')}${row('Weight', it.weight ? it.weight + ' g per sq m' : '')}
+    ${row('Yarn', it.yarn)}${row('HSN', it.hsn)}${row('List dated', L && L.date ? new Date(L.date).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}) : '')}</dl>`;
+}
 function flFig(r, c){
-  if (!c.ok || !r.type) return '';
+  if (!c.ok || !r.type) return flFacts(r);
   const buy = flBuySVG(r, c);
-  return `<div class="fig"><h4>From above</h4>${flPlanSVG(r, c)}${buy ? `<h4>${c.cut ? 'Cut from the roll' : c.tiles ? 'Tiles to order' : 'Boxes to order'}</h4>${buy}` : ''}</div>`;
+  return `<div class="fig"><h4>From above</h4>${flPlanSVG(r, c)}${buy ? `<h4>${c.cut ? 'Cut from the roll' : c.tiles ? 'Tiles to order' : 'Boxes to order'}</h4>${buy}` : ''}</div>` + flFacts(r);
 }
 const FL_LAY = {'Straight': 0, 'Diagonal': 5, 'Herringbone / chevron': 10};
 const MT_W = {30: 'Single', 35: 'Single', 36: 'Single', 47: 'Double', 48: 'Double', 60: 'Queen', 70: 'King', 72: 'King'}, MT_L = [72, 75, 78, 84];
@@ -4713,4 +4723,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-124415 -->
+<!-- build 20261007-124707 -->
