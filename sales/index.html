@@ -3955,20 +3955,19 @@ const MP = {
       {g: 'Wallpaper', k: 'match', label: 'Match', t: 'sel', opts: Object.values(WP_MATCH), blank: 'Not known', w: 150, off: r => r.kind !== 'Roll'},
       {g: 'Size', k: 'H', label: 'Height', sub: '″', t: 'num', key: 1},
       {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
-      {g: 'The wall', k: 'cond', label: 'Condition', t: 'sel', opts: ['Flat and dry', 'Bumps or cracks', 'Damp or leakage', 'Fresh plaster or paint'], blank: 'Check the wall', todo: 1, w: 190},
-      {g: 'The wall', k: 'open', label: 'Doors / windows on it', t: 'sel', opts: ['None', 'Window', 'Door', 'Window and door', 'Switchboards only'], blank: 'Pick', w: 170},
       {g: 'Result', k: 'area', label: 'Area', out: c => c.ok ? `${cpF(c.area)}<span class="u"> sq ft</span>` : ''},
       {g: 'Result', k: 'rolls', label: 'Rolls', t: 'auto', def: c => c.calcRolls, off: r => r.kind !== 'Roll'},
       {g: 'Result', k: 'how', how: 1},
       {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
-      {g: '', k: 'wall', label: 'Wall', sub: 'optional', t: 'text', ph: 'e.g. behind the bed', w: 160},   // back after Remarks, optional (Purvi, 7 Oct)
+      // "The wall" after Remarks and optional (Purvi, 7 Oct): no orange box, no warning when left blank
+      {g: 'The wall', k: 'cond', label: 'Condition', sub: 'optional', t: 'sel', opts: ['Flat and dry', 'Bumps or cracks', 'Damp or leakage', 'Fresh plaster or paint'], blank: '—', w: 190},
+      {g: 'The wall', k: 'open', label: 'Doors / windows on it', sub: 'optional', t: 'sel', opts: ['None', 'Window', 'Door', 'Window and door', 'Switchboards only'], blank: '—', w: 170},
     ],
     calc(r){
       const H = nv(r.H), W = nv(r.W), c = {ok: !!(H && W), warn: [], kpis: []};
       if (r.cond === 'Damp or leakage') c.warn.push('Damp wall: fix the leakage and let it dry before papering');
       if (r.cond === 'Bumps or cracks') c.warn.push('Wall needs putty and levelling first');
       if (r.cond === 'Fresh plaster or paint') c.warn.push('Fresh wall: let it dry fully before papering');
-      if (!r.cond) c.warn.push('Wall condition not checked yet');
       if (!c.ok) return c;
       c.area = r2(H * W / 144);
       if (r.kind !== 'Roll') {
@@ -4657,4 +4656,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-120354 -->
+<!-- build 20261007-122534 -->
