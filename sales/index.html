@@ -3944,7 +3944,7 @@ const MP = {
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
       // 'Wall' column removed 7 Oct (Purvi); r.wall kept in old rows and still shows in the side panel title
-      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor", "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},   // "D'Decor" = D'Decor's own list (7 Oct)
+      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F', 'Other'], blank: 'Pick', w: 160},   // D'Decor's wallpaper list = FabriCare / Home Ideas (Purvi, 7 Oct)
       {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or design no.' : 'Collection · design no.', list: wpListId, w: 230},
       {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
       {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: wpRollOpts, w: 150, off: r => r.kind !== 'Roll'},
@@ -4422,6 +4422,7 @@ const mpTabOf = k => MP_TABS.find(t => (t[2] || [t[0]]).includes(k)) || [k];
 function ensureMore(fresh){   // fresh = the sheet was just loaded: give every row a new id (ids from other devices can clash)
   if (!state.more || typeof state.more !== 'object') state.more = {};
   uphFromOld(); mtFromOld();
+  (state.more.wallpaper || []).forEach(r => { if (r.sup === "D'Decor") r.sup = "D'Decor FabriCare"; });   // the list was called "D'Decor" for an hour on 7 Oct
   for (const k of MP_ORDER) { if (!Array.isArray(state.more[k])) state.more[k] = []; state.more[k].forEach(r => { const b = MP[k].blank(); for (const f in b) if (r[f] === undefined) r[f] = b[f]; if (fresh || r.id == null) r.id = uid++; }); }
   state.more.wallpaper.forEach(r => wpRoll(r.roll));
   if (!state.msel || typeof state.msel !== 'object') state.msel = {};
@@ -4645,4 +4646,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-114056 -->
+<!-- build 20261007-115103 -->
