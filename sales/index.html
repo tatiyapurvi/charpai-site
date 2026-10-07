@@ -1360,6 +1360,7 @@ function openSugg(input, row){
 function closeSugg(){ sugg.hidden = true; suggFor = null; }
 function pickSugg(i){
   const x = suggItems[i]; if (!x || !suggFor) return;
+  if (suggFor.wp) { const {input} = suggFor; closeSugg(); input.value = x.sku + ' · ' + x.name; input.dispatchEvent(new Event('input', {bubbles: true})); return; }   // the sheet's own input handler fills the row
   const {input, row} = suggFor, tr = input.closest('tr');
   { row.sup = x.sup; row.key = x.k; row.fabric = x.n; row.roll = listedRoll(row) || 140; row.rollOwn = ''; row.repeat = ''; row.turn = 'Yes'; }
   input.value = row.fabric; input.className = fabricState(row);
@@ -1376,7 +1377,9 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Enter') { if (its.length) { e.preventDefault(); pickSugg(suggOn); } }
   else if (e.key === 'Escape') closeSugg();
 });
-document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); } else if (!sugg.contains(e.target)) closeSugg(); });
+document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
+  else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
+  else if (!sugg.contains(e.target)) closeSugg(); });
 document.addEventListener('scroll', e => { if (!sugg.hidden && e.target !== sugg) closeSugg(); }, true);
 
 // ================= measure table
@@ -3662,13 +3665,33 @@ function wpSqInfo(c, r, it){
   if (canSeeCost && dp != null) c.kpis.push({l: 'We pay per sq ft', v: rs(dp), u: 'before GST · only you see this'});
   c.warn.push(`${r.sup} lists this design per sq ft, not per roll: no total here, and no price on the quotation`);
 }
-function wpSuggest(r){
-  const L = WPL[r.sup], dl = $('#wpl-dyn'); if (!L || !dl) return;
-  const q = String(r.design || '').split('·')[0].toLowerCase().split(/\s+/).filter(Boolean);
-  if (!q.length) { dl.innerHTML = ''; return; }
-  L.idx = L.idx || [...L.items.values()].map(x => [[x.sku, x.name, x.coll, x.vendor, x.colour, x.pattern, x.book].join(' ').toLowerCase(), x]);
-  const out = []; for (const [t, x] of L.idx) if (q.every(w => t.includes(w))) { out.push(x); if (out.length >= 40) break; }
-  dl.innerHTML = out.map(x => `<option value="${esc(x.sku + ' · ' + x.name)}">${esc([x.pattern && 'no. ' + x.pattern, x.coll, x.vendor, x.colour].filter(Boolean).join(' · '))}</option>`).join('');
+// Design suggestions in the app's own box (7 Oct): Chrome's datalist dropdown was built before the matches were filled in,
+// so it often showed nothing until the company was picked again (Purvi: "nothing is coming as suggested … this keeps on happening").
+const wpDesignInput = el => !!(el && el.dataset && el.dataset.p === 'design' && mpCur === 'wallpaper' && el.closest('#ptb'));
+function wpOpenSugg(input){
+  const r = state.more.wallpaper.find(x => x.id === +input.closest('tr').dataset.id), L = r && WPL[r.sup];
+  if (!L) { closeSugg(); return; }
+  suggFor = {input, row: r, wp: true}; suggItems = []; suggOn = 0;
+  const q = String(input.value || '').split('·')[0].trim().toLowerCase(), toks = q.split(/\s+/).filter(Boolean);
+  let html;
+  if (q.length < 2) html = `<div class="msg">Type 2 letters or more: a collection, a design no. or a code.</div>`;
+  else {
+    L.idx = L.idx || [...L.items.values()].map(x => [[x.sku, x.name, x.coll, x.vendor, x.colour, x.pattern, x.book].join(' ').toLowerCase(), x]);
+    const out = []; for (const [t, x] of L.idx) if (toks.every(w => t.includes(w))) { out.push(x); if (out.length >= 300) break; }
+    const st = x => String(x.sku).toLowerCase().startsWith(toks[0]) || String(x.pattern || '').toLowerCase().startsWith(toks[0]);
+    out.sort((a, b) => st(b) - st(a)); suggItems = out.slice(0, 40);
+    html = suggItems.length ? suggItems.map((x, i) => {
+      const mrp = Math.round(x.rrp * (1 + x.gst / 100)), dp = canSeeCost ? WPC.get(r.sup + '|' + String(x.sku).toUpperCase()) : null;
+      const info = [x.coll, x.pattern && x.pattern !== x.sku && 'no. ' + x.pattern, x.wcm && x.rollm ? `${fmt(x.wcm)} cm × ${fmt(x.rollm)} m` : ''].filter(Boolean).join(' · ');
+      return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.sku + ' · ' + x.name)}</b><br><small>${esc(info)}</small></span><span class="pr">MRP ${rs(mrp)}<small>${x.unit === 'sqft' ? 'per sq ft' : 'per roll'}${dp != null ? ` · we pay ${rs(dp)}` : ''}</small></span></div>`;
+    }).join('') : `<div class="msg">No design matches “${esc(q)}” in ${esc(r.sup)}'s list.</div>`;
+  }
+  sugg.innerHTML = html;
+  const rc = input.getBoundingClientRect();
+  sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
+  sugg.hidden = false;
+  const below = innerHeight - rc.bottom;
+  sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
 }
 // Company flooring lists (6 Oct): catalog/fl-<id> + catcost/fl-<id>, priced per sq ft. First: F&F's Divine carpets.
 const FLL = {}, FLC = new Map();
@@ -3679,7 +3702,7 @@ function fillFLLists(){
 }
 const flListId = r => { const i = Object.keys(FLL).indexOf(r.sup); return i < 0 ? null : 'fll-' + i; };
 function flPicked(r){ const it = flItem(r); if (!it) return false; r.type = it.type; return true; }
-const wpListId = r => WPL[r.sup] ? 'wpl-dyn' : null;
+const wpListId = r => null;   // no browser datalist: wpOpenSugg shows the app's own box (7 Oct)
 // Picking a design from a company list fills its roll size and repeat (panels printed over 3 rolls get no repeat).
 function wpPicked(r){
   const it = wpItem(r), k = it && wpRollKey(it); if (!it) return false;
@@ -4485,7 +4508,7 @@ ptb.addEventListener('input', e => {
   if (k === 'foam' && f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; }
   if (k === 'flooring' && f === 'product' && flPicked(r)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
   if (k === 'flooring' && f === 'sup' && e.target.tagName === 'INPUT' && FLL[r.sup]) { const pi = tr.querySelector('[data-p=product]'); if (pi) { pi.setAttribute('list', flListId(r)); pi.placeholder = 'Type a carpet name'; } }
-  if (k === 'wallpaper' && f === 'design') wpSuggest(r);
+  if (k === 'wallpaper' && f === 'design' && e.isTrusted && document.activeElement === e.target) wpOpenSugg(e.target);
   if (k === 'wallpaper' && (f === 'design' || f === 'sup')) { wpPicked(r); const rsel = tr.querySelector('[data-p=roll]'); if (rsel && rsel.tagName === 'SELECT') rsel.innerHTML = selOpts(wpRollOpts(r), r.roll); }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r) && ![...tr.querySelectorAll('[data-p=roll] option')].some(o => o.value === r.roll)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r)) { for (const g of ['kind', 'roll', 'rep']) { const x = tr.querySelector(`[data-p=${g}]`); if (x) x.value = r[g]; } const rs_ = tr.querySelector('[data-p=roll]'); if (rs_) rs_.disabled = false; }
@@ -4601,4 +4624,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-112855 -->
+<!-- build 20261007-113731 -->
