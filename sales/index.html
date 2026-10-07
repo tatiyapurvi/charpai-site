@@ -1162,15 +1162,47 @@ const STYLE_INFO = {'American Pleat': 'Tailored triple pleats sewn in at the top
 // Manual tracks are priced per running foot. Motorised tracks come from D'Decor (Sansaar) as ready kits, priced by kit length.
 const TRACKS = [{n:'Kohinoor Track', k:'ft'}, {n:'DPFH Track', k:'ft'}, {n:'Zen Motion Track', k:'ft'}, {n:'Forest Track', k:'ft'}, {n:'Rod cum track', k:'ft'},
   {n:"Motorised · Exton Glide (D'Decor motor)", k:'motor', m:'EXTON', rb:'DD'}, {n:'Motorised · Movelite 35 (Somfy motor)', k:'motor', m:'MV35', rb:'SOMFY'}, {n:'Motorised · Movelite 60 (Somfy motor)', k:'motor', m:'MV60', rb:'SOMFY'},
+  // Marvel RRP w.e.f. 1 Apr 2026, pages 24–29, before 18% GST (Purvi, 7 Oct: "yes add both"). Manual = per running ft (mv = Marvel's rate,
+  // used until a "we charge" rate is typed in Prices). Motorised Dura tracks come without the motor (Marvel: "track, bracket, runner & end cap"):
+  // the motor (mb) and the remote are picked separately, sizes 3 m to 9 m (min 3).
+  {n:'Marvel · Dura Track', k:'ft', mv:694}, {n:'Marvel · Dura Track (ripple)', k:'ft', mv:918}, {n:'Marvel · Easyglide Track', k:'ft', mv:308}, {n:'Marvel · Easyglide Track (ripple)', k:'ft', mv:566},
+  {n:'Marvel · Power Track', k:'ft', mv:310}, {n:'Marvel · Power Track (ripple)', k:'ft', mv:566}, {n:'Marvel · Mini Track', k:'ft', mv:224}, {n:'Marvel · Mini Track (ripple)', k:'ft', mv:538},
+  {n:'Marvel · Flexi Track', k:'ft', mv:292}, {n:'Marvel · Hospital Track', k:'ft', mv:960},
+  {n:'Marvel motorised · Dura Track (Solis motor)', k:'motor', m:'MVSOL', rb:'MVSOL', mb:'MVSOL', min:3}, {n:'Marvel motorised · Dura Track ripple (Solis motor)', k:'motor', m:'MVSOLR', rb:'MVSOL', mb:'MVSOL', min:3},
+  {n:'Marvel motorised · Dura Track (Somfy motor)', k:'motor', m:'MVSOM', rb:'MVSOM', mb:'MVSOM', min:3}, {n:'Marvel motorised · Dura Track ripple (Somfy motor)', k:'motor', m:'MVSOMR', rb:'MVSOM', mb:'MVSOM', min:3},
   {n:'No track', k:''}];
+const TRACK_GROUPS = [['Our tracks · per ft', t => t.k === 'ft' && !t.mv], ['Marvel tracks · per ft', t => t.k === 'ft' && t.mv], ['Motorised', t => t.k === 'motor'], ['', t => !t.k]];
+function trackOptHTML(val){
+  return TRACK_GROUPS.map(([g, f]) => { const o = opt(TRACKS.filter(f).map(t => t.n), val); return g ? `<optgroup label="${esc(g)}">${o}</optgroup>` : o; }).join('');
+}
+// Marvel curtain motors (page 27/29), picked under a Marvel motorised track. RTS = radio remote, WT = wired switch.
+const MOTORS_MV = {
+  MVSOL: [['Solis Glide 50 kg', 12400], ['Solis Glide 100 kg', 13800], ['Solis Glide wire-free 50 kg', 25200]],
+  MVSOM: [['Somfy Movelite 35', 30390], ['Somfy Movelite 60', 41190], ['Somfy Movelite wire-free 35', 41000], ['Somfy Glydea 35 (radio, RTS)', 59200], ['Somfy Glydea 35 (wired, WT)', 49830],
+    ['Somfy Glydea 60 (radio, RTS)', 72000], ['Somfy Glydea 60 (wired, WT)', 58650]]};
+const motorDefault = () => Object.fromEntries(Object.values(MOTORS_MV).flat());
+const motorsFor = row => { const t = TRACKS.find(x => x.n === row.track); return t && t.mb ? MOTORS_MV[t.mb].map(x => x[0]) : null; };
+const motorRate = n => { const p = (prices.motors || {})[n]; return has(p) ? p : motorDefault()[n]; };
+function motorSel(r){
+  const list = motorsFor(r); if (!list) return '';
+  return `<select id="r${r.id}-motor" data-f="motor" style="width:250px;margin-top:6px" class="${r.motor ? '' : 'todo'}" aria-label="Motor"><option value="">Pick a motor</option>${opt(list, r.motor)}</select>`;
+}
+// A Marvel manual track uses Marvel's rate (before GST) until we type our own "we charge" rate in Prices.
+const trackRate = n => { const t = TRACKS.find(x => x.n === n) || {}, p = (prices.track || {})[n]; return has(p) ? {rate: p, incl: gstIncl('track')} : {rate: t.mv ?? p, incl: false}; };
 const KIT_SIZES = ['1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9'];
 // Folio price list 2026 (Sansaar), page 19: RRP per kit, by kit length in metres, before 18% GST.
 const KITS_RRP = {
   EXTON: [26972, 28463, 29953, 31444, 32929, 34944, 36435, 37925, 39416, 40906, 42392, 43882, 45373, 46864, 48354, 49839],
   MV35: [35097, 36615, 38128, 39645, 42326, 43844, 45356, 46874, 48392, 49910, 51423, 52940, 54458, 55970, 57489, 59006],
-  MV60: [49686, 51198, 52716, 54235, 56915, 58427, 59946, 61463, 62981, 64493, 66011, 67530, 69042, 70560, 72077, 73596]};
+  MV60: [49686, 51198, 52716, 54235, 56915, 58427, 59946, 61463, 62981, 64493, 66011, 67530, 69042, 70560, 72077, 73596],
+  // Marvel (page 26), 3 m to 9 m only, motor not included
+  MVSOL: [null, null, null, 15540, 17466, 19394, 21320, 23738, 25664, 27590, 29518, 31444, 33370, 35298, 37224, 39150],
+  MVSOLR: [null, null, null, 19804, 22406, 25008, 27610, 30702, 33302, 35904, 38506, 41108, 43708, 46310, 48912, 51514],
+  MVSOM: [null, null, null, 18632, 20558, 22486, 24412, 26830, 28756, 30682, 32610, 34536, 36462, 38390, 40316, 42242],
+  MVSOMR: [null, null, null, 22896, 25498, 28100, 30702, 33794, 36394, 38996, 41598, 44200, 46800, 49402, 52004, 54606]};
+const kitPrices = () => Object.assign(kitDefault(), prices.kits || {});   // a saved table from before 7 Oct has no Marvel columns
 const kitDefault = () => Object.fromEntries(Object.entries(KITS_RRP).map(([m, a]) => [m, Object.fromEntries(KIT_SIZES.map((z, i) => [z, a[i]]))]));
-const kitSize = m => { if (!m) return null; const z = Math.max(1.5, m); return z > 9 ? null : String(z); };  // the smallest kit is 1.5 m, the largest 9 m
+const kitSize = (m, min = 1.5) => { if (!m) return null; const z = Math.max(min, m); return z > 9 ? null : String(z); };  // the smallest kit is 1.5 m (Marvel 3 m), the largest 9 m
 // Remotes for motorised curtains (Purvi, 1 Oct): picked per curtain, a separate line under Accessories and installation.
 // Folio price list 2026: D'Decor remotes page 14 (Exton Glide), Somfy page 15 (Movelite). RRP before 18% GST.
 const REMOTES = {
@@ -1179,11 +1211,16 @@ const REMOTES = {
     ["D'Decor IRIS Remote 6 (pebble finish, 6 channel)", 4305], ["D'Decor Linex wall switch (1 channel, RTS)", 2258], ["D'Decor Switch AC 505-1 wall switch (1 channel, WT)", 977],
     ["D'Decor Smart Home Hub (phone app)", 10920]],
   SOMFY: [['Somfy Situo 1 RTS Pure (1 channel)', 7332], ['Somfy Situo 5 RTS Pure (4 channel)', 9674], ['Somfy Telis 16 RTS Pure (16 channel)', 20451],
-    ['Somfy Smoove RTS Pure wall switch (1 channel)', 5871], ['Somfy Connexoon (phone app, Alexa, Google Home)', 23924]]};
+    ['Somfy Smoove RTS Pure wall switch (1 channel)', 5871], ['Somfy Connexoon (phone app, Alexa, Google Home)', 23924]],
+  // Marvel, page 27 (Purvi, 7 Oct)
+  MVSOL: [['Solis Glide remote (1 channel)', 1950], ['Solis Glide remote (15 channel)', 2500], ['Solis Hub WiFi bridge (phone app)', 19000]],
+  MVSOM: [['Somfy Situo remote, 1 motor (Marvel)', 7980], ['Somfy Situo remote, 5 motors (Marvel)', 10680], ['Somfy remote, 16 motors (Marvel)', 21380],
+    ['Somfy wall remote (Marvel)', 5090], ['Somfy wired wall switch, WT (Marvel)', 1870], ['Somfy Telis 6 Chronis timer remote (Marvel)', 25110]]};
+const REM_FOR = {DD: 'Exton Glide', SOMFY: 'Movelite 35 / 60', MVSOL: 'Marvel · Solis Glide', MVSOM: 'Marvel · Somfy'};
 const NO_REMOTE = "No remote (uses another curtain's remote)";
 const remoteDefault = () => Object.fromEntries(Object.values(REMOTES).flat());
 const remotesFor = row => { const t = TRACKS.find(x => x.n === row.track); return t && t.rb ? REMOTES[t.rb].map(x => x[0]) : null; };
-const remoteRate = n => (prices.remotes || remoteDefault())[n];
+const remoteRate = n => { const p = (prices.remotes || {})[n]; return has(p) ? p : remoteDefault()[n]; };   // Marvel remotes are not in a table saved before 7 Oct
 function remoteSel(r){
   const list = remotesFor(r); if (!list) return '';
   return `<select id="r${r.id}-remote" data-f="remote" style="width:250px;margin-top:6px" class="${r.remote ? '' : 'todo'}" aria-label="Remote"><option value="">Pick a remote</option>${opt([...list, NO_REMOTE], r.remote)}</select>`;
@@ -1228,7 +1265,7 @@ const findFabric = name => prices.fabrics.find(f => f.n.toLowerCase() === String
 
 // ================= the sheet: kept on this device
 let uid = 1;
-function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', fixing:'', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
+function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', motor:'', fixing:'', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
 function fillFabric(row){
   const f = findFabric(row.fabric);
   if (!f) return false;
@@ -1254,6 +1291,7 @@ function migrate(r){
   if (r.sup === undefined || r.sup === 'OWN') { r.sup = ''; r.key = ''; }
   if (OLD_TRACK[r.track]) r.track = OLD_TRACK[r.track];
   if (r.remote === undefined) r.remote = '';
+  if (r.motor === undefined) r.motor = '';
   for (const f of ['fixing', 'parts', 'remarks']) if (r[f] === undefined) r[f] = '';
   r.id = uid++;
 }
@@ -1272,7 +1310,7 @@ function calc(row){
   const fab = {r: rollOf(row), p: parseFloat(row.repeat) || 0, t: row.turn === 'No', force: row.turn300 === 'Yes'};   // force: 300 cm Turn button
   const tr = TRACKS.find(t => t.n === row.track) || {k:''};
   const base = {W, H, fabric: fab, style: {mx:0, mn:0}, trackKind: tr.k, panelTxt: row.panelTxt, allowTxt: row.allowTxt, hand: row.hand};
-  const res = curtain(base, R);
+  const res = curtain(base, R); res.kitMin = tr.min || 1.5; res.kitBy = tr.mb ? 'Marvel' : "D'Decor";
   const d = {W, H, roll: fab.r, rep: fab.p, noTurn: fab.t, wide: fab.r >= 250};
   // One piece off the roll: 300 cm rolls under 109″ = panels × 1.4 m (300 cm as the height, Purvi 2 Oct); 140 cm turned = W × 2.25 + side hems.
   d.fl = R.curtain_turn_fullness || 2.25;
@@ -1411,7 +1449,7 @@ function rowHTML(r, i){
     <td><select id="${id('style')}" data-f="style" style="width:215px">${opt(STYLES, r.style)}</select></td>
     <td><input id="${id('H')}" data-f="H" class="n key" inputmode="decimal" value="${esc(r.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input id="${id('W')}" data-f="W" class="n key" inputmode="decimal" value="${esc(r.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
-    <td><select id="${id('track')}" data-f="track" style="width:250px" class="${r.track ? '' : 'todo'}"><option value="">Pick a track</option>${opt(TRACKS.map(t => t.n), r.track)}</select><div data-remote>${remoteSel(r)}</div></td>
+    <td><select id="${id('track')}" data-f="track" style="width:250px" class="${r.track ? '' : 'todo'}"><option value="">Pick a track</option>${trackOptHTML(r.track)}</select><div data-motor>${motorSel(r)}</div><div data-remote>${remoteSel(r)}</div></td>
     <td><select id="${id('fixing')}" data-f="fixing" style="width:140px" class="${r.fixing ? '' : 'todo'}" aria-label="Ceiling or face fixing"><option value="">Pick fixing</option>${opt(FIXINGS, r.fixing)}</select></td>
     <td>${autoCell(r, 'panelTxt', 64)}</td>
     <td>${autoCell(r, 'allowTxt', 56)}</td>
@@ -1430,7 +1468,7 @@ function renderTable(){
   state.rows.forEach(updateRow);
   markSel();
 }
-const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' : (kitSize(res.track) ? kitSize(res.track) + ' m kit' : 'over 9 m: ask D\'Decor');
+const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' : (kitSize(res.track, res.kitMin) ? kitSize(res.track, res.kitMin) + ' m kit' : 'over 9 m: ask ' + res.kitBy);
 // Numbers (with their unit) in bold, so the How column can be read at a glance.
 const boldNums = t => esc(t).replace(/\d+(?:\.\d+)?(?:–\d+(?:\.\d+)?)?(?:″| cm\b| m\b| ft\b)?/g, '<b class="n">$&</b>');
 const linHowOf = lin => lin ? ` Lining (${lin.name}): ${lin.drops} × ${cpF(lin.cut)}″ = ${f2(lin.raw)} m, rounded up to ${cpF(lin.m)} m.` : '';
@@ -1525,8 +1563,11 @@ tb.addEventListener('change', e => {
     // A remote only fits its own motor brand, so a new track clears it.
     const list = remotesFor(r); if (!list || !list.includes(r.remote) && r.remote !== NO_REMOTE) r.remote = '';
     e.target.closest('td').querySelector('[data-remote]').innerHTML = remoteSel(r);
+    const ml = motorsFor(r); if (!ml || !ml.includes(r.motor)) r.motor = '';   // and the motor
+    e.target.closest('td').querySelector('[data-motor]').innerHTML = motorSel(r);
   }
   if (f === 'remote') e.target.classList.toggle('todo', !r.remote);
+  if (f === 'motor') e.target.classList.toggle('todo', !r.motor);
   if (f === 'fixing') e.target.classList.toggle('todo', !r.fixing);
   changed(r);
 });
@@ -1586,12 +1627,12 @@ function renderTotals(){
     const {res, ok, lin} = calc(r); if (!ok) continue; win++;
     panels += res.panels; if (lin) linM += lin.m;
     if (res.trackUnit === 'ft') ft += res.track;
-    else if (res.track) { const z = kitSize(res.track) || 'over 9'; kits.set(z, (kits.get(z) || 0) + 1);
+    else if (res.track) { const z = (kitSize(res.track, res.kitMin) || 'over 9') + ' m motor kit (' + res.kitBy + ')'; kits.set(z, (kits.get(z) || 0) + 1);
       if (r.remote !== NO_REMOTE) { const n = r.remote || 'Remote not picked'; rems.set(n, (rems.get(n) || 0) + 1); } }
   }
   const li = (a, b) => `<li><span>${a}</span><b>${b}</b></li>`;
   $('#totals').innerHTML = `
-    <div><h3>Track</h3><ul>${li('Manual / rod track', cpF(ft) + ' ft')}${[...kits].sort((a,b) => parseFloat(a[0]) - parseFloat(b[0])).map(([m, n]) => li(`${m} m motor kit (D'Decor)`, '× ' + n)).join('')}${[...rems].map(([m, n]) => li(esc(m), '× ' + n)).join('')}</ul></div>
+    <div><h3>Track</h3><ul>${li('Manual / rod track', cpF(ft) + ' ft')}${[...kits].sort((a,b) => parseFloat(a[0]) - parseFloat(b[0])).map(([m, n]) => li(m, '× ' + n)).join('')}${[...rems].map(([m, n]) => li(esc(m), '× ' + n)).join('')}</ul></div>
     <div><h3>Tailor</h3><ul>${li('Curtains measured', win)}${li('Panels to stitch', panels)}${li('Lining', cpF(Math.round(linM*100)/100) + ' m')}</ul></div>`;
 }
 
@@ -1764,8 +1805,9 @@ function rowAmount(row, c){
   add('Stitching', c.res.panels, c.res.panels === 1 ? 'panel' : 'panels', prices.stitch[stitchKey(row.style, !!c.lin)], +G.stitching, gstIncl('stitching'));
   if (c.res.track) {
     const t = TRACKS.find(x => x.n === row.track) || {};
-    if (c.res.trackUnit === 'ft') add('Track', c.res.track, 'ft', prices.track[row.track], +G.track, gstIncl('track'));
-    else { const z = kitSize(c.res.track), K = prices.kits || kitDefault(); add('Motor track kit', 1, z ? z + ' m' : 'kit', z && K[t.m] ? K[t.m][z] : null, +G.track, gstIncl('kits'));
+    if (c.res.trackUnit === 'ft') { const tr_ = trackRate(row.track); add('Track', c.res.track, 'ft', tr_.rate, +G.track, tr_.incl); }
+    else { const z = kitSize(c.res.track, c.res.kitMin), K = kitPrices(); add(t.mb ? 'Motorised track' : 'Motor track kit', 1, z ? z + ' m' : 'kit', z && K[t.m] ? K[t.m][z] : null, +G.track, gstIncl('kits'));
+      if (t.mb) add('Motor', 1, 'pc', row.motor ? motorRate(row.motor) : null, +G.track, gstIncl('motors'));
       if (row.remote && row.remote !== NO_REMOTE) add('Remote', 1, 'pc', remoteRate(row.remote), +G.track, gstIncl('remotes')); }
   }
   return {items, total: items.reduce((a, x) => a + (x.amt || 0), 0), missing: items.filter(x => x.amt == null).length};
@@ -1788,7 +1830,7 @@ function renderSide(){
       ${line('Style', `${esc(r.style)} · ${esc(pt)} parts${own ? ' <span class="ed">edited</span>' : ''}`)}
       ${line('Fabric', r.fabric ? `${esc(fab1)}${fabRest.length ? ` <small>· ${esc(fabRest.join(' · '))}</small>` : ''}` : miss('Not picked yet'))}
       ${lin ? line('Lining', esc(lin.name)) : ''}
-      ${line('Track', r.track ? esc(r.track) + (remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ` <small>· ${esc(r.remote)}</small>` : '') : miss('Not picked yet'))}
+      ${line('Track', r.track ? esc(r.track) + (motorsFor(r) ? ` <small>· ${r.motor ? esc(r.motor) : 'motor not picked'}</small>` : '') + (remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ` <small>· ${esc(r.remote)}</small>` : '') : miss('Not picked yet'))}
       ${line('Fixing', r.fixing ? esc(r.fixing) : miss('Not picked yet'))}
       ${String(r.remarks || '').trim() ? line('Remarks', esc(r.remarks), 'note') : ''}
     </dl>`;
@@ -2148,10 +2190,12 @@ function qSections(){
     const s = stitch.get(k) || {rooms: new Set(), panels: 0, k, style: row.style, lins: new Set()}; s.rooms.add(row.room || '—'); s.panels += res.panels; if (lin) s.lins.add(lin.name); stitch.set(k, s);
     if (res.track) {
       const t = TRACKS.find(x => x.n === row.track) || {};
-      if (res.trackUnit === 'ft') { pieces++; hw(row.room, {grp: 'man', product: 'Curtain track (manual)', what: row.track, hsn: H.track || '', qty: res.track, unit: 'RFT', rate: prices.track[row.track], gst: +G.track, cost: costs.track[row.track], incl: gstIncl('track'), fix: 'track'}); }
-      else { kits++; const z = kitSize(res.track), K = prices.kits || kitDefault(), KC = costs.kits || {};
-        mo(row.room, {grp: 'mot', product: 'Motorised curtain track', what: `${row.track.replace('Motorised · ', '')} with motor (${z ? z + ' MTR' : 'over 9 MTR: ask D\'Decor'})`, hsn: H.kits || '', qty: 1, unit: 'PCS',
+      if (res.trackUnit === 'ft') { pieces++; const tr_ = trackRate(row.track); hw(row.room, {grp: 'man', product: 'Curtain track (manual)', what: row.track, hsn: H.track || '', qty: res.track, unit: 'RFT', rate: tr_.rate, gst: +G.track, cost: costs.track[row.track], incl: tr_.incl, fix: 'track'}); }
+      else { kits++; const z = kitSize(res.track, res.kitMin), K = kitPrices(), KC = costs.kits || {};
+        mo(row.room, {grp: 'mot', product: 'Motorised curtain track', what: t.mb ? `${row.track.replace('Marvel motorised · ', 'Marvel ')} (${z ? z + ' MTR' : 'over 9 MTR: ask Marvel'})` : `${row.track.replace('Motorised · ', '')} with motor (${z ? z + ' MTR' : 'over 9 MTR: ask D\'Decor'})`, hsn: H.kits || '', qty: 1, unit: 'PCS',
           rate: z && K[t.m] ? K[t.m][z] : null, gst: +G.track, cost: z && KC[t.m] ? KC[t.m][z] : null, incl: gstIncl('kits'), fix: 'track'});
+        if (t.mb) mo(row.room, {grp: 'mot', product: 'Curtain motor', what: row.motor || 'Motor not picked yet', hsn: H.motors || H.kits || '', qty: 1, unit: 'PCS',
+          rate: row.motor ? motorRate(row.motor) : null, gst: +G.track, cost: row.motor ? (costs.motors || {})[row.motor] : null, incl: gstIncl('motors'), fix: 'track'});
         if (row.remote !== NO_REMOTE) mo(row.room, {grp: 'mot', product: 'Curtain motor remote', what: row.remote || 'Remote not picked yet', hsn: H.remotes || '', qty: 1, unit: 'PCS',
           rate: row.remote ? remoteRate(row.remote) : null, gst: +G.track, cost: row.remote ? (costs.remotes || {})[row.remote] : null, incl: gstIncl('remotes'), fix: row.remote ? 'track' : 'remote'}); }
     }
@@ -2691,18 +2735,26 @@ function renderPrices(){
       ${canSeeCost ? `<td class="mg${m.bad ? ' bad' : ''}">${m.t}</td>` : ''}
       <td>${canEditPrices ? `<button class="ico" data-fdel="${i}" title="Delete this lining" aria-label="Delete ${esc(f.n)}">✕</button>` : ''}</td></tr>`;
   }).join('');
-  const K = prices.kits || kitDefault(), KC = costs.kits || {};
-  const MOTORS = TRACKS.filter(t => t.k === 'motor');
-  const kitRows = KIT_SIZES.map(z => `<tr><td class="st"><b>${z} m</b></td>${MOTORS.map(t => `${canSeeCost ? `<td>${moneyIn((KC[t.m] || {})[z], 'pay', `data-p="kits" data-side="cost" data-k="${t.m}|${z}" aria-label="${esc(t.n)} ${z} m kit: we pay"`)}</td>` : ''}<td>${moneyIn(K[t.m][z], 'chg', `data-p="kits" data-side="sale" data-k="${t.m}|${z}" aria-label="${esc(t.n)} ${z} m kit: we charge"`)}</td>`).join('')}</tr>`).join('');
-  const RP = prices.remotes || remoteDefault(), RC = costs.remotes || {};
-  const remRows = Object.values(REMOTES).flat().map(([n]) => { const m = mg(RP[n], RC[n]);
-    return `<tr><td class="st"><b>${esc(n)}</b></td><td>${n.startsWith('Somfy') ? 'Movelite 35 / 60' : 'Exton Glide'}</td>
+  const K = kitPrices(), KC = costs.kits || {};
+  const kitTable = list => KIT_SIZES.filter(z => list.some(t => +z >= (t.min || 1.5))).map(z => `<tr><td class="st"><b>${z} m</b></td>${list.map(t => +z < (t.min || 1.5) ? `${canSeeCost ? '<td></td>' : ''}<td class="hint">—</td>` : `${canSeeCost ? `<td>${moneyIn((KC[t.m] || {})[z], 'pay', `data-p="kits" data-side="cost" data-k="${t.m}|${z}" aria-label="${esc(t.n)} ${z} m kit: we pay"`)}</td>` : ''}<td>${moneyIn(K[t.m][z], 'chg', `data-p="kits" data-side="sale" data-k="${t.m}|${z}" aria-label="${esc(t.n)} ${z} m kit: we charge"`)}</td>`).join('')}</tr>`).join('');
+  const kitHead = list => `<tr><th>Kit length</th>${list.map(t => { const n = esc(t.n.replace(/^(Marvel )?[Mm]otorised · /, '')); return `${canSeeCost ? `<th class="pay">${n} · we pay</th>` : ''}<th class="chg">${n} · we charge</th>`; }).join('')}</tr>`;
+  const MOTORS = TRACKS.filter(t => t.k === 'motor' && !t.mb), MVK = TRACKS.filter(t => t.k === 'motor' && t.mb);
+  const kitRows = kitTable(MOTORS), mvKitRows = kitTable(MVK);
+  const MP_ = Object.assign(motorDefault(), prices.motors || {}), MC = costs.motors || {};
+  const motRows = Object.entries(MOTORS_MV).flatMap(([b, L]) => L.map(([n]) => { const m = mg(MP_[n], MC[n]);
+    return `<tr><td class="st"><b>${esc(n)}</b></td><td>${b === 'MVSOL' ? 'Marvel Dura · Solis' : 'Marvel Dura · Somfy'}</td>
+      ${canSeeCost ? `<td>${moneyIn(MC[n], 'pay', `data-p="motors" data-side="cost" data-k="${esc(n)}" aria-label="${esc(n)}: we pay"`)}</td>` : ''}
+      <td>${moneyIn(MP_[n], 'chg', `data-p="motors" data-side="sale" data-k="${esc(n)}" aria-label="${esc(n)}: we charge"`)}</td>
+      ${canSeeCost ? `<td class="mg${m.bad ? ' bad' : ''}">${m.t}</td>` : ''}</tr>`; })).join('');
+  const RP = Object.assign(remoteDefault(), prices.remotes || {}), RC = costs.remotes || {};
+  const remRows = Object.entries(REMOTES).flatMap(([b, L]) => L.map(([n]) => [n, b])).map(([n, b]) => { const m = mg(RP[n], RC[n]);
+    return `<tr><td class="st"><b>${esc(n)}</b></td><td>${esc(REM_FOR[b] || '')}</td>
       ${canSeeCost ? `<td>${moneyIn(RC[n], 'pay', `data-p="remotes" data-side="cost" data-k="${esc(n)}" aria-label="${esc(n)}: we pay"`)}</td>` : ''}
       <td>${moneyIn(RP[n], 'chg', `data-p="remotes" data-side="sale" data-k="${esc(n)}" aria-label="${esc(n)}: we charge"`)}</td>
       ${canSeeCost ? `<td class="mg${m.bad ? ' bad' : ''}">${m.t}</td>` : ''}</tr>`; }).join('');
   const trRows = TRACKS.filter(t => t.k === 'ft').map(t => {
     const m = mg(prices.track[t.n], costs.track[t.n]);
-    return `<tr><td class="st"><b>${esc(t.n)}</b></td><td>per running ft</td>
+    return `<tr><td class="st"><b>${esc(t.n)}</b></td><td>per running ft${t.mv ? `<br><small class="hint">Marvel ₹${t.mv} until you type yours</small>` : ''}</td>
       ${canSeeCost ? `<td>${moneyIn(costs.track[t.n], 'pay', `data-p="track" data-side="cost" data-k="${esc(t.n)}" aria-label="${esc(t.n)}: we pay"`)}</td>` : ''}
       <td>${moneyIn(prices.track[t.n], 'chg', `data-p="track" data-side="sale" data-k="${esc(t.n)}" aria-label="${esc(t.n)}: we charge"`)}</td>
       ${canSeeCost ? `<td class="mg${m.bad ? ' bad' : ''}">${m.t}</td>` : ''}</tr>`;
@@ -2722,13 +2774,17 @@ function renderPrices(){
     <div class="sec" id="sec-track"><div class="sec-h"><h2>Track</h2><p>Manual tracks per running foot (width ÷ 12, rounded up to the next ½ ft).</p>${gstSwitch('track')}</div>
       <div class="q-scroll"><table class="pr"><thead><tr><th>Track</th><th>Unit</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${trRows}</tbody></table></div>
       <div class="sec-h" style="margin-top:18px"><h2>Motorised track kits · D'Decor Sansaar</h2><p>Price per kit by length. The kit is the width in metres rounded up to the next ½ m (smallest 1.5 m, largest 9 m). Filled in from D'Decor Sansaar's Folio price list 2026, page 19 (RRP before GST).</p>${gstSwitch('kits')}</div>
-      <div class="q-scroll"><table class="pr"><thead><tr><th>Kit length</th>${MOTORS.map(t => `${canSeeCost ? `<th class="pay">${esc(t.n.replace('Motorised · ', ''))} · we pay</th>` : ''}<th class="chg">${esc(t.n.replace('Motorised · ', ''))} · we charge</th>`).join('')}</tr></thead><tbody>${kitRows}</tbody></table></div>
-      <div class="sec-h" style="margin-top:18px"><h2>Remotes for motorised curtains</h2><p>Picked under the track on each motorised curtain, and shown as its own line in the quotation. From the Folio price list 2026: D'Decor page 14, Somfy page 15 (RRP before GST).</p>${gstSwitch('remotes')}</div>
+      <div class="q-scroll"><table class="pr"><thead>${kitHead(MOTORS)}</thead><tbody>${kitRows}</tbody></table></div>
+      <div class="sec-h" style="margin-top:18px"><h2>Motorised tracks · Marvel</h2><p>Dura Track by length, 3 m to 9 m, <b>without the motor</b> (Marvel RRP from 1 Apr 2026, page 26, before GST). The motor and the remote are picked on the curtain and go on the quotation as their own lines.</p></div>
+      <div class="q-scroll"><table class="pr"><thead>${kitHead(MVK)}</thead><tbody>${mvKitRows}</tbody></table></div>
+      <div class="sec-h" style="margin-top:18px"><h2>Curtain motors · Marvel</h2><p>For Marvel motorised tracks (pages 27 and 29, RRP before GST).</p>${gstSwitch('motors')}</div>
+      <div class="q-scroll"><table class="pr"><thead><tr><th>Motor</th><th>For track</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${motRows}</tbody></table></div>
+      <div class="sec-h" style="margin-top:18px"><h2>Remotes for motorised curtains</h2><p>Picked under the track on each motorised curtain, and shown as its own line in the quotation. From the Folio price list 2026: D'Decor page 14, Somfy page 15; Marvel page 27 (RRP before GST).</p>${gstSwitch('remotes')}</div>
       <div class="q-scroll"><table class="pr"><thead><tr><th>Remote</th><th>For motor</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${remRows}</tbody></table></div></div>
     ${installSec()}
     ${uphSec()}
     ${swMarginSec()}
-    ${hsnSec([['lining', 'Linings'], ['stitching', 'Stitching'], ['track', 'Curtain track'], ['kits', 'Motorised track kits'], ['remotes', 'Curtain motor remotes'], ['install', 'Installation'],
+    ${hsnSec([['lining', 'Linings'], ['stitching', 'Stitching'], ['track', 'Curtain track'], ['kits', 'Motorised track kits'], ['remotes', 'Curtain motor remotes'], ['motors', 'Curtain motors (Marvel)'], ['install', 'Installation'],
       ['mattress', 'Sleepwell mattresses and pillows (9404 if empty)'], ['foam', 'Sleepwell foam (9404 if empty)'], ['uphFabric', 'Upholstery fabric at our own rate']])}`;
 }
 const pb = $('#p-body');
@@ -2737,7 +2793,8 @@ function priceInput(e){
   if (t.id === 'p-search') { pFilter = t.value; const pos = t.selectionStart; renderPrices(); const s = $('#p-search'); s.focus(); try { s.setSelectionRange(pos, pos); } catch(_){} return; }
   if (t.dataset.p === 'gst' && !prices.gst) prices.gst = Object.assign({}, GST_DEF);
   if (t.dataset.p === 'hsn') { prices.hsn = Object.assign({}, prices.hsn || {}, {[t.dataset.k]: t.value.trim()}); priceChanged(); return; }
-  if (t.dataset.p === 'remotes') { if (!prices.remotes) prices.remotes = remoteDefault(); if (!costs.remotes) costs.remotes = {}; }
+  if (t.dataset.p === 'remotes') { prices.remotes = Object.assign(remoteDefault(), prices.remotes || {}); if (!costs.remotes) costs.remotes = {}; }
+  if (t.dataset.p === 'motors') { prices.motors = Object.assign(motorDefault(), prices.motors || {}); if (!costs.motors) costs.motors = {}; }
   if (t.dataset.p === 'install') { if (!prices.install) prices.install = {piece: 200, motor: 1000}; if (!costs.install) costs.install = {}; }
   if (t.dataset.p === 'uph') { if (!prices.uph) prices.uph = {}; if (!costs.uph) costs.uph = {}; }
   if (t.dataset.swm) {   // Sleepwell dealer margins (owner only)
@@ -2749,7 +2806,7 @@ function priceInput(e){
   if (t.dataset.p === 'uphGst' && !prices.uphGst) prices.uphGst = {};
   if (t.dataset.p === 'kits') {
     const [m, z] = t.dataset.k.split('|'), bag = t.dataset.side === 'cost' ? (costs.kits = costs.kits || {}) : (prices.kits = prices.kits || kitDefault());
-    (bag[m] = bag[m] || {})[z] = num(t.value); priceChanged(); return;
+    (bag[m] = bag[m] || (t.dataset.side === 'cost' ? {} : kitDefault()[m]))[z] = num(t.value); priceChanged(); return;
   }
   if (t.dataset.p) {
     (t.dataset.side === 'cost' ? costs : prices)[t.dataset.p][t.dataset.k] = num(t.value);
@@ -4628,7 +4685,7 @@ $('#copy').onclick = () => {
   const L = [`*Curtains · ${state.house || 'house'}*`];
   state.rows.forEach((r, i) => {
     const {res, ok, lin} = calc(r); if (!ok) return;
-    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${cpF(rollOf(r))} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${(rollOf(r) >= 250 ? res.rotated : res.turned) ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}${r.fixing ? '\n   ' + r.fixing : ''}${r.fixing ? ' · ' : '\n   '}${String(r.parts || '').trim() || PARTS_DEFAULT} parts${String(r.remarks || '').trim() ? '\n   Remarks: ' + r.remarks.trim() : ''}`);
+    L.push(`${i+1}. ${r.room || 'Opening'} (${r.layer}) · ${r.style}\n   ${r.fabric || 'fabric not named'}, ${cpF(rollOf(r))} cm${lin ? '\n   Lining: ' + lin.name : ''}\n   H ${fmt(r.H)}″ × W ${fmt(r.W)}″ → ${res.panels} panels · *${cpF(res.qty)} m*${(rollOf(r) >= 250 ? res.rotated : res.turned) ? ' (turned)' : ''}${lin ? ' · lining ' + cpF(lin.m) + ' m' : ''}${res.track ? ' · track ' + trackStr(res) : ''}${res.track && motorsFor(r) ? ' · motor: ' + (r.motor || 'not picked') : ''}${res.track && remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ' · remote: ' + r.remote : ''}${r.fixing ? '\n   ' + r.fixing : ''}${r.fixing ? ' · ' : '\n   '}${String(r.parts || '').trim() || PARTS_DEFAULT} parts${String(r.remarks || '').trim() ? '\n   Remarks: ' + r.remarks.trim() : ''}`);
   });
   copyText(L.join('\n'), $('#m-panel'));
 };
@@ -4656,4 +4713,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-123025 -->
+<!-- build 20261007-124415 -->
