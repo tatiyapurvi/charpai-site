@@ -4529,9 +4529,12 @@ ptb.addEventListener('input', e => {
   const k = mpCur, tr = e.target.closest('tr'), r = state.more[k].find(x => x.id === +tr.dataset.id); if (!r) return;
   const old = r[f]; r[f] = e.target.value;
   const col = MP[k].cols.find(c => c.k === f);
-  if (k === 'wallpaper' && f === 'sup') {   // a new company clears the old company's design, and the roll size, repeat and match it brought (7 Oct)
-    if (wpItem(Object.assign({}, r, {sup: old}))) { r.roll = MP.wallpaper.blank().roll; r.rep = ''; r.match = ''; }
-    r.design = ''; }
+  // A new company or a new design starts clean: the old roll size, repeat and match go; a design from a list then fills its own (Purvi, 7 Oct:
+  // "changing the design should also clear old roll size and also every change should also clear repeat pattern").
+  if (k === 'wallpaper' && (f === 'sup' || f === 'design') && old !== r[f]) {
+    if (f === 'sup') r.design = '';
+    r.roll = MP.wallpaper.blank().roll; r.rep = ''; r.match = '';
+    for (const g of ['design', 'rep', 'match']) { const x = tr.querySelector(`[data-p=${g}]`); if (x && x !== e.target) x.value = r[g]; } }
   if (k === 'flooring' && f === 'sup' && r.product) { r.product = ''; const pi = tr.querySelector('[data-p=product]'); if (pi) pi.value = ''; }   // same for flooring
   if (k === 'mattress' && (f === 'model' || f === 'sup')) { const m = swMat(r); if (m && r.T && !m.th.includes(parseFloat(r.T))) r.T = ''; }
   if (k === 'foam' && f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; }
@@ -4541,7 +4544,7 @@ ptb.addEventListener('input', e => {
   if (k === 'wallpaper' && f === 'design' && e.isTrusted && document.activeElement === e.target) wpOpenSugg(e.target);
   if (k === 'wallpaper' && (f === 'design' || f === 'sup')) { wpPicked(r); const rsel = tr.querySelector('[data-p=roll]'); if (rsel && rsel.tagName === 'SELECT') rsel.innerHTML = selOpts(wpRollOpts(r), r.roll); }
   if (k === 'wallpaper' && f === 'design' && wpPicked(r) && ![...tr.querySelectorAll('[data-p=roll] option')].some(o => o.value === r.roll)) { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); mpUpdateRow(k, r); mpTotal(k); renderPSide(k); save(); return; }
-  if (k === 'wallpaper' && f === 'design' && wpPicked(r)) { for (const g of ['kind', 'roll', 'rep']) { const x = tr.querySelector(`[data-p=${g}]`); if (x) x.value = r[g]; } const rs_ = tr.querySelector('[data-p=roll]'); if (rs_) rs_.disabled = false; }
+  if (k === 'wallpaper' && f === 'design' && wpPicked(r)) { for (const g of ['kind', 'roll', 'rep', 'match']) { const x = tr.querySelector(`[data-p=${g}]`); if (x) x.value = r[g]; } const rs_ = tr.querySelector('[data-p=roll]'); if (rs_) rs_.disabled = false; }
   if (e.target.tagName === 'SELECT') { tr.outerHTML = mpRowHTML(k, r); mpMarkSel(k); }
   else if (col && col.todo) e.target.classList.toggle('ovr', !r[f]);
   mpUpdateRow(k, r); mpTotal(k); if (r === state.more[k][state.msel[k]]) renderPSide(k); save();
@@ -4654,4 +4657,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-115536 -->
+<!-- build 20261007-115910 -->
