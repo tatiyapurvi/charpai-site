@@ -3681,6 +3681,7 @@ function renderClients(){
   const el = $('#cl-body');
   const board = CF.view !== 'list';
   const top = `<div class="cl-head"><h2>${PF && IS_ADMIN ? 'Clients' : 'My Clients'}</h2><div class="cl-hr">${shared ? `<div class="seg" role="group" aria-label="Show as"><button data-view="board" aria-pressed="${board}">Board</button><button data-view="list" aria-pressed="${!board}">List</button></div><button class="btn solid big" data-act="new">+ New enquiry</button>` : ''}</div></div>`;
+  if (!shared && window.claude && window.claude.use) { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty">Loading the clients…</div></div>`; return; }   // still connecting (18 Oct: no scary message for a second)
   if (!shared) { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty"><b>The client list needs the shared store.</b>On this device you can still measure one sheet.<div style="margin-top:12px"><button class="btn solid" id="cl-local">Open the sheet on this device</button></div></div></div>`; return; }
   if (CL.state !== 'ready') { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty">${CL.state === 'error' ? '<b>Could not load the clients.</b>Reload the page.' : 'Loading the clients…'}</div></div>`; return; }
   const admin = PF && IS_ADMIN; if (!admin) CF.exec = '';
@@ -5580,7 +5581,7 @@ function renderTodo(){
   const el = $('#todo-body'); if (!el) return;
   const admin = PF && IS_ADMIN;
   const head = `<div class="cl-head"><h2>To Do</h2><button class="btn solid big" data-tnew="1">+ New to-do</button></div>`;
-  if (!shared) { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty"><b>To-dos need the shared store.</b></div></div>`; return; }
+  if (!shared) { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty">${window.claude && window.claude.use ? 'Loading…' : '<b>To-dos need the shared store.</b>'}</div></div>`; return; }
   if (TD.state === 'error') { el.innerHTML = `<div class="kb-wrap"><div class="cl-head"><h2>To Do</h2></div><div class="clist cl-empty"><b>To-dos are not switched on yet.</b>${PF && PF.owner ? 'Paste the to-dos rule in Firebase → Firestore → Rules (Claude has it ready), then reload.' : 'Ask Purvi to switch them on.'}</div></div>`; return; }
   if (TD.state !== 'ready') { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty">Loading…</div></div>`; return; }
   const today = dayPlus(0), week = dayPlus(7), wk = Date.now() - 7 * 864e5;
@@ -5683,4 +5684,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-171252 -->
+<!-- build 20261017-171435 -->
