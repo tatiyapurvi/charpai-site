@@ -99,7 +99,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.i
     <div id="g-denied" hidden><h1>Not on the list</h1><p id="g-dmsg"></p><button class="g-btn" id="g-out">Use another account</button></div>
   </div>
 </div>
-<title>Charpai Curtains & Blinds</title>
+<title>Charpai</title>
 <script>try { const t = localStorage.getItem('charpai-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch(_){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -132,7 +132,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .num{font-family:var(--num);font-variant-numeric:tabular-nums}
 
 /* header: a strip of tape measure */
-.tape{background:var(--tape);color:var(--tape-ink);position:relative;padding-block:14px 26px;padding-inline:16px}
+.tape{background:var(--tape);color:var(--tape-ink);position:relative;padding-block:10px 24px;padding-inline:16px}
 .tape::after{content:"";position:absolute;left:0;right:0;bottom:0;height:18px;opacity:.75;
   background:
     repeating-linear-gradient(90deg,var(--tape-ink) 0 1.5px,transparent 1.5px 96px) bottom left/100% 18px no-repeat,
@@ -310,6 +310,18 @@ table.sheet.psheet.uwide{width:100%}
 .kpi.m{background:var(--tape);border-color:var(--tape);color:var(--tape-ink)}
 .kpi.m small{color:var(--tape-ink);opacity:.8}
 .fig{padding:4px 10px 0}
+/* Curtain side panel (17 Oct): fits the screen and scrolls inside itself, so the drawing never drops out of view while typing in the sheet. */
+.s-kpis{grid-template-columns:repeat(auto-fit,minmax(84px,1fr))}
+.s-kpis .s-amt{grid-column:span 2}
+@media (max-width:520px){ .s-kpis .s-amt{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline} }
+.s-kpis b{white-space:nowrap}
+.s-kpis .kpi{padding:6px 9px}
+@media (min-width:1150px){ #side .s-front svg{max-height:max(240px,calc(100dvh - 330px))} }
+.s-h{margin:14px 14px 4px;font:600 12.5px var(--body);color:var(--muted);letter-spacing:.03em}
+.s-rest{border-top:1px solid var(--line2);margin-top:10px;padding-top:2px}
+@media (min-width:1150px){
+  #side{max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior:contain}
+}
 .fig h4{margin:10px 4px 2px;font:600 12.5px var(--body);color:var(--muted);letter-spacing:.03em;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .fig h4 span{font-weight:400}
 svg{display:block;width:100%;height:auto}
@@ -705,7 +717,7 @@ tr.dash-r:hover td{background:var(--sel)}
 
 <header class="tape">
   <div class="tape-in">
-    <div class="brand"><small>Charpai · curtains &amp; blinds</small><h1>Measure &amp; quote</h1></div>
+    <div class="brand"><h1>Charpai</h1></div>
     <div class="house">
       <label for="house">Customer / house</label>
       <input id="house" placeholder="e.g. Rohit Sankhla, Mansarovar">
@@ -1986,8 +1998,10 @@ function renderSide(){
   const own = String(r.parts || '').trim(), pt = own || PARTS_DEFAULT, miss = t => `<span class="miss-t">${t}</span>`;
   const [fab1, ...fabRest] = String(r.fabric || '').split(' · ');
   const line = (k, v, cls) => `<dt>${k}</dt><dd${cls ? ` class="${cls}"` : ''}>${v}</dd>`;
-  const head = `<div class="side-h id-h"><h2>${esc(r.room || 'Room not named')}</h2><span class="layer ${r.layer === 'Sheer' ? 'sheer' : 'main'}">${r.layer === 'Sheer' ? 'Sheer curtain' : 'Main curtain'}</span><span class="idx">#${i + 1}</span></div>
-    <dl class="spec">
+  // 17 Oct (Purvi: "the visual of the curtain has gone down … room stays as the first line, then panels fabric track, then the drawing,
+  // then other things"): name line → big numbers + amount → front view → the details list → money → the other drawings.
+  const head = `<div class="side-h id-h"><h2>${esc(r.room || 'Room not named')}</h2><span class="layer ${r.layer === 'Sheer' ? 'sheer' : 'main'}">${r.layer === 'Sheer' ? 'Sheer curtain' : 'Main curtain'}</span><span class="idx">#${i + 1}</span></div>`;
+  const spec = `<dl class="spec">
       ${line('Size', r.H || r.W ? `<span class="big">${fmt(r.H) || '—'}″ high × ${fmt(r.W) || '—'}″ wide</span>` : miss('Not measured yet'))}
       ${line('Style', `${esc(r.style)} · ${esc(pt)} parts${own ? ' <span class="ed">edited</span>' : ''}`)}
       ${line('Fabric', r.fabric ? `${esc(fab1)}${fabRest.length ? ` <small>· ${esc(fabRest.join(' · '))}</small>` : ''}` : miss('Not picked yet'))}
@@ -1996,26 +2010,32 @@ function renderSide(){
       ${line('Fixing', r.fixing ? esc(r.fixing) : miss('Not picked yet'))}
       ${String(r.remarks || '').trim() ? line('Remarks', esc(r.remarks), 'note') : ''}
     </dl>`;
-  if (!ok) { $('#side').innerHTML = `${head}<div class="empty">Type the height and the width in inches to see the drawing.</div>`; return; }
+  if (!ok) { $('#side').innerHTML = `<div class="s-top">${head}<div class="empty">Type the height and the width in inches to see the drawing.</div></div>${spec}`; return; }
   const el = elevation(r, res, d, lin);
   const fcls = r.layer === 'Sheer' ? 'f-sheer' : 'f-main';
   const linHow = linHowOf(lin), amt = rowAmount(r, {res, lin});
   $('#side').innerHTML = `
+    <div class="s-top">
     ${head}
-    <div class="kpis">
+    <div class="kpis s-kpis">
       <div class="kpi"><small>${res.turned ? 'Tailor charges' : 'Panels'}</small><b class="num">${res.panels}</b></div>
       <div class="kpi"><small>Fabric</small><b class="num">${cpF(res.qty)} m</b></div>
       ${lin ? `<div class="kpi"><small>Lining</small><b class="num">${cpF(lin.m)} m</b></div>` : ''}
       <div class="kpi"><small>Track</small><b class="num">${res.track ? trackStr(res) : '—'}</b></div>
-      <div class="kpi m" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline"><small>Amount incl. GST, this curtain</small><b class="num">${amt.total ? rs(amt.total) : '—'}</b></div>
+      <div class="kpi m s-amt"><small>Amount incl. GST</small><b class="num">${amt.total ? rs(amt.total) : '—'}</b></div>
     </div>
+    <div class="fig s-front"><h4>Front view <span>measurements in inches${lin ? ' · dashed = lining behind' : ''}</span></h4>${el.svg}</div>
+    </div>
+    <div class="s-rest">
+    ${spec}
+    <h3 class="s-h">Amount, this curtain</h3>
     ${amountHTML(amt)}
-    <div class="fig"><h4>Front view <span>measurements in inches${lin ? ' · dashed = lining behind' : ''}</span></h4>${el.svg}</div>
     <div class="fig"><h4>Seen from above <span>${esc(STYLE_INFO[baseStyle(r.style)] || r.style)}${/Double Height/.test(r.style) ? ' Double height.' : ''}</span></h4>${planView(r, res, el.x0, el.cw)}</div>
     <div class="fig"><h4>Curtain fabric off the roll <span>${d.wide ? (res.rotated ? `turned: ${cpF(d.roll)} cm across the width, 2 panels a width` : `${cpF(d.roll)} cm as the height, one piece`) : res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, hem: d.hem, mPer: d.wide && d.mPer, turnPanels: d.turnPanels, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
     ${lin ? `<div class="fig"><h4>Lining off the roll <span>${esc(lin.name)}</span></h4>${rollView({panels: lin.panels, cut: lin.cut, qty: lin.m, roll: lin.roll, turned: false, rep: 0, W: d.W, cls: 'f-lining', pid: 'h2'})}</div>` : ''}
     ${chips(r, res, d)}
-    <div class="how"><b>How it was worked out</b>${boldNums(res.how + linHow)}</div>`;
+    <div class="how"><b>How it was worked out</b>${boldNums(res.how + linHow)}</div>
+    </div>`;
 }
 
 // ================= blinds (price lists in the shared store: blinds/<company>; order details from blind-forms.js)
@@ -5027,4 +5047,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261007-180813 -->
+<!-- build 20261017-140957 -->
