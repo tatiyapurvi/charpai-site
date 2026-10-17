@@ -3194,11 +3194,11 @@ document.addEventListener('click', e => {
   setTimeout(() => { const s = document.getElementById('sec-' + to); if (s) s.scrollIntoView({block: 'start'}); }, 50);
 });
 // Send on WhatsApp (Purvi, 18 Oct: "instead of copy for whatsapp the button becomes send on whatsapp"; the PDF goes too).
-// Phones and tablets: the share menu opens with the PDF attached and a short message; staff pick WhatsApp, then the client.
+// Phones and tablets (waOnApp): the share menu opens with the PDF attached and a short message; staff pick WhatsApp, then the client.
 // Laptops: a website cannot put a file into WhatsApp Web, so WhatsApp Web opens on the client's chat with the message typed
 // and the PDF downloads, to drag into the chat. Either way the PDF is saved as the next version, like ↓ PDF.
 let waHint = null;   // the last send to WhatsApp Web, so the quotation can say where the PDF is
-const sharePdfOk = () => { try { return matchMedia('(pointer: coarse)').matches && !!navigator.canShare && navigator.canShare({files: [new File(['%PDF'], 'q.pdf', {type: 'application/pdf'})]}); } catch(_) { return false; } };
+const sharePdfOk = () => { try { return waOnApp() && !!navigator.canShare && navigator.canShare({files: [new File(['%PDF'], 'q.pdf', {type: 'application/pdf'})]}); } catch(_) { return false; } };
 function waMessage(v, t){
   const q = state.quote || {}, who = q.contact || state.house || '';
   return [`Namaste${who ? ' ' + who : ''},`, 'Here is your quotation from Charpai.', `Performa Invoice ${q.no || ''} · v${v}`, `Final: ₹${inr(t.final)} (GST included)`].join('\n');
@@ -3233,7 +3233,7 @@ document.addEventListener('click', async e => {
       await waShare({file: new File([blob], name, {type: 'application/pdf'}), text, c, v});
     } else if (await saveFile(name, blob)) {
       state.quote.pdf = {n: v, sig}; save(); await recordVersion(v, sig, t); renderQuoteSum();
-      const url = `https://web.whatsapp.com/send?phone=91${m}&text=${encodeURIComponent(text)}`;
+      const url = waUrl(m, text);   // a tablet that cannot share files gets the app link
       if (tab && !tab.closed) { tab.location.href = url; tab.focus(); } else window.open(url, WA_TAB);
       waHint = {v, sig}; renderQuoteSum();
       waSent(c, v);
@@ -5470,9 +5470,13 @@ const starsHTML = (n, edit) => `<span class="stars${edit ? ' edit' : ''}" ${edit
 // "Continue to chat" page, so go straight to the chat in WhatsApp Web. It is a new tab each time: WhatsApp Web's
 // Cross-Origin-Opener-Policy stops any site from finding or reusing its tab (tested: a named target opens a second tab).
 const WA_TAB = '_blank';
-const waLink = p => { const m = mobile(p); if (m.length !== 10) return '';
-  let phone = false; try { phone = matchMedia('(pointer: coarse)').matches; } catch(_){}
-  return phone ? 'https://wa.me/91' + m : 'https://web.whatsapp.com/send?phone=91' + m; };
+// Purvi, 17 Oct: "simple whatsapp web in desktop and whatsapp in mobile … figure out how ipads/tabs would be handled".
+// Phones and tablets get the WhatsApp app (iPad has one; without it wa.me offers WhatsApp Web). iPads ask for the desktop site and
+// say "Macintosh", and one with a trackpad has a fine pointer, so they are found by touch points; touch-screen laptops stay on Web.
+const waOnApp = () => { try { const ua = navigator.userAgent || '';
+  return /Android|iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) || matchMedia('(pointer: coarse)').matches; } catch(_) { return false; } };
+const waUrl = (m, text) => (waOnApp() ? 'https://wa.me/91' + m + (text ? '?text=' : '') : 'https://web.whatsapp.com/send?phone=91' + m + (text ? '&text=' : '')) + (text ? encodeURIComponent(text) : '');
+const waLink = p => { const m = mobile(p); return m.length === 10 ? waUrl(m) : ''; };
 const ownerName = c => c.ownerEmail ? personName(c.ownerEmail) : (c.exec || '').split(' - ')[0];
 
 // ---- dates in words: Today · Tomorrow · Yesterday · Tue 21 Oct
@@ -6268,4 +6272,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-193818 -->
+<!-- build 20261017-194615 -->
