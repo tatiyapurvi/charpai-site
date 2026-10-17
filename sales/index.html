@@ -713,6 +713,149 @@ tr.dash-r:hover td{background:var(--sel)}
   #print-root .pf-grid{grid-template-columns:1fr 2fr;gap:10pt}
   #print-root .sign{margin-top:30pt;flex-wrap:nowrap}
 }
+
+/* ===== CRM + To Do (17 Oct): boards, customer page, settings ===== */
+.cl-hr{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:9px;padding:2px;background:var(--paper)}
+.seg button{border:0;background:none;padding:7px 14px;white-space:nowrap;border-radius:7px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.kb-wrap{max-width:1500px;margin:0 auto}
+.kb{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.kcol{background:var(--line2);border-radius:12px;padding:10px;min-height:120px;transition:background .15s}
+.kcol.over{background:var(--tape-soft);outline:2px dashed var(--tape)}
+.kcol-h{display:flex;align-items:baseline;gap:8px;padding:4px 4px 10px}
+.kcol-h b{font:700 19px/1.1 var(--num)}
+.kcnt{font:600 13px var(--body);color:var(--muted);background:var(--paper);border-radius:10px;padding:1px 8px}
+.ksum{margin-left:auto;font:600 15px var(--num);color:var(--muted)}
+.kcol-b{display:grid;gap:8px}
+.kadd{width:100%;border:1.5px dashed var(--faint);background:transparent;border-radius:10px;padding:10px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:8px}
+.kadd:hover{border-color:var(--ink);color:var(--ink);background:var(--paper)}
+.kempty{color:var(--muted);font-size:13.5px;text-align:center;padding:16px 8px;margin:0}
+.kmore{display:block;margin:10px auto 2px}
+.kc{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;display:grid;gap:4px;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.kc:hover{border-color:var(--faint)}
+.kc:focus-visible{outline:2.5px solid var(--dim);outline-offset:1px}
+.kc.drag{opacity:.45}
+.kc.asked{border-left:4px solid var(--warn)}
+.kc-top{display:flex;gap:8px;align-items:baseline;justify-content:space-between}
+.kc-name{font:700 17px/1.2 var(--num);letter-spacing:.01em;min-width:0;overflow-wrap:anywhere}
+.kc-sub{color:var(--muted);font-size:13px}
+.kc-int{font-size:12.5px;color:var(--ink);opacity:.8}
+.kc-tag{justify-self:start;display:inline-block;background:var(--warn-soft);color:var(--warn);font:600 12px var(--body);border-radius:12px;padding:2px 9px}
+.kc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
+.kc-next{display:inline-flex;align-items:center;gap:5px;font:600 12.5px var(--body);color:var(--muted);background:var(--line2);border-radius:12px;padding:3px 9px;white-space:nowrap}
+.kc-next.late{background:var(--warn-soft);color:var(--warn)}
+.kc-next.none{background:none;padding-left:0;color:var(--faint);font-weight:500}
+.kc-r{display:flex;align-items:center;gap:8px}
+.kc-amt{font:600 16px var(--num)}
+.kc-sched{border:1.5px solid var(--line);background:var(--paper);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:var(--ink);padding:0}
+.kc-sched:hover{border-color:var(--ink);background:var(--tape-soft)}
+.av{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--paper);font:700 11px var(--body);flex:none}
+.av.big{width:46px;height:46px;font-size:17px}
+.stars{display:inline-flex;gap:1px;color:var(--faint);font-size:14px;line-height:1;white-space:nowrap}
+.stars .st.on{color:#E0A800}
+.stars.edit .st{border:0;background:none;font-size:22px;padding:0 1px;cursor:pointer;color:var(--line)}
+.stars.edit .st.on{color:#E0A800}
+.stars.edit .st:hover{color:#E0A800}
+.kb-tabs{display:none}
+.kb.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.kb.many{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(280px,320px);overflow-x:auto;padding-bottom:10px}
+.kb-tabs.many{overflow-x:auto}
+.kb-tabs.many button{flex:0 0 auto;padding:9px 12px}
+.kc.lost .kc-name{color:var(--muted)}
+.kc-next.lostr{white-space:normal}
+.kb-lost{margin:14px 4px 0}
+@media (max-width:760px){
+  .kb,.kb.two,.kb.many{grid-template-columns:minmax(0,1fr);grid-auto-flow:row;grid-auto-columns:auto}
+  .kcol{display:none}.kcol[data-on]{display:block}
+  .kb-tabs{display:flex;gap:4px;margin-bottom:10px;background:var(--line2);border-radius:10px;padding:3px}
+  .kb-tabs button{flex:1 1 0;border:0;background:none;padding:9px 4px;border-radius:8px;font:700 15px/1.1 var(--num);color:var(--muted);cursor:pointer}
+  .kb-tabs button b{display:block;font:600 13px var(--body);margin-top:2px}
+  .kb-tabs button[aria-selected="true"]{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+}
+/* customer page */
+.cp2{max-width:1200px}
+.cp2.narrow{max-width:820px}
+.cp-top{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.cp-id h2{margin:0 0 6px;font:700 36px/1.05 var(--num);overflow-wrap:anywhere}
+.cp-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cp-meta .cbar-save{margin-left:0}
+.cp-own{display:flex;gap:8px;align-items:center;margin-top:8px}
+.cp-own select{width:auto;padding:5px 8px}
+.cp-reach{display:flex;gap:8px}
+.cp-reach .btn,.tdcl .btn{text-decoration:none;color:inherit}
+.cp-big{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.bigb{display:grid;gap:4px;text-align:left;background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;color:inherit}
+.bigb:hover{border-color:var(--ink)}
+.bigb b{font:700 21px/1.1 var(--num)}
+.bigb span{color:var(--muted);font-size:14px}
+.cp-cols{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.cp-aside{display:grid;gap:14px;align-content:start}
+@media (min-width:1000px){ .cp-cols:not(.one){grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);align-items:start} .cp-cols.one{max-width:820px} }
+.card-h{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.card-h h3{margin:0}
+.card-h .btn{display:inline-flex;gap:6px;align-items:center}
+.cpf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}
+.cpf{display:grid;gap:4px;min-width:0}
+.cpf.wide{grid-column:1/-1}
+.cpf>span,.cpf-sec>span{font-weight:600;font-size:13.5px;color:var(--muted)}
+.cpf input,.cpf textarea,.cpf-other{width:100%;background:var(--field);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;font-size:16px}
+.cpf input:focus,.cpf textarea:focus,.cpf-other:focus{border-color:var(--ink);outline:none}
+.cpf textarea{resize:vertical;font:inherit;font-size:16px}
+.cpf-sec{display:grid;gap:6px;margin-top:14px}
+.cpf-other{margin-top:4px;max-width:420px}
+.ticks{display:flex;flex-wrap:wrap;gap:6px}
+.tickb{border:1.5px solid var(--line);background:var(--paper);border-radius:18px;padding:7px 13px;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer}
+.tickb:hover{border-color:var(--faint);color:var(--ink)}
+.tickb[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.tickb[aria-pressed="true"]::before{content:'✓ '}
+.asked-b{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;background:var(--warn-soft);border-color:var(--warn)}
+.asked-b p{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+.tdrow{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line2);padding:10px 2px;cursor:pointer;color:inherit}
+.tdrow:hover{background:var(--sel)}
+.tdrow:last-child{border-bottom:0}
+.tdrow.done{opacity:.6}
+.tdrow.done .tdr-m b{text-decoration:line-through}
+.tdr-m{display:grid;flex:1 1 auto;min-width:0}
+.tdr-m small{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tdr-d{font:600 13px var(--body);color:var(--muted);white-space:nowrap}
+.tdr-d.late,.late{color:var(--warn)}
+.tdone summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:14px;padding:8px 0 4px}
+.tdi{flex:none;color:var(--muted)}
+.tdi-visit{color:var(--good)}.tdi-make,.tdi-revise{color:var(--dim)}.tdi-call{color:#8A5A00}
+:root[data-theme="dark"] .tdi-call{color:var(--tape)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tdi-call{color:var(--tape)}}
+/* to-do dialog and board */
+.tdtypes{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:6px}
+.tdt{display:grid;justify-items:center;gap:6px;border:1.5px solid var(--line);background:var(--paper);border-radius:10px;padding:10px 6px;font-weight:600;font-size:13.5px;line-height:1.2;text-align:center;cursor:pointer;color:var(--ink)}
+.tdt[aria-pressed="true"]{border-color:var(--ink);background:var(--sel);box-shadow:inset 0 0 0 1px var(--ink)}
+.tdwhen{display:grid;gap:8px}
+.tdwhen input{background:var(--field);border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;font-size:16px;width:100%}
+@media (min-width:480px){ .tdwhen{grid-template-columns:1fr 1fr} .tdwhen .fpre{grid-column:1/-1} }
+.tdshow-h{display:flex;gap:10px;align-items:center}
+.tdshow-h h2{margin:0;flex:1 1 auto}
+.xbtn{border:0;background:none;font-size:28px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px}
+.xbtn:hover{color:var(--ink)}
+.tdnote{background:var(--bg);border-radius:8px;padding:10px 12px;margin:0 0 10px;white-space:pre-wrap}
+.tdcl{display:grid;gap:3px;border:1px solid var(--line);border-radius:10px;padding:12px}
+.tdcl b{font:700 19px var(--num)}
+.tdcl span{color:var(--muted);font-size:14px}
+.tdcl .cp-acts{margin-top:8px}
+.tc-type{display:flex;align-items:center;gap:6px;font:600 12.5px var(--body);color:var(--muted)}
+.tc-note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc.done .kc-name{text-decoration:line-through;color:var(--muted)}
+/* settings */
+.cp-done{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line2)}
+@media (max-width:560px){ .tab{padding:11px 10px 9px} .tab small{display:none} .tab b{font-size:17px} }   /* all four menu items fit on a phone */
+.set{max-width:760px;margin:0 auto;display:grid;gap:14px}
+.set .cl-head{margin-bottom:0}
+.set-me{display:flex;gap:14px;align-items:center}
+.set-me div{display:grid;flex:1 1 auto;min-width:0}
+.set-me b{font:700 20px var(--num)}
+.set-theme .theme-sw{display:inline-flex;margin-left:0;border-color:var(--ink)}
+.set-theme .theme-sw button{color:var(--ink);font-size:15px;padding:7px 16px}
+.set-theme .theme-sw button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.set-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 </style>
 
 <header class="tape">
@@ -726,10 +869,10 @@ tr.dash-r:hover td{background:var(--sel)}
 </header>
 <nav class="tabs" aria-label="Sections">
   <div class="tabs-in" role="tablist">
-    <button class="tab" role="tab" id="tab-d" hidden><b>Dashboard</b><small>the whole team</small></button>
-    <button class="tab" role="tab" id="tab-h"><b>Clients</b><small>every client</small></button>
-    <button class="tab" role="tab" id="tab-r"><b>Prices</b><small>curtains &amp; blinds</small></button>
-    <button class="tab" role="tab" id="tab-p" hidden><b>People</b><small>who can sign in</small></button>
+    <button class="tab" role="tab" id="tab-d" hidden><b>Home</b><small id="tab-d-s">the whole team</small></button>
+    <button class="tab" role="tab" id="tab-h"><b id="tab-h-b">My Clients</b><small>enquiries to won</small></button>
+    <button class="tab" role="tab" id="tab-t" hidden><b>To Do</b><small>visits, calls, quotations</small></button>
+    <button class="tab" role="tab" id="tab-s"><b>Settings</b><small id="tab-s-s">prices, people</small></button>
   </div>
 </nav>
 
@@ -748,9 +891,11 @@ tr.dash-r:hover td{background:var(--sel)}
   </section>
   <section id="v-dash" hidden><div id="dash-body"></div></section>
   <section id="v-people" hidden><div id="people-body"></div></section>
+  <section id="v-todo" hidden><div id="todo-body"></div></section>
+  <section id="v-settings" hidden><div id="settings-body"></div></section>
   <section id="v-none" hidden>
     <div class="panel none-box"><h2>No client open</h2><p>Open a client to continue their sheet, or start a new one.</p>
-      <div class="none-acts"><button class="btn solid big" data-act="new">+ New client</button><button class="btn big" data-act="clients">Open Clients</button></div></div>
+      <div class="none-acts"><button class="btn solid big" data-act="new">+ New enquiry</button><button class="btn big" data-act="clients">Open My Clients</button></div></div>
   </section>
 
   <section id="v-measure" hidden>
@@ -1474,6 +1619,8 @@ function closeSugg(){
 // opens on focus AND on every click in its box (also when the box already has the cursor), follows the box when the page or table
 // scrolls (closes only when the box leaves the screen), closes on a click anywhere else, on Escape, on Tab, and after a pick.
 function placeSugg(input){
+  // 18 Oct: inside an open dialog the list must live in the dialog too, or a tap on it counts as a tap outside and closes the dialog
+  const home = input.closest('dialog[open]') || document.body; if (sugg.parentNode !== home) home.appendChild(sugg);
   const host = input.closest('dialog') || document.body; if (sugg.parentNode !== host) host.appendChild(sugg);   // inside a dialog: show above it
   const rc = input.getBoundingClientRect();
   if (rc.bottom < 0 || rc.top > innerHeight || rc.right < 0 || rc.left > innerWidth) { closeSugg(); return; }
@@ -3208,12 +3355,14 @@ async function connectPrices(){
   canSeeCost = canEditPrices;
   document.body.classList.add('shared');
   setupPlatform();
+  if (current === 'settings') renderSettings();   // drawn before the sign-in was known
   if (PF && !IS_ADMIN && /prices$/.test(current)) go('clients');   // opened on a prices link before sign-in was known
-  if (PF && IS_ADMIN && current !== startTab && ['dash', 'people'].includes(startTab)) go(startTab);   // reload on an admin page: sign-in is known only now
+  if (PF && current !== startTab && ['dash', 'people', 'todo'].includes(startTab)) go(startTab);   // reload on an admin page: sign-in is known only now
   if (!canEditPrices) costs = {fabrics:{}, stitch:{}, track:{}};
   refreshAll();
   loadCatalog();
   watchClients();
+  watchTodos(); $('#tab-t').hidden = false;
   db.doc('prices/current').onSnapshot(s => {
     if (s.metadata.hasPendingWrites || busyHere()) return;
     if (s.exists) prices = clone(s.data());
@@ -3345,9 +3494,9 @@ const statusOf = c => c.outcome && c.outcome.s === 'won' ? 'won' : c.outcome && 
 function pillHTML(c){
   const s = statusOf(c);
   if (s === 'won') return `<span class="pill won">Won · v${c.outcome.n}</span>`;
-  if (s === 'lost') return '<span class="pill lost">Lost</span>';
+  if (s === 'lost') return `<span class="pill lost">Lost${c.outcome.reason ? ' · ' + esc(c.outcome.reason) : ''}</span>`;
   if (s === 'quoted') return c.dsig && c.dsig !== c.sig ? `<span class="pill changed" title="The sheet has changes the customer hasn't been sent">v${c.latest} sent · changed</span>` : `<span class="pill quoted">v${c.latest} sent</span>`;
-  return '<span class="pill">Draft</span>';
+  return '<span class="pill">New enquiry</span>';   // was "Draft" until 17 Oct: the board's first column
 }
 const amountOf = c => statusOf(c) === 'won' && c.outcome.total != null ? c.outcome.total : c.total;
 function watchClients(){
@@ -3356,8 +3505,9 @@ function watchClients(){
     CL.list = list; CL.byId = new Map(list.map(c => [c.id, c])); CL.state = 'ready'; backfillCats();
     const typing = document.activeElement && document.activeElement.id === 'cl-q';
     if (current === 'clients' && !typing) renderClients();
-    if (current === 'client') renderClientPage();
+    if (current === 'client' && !(document.activeElement && document.activeElement.closest('#cp-body') && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))) renderClientPage();
     if (current === 'dash') renderDash();
+    if (current === 'todo') renderTodo();
     if (current === 'quote') renderQuoteSum();
     syncExec(); renderCbar();
   }, () => { CL.state = 'error'; if (current === 'clients') renderClients(); });
@@ -3447,14 +3597,16 @@ function fromVersion(c, x, quiet){   // the sent version becomes the live sheet 
   draftLast = ''; refreshSheet(); save(); watchDraft(); go(sheetView());
   if (!quiet) toast(`Started again from v${x.n}. The next PDF will be v${(c.latest || 0) + 1}.`);
 }
-async function createClient(f){
+async function createClient(f, opts = {}){
   await flushDraft();
   const exec = f.exec || (PF ? PF.name : (() => { try { return localStorage.getItem(EXKEY) || ''; } catch(_) { return ''; } })());
   if (f.exec) { try { localStorage.setItem(EXKEY, f.exec); } catch(_){} }
   state = {house: f.name, example: false, sel: 0, bsel: 0, clientId: newClientId(), rows: [blank()], blinds: [], quote: {phone: f.phone || '', addr: f.addr || '', city: f.city || '', exec}};
   draftLast = ''; draftSeen = ''; renderQuoteHead(); refreshSheet(); keepLocal();
-  watchDraft(); await saveDraft(); go('c-measure');
-  toast(`${f.name} added. Start measuring.`);
+  watchDraft(); await saveDraft();
+  if (opts.stay) return state.clientId;
+  go('c-measure'); toast(`${f.name} added. Start measuring.`);
+  return state.clientId;
 }
 
 // ---- sent quotations
@@ -3480,8 +3632,8 @@ async function recordVersion(v, sig, t){
     if (await Store.versionExists(cid, v)) { toast(`Someone saved v${v} of this client a moment ago. Download again to save yours as v${v + 1}.`); delete CL.vers[cid]; return; }
     await Store.addVersion(cid, v, clone({cid, n: v, sig, at, by: UID, name, no: q.no || '', exec: q.exec || '', total,
       snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, final: t.final}, rows: state.rows, blinds: state.blinds, more: state.more}}));
-    await Store.mergeClient(cid, Object.assign({name, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', latest: v, sig, at, total, dsig: sig, edited: at, cats: sheetCats(sheetOf())}, q.city ? {city: q.city} : {}));
-    delete CL.vers[cid];
+    await Store.mergeClient(cid, Object.assign({name, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', latest: v, sig, at, total, dsig: sig, edited: at, cats: sheetCats(sheetOf()), changeReq: null}, q.city ? {city: q.city} : {}));
+    delete CL.vers[cid]; autoAfterVersion(cid);
     toast(`Kept as v${v} in ${name || 'this client'}'s quotations`);
   } catch (e) {
     toast(e && e.code === 'invalid_argument' ? 'PDF saved, but not kept in Clients: ask Purvi to make you a Contributor on this page.' : 'PDF saved, but not kept in Clients. Check the internet and download again.');
@@ -3493,11 +3645,11 @@ async function recordVersion(v, sig, t){
 // survives a reload and can be sent to someone. Filters work on the client CARD (clients/<id>), which carries summary
 // fields (city, cats, total, outcome, dates) written when the sheet saves: lists never open every sheet.
 // Filters combine with AND. Each one is {k, chip(v), match(c, v)}: future lists (orders, purchases, stock) reuse the same shape.
-const CF0 = {q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent'};
+const CF0 = {q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent', view: 'board', won: '', lost: '', why: '', lcol: ''};   // lcol: lost board columns, '' = by reason, exec = by salesperson   // view: board | list; lost: '1' = only lost clients, in both views; why: lost reason (18 Oct)   // view: board (17 Oct, default) or list; won: '1' = every won card, not just 60 days
 let CF = Object.assign({}, CF0), cfOpen = false;
 const tidyCity = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s-])\S/g, m => m.toUpperCase());
 const cityOf = c => tidyCity(c.city);
-const STATUSES = [['all', 'All'], ['draft', 'Draft'], ['quoted', 'Quoted'], ['won', 'Won'], ['lost', 'Lost']];
+const STATUSES = [['all', 'All'], ['draft', 'New enquiry'], ['quoted', 'Quotation given'], ['won', 'Won'], ['lost', 'Lost']];
 const ADDED = {month: 'This month', last: 'Last month', '3m': 'Last 3 months', year: 'This year'};
 const SORTS = {recent: 'Last changed', new: 'Newest first', high: 'Value: high to low', low: 'Value: low to high', name: 'Name A–Z'};
 const HAS = () => [['curtains', 'Curtains'], ['blinds', 'Blinds'], ...MP_ORDER.map(k => [k, MP[k].hasName || MP[k].name])];
@@ -3517,6 +3669,8 @@ const CFILTERS = [
   {k: 'added', chip: v => 'Added ' + (ADDED[v] || v).toLowerCase(), match: inAdded},
   {k: 'has', chip: v => 'Has ' + ((HAS().find(x => x[0] === v) || [])[1] || v).toLowerCase(), match: (c, v) => (c.cats || []).some(x => x === v || (v === 'uph' && (x === 'fabric' || x === 'foam')) || (v === 'mattress' && x === 'hcp'))},   // cards saved before 6 Oct say fabric / foam
   {k: 'follow', chip: () => 'Needs follow-up', match: c => followDue(c)},
+  {k: 'lost', chip: () => 'Lost clients', match: c => statusOf(c) === 'lost'},   // 18 Oct: lost is a filter, shown on the board and in the list
+  {k: 'why', chip: v => 'Lost: ' + v, match: (c, v) => statusOf(c) === 'lost' && ((c.outcome || {}).reason || 'No reason given') === v},
 ];
 const cfActive = () => CFILTERS.filter(f => has(CF[f.k]) && CF[f.k] !== '');
 const cfSearch = (c, ql) => !ql || [c.name, c.no, c.exec, c.phone, c.addr, c.city].join(' ').toLowerCase().includes(ql);
@@ -3525,7 +3679,8 @@ function cfFromQuery(qs){ CF = Object.assign({}, CF0); try { new URLSearchParams
 function cfSet(patch){ Object.assign(CF, patch); try { history.replaceState(null, '', '#clients' + cfQuery()); } catch(_){} renderClients(); }
 function renderClients(){
   const el = $('#cl-body');
-  const top = `<div class="cl-head"><h2>Clients</h2>${shared ? '<button class="btn solid big" data-act="new">+ New client</button>' : ''}</div>`;
+  const board = CF.view !== 'list';
+  const top = `<div class="cl-head"><h2>${PF && IS_ADMIN ? 'Clients' : 'My Clients'}</h2><div class="cl-hr">${shared ? `<div class="seg" role="group" aria-label="Show as"><button data-view="board" aria-pressed="${board}">Board</button><button data-view="list" aria-pressed="${!board}">List</button></div><button class="btn solid big" data-act="new">+ New enquiry</button>` : ''}</div></div>`;
   if (!shared) { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty"><b>The client list needs the shared store.</b>On this device you can still measure one sheet.<div style="margin-top:12px"><button class="btn solid" id="cl-local">Open the sheet on this device</button></div></div></div>`; return; }
   if (CL.state !== 'ready') { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty">${CL.state === 'error' ? '<b>Could not load the clients.</b>Reload the page.' : 'Loading the clients…'}</div></div>`; return; }
   const admin = PF && IS_ADMIN; if (!admin) CF.exec = '';
@@ -3547,6 +3702,8 @@ function renderClients(){
       <div class="fpre">${VALUE_PRESETS.map(([a, b, n]) => `<button class="chipbtn" data-range="${a}|${b}" aria-pressed="${CF.min === a && CF.max === b}">${n}</button>`).join('')}</div></div>
     ${sel('cf-added', 'Added', [['', 'Any time'], ...Object.entries(ADDED)], CF.added)}
     ${sel('cf-has', 'Has in the sheet', [['', 'Anything'], ...HAS()], CF.has)}
+    <div class="ff"><span>Show</span><div class="seg" role="group" aria-label="Open or lost"><button data-lostf="" aria-pressed="${!CF.lost}">Open clients</button><button data-lostf="1" aria-pressed="${!!CF.lost}">Lost clients</button></div></div>
+    ${CF.lost ? sel('cf-why', 'Why lost', [['', 'Any reason'], ...uniq([...LOST_WHY, ...CL.list.filter(c => statusOf(c) === 'lost').map(c => (c.outcome || {}).reason || 'No reason given')]).map(w => [w, w])], CF.why) : ''}
     <label class="ff ff-check"><input type="checkbox" id="cf-follow"${CF.follow ? ' checked' : ''}><span><b>Needs follow-up</b><small>Quoted, nothing changed for 7+ days</small></span></label>
   </div>`;
   const chips = act.length ? `<div class="fchips">${act.map(f => `<button class="fchip" data-clear="${f.k}" title="Remove this filter">${esc(f.chip(CF[f.k]))}<span aria-hidden="true">×</span></button>`).join('')}<button class="linkbtn" data-clear="*">Clear all</button></div>` : '';
@@ -3555,12 +3712,16 @@ function renderClients(){
       <span class="cmain"><span class="cname">${esc(c.name || 'No name')}</span>
         <span class="csub">${[c.phone, addr, admin ? (c.ownerEmail ? personName(c.ownerEmail) : 'Not assigned') : c.exec].filter(Boolean).map(esc).join(' · ') || 'No details yet'}</span></span>
       <span class="cmeta">${pillHTML(c)}<span class="camt">${amountOf(c) ? rs(amountOf(c)) : ''}</span><span class="cago">${esc(agoTxt(c.edited || c.at || c.created))}</span></span></button>` + (canDelete() ? `<button class="cdel" data-del="${esc(c.id)}" title="Delete ${esc(c.name || 'this client')}" aria-label="Delete ${esc(c.name || 'this client')}">${BIN_SVG}</button></div>` : ''); };
+  if (board) return renderBoard(el, base, admin, `${top}
+    <div class="cl-tools"><input id="cl-q" class="search" value="${esc(CF.q)}" placeholder="Search name, phone, area, city, quotation no." aria-label="Search clients">
+      <button class="btn fbtn" data-act="filters" aria-expanded="${cfOpen}"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Filters${act.length ? `<b class="fcount">${act.length}</b>` : ''}</button></div>
+    ${panel}${chips}`);
   el.innerHTML = `<div class="cl-wrap">${top}
     <div class="cl-tools"><input id="cl-q" class="search" value="${esc(CF.q)}" placeholder="Search name, phone, area, city, quotation no." aria-label="Search clients">
       <button class="btn fbtn" data-act="filters" aria-expanded="${cfOpen}"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Filters${act.length ? `<b class="fcount">${act.length}</b>` : ''}</button>
       <label class="fsort"><span>Sort</span><select id="cf-sort" class="search">${Object.entries(SORTS).map(([k, n]) => `<option value="${k}"${CF.sort === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label></div>
     ${panel}
-    <div class="cl-tools" style="justify-content:space-between"><div class="fpills" role="group" aria-label="Show">${STATUSES.map(([k, n]) => `<button class="fpill" data-f="${k}" aria-pressed="${CF.status === k}">${n}<b>${counts[k]}</b></button>`).join('')}</div>
+    <div class="cl-tools" style="justify-content:space-between"><div class="fpills" role="group" aria-label="Show">${(CF.lost ? [] : STATUSES).map(([k, n]) => `<button class="fpill" data-f="${k}" aria-pressed="${CF.status === k}">${n}<b>${counts[k]}</b></button>`).join('')}</div>
       <span class="fsum">${list.length} client${list.length === 1 ? '' : 's'}${sum ? ' · ' + rs(sum) : ''}</span></div>
     ${chips}
     <div class="clist">${list.length ? list.map(row).join('') : `<div class="cl-empty">${CL.list.length ? `<b>No client matches.</b>${act.length || ql ? 'Remove a filter above, or <button class="linkbtn" data-clear="*">clear them all</button>.' : 'Try another word or show All.'}` : '<b>No clients yet.</b>Tap + New client, type their name, and start measuring.'}</div>`}</div></div>`;
@@ -3569,49 +3730,30 @@ const clb = $('#cl-body');
 clb.addEventListener('change', e => {
   const t = e.target, id = t.id;
   if (id === 'cf-exec') cfSet({exec: t.value}); else if (id === 'cf-city') cfSet({city: t.value}); else if (id === 'cf-added') cfSet({added: t.value});
-  else if (id === 'cf-has') cfSet({has: t.value}); else if (id === 'cf-sort') cfSet({sort: t.value}); else if (id === 'cf-follow') cfSet({follow: t.checked ? '1' : ''});
+  else if (id === 'cf-has') cfSet({has: t.value}); else if (id === 'cf-why') cfSet({why: t.value}); else if (id === 'cf-sort') cfSet({sort: t.value}); else if (id === 'cf-follow') cfSet({follow: t.checked ? '1' : ''});
   else if (id === 'cf-min' || id === 'cf-max') { const v = String(Math.round(+t.value.replace(/[^\d.]/g, '') || 0) || ''); cfSet({[id.slice(3)]: v}); }
 });
 clb.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.id === 'cf-min' || e.target.id === 'cf-max')) e.target.blur(); });
 clb.addEventListener('input', e => { if (e.target.id !== 'cl-q') return; CF.q = e.target.value; const pos = e.target.selectionStart; renderClients(); const q = $('#cl-q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch(_){} });
 clb.addEventListener('click', e => {
   const t = e.target;
-  if (t.closest('[data-act="new"]')) { askNewClient(); return; }
+  if (t.closest('[data-act="new"]')) { newEnquiry(); return; }
+  const sc = t.closest('[data-sched]'); if (sc) { askTodo({cid: sc.dataset.sched}); return; }
+  const vw = t.closest('[data-view]'); if (vw) { cfSet({view: vw.dataset.view}); return; }
+  const ct = t.closest('[data-coltab]'); if (ct) { bCol = ct.dataset.coltab; renderClients(); return; }
+  if (t.closest('[data-wonall]')) { cfSet({won: CF.won ? '' : '1'}); return; }
+  if (t.closest('[data-lostlist]')) { cfSet({lost: '1'}); return; }
+  const lf = t.closest('[data-lostf]'); if (lf) { cfSet(lf.dataset.lostf ? {lost: '1'} : {lost: '', why: ''}); return; }
   if (t.closest('#cl-local')) { go('c-measure'); return; }
   const f = t.closest('[data-f]'); if (f) { cfSet({status: f.dataset.f}); return; }
   if (t.closest('[data-act="filters"]')) { cfOpen = !cfOpen; renderClients(); if (cfOpen) { const x = $('#cl-fpanel select, #cl-fpanel input'); if (x) x.focus(); } return; }
-  const cl = t.closest('[data-clear]'); if (cl) { const k = cl.dataset.clear; cfSet(k === '*' ? Object.assign({}, CF0, {sort: CF.sort}) : {[k]: CF0[k]}); return; }
+  const cl = t.closest('[data-clear]'); if (cl) { const k = cl.dataset.clear; cfSet(k === '*' ? Object.assign({}, CF0, {sort: CF.sort, view: CF.view}) : k === 'lost' ? {lost: '', why: ''} : {[k]: CF0[k]}); return; }
   const rg = t.closest('[data-range]'); if (rg) { const [a, b] = rg.dataset.range.split('|'); cfSet(CF.min === a && CF.max === b ? {min: '', max: ''} : {min: a, max: b}); return; }
   const dl = t.closest('[data-del]'); if (dl) { const c = CL.byId.get(dl.dataset.del); if (c) askDelete(c); return; }
   const r = t.closest('[data-cid]'); if (r) { cpId = r.dataset.cid; go('client'); }
 });
 
-// ---- Client page: their sheet, how it ended, and every quotation they were sent
-function renderClientPage(){
-  const el = $('#cp-body'), c = CL.byId.get(cpId);
-  if (!c) { el.innerHTML = `<div class="cp"><button class="back" data-act="clients">← All clients</button><div class="card">${CL.state === 'ready' ? 'This client is no longer in the list.' : 'Loading…'}</div></div>`; return; }
-  const V = CL.vers[c.id], s = statusOf(c);
-  if (c.latest && !V) versionsOf(c.id).then(() => { if (current === 'client' && cpId === c.id) renderClientPage(); });
-  const o = c.outcome || {};
-  const outcome = s === 'won' ? `<div class="card outc won"><div><b>Won</b> · they accepted v${o.n}${o.total != null ? ' · ' + rs(o.total) : ''}<p>Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}.</p></div><button class="btn" data-act="reopen">Undo</button></div>`
-    : s === 'lost' ? `<div class="card outc lost"><div><b>Lost</b>${o.reason ? ' · ' + esc(o.reason) : ''}<p>${o.note ? esc(o.note) + ' · ' : ''}Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}.</p></div><button class="btn" data-act="reopen">Undo</button></div>`
-    : `<div class="card outc"><div><b>Did they book?</b><p>Mark it once you hear back. Won asks which quotation they accepted.</p></div><div class="cp-acts"><button class="btn" data-act="won">Mark as won</button><button class="btn" data-act="lost">Mark as lost</button></div></div>`;
-  const vlist = !c.latest ? '<p class="hint" style="margin:0">None yet. Each time someone downloads the <b>PDF</b> of the quotation, it is kept here as v1, v2…</p>'
-    : V === 'error' ? '<p class="hint">Could not load the quotations. Go back and open the client again.</p>'
-    : !Array.isArray(V) ? '<p class="hint">Loading…</p>'
-    : V.map(x => `<div class="vrow${s === 'won' && o.n === x.n ? ' final' : ''}"><span class="vbadge">v${x.n}</span>
-        <span class="vinfo"><b>${rs(x.total)}</b><small>${esc(whenTxt(x.at))}${x.exec ? ' · ' + esc(x.exec) : ''}${s === 'won' && o.n === x.n ? ' · <b style="font:inherit;color:var(--good)">final</b>' : x.n === c.latest ? ' · latest' : ''}</small></span>
-        <span class="vacts"><button class="btn" data-act="view" data-n="${x.n}">View</button><button class="btn" data-act="pdf" data-n="${x.n}">PDF</button><button class="link" data-act="from" data-n="${x.n}">Start from this</button></span></div>`).join('');
-  const changed = c.latest && c.dsig && c.dsig !== c.sig;
-  el.innerHTML = `<div class="cp">
-    <div class="cp-head"><div><h2>${esc(c.name || 'No name')}</h2><div class="csub" style="white-space:normal">${[c.phone, c.addr, c.no ? 'Quotation ' + c.no : '', c.exec ? 'Handled by ' + c.exec : ''].filter(Boolean).map(esc).join(' · ') || 'No details yet'}</div>
-      ${PF && IS_ADMIN ? `<label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px">Executive <select id="cp-owner" class="search" style="width:auto;padding:5px 8px"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => sells(p) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>${pillHTML(c)}</div>
-    <div class="cp-acts"><button class="btn solid big" data-act="sheet">Open their measurements</button><button class="btn ghost" data-act="edit">Edit details</button></div>
-    <p class="hint" style="margin:-4px 0 0">Sheet last changed ${esc(agoTxt(c.edited || c.created))}.${changed ? ` <b style="color:var(--warn)">It has changes not yet sent to the customer</b> (last sent: v${c.latest}).` : ''}</p>
-    ${outcome}
-    <div class="card"><h3>Quotations sent</h3>${vlist}</div>
-    ${canDelete() ? `<div class="card outc"><div><b>Delete this client</b><p>Removes ${esc(c.name || 'them')}, their measurements and every quotation sent. Only you see this.</p></div><button class="btn danger" data-act="delete">Delete client</button></div>` : ''}</div>`;
-}
+// The client page (renderClientPage) is in crm.js since 17 Oct.
 // ---- Delete a client for good: Purvi only (3 Oct, "need buttons on just mine (admin) account to be able to delete a customer")
 const canDelete = () => !!(PF && PF.owner);
 const BIN_SVG = '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5.5M11.5 8.5v5.5"/></svg>';
@@ -3634,28 +3776,10 @@ async function deleteClient(cid){
   }
   for (const v of await Store.listVersions(cid)) await db.doc(`qversions/${cid}_v${v.n}`).delete();
   try { await db.doc('drafts/' + cid).delete(); } catch(_){}
+  for (const t of TD.byCid.get(cid) || []) { try { await db.doc('todos/' + t.id).delete(); } catch(_){} }   // their to-dos (17 Oct)
   await db.doc('clients/' + cid).delete();   // last, so a half-finished delete still shows the client
   delete CL.vers[cid];
 }
-$('#cp-body').addEventListener('change', e => {
-  if (e.target.id !== 'cp-owner') return; const c = CL.byId.get(cpId), to = e.target.value; if (!c || !to) { renderClientPage(); return; }
-  confirmDlg(`Hand ${esc(c.name)} to ${esc(personName(to))}?`, `${esc(personName(to))} will see this client, their sheet and every quotation sent. ${c.ownerEmail ? esc(personName(c.ownerEmail)) + ' will no longer see them.' : ''}`, 'Hand over', async () => { try { await reassign(c.id, to); toast('Handed over'); } catch (er) { toast('Not saved. Check the internet.'); } renderClientPage(); });
-  setTimeout(() => { if (!dlg.open) renderClientPage(); }, 0);
-});
-$('#cp-body').addEventListener('click', async e => {
-  const b = e.target.closest('[data-act]'); if (!b) return;
-  const act = b.dataset.act, c = CL.byId.get(cpId); if (act === 'clients') { go('clients'); return; } if (!c) return;
-  if (act === 'delete') { askDelete(c); return; }
-  const V = Array.isArray(CL.vers[c.id]) ? CL.vers[c.id] : [], x = V.find(v => v.n === +b.dataset.n);
-  if (act === 'sheet' || act === 'quote') { b.disabled = true; await openClient(c.id, act === 'quote' ? 'quote' : null); b.disabled = false; return; }
-  if (act === 'edit') return askDetails(c);
-  if (act === 'won') return askWon(c);
-  if (act === 'lost') return askLost(c);
-  if (act === 'reopen') { await setOutcome(c, null); return; }
-  if (act === 'view' && x) return showVersion(c, x);
-  if (act === 'pdf' && x) return downloadVersion(x, b);
-  if (act === 'from' && x) return confirmDlg(`Start again from v${x.n}?`, `${esc(c.name)}'s sheet will become v${x.n} again, dated today. Changes made since then are lost unless they went out as a quotation.`, `Start from v${x.n}`, async () => { await flushDraft(); fromVersion(c, x); });
-});
 async function setOutcome(c, o){
   try { await Store.mergeClient(c.id, {outcome: o ? Object.assign({at: new Date().toISOString(), by: UID, who: (state.quote || {}).exec || ''}, o) : null}); }
   catch (e) { toast(e && e.code === 'invalid_argument' ? 'Not saved: ask Purvi to make you a Contributor on this page.' : 'Not saved. Check the internet.'); }
@@ -3680,13 +3804,14 @@ function openDlg(html, wide, onOk){
 }
 function closeDlg(){ try { dlg.close(); } catch(_) { dlg.removeAttribute('open'); } dlg.innerHTML = ''; dlgOk = null; }
 dlg.addEventListener('click', async e => {
-  if (e.target === dlg) { closeDlg(); return; }   // tap outside the card
+  if (e.target === dlg) {   // tap outside the card: measured, because a pick from a list inside the dialog also ends on the dialog itself (18 Oct)
+    const r = dlg.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeDlg(); return; }
   const b = e.target.closest('[data-dlg]'); if (!b) return;
   if (b.dataset.dlg === 'close') { closeDlg(); return; }
   if (b.dataset.dlg === 'ok' && dlgOk) { b.disabled = true; const keep = await dlgOk(dlg); if (keep === false) b.disabled = false; else closeDlg(); return; }
   if (b.dataset.dlg === 'pdf') { const x = dlg._x; if (x) downloadVersion(x, b); }
 });
-dlg.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'radio') { e.preventDefault(); const ok = dlg.querySelector('[data-dlg="ok"]'); if (ok) ok.click(); } });
+dlg.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'radio' && sugg.hidden) { /* Enter in an open list picks from it, it does not press OK (18 Oct) */ e.preventDefault(); const ok = dlg.querySelector('[data-dlg="ok"]'); if (ok) ok.click(); } });
 const fld = (id, label, val, attrs = '') => `<label class="f" for="${id}">${label}</label><input type="text" id="${id}" value="${esc(val || '')}" ${attrs}>`;
 // City is a field of its own (3 Oct) so clients can be filtered by it; typed cities are tidied ("JODHPUR " → "Jodhpur").
 const lastCity = () => { try { return localStorage.getItem('charpai-city') || ''; } catch(_) { return ''; } };
@@ -3702,6 +3827,7 @@ async function backfillCats(){
 }
 function askNewClient(){
   if (!shared) { newLocalSheet(); return; }
+  return newEnquiry();   // 17 Oct: a new client starts as a New enquiry page (crm.js); the dialog below is no longer used
   let ex = ''; try { ex = localStorage.getItem(EXKEY) || ''; } catch(_){} if (!ex && PF) ex = PF.name || '';
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">New client</h2><p class="sub">Their name first. You can add the rest later.</p>
     ${fld('n-name', 'Name', '', 'autofocus placeholder="e.g. Kavita Sharma" autocomplete="off"')}
@@ -3742,7 +3868,8 @@ async function askWon(c){
     await setOutcome(c, {s: 'won', n, total: x ? x.total : null}); toast(`${c.name}: won with v${n}`);
   });
 }
-const LOST_WHY = ['Price too high', 'Went with another shop', 'Postponed, not now', 'No reply', 'Other'];
+// 18 Oct: the Odoo demo's loss reasons (ODOO-DEMO-HANDOVER §4.5). Clients lost before keep their old reason (Price too high, No reply…).
+const LOST_WHY = ['Too expensive', 'Could not meet the delivery date', 'Shade / material not available', 'Bought from another shop', 'Project postponed', 'Only wanted a rate to compare', 'Went direct to the mill / dealer', 'Stopped replying', 'Duplicate enquiry', 'Other'];
 function askLost(c){
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">Mark ${esc(c.name)} as lost</h2><p class="sub">Why? It helps us see what to fix.</p>
     ${LOST_WHY.map((w, i) => `<label class="opt"><input type="radio" name="lw" value="${esc(w)}"${i ? '' : ' checked'}><span>${esc(w)}</span></label>`).join('')}
@@ -3771,12 +3898,14 @@ function renderCbar(){
     bar.innerHTML = `<div class="cbar-top"><span class="cbar-name" style="cursor:default">Sheet on this device</span></div>${ctabsHTML(false)}`;
     return;
   }
+  const back = `<button class="back" data-act="clients">← ${PF && IS_ADMIN ? 'Clients' : 'My Clients'}</button>`;
+  if (current === 'client' && cpId === '__new') { bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span><span class="cbar-name">New enquiry</span><span class="pill">New enquiry</span></div>${ctabsHTML(true)}`; return; }   // the same rows as a saved client, so nothing jumps when it is created
   const cid = current === 'client' ? cpId : state.clientId, here = cid === state.clientId;
   const c = CL.byId.get(cid) || {name: here ? state.house : '', latest: 0};
-  const saveTxt = !here ? '' : draftErr === 'perm' ? `<span class="cbar-save err">Not saved for the team: ${PF ? 'ask Purvi to check your access' : 'ask Purvi to make you a Contributor'}</span>`
+  const saveTxt = !here || current === 'client' ? '' : draftErr === 'perm' ? `<span class="cbar-save err">Not saved for the team: ${PF ? 'ask Purvi to check your access' : 'ask Purvi to make you a Contributor'}</span>`
     : draftErr ? '<span class="cbar-save err">Not saved yet (no internet?). Kept on this device.</span>'
     : draftBusy || draftTimer ? '<span class="cbar-save">Saving…</span>' : '<span class="cbar-save">Saved ✓</span>';
-  bar.innerHTML = `<div class="cbar-top"><button class="back" data-act="clients">← Clients</button><span class="sep">/</span><span class="cbar-name">${esc((here ? state.house : '') || c.name || 'No name')}</span>${c.id ? pillHTML(c) : ''}${saveTxt}</div>
+  bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span><span class="cbar-name">${esc((here ? state.house : '') || c.name || 'No name')}</span>${c.id && current !== 'client' ? pillHTML(c) : ''}${saveTxt}</div>
     ${ctabsHTML(true)}`;
 }
 // Overview | the products, each with how many it has | Quotation as its own button on the right (Purvi, 3 Oct: "qtn should be a separate button from the product categories")
@@ -3793,6 +3922,7 @@ $('#cbar').addEventListener('click', async e => {
   if (b.dataset.act === 'clients') { go('clients'); return; }
   const v = b.dataset.ct; if (!v || v === current) return;
   if (!shared) { go(v); return; }
+  if (current === 'client' && cpId === '__new') { if (v === 'client') return; await cpFlush(); await ensureClient(); }   // a tab on a new enquiry: make the client first
   const cid = current === 'client' ? cpId : state.clientId;
   if (v === 'client') { cpId = cid; go('client'); return; }
   if (cid === state.clientId) go(v); else await openClient(cid, v);
@@ -3834,9 +3964,9 @@ function setupPlatform(){
   acct.innerHTML = `<span><b>${esc(PF.name || PF.email)}</b><small>${IS_ADMIN ? 'Admin' : 'Sales'}</small></span><button class="btn" id="signout">Sign out</button>`;
   document.querySelector('.tape-in').appendChild(acct);
   $('#signout').onclick = () => PF.signOut();
-  $('#tab-r').hidden = !IS_ADMIN;
+  $('#tab-d').hidden = false; $('#tab-s-s').textContent = IS_ADMIN ? 'prices, people' : 'your account'; $('#tab-d-s').textContent = IS_ADMIN ? 'the whole team' : 'your day';
+  $('#tab-h-b').textContent = IS_ADMIN ? 'Clients' : 'My Clients';
   if (IS_ADMIN) {
-    $('#tab-d').hidden = false; $('#tab-p').hidden = false;
     db.collection('users').onSnapshot(s => { PEOPLE.clear(); s.docs.forEach(d => PEOPLE.set(d.id, d.data())); syncExec(); if (current === 'people') renderPeople(); if (current === 'dash') renderDash(); if (current === 'clients') renderClients(); }, () => {});
   } else PEOPLE.set(ME_EMAIL, {name: PF.name, role: PF.role, job: PF.job || '', phone: PF.phone || '', active: true});
 }
@@ -3862,6 +3992,7 @@ function inPeriod(iso){
 function renderDash(){
   const el = $('#dash-body'); if (!el) return;
   if (CL.state !== 'ready') { el.innerHTML = '<div class="cl-wrap"><div class="clist cl-empty">Loading…</div></div>'; return; }
+  const mine = PF && !IS_ADMIN;   // 17 Oct: a sales executive's Home = their own numbers + today's to-dos (the rules give them only their clients)
   const per = new Map(), row = e => { if (!per.has(e)) per.set(e, {e, n: 0, q: 0, qv: 0, w: 0, wv: 0, l: 0, open: 0, ov: 0, last: ''}); return per.get(e); };
   for (const [e, p] of PEOPLE) if (sells(p)) row(e);
   const why = new Map(), follow = [], wk = Date.now() - 7 * 864e5;
@@ -3881,11 +4012,11 @@ function renderDash(){
   const maxWhy = Math.max(1, ...why.values());
   follow.sort((a, b) => String(a.edited || a.at).localeCompare(String(b.edited || b.at)));
   el.innerHTML = `<div class="dash">
-    <div class="cl-head"><h2>Dashboard</h2><div class="fpills" role="group" aria-label="Period">${PERIODS.map(([k, n]) => `<button class="fpill" data-p="${k}" aria-pressed="${dashP === k}">${n}</button>`).join('')}</div></div>
+    <div class="cl-head"><h2>${mine ? (PF.name && !/@/.test(PF.name) ? 'Hello, ' + esc(String(PF.name).split(' ')[0]) : 'Hello') : 'Dashboard'}</h2><div class="fpills" role="group" aria-label="Period">${PERIODS.map(([k, n]) => `<button class="fpill" data-p="${k}" aria-pressed="${dashP === k}">${n}</button>`).join('')}</div></div>
     <div class="kpis dash-tiles">${tile('Won', rs(WV), `${W} client${W === 1 ? '' : 's'}`, true)}${tile('Quotations sent', rs(QV), `${Q} client${Q === 1 ? '' : 's'}`)}${tile('Win rate', rate(W, Lo), `${W} won · ${Lo} lost`)}${tile('New clients', N, '')}${tile('Open, waiting for an answer', rs(OV), `${O} client${O === 1 ? '' : 's'} · any date`)}</div>
-    <div class="card"><h3>By executive</h3><div class="q-scroll"><table class="pr dash-t"><thead><tr><th>Executive</th><th class="r">New</th><th class="r">Quoted</th><th class="r">Won</th><th class="r">Lost</th><th class="r">Win rate</th><th class="r">Open</th><th>Last active</th></tr></thead><tbody>
+    ${mine ? todayCard() : `<div class="card"><h3>By executive</h3><div class="q-scroll"><table class="pr dash-t"><thead><tr><th>Executive</th><th class="r">New</th><th class="r">Quoted</th><th class="r">Won</th><th class="r">Lost</th><th class="r">Win rate</th><th class="r">Open</th><th>Last active</th></tr></thead><tbody>
       ${rows.length ? rows.map(r => `<tr class="dash-r" data-owner="${esc(r.e)}"><td><b>${esc(r.e ? personName(r.e) : 'Not assigned')}</b></td><td class="mg">${r.n}</td><td class="mg">${r.q}<small> · ${rs(r.qv)}</small></td><td class="mg"><b>${r.w}</b><small> · ${rs(r.wv)}</small></td><td class="mg">${r.l}</td><td class="mg">${rate(r.w, r.l)}</td><td class="mg">${r.open}<small> · ${rs(r.ov)}</small></td><td>${esc(agoTxt(r.last)) || '—'}</td></tr>`).join('') : '<tr><td colspan="8" class="hint">No executives yet. Add them under People.</td></tr>'}
-    </tbody></table></div><p class="hint" style="margin:8px 0 0">Tap an executive to see their clients. Quoted counts clients whose latest quotation went out in this period.</p></div>
+    </tbody></table></div><p class="hint" style="margin:8px 0 0">Tap an executive to see their clients. Quoted counts clients whose latest quotation went out in this period.</p></div>`}
     <div class="dash-2">
       <div class="card"><h3>Why we lost</h3>${why.size ? [...why].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="bar-r"><span>${esc(k)}</span><span class="hbar"><i style="width:${n / maxWhy * 100}%"></i></span><b>${n}</b></div>`).join('') : '<p class="hint" style="margin:0">Nothing lost in this period.</p>'}</div>
       <div class="card"><h3>Follow up <small class="hint">quoted, no change for 7+ days</small></h3>${follow.length ? follow.slice(0, 10).map(c => `<button class="crow fu" data-cid="${esc(c.id)}"><span class="cmain"><span class="cname">${esc(c.name || 'No name')}</span><span class="csub">${[personName(c.ownerEmail) || c.exec || 'Not assigned', 'v' + c.latest].map(esc).join(' · ')}</span></span><span class="cmeta"><span class="camt">${rs(c.total)}</span><span class="cago">${esc(agoTxt(c.edited || c.at))}</span></span></button>`).join('') : '<p class="hint" style="margin:0">Nobody waiting. Good.</p>'}</div>
@@ -4963,25 +5094,25 @@ $('#p-add').onclick = () => {
 };
 
 // ================= tabs, copy, start
-const VIEWS = {'dash': 'dash', 'people': 'people', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote',
+const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote',
   'wallpaper': 'product', 'flooring': 'product', 'mattress': 'product', 'uph': 'product'};   // the four product sheets share one section (3 Oct)
 const OLD_VIEW = {measure: 'c-measure', blinds: 'b-measure', prices: 'c-prices', quote: 'quote', fabric: 'uph', foam: 'uph', hcp: 'mattress'};   // Fabric and Foam became Upholstery (6 Oct)   // tab names before 30 Sep
 let current = 'c-measure', lastMain = 'c';
 function go(v){
   v = OLD_VIEW[v] || v; if (!VIEWS[v] || v === 'none') v = 'c-measure';
   if (v === 'client' && !cpId) v = 'clients';
-  if ((v === 'dash' || v === 'people') && !(PF && IS_ADMIN)) v = 'clients';
+  if ((v === 'people' && !(PF && IS_ADMIN)) || (v === 'dash' && !PF)) v = 'clients';
   if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';   // Purvi, 1 Oct: sales don't see the Prices page
   current = v;
   // The page's address remembers where you are, so a reload opens the same page (Purvi, 2 Oct). replaceState: no history entry, no hashchange.
-  try { const h = v === 'client' && cpId ? 'client/' + cpId : v === 'clients' ? 'clients' + cfQuery() : v; if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h); } catch(_){}
+  try { const h = v === 'client' && cpId === '__new' ? 'clients' : v === 'client' && cpId ? 'client/' + cpId : v === 'clients' ? 'clients' + cfQuery() : v; if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h); } catch(_){}
   const noClient = shared && !state.clientId && GATED.includes(v);   // every sheet belongs to a client
   for (const id of new Set(Object.values(VIEWS))) $('#v-' + id).hidden = noClient ? id !== 'none' : id !== VIEWS[v];
   // Top bar (Purvi, 1 Oct): Dashboard · Clients · Prices · People. Curtains, Blinds and Quotation belong to one client,
   // so they are tabs inside the client (renderCbar), not in the top bar.
-  const main = ['quote', 'clients', 'client', 'dash', 'people'].includes(v) ? '' : v[0]; if (main) lastMain = main;
-  const prices = /prices$/.test(v), top = v === 'dash' ? 'd' : v === 'people' ? 'p' : prices ? 'r' : 'h';
-  for (const k of 'dhrp') $('#tab-' + k).setAttribute('aria-selected', top === k ? 'true' : 'false');
+  const main = ['quote', 'clients', 'client', 'dash', 'people', 'todo', 'settings'].includes(v) ? '' : v[0]; if (main) lastMain = main;
+  const prices = /prices$/.test(v), top = v === 'dash' ? 'd' : v === 'todo' ? 't' : v === 'people' || v === 'settings' || prices ? 's' : 'h';
+  for (const k of 'dhts') $('#tab-' + k).setAttribute('aria-selected', top === k ? 'true' : 'false');
   if (prices) lastPrices = v;
   $('#subtabs').hidden = !prices;
   $('#sub-measure').setAttribute('aria-selected', v === 'c-prices' ? 'true' : 'false');
@@ -4992,6 +5123,8 @@ function go(v){
   if (v === 'client') renderClientPage();
   if (v === 'dash') renderDash();
   if (v === 'people') renderPeople();
+  if (v === 'todo') renderTodo();
+  if (v === 'settings') renderSettings();
   renderCbar(); if (noClient) { try { localStorage.setItem(TKEY, v); } catch(_){} window.scrollTo({top: 0}); return; }
   if (v === 'c-prices') renderPrices();
   if (v === 'b-prices') renderBPrices();
@@ -5003,9 +5136,9 @@ function go(v){
 }
 $('#tab-h').onclick = () => go('clients');
 $('#tab-d').onclick = () => go('dash');
-$('#tab-p').onclick = () => go('people');
+$('#tab-t').onclick = () => go('todo');
+$('#tab-s').onclick = () => go('settings');
 let lastPrices = 'c-prices';
-$('#tab-r').onclick = () => go(lastPrices);
 addEventListener('hashchange', () => { const [h, qs] = location.hash.slice(1).split('?'); if (h === 'clients') cfFromQuery(qs); if (VIEWS[h] || OLD_VIEW[h]) go(h); });
 document.querySelectorAll('.subtab').forEach(x => x.onclick = () => go(x.dataset.sub));
 async function copyText(text, box){
@@ -5023,6 +5156,509 @@ $('#copy').onclick = () => {
   });
   copyText(L.join('\n'), $('#m-panel'));
 };
+// ================= CRM + To Do (Purvi, 17 Oct 2026; plan in CRM-PLAN.md)
+// My Clients opens as a board: New Enquiry · Quotation Given · Won. The column is worked out from what happened (statusOf),
+// never typed, so cards move themselves (as in the Odoo demo, ODOO-DEMO-HANDOVER §4.3–4.4). Lost is a button with a reason.
+// "+ New enquiry" opens the customer page empty; the client is made the moment something is typed (no empty cards).
+// To-dos live in todos/<id> {cid, cname, type, due 'YYYY-MM-DD' (local), time, note, ownerEmail = who does it, by, byName, at,
+// state todo|doing|done, doneAt, auto}. Same who-sees-what as clients: a sales executive gets only their own.
+// New client fields (add-only, ARCHITECTURE §8.1): email, interest[], ptype[], ptypeOther, refHow, refBy, arch {name, phone},
+// stars 0–3, remarks, changeReq {at, by, who, note} (cleared when the next version is sent).
+
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;   // local date: toISOString() is a day behind in IST before 5:30 am
+const dayPlus = n => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
+const INTEREST = [['curtains', 'Curtains'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['uph', 'Upholstery'], ['flooring', 'Flooring / carpet'], ['mattress', 'Mattress'], ['foam', 'Foam'], ['bedbath', 'Bed & bath'], ['motor', 'Motorised']];
+// Project types from Charpai's past customers (1,306 in the 2021–2026 quotations): mostly homes, then hotels and havelis,
+// offices and exporters, builders, government (CPWD, courts), community bhawans, shops, doctors and schools.
+const PTYPES = [['home', 'Home (flat / house)'], ['villa', 'Bungalow / villa / farmhouse'], ['hotel', 'Hotel / resort / haveli'], ['office', 'Office / company'], ['shop', 'Shop / showroom'],
+  ['hospital', 'Hospital / clinic'], ['school', 'School / college / coaching'], ['restaurant', 'Restaurant / café / banquet'], ['builder', 'Builder project'], ['govt', 'Government / defence'],
+  ['community', 'Community hall / trust / temple'], ['other', 'Other']];
+const REF_HOW = [['walkin', 'Walk-in'], ['old', 'Old customer'], ['friend', 'Friend / family'], ['arch', 'Architect / designer'], ['social', 'Instagram / Facebook'], ['google', 'Google'], ['other', 'Other']];
+const TD_ICON = {
+  visit: '<path d="M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z" /><circle cx="10" cy="8.5" r="2" />',
+  make: '<path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h5" />',
+  revise: '<path d="M4 16l1-4 8.5-8.5 3 3L8 15z M11.5 5.5l3 3" />',
+  call: '<path d="M5 3h3l1.5 4-2 1.5a9 9 0 0 0 4 4l1.5-2 4 1.5v3a2 2 0 0 1-2 2A14 14 0 0 1 3 5a2 2 0 0 1 2-2z" />',
+  other: '<circle cx="10" cy="10" r="6.5" /><path d="M7 10l2 2 4-4" />'};
+const TD_TYPES = [['visit', 'Site / measurement visit'], ['make', 'Make quotation'], ['revise', 'Revise quotation'], ['call', 'Follow-up call'], ['other', 'Other']];
+const TD_SHORT = {visit: 'Visit', make: 'Quotation', revise: 'Revise', call: 'Call', other: 'To-do'};
+const tdName = k => (TD_TYPES.find(t => t[0] === k) || TD_TYPES[4])[1];
+const tdIcon = (k, s = 16) => `<svg class="tdi tdi-${esc(k)}" viewBox="0 0 20 20" width="${s}" height="${s}" style="width:${s}px;height:${s}px" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TD_ICON[k] || TD_ICON.other}</svg>`;
+const TD_CAL_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width:17px;height:17px" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4M10 11v4M8 13h4"/></svg>';
+const initials = n => String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+const starsHTML = (n, edit) => `<span class="stars${edit ? ' edit' : ''}" ${edit ? 'role="group" aria-label="Priority"' : `title="Priority ${n || 0} of 3"`}>${[1, 2, 3].map(i => edit
+  ? `<button class="st${i <= (n || 0) ? ' on' : ''}" data-star="${i}" aria-label="${i} star${i > 1 ? 's' : ''}">★</button>` : `<i class="st${i <= (n || 0) ? ' on' : ''}">★</i>`).join('')}</span>`;
+const waLink = p => { const m = mobile(p); return m.length === 10 ? 'https://wa.me/91' + m : ''; };
+const ownerName = c => c.ownerEmail ? personName(c.ownerEmail) : (c.exec || '').split(' - ')[0];
+
+// ---- dates in words: Today · Tomorrow · Yesterday · Tue 21 Oct
+function dueTxt(t){
+  if (!t.due) return 'No date';
+  const d = new Date(t.due + 'T00:00'), diff = Math.round((d - new Date(dayPlus(0) + 'T00:00')) / 864e5);
+  const w = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff === -1 ? 'Yesterday' : d.toLocaleDateString('en-IN', {weekday: 'short', day: 'numeric', month: 'short'});
+  return w + (t.time ? ' · ' + tmTxt(t.time) : '');
+}
+const tmTxt = s => { const [h, m] = String(s).split(':').map(Number); if (isNaN(h)) return s; return `${(h % 12) || 12}${m ? ':' + String(m).padStart(2, '0') : ''} ${h < 12 ? 'am' : 'pm'}`; };
+const overdue = t => t.state !== 'done' && t.due && t.due < dayPlus(0);
+
+// ---- To-dos in the store
+const TD = {state: 'none', list: [], byCid: new Map()};
+let tdUnsub = null;
+function watchTodos(){
+  if (!shared || !db || tdUnsub) return;
+  TD.state = 'loading';
+  try {
+    tdUnsub = scoped(db.collection('todos')).onSnapshot(s => {
+      TD.list = s.docs.map(d => Object.assign({id: d.id}, d.data())); TD.state = 'ready';
+      TD.byCid = new Map(); for (const t of TD.list) if (t.cid) { if (!TD.byCid.has(t.cid)) TD.byCid.set(t.cid, []); TD.byCid.get(t.cid).push(t); }
+      crmRefresh();
+    }, () => { TD.state = 'error'; crmRefresh(); });
+  } catch (e) { TD.state = 'error'; }
+}
+const tdSort = (a, b) => String(a.due || '9').localeCompare(String(b.due || '9')) || String(a.time || '99').localeCompare(String(b.time || '99')) || String(a.at).localeCompare(String(b.at));
+const openTodos = cid => (TD.byCid.get(cid) || []).filter(t => t.state !== 'done').sort(tdSort);
+async function addTodo(t){
+  if (!shared || !db) return null;
+  const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const body = clone({cid: t.cid || '', cname: t.cname || '', type: t.type || 'other', due: t.due || dayPlus(0), time: t.time || '', note: t.note || '',
+    ownerEmail: t.owner || ME_EMAIL || null, by: ME_EMAIL || UID || '', byName: PF ? PF.name || '' : '', at: new Date().toISOString(), state: 'todo', doneAt: '', auto: t.auto || ''});
+  await db.doc('todos/' + id).set(body);
+  return id;
+}
+const setTodo = (id, patch) => db.doc('todos/' + id).update(clone(patch));
+async function todoDone(t, done){ await setTodo(t.id, done ? {state: 'done', doneAt: new Date().toISOString()} : {state: 'todo', doneAt: ''}); }
+// The automatic to-dos (suggested 17 Oct, accepted): quietly skipped if the store refuses (e.g. before the todos rule is live).
+const quiet = p => Promise.resolve(p).catch(() => null);
+async function autoAfterVersion(cid){
+  const c = CL.byId.get(cid) || {}, open = openTodos(cid);
+  for (const t of open.filter(t => t.type === 'make' || t.type === 'revise')) await quiet(setTodo(t.id, {state: 'done', doneAt: new Date().toISOString(), auto: t.auto || 'sent'}));
+  if (!open.some(t => t.type === 'call')) await quiet(addTodo({cid, cname: c.name || state.house || '', type: 'call', due: dayPlus(2), note: 'Ask how they liked the quotation', owner: c.ownerEmail, auto: 'sent'}));
+}
+function crmRefresh(){
+  const typing = document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName) && document.activeElement.closest('#v-client, #v-todo, #v-clients');
+  if (current === 'clients' && !typing) renderClients();
+  if (current === 'client' && !typing) renderClientPage();
+  if (current === 'todo' && !typing) renderTodo();
+  if (current === 'dash') renderDash();
+}
+
+// ---- My Clients board
+const COLS = [['draft', 'New Enquiry'], ['quoted', 'Quotation Given'], ['won', 'Won']];
+let bCol = 'draft';
+const changeAsked = c => statusOf(c) === 'quoted' && c.changeReq && c.changeReq.at;
+const interestTxt = c => { const k = Array.isArray(c.interest) && c.interest.length ? c.interest : (c.cats || []);
+  return k.map(x => ((INTEREST.find(i => i[0] === x) || HAS().find(i => i[0] === x) || [])[1] || '')).filter(Boolean).join(' · '); };
+function boardCard(c, admin, showWhy = true){
+  const s = statusOf(c), nx = openTodos(c.id)[0], city = cityOf(c), amt = amountOf(c);
+  return `<div class="kc${changeAsked(c) ? ' asked' : ''}${s === 'lost' ? ' lost' : ''}" data-cid="${esc(c.id)}" role="button" tabindex="0"${s === 'quoted' ? ' draggable="true"' : ''}>
+    <div class="kc-top"><b class="kc-name">${esc(c.name || mobile(c.phone) || 'No name yet')}</b>${c.stars ? starsHTML(c.stars) : ''}</div>
+    ${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}
+    <div class="kc-sub">${[city, c.phone && c.name ? c.phone : ''].filter(Boolean).map(esc).join(' · ') || '&nbsp;'}</div>
+    ${interestTxt(c) ? `<div class="kc-int">${esc(interestTxt(c))}</div>` : ''}
+    <div class="kc-foot">
+      ${s === 'lost' ? `<span class="kc-next lostr" title="${esc((c.outcome || {}).note || '')}">${showWhy ? 'Lost · ' + esc((c.outcome || {}).reason || 'no reason') : 'Lost ' + esc(agoTxt((c.outcome || {}).at))}</span>` : nx ? `<span class="kc-next${overdue(nx) ? ' late' : ''}" title="${esc(tdName(nx.type))}">${tdIcon(nx.type, 14)}${esc(TD_SHORT[nx.type] || 'To-do')} · ${esc(dueTxt(nx))}</span>` : '<span class="kc-next none">No to-do</span>'}
+      <span class="kc-r">${amt ? `<b class="kc-amt">${rs(amt)}</b>` : ''}${admin ? `<span class="av" title="${esc(ownerName(c) || 'Not assigned')}">${esc(initials(ownerName(c)))}</span>` : ''}
+      <button class="kc-sched" data-sched="${esc(c.id)}" title="Add a to-do for ${esc(c.name || 'this client')}" aria-label="Add a to-do">${TD_CAL_SVG}</button></span>
+    </div></div>`;
+}
+function renderBoard(el, base, admin, tools){
+  if (CF.lost) return renderLostBoard(el, base, admin, tools);
+  const recent = c => String(c.edited || c.at || c.created || '');
+  const wonCut = Date.now() - 60 * 864e5;
+  const by = {draft: [], quoted: [], won: []}, lost = CL.list.filter(c => statusOf(c) === 'lost').length;
+  for (const c of base) { let s = statusOf(c); if (s === 'lost') { if (!CF.lost) continue; s = c.latest ? 'quoted' : 'draft'; }   // lost cards sit where they were lost (18 Oct)
+    if (s === 'won' && !CF.won && Date.parse((c.outcome || {}).at || recent(c)) < wonCut) continue; if (by[s]) by[s].push(c); }
+  const ord = (a, b) => (changeAsked(b) ? 1 : 0) - (changeAsked(a) ? 1 : 0) || (b.stars || 0) - (a.stars || 0) || recent(b).localeCompare(recent(a));
+  const oldWon = base.filter(c => statusOf(c) === 'won').length - by.won.length;
+  const col = ([k, n]) => { const L = by[k].sort(ord), sum = L.reduce((a, c) => a + (amountOf(c) || 0), 0);
+    return `<section class="kcol" data-col="${k}"${bCol === k ? ' data-on="1"' : ''} aria-label="${n}">
+      <header class="kcol-h"><b>${n}</b><span class="kcnt">${L.length}</span>${sum ? `<span class="ksum">${rs(sum)}</span>` : ''}</header>
+      ${k === 'draft' && !CF.lost ? '<button class="kadd" data-act="new">+ New enquiry</button>' : ''}
+      <div class="kcol-b">${L.map(c => boardCard(c, admin)).join('') || `<p class="kempty">${CF.lost ? 'No lost clients here.' : k === 'draft' ? 'No new enquiries.' : k === 'quoted' ? 'Cards come here by themselves when a quotation PDF is downloaded.' : 'Mark a client as won from their page, or drag a card here from Quotation Given.'}</p>`}</div>
+      ${k === 'won' && (oldWon || CF.won) ? `<button class="linkbtn kmore" data-wonall="1">${CF.won ? 'Show only the last 60 days' : `Show ${oldWon} older`}</button>` : ''}
+    </section>`; };
+  el.innerHTML = `<div class="kb-wrap">${tools}
+    <div class="kb-tabs" role="tablist">${COLS.filter(([k]) => !CF.lost || k !== 'won').map(([k, n]) => `<button role="tab" data-coltab="${k}" aria-selected="${bCol === k}">${n}<b>${by[k].length}</b></button>`).join('')}</div>
+    <div class="kb${CF.lost ? ' two' : ''}">${COLS.filter(([k]) => !CF.lost || k !== 'won').map(col).join('')}</div>
+    ${lost && !CF.lost ? `<p class="hint kb-lost"><button class="linkbtn" data-lostlist="1">${lost} lost client${lost === 1 ? '' : 's'} →</button> Lost clients leave the board. To see them: Filters → Lost clients.</p>` : ''}</div>`;
+}
+// Lost board (Purvi, 18 Oct: "the columns become either why lost - each reason's name or … each column's heading is the
+// sales person's name"). Columns: one per reason (default) or one per salesperson (admin). Many columns scroll sideways.
+let lCol = null;
+function renderLostBoard(el, base, admin, tools){
+  const byExec = admin && CF.lcol === 'exec';
+  const L = base.filter(c => statusOf(c) === 'lost'), lostAt = c => String((c.outcome || {}).at || c.edited || '');
+  const keyOf = c => byExec ? c.ownerEmail || '' : (c.outcome || {}).reason || 'No reason given';
+  const nameOf = k => byExec ? (k ? personName(k) : 'Not assigned') : k;
+  const G = new Map(); for (const c of L) { const k = keyOf(c); if (!G.has(k)) G.set(k, []); G.get(k).push(c); }
+  const order = byExec ? [...G.keys()].sort((a, b) => (!a) - (!b) || G.get(b).length - G.get(a).length || nameOf(a).localeCompare(nameOf(b)))   // Not assigned last
+    : [...LOST_WHY.filter(w => G.has(w)), ...[...G.keys()].filter(k => !LOST_WHY.includes(k)).sort()];
+  if (!order.includes(lCol)) lCol = order[0];
+  const id = k => 'l' + String(k).replace(/[^a-z0-9]/gi, '_');
+  const col = k => { const A = G.get(k).sort((a, b) => lostAt(b).localeCompare(lostAt(a))), sum = A.reduce((a, c) => a + (amountOf(c) || 0), 0);
+    return `<section class="kcol" data-lcolk="${esc(id(k))}"${lCol === k ? ' data-on="1"' : ''} aria-label="${esc(nameOf(k))}">
+      <header class="kcol-h"><b>${esc(nameOf(k))}</b><span class="kcnt">${A.length}</span>${sum ? `<span class="ksum">${rs(sum)}</span>` : ''}</header>
+      <div class="kcol-b">${A.map(c => boardCard(c, admin && !byExec, byExec)).join('')}</div></section>`; };
+  const sw = admin ? `<div class="seg" role="group" aria-label="Columns"><button data-lcol="" aria-pressed="${!byExec}">Why lost</button><button data-lcol="exec" aria-pressed="${byExec}">Salesperson</button></div>` : '';
+  el.innerHTML = `<div class="kb-wrap">${tools}
+    <div class="cl-tools" style="justify-content:space-between"><span class="hint"><b style="color:var(--ink)">${L.length} lost client${L.length === 1 ? '' : 's'}</b>${L.length ? ' · ' + rs(L.reduce((a, c) => a + (amountOf(c) || 0), 0)) + ' not won' : ''}</span>${sw ? `<label class="fsort"><span>Columns</span>${sw}</label>` : ''}</div>
+    ${L.length ? `<div class="kb-tabs many" role="tablist">${order.map(k => `<button role="tab" data-lcoltab="${esc(id(k))}" aria-selected="${lCol === k}">${esc(nameOf(k))}<b>${G.get(k).length}</b></button>`).join('')}</div>
+    <div class="kb many">${order.map(col).join('')}</div>` : `<div class="clist cl-empty"><b>No lost clients.</b>${cfActive().length > 1 || CF.q ? 'Remove a filter above.' : 'Good.'}</div>`}</div>`;
+  el._lost = {order, id};
+}
+clb.addEventListener('click', e => {
+  const b = e.target.closest('[data-lcol]'); if (b) { lCol = null; cfSet({lcol: b.dataset.lcol}); return; }
+  const t = e.target.closest('[data-lcoltab]'); if (t && clb._lost) { lCol = clb._lost.order.find(k => clb._lost.id(k) === t.dataset.lcoltab); renderClients(); }
+});
+// Drag: only Quotation Given → Won (asks which version they accepted). Everything else moves by itself.
+let dragCid = null;
+clb.addEventListener('dragstart', e => { const k = e.target.closest && e.target.closest('.kc'); if (!k) return; dragCid = k.dataset.cid; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragCid); } catch(_){} k.classList.add('drag'); });
+clb.addEventListener('dragend', e => { const k = e.target.closest && e.target.closest('.kc'); if (k) k.classList.remove('drag'); clb.querySelectorAll('.kcol.over').forEach(x => x.classList.remove('over')); });
+clb.addEventListener('dragover', e => { const col = e.target.closest('.kcol'); if (!col || !dragCid) return; e.preventDefault(); clb.querySelectorAll('.kcol.over').forEach(x => x !== col && x.classList.remove('over')); col.classList.add('over'); });
+clb.addEventListener('drop', e => {
+  const col = e.target.closest('.kcol'); if (!col || !dragCid) return; e.preventDefault(); col.classList.remove('over');
+  const c = CL.byId.get(dragCid); dragCid = null; if (!c) return;
+  if (col.dataset.col === 'won') askWon(c);
+  else if (col.dataset.col !== statusOf(c)) toast('Cards move by themselves: a quotation PDF moves them to Quotation Given.');
+});
+clb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('kc')) { cpId = e.target.dataset.cid; go('client'); } });
+
+// ---- New enquiry: the customer page opens empty; the client is created on the first thing typed
+const NEW = '__new';
+let creating = null, cpFresh = null;   // cpFresh: the enquiry made on this visit keeps the simple form (nothing moves while typing)
+function newEnquiry(){ if (!shared) { newLocalSheet(); return; } cpId = NEW; cpFresh = null; go('client'); setTimeout(() => { const n = $('#cpf-name'); if (n) n.focus(); }, 50); }
+async function ensureClient(){
+  if (cpId !== NEW) return cpId;
+  if (!creating) creating = (async () => {
+    const f = cpVals();
+    const id = await createClient({name: f.name || '', phone: f.phone || '', addr: f.addr || '', city: tidyCity(f.city || ''), exec: ''}, {stay: true});
+    cpId = id; cpFresh = id; try { history.replaceState(null, '', '#client/' + id); } catch(_){}
+    await quiet(addTodo({cid: id, cname: f.name || '', type: 'make', due: dayPlus(2), note: 'Measure and send the quotation', auto: 'new'}));
+    return id;
+  })();
+  try { return await creating; } finally { creating = null; }
+}
+// the values typed on the customer page right now
+function cpVals(){ const v = {}; document.querySelectorAll('#cp-body [data-k]').forEach(x => { if (x.type === 'checkbox') return; v[x.dataset.k] = x.value.trim(); }); return v; }
+
+// ---- saving one field of the customer page. Name, phone, address, city and executive also live in the sheet (they fill the
+// quotation), so they go through the sheet like "Edit details" did; the rest are on the client card only.
+const CORE = {name: 'house', phone: 'phone', addr: 'addr', city: 'city', exec: 'exec'};
+const cpTimers = {};
+function cpQueue(k, v, wait = 700){ clearTimeout(cpTimers[k]); cpSaving(true); cpTimers[k] = setTimeout(() => { delete cpTimers[k]; saveField(k, v); }, wait); }
+async function cpFlush(){ for (const k of Object.keys(cpTimers)) { clearTimeout(cpTimers[k]); delete cpTimers[k]; const x = document.querySelector(`#cp-body [data-k="${k}"]`); if (x) await saveField(k, x.value.trim()); } }
+let cpBusy = 0;
+function cpSaving(on, err){ const s = $('#cp-saved'); if (!s) return; s.className = 'cbar-save' + (err ? ' err' : ''); s.textContent = err ? 'Not saved. Check the internet.' : on || cpBusy || Object.keys(cpTimers).length ? 'Saving…' : 'Saved ✓'; }
+async function saveField(k, v){
+  cpBusy++;
+  try {
+    const cid = await ensureClient(), c = CL.byId.get(cid) || {id: cid};
+    if (k === 'city') v = tidyCity(v);
+    if (CORE[k]) {
+      if (cid === state.clientId) { if (k === 'name') state.house = v; else { state.quote[k] = v; if (k === 'exec') state.quote.execOwn = !!v && v !== execOf(cid); } save(); await flushDraft(); }
+      else { const dr = await Store.getDraft(cid); if (dr) { dr.sheet = dr.sheet || {}; if (k === 'name') dr.sheet.house = v; else dr.sheet.quote = Object.assign(dr.sheet.quote || {}, {[k]: v}); dr.at = new Date().toISOString(); dr.dev = DEV; await Store.setDraft(cid, clone(dr)); } }
+      await Store.mergeClient(cid, {[k]: v});
+    } else await Store.mergeClient(cid, {[k]: v});
+    if (k === 'city') try { localStorage.setItem('charpai-city', v); } catch(_){}
+    cpBusy--; cpSaving(false);
+  } catch (e) { cpBusy--; cpSaving(false, true); }
+}
+
+// ---- the customer page (Purvi: "the customer profile page will have all the details displayed properly (look at odoo)")
+const sheetCache = {};
+function sheetCounts(sh){
+  if (!sh) return null;
+  const L = [[(sh.rows || []).filter(r => +r.W || +r.H).length, 'curtain', 'curtains'], [(sh.blinds || []).filter(b => +b.W || +b.H).length, 'blind', 'blinds'],
+    ...MP_ORDER.map(k => [((sh.more || {})[k] || []).filter(r => mpFilled(k, r)).length, (MP[k].hasName || MP[k].name).toLowerCase(), (MP[k].hasName || MP[k].name).toLowerCase()])];
+  return L.filter(x => x[0]).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+}
+function sheetOfClient(cid){
+  if (cid === state.clientId) return {rows: state.rows, blinds: state.blinds, more: state.more};
+  if (sheetCache[cid] === undefined) { sheetCache[cid] = null; Store.getDraft(cid).then(d => { sheetCache[cid] = d ? d.sheet || {} : false; if (current === 'client' && cpId === cid) renderClientPage(); }).catch(() => {}); }
+  return sheetCache[cid] || null;
+}
+const tick = (k, list, on, name) => `<div class="ticks" role="group" aria-label="${esc(name)}">${list.map(([v, n]) => `<button type="button" class="tickb" data-tick="${k}" data-v="${v}" aria-pressed="${on.includes(v)}">${esc(n)}</button>`).join('')}</div>`;
+const cpField = (k, label, val, attrs = '') => `<label class="cpf"><span>${label}</span><input data-k="${k}" id="cpf-${k}" value="${esc(val || '')}" autocomplete="off" ${attrs}></label>`;
+function archList(){ const m = new Map(); for (const c of CL.list) if (c.arch && c.arch.name) m.set(c.arch.name.trim().toLowerCase(), c.arch); return [...m.values()]; }
+function renderClientPage(){
+  if (cpFresh && cpFresh !== cpId) cpFresh = null;
+  const el = $('#cp-body'), isNew = cpId === NEW || cpFresh === cpId, c = cpId === NEW ? {} : CL.byId.get(cpId);
+  if (!c) { el.innerHTML = `<div class="cp"><div class="card">${CL.state === 'ready' ? 'This client is no longer in the list. <button class="linkbtn" data-act="clients">Back to My Clients</button>' : 'Loading…'}</div></div>`; return; }
+  const keepFocus = document.activeElement && document.activeElement.closest('#cp-body') && document.activeElement.id;
+  const s = cpId === NEW ? 'draft' : statusOf(c), o = c.outcome || {}, V = isNew ? [] : CL.vers[c.id];
+  if (!isNew && c.latest && !V) versionsOf(c.id).then(() => { if (current === 'client' && cpId === c.id) renderClientPage(); });
+  const stage = cpId === NEW ? '<span class="pill">New enquiry</span>' : pillHTML(c);
+  const counts = isNew ? [] : sheetCounts(sheetOfClient(c.id));
+  const tel = mobile(c.phone), wa = waLink(c.phone);
+  const outcome = isNew ? '' : s === 'won' ? `<div class="card outc won"><div><b>Won</b> · they accepted v${o.n}${o.total != null ? ' · ' + rs(o.total) : ''}<p>Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}.</p></div><button class="btn" data-act="reopen">Undo</button></div>`
+    : s === 'lost' ? `<div class="card outc lost"><div><b>Lost</b>${o.reason ? ' · ' + esc(o.reason) : ''}<p>${o.note ? esc(o.note) + ' · ' : ''}Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}.</p></div><button class="btn" data-act="reopen">Undo</button></div>`
+    : `<div class="card outc"><div><b>Did they book?</b><p>${s === 'quoted' ? 'Mark it once you hear back. Won asks which quotation they accepted.' : 'Lost can be marked any time. Won comes after a quotation is sent.'}</p></div><div class="cp-acts">${s === 'quoted' ? '<button class="btn" data-act="asked">They asked for changes</button><button class="btn" data-act="won">Mark as won</button>' : ''}<button class="btn" data-act="lost">Mark as lost</button></div></div>`;
+  const asked = changeAsked(c) ? `<div class="card asked-b"><div><b>They asked for changes</b>${c.changeReq.note ? ': ' + esc(c.changeReq.note) : ''}<p>${esc(agoTxt(c.changeReq.at))}${c.changeReq.who ? ' · ' + esc(c.changeReq.who) : ''}. Goes away by itself when the next version is sent.</p></div><button class="btn ghost" data-act="unask">Remove</button></div>` : '';
+  const vlist = !c.latest ? '<p class="hint" style="margin:0">None yet. Each time someone downloads the <b>PDF</b> of the quotation, it is kept here as v1, v2…</p>'
+    : V === 'error' ? '<p class="hint">Could not load the quotations. Go back and open the client again.</p>'
+    : !Array.isArray(V) ? '<p class="hint">Loading…</p>'
+    : V.map(x => `<div class="vrow${s === 'won' && o.n === x.n ? ' final' : ''}"><span class="vbadge">v${x.n}</span>
+        <span class="vinfo"><b>${rs(x.total)}</b><small>${esc(whenTxt(x.at))}${x.exec ? ' · ' + esc(x.exec) : ''}${s === 'won' && o.n === x.n ? ' · <b style="font:inherit;color:var(--good)">final</b>' : x.n === c.latest ? ' · latest' : ''}</small></span>
+        <span class="vacts"><button class="btn" data-act="view" data-n="${x.n}">View</button><button class="btn" data-act="pdf" data-n="${x.n}">PDF</button><button class="link" data-act="from" data-n="${x.n}">Start from this</button></span></div>`).join('');
+  const T = isNew ? [] : (TD.byCid.get(c.id) || []), Topen = T.filter(t => t.state !== 'done').sort(tdSort), Tdone = T.filter(t => t.state === 'done').sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)));
+  const tdRow = t => `<button class="tdrow${t.state === 'done' ? ' done' : ''}" data-todo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${t.state === 'done' ? 'Done ' + esc(agoTxt(t.doneAt)) : esc(dueTxt(t))}${PF && IS_ADMIN && t.ownerEmail ? ' · ' + esc(personName(t.ownerEmail).split(' ')[0]) : ''}</span></button>`;
+  const todos = isNew ? '' : `<div class="card"><div class="card-h"><h3>To-dos</h3><button class="btn" data-sched="${esc(c.id)}">${TD_CAL_SVG} Add a to-do</button></div>
+    ${TD.state === 'error' ? '<p class="hint" style="margin:0">To-dos are not switched on yet.</p>' : Topen.length ? Topen.map(tdRow).join('') : '<p class="hint" style="margin:0">Nothing planned.</p>'}
+    ${Tdone.length ? `<details class="tdone"><summary>Done (${Tdone.length})</summary>${Tdone.map(tdRow).join('')}</details>` : ''}</div>`;
+  const arch = c.arch || {};
+  const details = `<div class="card"><div class="card-h"><h3>Details</h3><span class="hint">Nothing here is compulsory. Fill in what you know, add the rest later.</span></div>
+    <div class="cpf-grid">
+      ${cpField('name', 'Name', c.name, 'placeholder="e.g. Kavita Sharma"')}
+      ${cpField('phone', 'Mobile', c.phone, 'inputmode="tel" placeholder="98290 12345"')}
+      ${cpField('email', 'Email', c.email, 'inputmode="email" placeholder="name@gmail.com"')}
+      ${cpField('city', 'City', isNew ? '' : c.city, 'list="citylist" placeholder="e.g. Jodhpur"')}
+      <label class="cpf wide"><span>Address</span><input data-k="addr" id="cpf-addr" value="${esc(c.addr || '')}" autocomplete="off" placeholder="House, street, area"></label>
+    </div>${cityList()}
+    <div class="cpf-sec"><span>Interested in</span>${tick('interest', INTEREST, c.interest || [], 'Interested in')}</div>
+    <div class="cpf-sec"><span>Project type</span>${tick('ptype', PTYPES, c.ptype || [], 'Project type')}
+      ${(c.ptype || []).includes('other') ? `<input class="cpf-other" data-k="ptypeOther" id="cpf-ptypeOther" value="${esc(c.ptypeOther || '')}" placeholder="What kind of project?" autocomplete="off">` : ''}</div>
+    <div class="cpf-sec"><span>How they found us</span>${tick('refHow', REF_HOW, c.refHow ? [c.refHow] : [], 'How they found us')}</div>
+    <div class="cpf-grid">
+      ${cpField('refBy', 'Referred by <small>(name)</small>', c.refBy, 'placeholder="e.g. Kamod Tatiya"')}
+      ${cpField('archName', 'Architect / interior designer', arch.name, 'list="archlist" placeholder="Name"')}
+      ${cpField('archPhone', 'Their mobile', arch.phone, 'inputmode="tel" placeholder="Mobile"')}
+      ${isNew ? '' : cpField('exec', 'Handled by <small>(on the quotation)</small>', c.exec, 'placeholder="Name and phone"')}
+    </div><datalist id="archlist">${archList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>
+    <label class="cpf wide" style="margin-top:12px"><span>Remarks</span><textarea data-k="remarks" id="cpf-remarks" rows="3" placeholder="Anything to remember: budget, timing, who decides, colours they like…">${esc(c.remarks || '')}</textarea></label>
+    ${isNew ? `<div class="cp-done"><span class="hint">Saved as you type. It is on the board under New Enquiry${cpId === NEW ? ' once you type something' : ''}.</span><span class="cp-acts"><button class="btn" data-act="done">Done</button><button class="btn solid" data-act="sheet">Open measurement sheet</button></span></div>` : ''}
+  </div>`;
+  el.innerHTML = `<div class="cp cp2${isNew ? ' narrow' : ''}">
+    <div class="cp-top">
+      <div class="cp-id"><h2>${esc(c.name || (isNew ? 'New enquiry' : mobile(c.phone) || 'No name yet'))}</h2>
+        <div class="cp-meta">${stage}${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}${starsHTML(c.stars || 0, true)}${ownerName(c) ? `<span class="hint">Handled by <b>${esc(ownerName(c))}</b></span>` : ''}<span id="cp-saved" class="cbar-save">${cpId === NEW ? 'Type anything to save' : 'Saved ✓'}</span></div>
+        ${PF && IS_ADMIN && !isNew ? `<label class="hint cp-own">Executive <select id="cp-owner" class="search"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => sells(p) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>
+      <div class="cp-reach">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}</div>
+    </div>
+    ${isNew ? '' : `<div class="cp-big">
+      <button class="bigb" data-act="sheet"><b>Measurement sheet</b><span>${counts === null || counts === undefined ? 'Opening…' : counts.length ? esc(counts.join(' · ')) : 'Not started. Tap to measure.'}</span></button>
+      <button class="bigb" data-act="quote"><b>Quotations</b><span>${c.latest ? `${c.latest} sent · v${c.latest}${Array.isArray(V) && V[0] && V[0].n === c.latest ? ' ' + rs(V[0].total) : ''}${c.dsig && c.dsig !== c.sig ? ' · sheet changed since' : ''}` : 'None sent yet. Tap to make one.'}</span></button>
+    </div>`}
+    ${asked}${outcome}
+    <div class="cp-cols${isNew ? ' one' : ''}"><div class="cp-main">${details}</div><div class="cp-aside">${todos}
+      ${isNew ? '' : `<div class="card"><h3>Quotations sent</h3>${vlist}</div>`}
+      ${!isNew && canDelete() ? `<div class="card outc"><div><b>Delete this client</b><p>Removes ${esc(c.name || 'them')}, their measurements and every quotation sent. Only you see this.</p></div><button class="btn danger" data-act="delete">Delete client</button></div>` : ''}</div></div>
+  </div>`;
+  if (keepFocus) { const f = document.getElementById(keepFocus); if (f) { f.focus(); try { const n = f.value.length; f.setSelectionRange(n, n); } catch(_){} } }
+}
+const cpb = $('#cp-body');
+cpb.addEventListener('input', e => {
+  const x = e.target.closest('[data-k]'); if (!x) return; const k = x.dataset.k;
+  if (k === 'archName' || k === 'archPhone') { const a = {name: ($('#cpf-archName') || {}).value || '', phone: ($('#cpf-archPhone') || {}).value || ''};
+    if (k === 'archName') { const m = archList().find(z => z.name.trim().toLowerCase() === a.name.trim().toLowerCase()); if (m && m.phone && !a.phone && $('#cpf-archPhone')) { $('#cpf-archPhone').value = m.phone; a.phone = m.phone; } }
+    cpQueue('arch', {name: a.name.trim(), phone: a.phone.trim()}); return; }
+  if (k === 'name') { const h = $('#cp-body .cp-id h2'); if (h) h.textContent = x.value || 'New enquiry'; }
+  cpQueue(k, x.value.trim());
+});
+cpb.addEventListener('change', e => { const x = e.target.closest('[data-k]'); if (x && x.dataset.k === 'city') { x.value = tidyCity(x.value); cpQueue('city', x.value, 0); } });
+cpb.addEventListener('click', async e => {
+  const st = e.target.closest('[data-star]');
+  if (st) { const c = CL.byId.get(cpId) || {}, n = +st.dataset.star, v = (c.stars || 0) === n ? 0 : n; await saveField('stars', v); renderClientPage(); return; }
+  const tk = e.target.closest('[data-tick]');
+  if (tk) { const c = CL.byId.get(cpId) || {}, k = tk.dataset.tick, v = tk.dataset.v;
+    let nv2; if (k === 'refHow') nv2 = c.refHow === v ? '' : v; else { const cur = new Set(c[k] || []); cur.has(v) ? cur.delete(v) : cur.add(v); nv2 = [...cur]; }
+    tk.setAttribute('aria-pressed', k === 'refHow' ? String(nv2 === v) : String(nv2.includes(v)));
+    if (k === 'refHow') tk.parentElement.querySelectorAll('[data-tick]').forEach(b => b !== tk && b.setAttribute('aria-pressed', 'false'));
+    await saveField(k, nv2); if (k === 'ptype' && v === 'other') renderClientPage(); return; }
+  const sc = e.target.closest('[data-sched]'); if (sc) { askTodo({cid: sc.dataset.sched}); return; }
+  const td = e.target.closest('[data-todo]'); if (td) { const t = TD.list.find(x => x.id === td.dataset.todo); if (t) showTodo(t); return; }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act; if (act === 'clients') { go('clients'); return; }
+  if (act === 'done') { await cpFlush(); cpFresh = null; go('clients'); return; }
+  if (act === 'sheet' && cpId === NEW) { await cpFlush(); await ensureClient(); }
+  const c = CL.byId.get(cpId); if (!c) return;
+  if (act === 'delete') { askDelete(c); return; }
+  const V = Array.isArray(CL.vers[c.id]) ? CL.vers[c.id] : [], x = V.find(v => v.n === +b.dataset.n);
+  if (act === 'sheet' || act === 'quote') { await cpFlush(); b.disabled = true; await openClient(c.id, act === 'quote' ? 'quote' : null); b.disabled = false; return; }
+  if (act === 'won') return askWon(c);
+  if (act === 'lost') return askLost(c);
+  if (act === 'asked') return askChanges(c);
+  if (act === 'unask') { try { await Store.mergeClient(c.id, {changeReq: null}); } catch (er) { toast('Not saved. Check the internet.'); } return; }
+  if (act === 'reopen') { await setOutcome(c, null); return; }
+  if (act === 'view' && x) return showVersion(c, x);
+  if (act === 'pdf' && x) return downloadVersion(x, b);
+  if (act === 'from' && x) return confirmDlg(`Start again from v${x.n}?`, `${esc(c.name)}'s sheet will become v${x.n} again, dated today. Changes made since then are lost unless they went out as a quotation.`, `Start from v${x.n}`, async () => { await flushDraft(); fromVersion(c, x); });
+});
+cpb.addEventListener('change', e => {
+  if (e.target.id !== 'cp-owner') return; const c = CL.byId.get(cpId), to = e.target.value; if (!c || !to) { renderClientPage(); return; }
+  confirmDlg(`Hand ${esc(c.name)} to ${esc(personName(to))}?`, `${esc(personName(to))} will see this client, their sheet, every quotation sent and their open to-dos. ${c.ownerEmail ? esc(personName(c.ownerEmail)) + ' will no longer see them.' : ''}`, 'Hand over', async () => {
+    try { await reassign(c.id, to); for (const t of openTodos(c.id)) await quiet(setTodo(t.id, {ownerEmail: to})); toast('Handed over'); } catch (er) { toast('Not saved. Check the internet.'); } renderClientPage(); });
+  setTimeout(() => { if (!dlg.open) renderClientPage(); }, 0);
+});
+function askChanges(c){
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">${esc(c.name || 'They')} asked for changes</h2><p class="sub">The card goes to the top of Quotation Given, and a <b>Revise quotation</b> to-do is made for tomorrow.</p>
+    <label class="f" for="ch-note">What do they want changed?</label><textarea id="ch-note" rows="3" autofocus placeholder="e.g. a lighter fabric in the bedroom, remove the blinds"></textarea>
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Save</button></div></div>`, false, async d => {
+    const note = d.querySelector('#ch-note').value.trim();
+    try { await Store.mergeClient(c.id, {changeReq: {at: new Date().toISOString(), by: ME_EMAIL || UID || '', who: PF ? PF.name : '', note}}); }
+    catch (e) { toast('Not saved. Check the internet.'); return false; }
+    await quiet(addTodo({cid: c.id, cname: c.name, type: 'revise', due: dayPlus(1), note, owner: c.ownerEmail, auto: 'asked'}));
+    toast('Saved. Revise quotation is on the to-do list.');
+  });
+}
+
+// ---- add / edit a to-do (from a card's calendar button, the customer page or the To Do board)
+function askTodo(pre = {}, edit){
+  const t = edit || {}, admin = PF && IS_ADMIN;
+  const c0 = CL.byId.get(pre.cid || t.cid);
+  let type = t.type || pre.type || 'visit', due = t.due || dayPlus(1), time = t.time || '';
+  const people = admin ? [...PEOPLE].filter(([e, p]) => canLogin(e) && p.active !== false) : [];
+  const own = t.ownerEmail || (c0 && c0.ownerEmail) || ME_EMAIL || '';
+  const quick = [[0, 'Today'], [1, 'Tomorrow'], [2, 'In 2 days'], [7, 'Next week']];
+  const clientOpts = `<datalist id="tdclients">${CL.list.filter(c => statusOf(c) !== 'lost').map(c => `<option value="${esc(c.name || mobile(c.phone))}">${esc([cityOf(c), c.phone].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">${edit ? 'Change the to-do' : 'New to-do'}</h2>
+    <div class="tdtypes" role="group" aria-label="What">${TD_TYPES.map(([k, n]) => `<button type="button" class="tdt" data-tt="${k}" aria-pressed="${type === k}">${tdIcon(k, 20)}<span>${n}</span></button>`).join('')}</div>
+    <label class="f" for="td-client">Client <small>(optional)</small></label>
+    <input type="text" id="td-client" list="tdclients" value="${esc(c0 ? c0.name || mobile(c0.phone) : '')}" placeholder="Type a name, or leave empty" autocomplete="off">${clientOpts}
+    <label class="f">When</label>
+    <div class="tdwhen"><div class="fpre">${quick.map(([n, l]) => `<button type="button" class="chipbtn" data-qd="${dayPlus(n)}" aria-pressed="${due === dayPlus(n)}">${l}</button>`).join('')}</div>
+      <input type="date" id="td-due" value="${esc(due)}"><input type="time" id="td-time" value="${esc(time)}" aria-label="Time (optional)"></div>
+    <p class="hint" id="td-timehint" style="margin:4px 0 0">${type === 'visit' ? 'Add the time you told the customer.' : 'Time is optional.'}</p>
+    ${admin ? `<label class="f" for="td-who">Who does it</label><select id="td-who" class="search" style="width:100%;padding:10px 12px">${people.map(([e, p]) => `<option value="${esc(e)}"${e === own ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select>` : ''}
+    <label class="f" for="td-note">Note <small>(optional)</small></label><textarea id="td-note" rows="2" placeholder="e.g. measure the bedrooms, take the AP fabric book">${esc(t.note || '')}</textarea>
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">${edit ? 'Save' : 'Add to-do'}</button></div></div>`, false, async d => {
+    const name = d.querySelector('#td-client').value.trim();
+    const c = name ? CL.list.find(x => (x.name || mobile(x.phone)) === name) || CL.list.find(x => String(x.name || '').toLowerCase() === name.toLowerCase()) : null;
+    if (name && !c) { const n = d.querySelector('#td-client'); n.focus(); n.style.borderColor = 'var(--warn)'; toast('Pick the client from the list, or leave it empty'); return false; }
+    const who = admin ? d.querySelector('#td-who').value : (c && c.ownerEmail) || ME_EMAIL;
+    const v = {type: d.querySelector('[data-tt][aria-pressed="true"]').dataset.tt, due: d.querySelector('#td-due').value || dayPlus(0), time: d.querySelector('#td-time').value,
+      note: d.querySelector('#td-note').value.trim(), cid: c ? c.id : '', cname: c ? c.name || '' : ''};
+    if (!admin && c && c.ownerEmail && c.ownerEmail !== ME_EMAIL) { toast('This client is handled by someone else'); return false; }
+    try { if (edit) await setTodo(t.id, Object.assign(v, {ownerEmail: who || null})); else await addTodo(Object.assign(v, {owner: who})); }
+    catch (e) { toast(TD.state === 'error' ? 'To-dos are not switched on yet. Ask Purvi.' : 'Not saved. Check the internet.'); return false; }
+    toast(edit ? 'Saved' : `Added: ${tdName(v.type)}, ${dueTxt(v).toLowerCase()}`);
+  });
+  dlg.addEventListener('click', tdDlgClick);
+}
+function tdDlgClick(e){
+  const tt = e.target.closest('[data-tt]'); if (tt) { dlg.querySelectorAll('[data-tt]').forEach(b => b.setAttribute('aria-pressed', String(b === tt))); const h = dlg.querySelector('#td-timehint'); if (h) h.textContent = tt.dataset.tt === 'visit' ? 'Add the time you told the customer.' : 'Time is optional.'; return; }
+  const qd = e.target.closest('[data-qd]'); if (qd) { dlg.querySelector('#td-due').value = qd.dataset.qd; dlg.querySelectorAll('[data-qd]').forEach(b => b.setAttribute('aria-pressed', String(b === qd))); }
+}
+dlg.addEventListener('close', () => dlg.removeEventListener('click', tdDlgClick));
+dlg.addEventListener('input', e => {   // picking a client hands the to-do to that client's salesperson (admin can still change it)
+  if (e.target.id !== 'td-client') return; const w = dlg.querySelector('#td-who'), v = e.target.value.trim(); if (!w || !v) return;
+  const c = CL.list.find(x => (x.name || mobile(x.phone)) === v); if (c && c.ownerEmail && [...w.options].some(o => o.value === c.ownerEmail)) w.value = c.ownerEmail; });
+dlg.addEventListener('input', e => { if (e.target.id === 'td-due') dlg.querySelectorAll('[data-qd]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.qd === e.target.value))); });
+
+// ---- one to-do, opened: who, where, call, map, and the next step
+function showTodo(t){
+  const c = CL.byId.get(t.cid), tel = c && mobile(c.phone), wa = c && waLink(c.phone);
+  const addr = c ? [c.addr, cityOf(c)].filter(Boolean).join(', ') : '';
+  const mine = !PF || IS_ADMIN || t.ownerEmail === ME_EMAIL;
+  const next = t.state === 'todo' ? '<button class="btn" data-tdo="doing">Start</button><button class="btn solid" data-tdo="done">Mark done</button>'
+    : t.state === 'doing' ? '<button class="btn" data-tdo="todo">Back to To do</button><button class="btn solid" data-tdo="done">Mark done</button>' : '<button class="btn" data-tdo="todo">Not done yet</button>';
+  openDlg(`<div class="dlg-in tdshow"><div class="tdshow-h">${tdIcon(t.type, 22)}<h2 id="dlg-title">${esc(tdName(t.type))}</h2><button class="xbtn" data-dlg="close" aria-label="Close">×</button></div>
+    <p class="sub"><b class="${overdue(t) ? 'late' : ''}">${esc(dueTxt(t))}</b>${t.ownerEmail ? ' · ' + esc(personName(t.ownerEmail)) : ''}</p>
+    ${t.note ? `<p class="tdnote">${esc(t.note)}</p>` : ''}
+    ${c ? `<div class="tdcl"><b>${esc(c.name || 'No name yet')}</b>${addr ? `<span>${esc(addr)}</span>` : ''}${c.phone ? `<span>${esc(c.phone)}</span>` : ''}
+      <div class="cp-acts">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}${addr ? `<a class="btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}" target="_blank" rel="noopener">Map</a>` : ''}
+        <button class="btn" data-tdo="client">Open client</button>${t.type === 'visit' ? '<button class="btn" data-tdo="sheet">Measurement sheet</button>' : ''}</div></div>` : t.cname ? `<p class="hint">${esc(t.cname)} (no longer in your list)</p>` : ''}
+    <p class="hint" style="margin:10px 0 0">Added ${esc(agoTxt(t.at))}${t.byName ? ' by ' + esc(t.byName) : ''}${t.auto ? ' (automatically)' : ''}.</p>
+    <div class="dlg-acts">${mine ? '<button class="btn ghost" data-tdo="del">Delete</button><button class="btn ghost" data-tdo="edit">Change</button>' : ''}<span style="flex:1"></span>${mine ? next : '<button class="btn" data-dlg="close">Close</button>'}</div></div>`);
+  dlg._todo = t;
+}
+dlg.addEventListener('click', async e => {
+  const b = e.target.closest('[data-tdo]'); if (!b || !dlg._todo) return;
+  const t = dlg._todo, a = b.dataset.tdo;
+  if (a === 'client' || a === 'sheet') { closeDlg(); dlg._todo = null; if (a === 'sheet') await openClient(t.cid); else { cpId = t.cid; go('client'); } return; }
+  if (a === 'edit') { dlg._todo = null; closeDlg(); askTodo({}, t); return; }
+  if (a === 'del') { dlg._todo = null; closeDlg(); confirmDlg('Delete this to-do?', `${esc(tdName(t.type))}${t.cname ? ' for ' + esc(t.cname) : ''}, ${esc(dueTxt(t).toLowerCase())}.`, 'Delete', async () => { try { await db.doc('todos/' + t.id).delete(); } catch (er) { toast('Not deleted. Check the internet.'); } }); return; }
+  b.disabled = true;
+  try { await setTodo(t.id, a === 'done' ? {state: 'done', doneAt: new Date().toISOString()} : {state: a, doneAt: ''}); } catch (er) { toast('Not saved. Check the internet.'); b.disabled = false; return; }
+  dlg._todo = null; closeDlg(); if (a === 'done') toast('Done ✓');
+});
+dlg.addEventListener('close', () => { dlg._todo = null; });
+
+// ---- To Do board (Purvi: Jira-style; as the Odoo demo's To-do board: To do · In progress · Done, Done = last 7 days)
+const TCOLS = [['todo', 'To do'], ['doing', 'In progress'], ['done', 'Done']];
+let TF = {when: 'all', type: '', who: ''}, tCol = 'todo';
+function renderTodo(){
+  const el = $('#todo-body'); if (!el) return;
+  const admin = PF && IS_ADMIN;
+  const head = `<div class="cl-head"><h2>To Do</h2><button class="btn solid big" data-tnew="1">+ New to-do</button></div>`;
+  if (!shared) { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty"><b>To-dos need the shared store.</b></div></div>`; return; }
+  if (TD.state === 'error') { el.innerHTML = `<div class="kb-wrap"><div class="cl-head"><h2>To Do</h2></div><div class="clist cl-empty"><b>To-dos are not switched on yet.</b>${PF && PF.owner ? 'Paste the to-dos rule in Firebase → Firestore → Rules (Claude has it ready), then reload.' : 'Ask Purvi to switch them on.'}</div></div>`; return; }
+  if (TD.state !== 'ready') { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty">Loading…</div></div>`; return; }
+  const today = dayPlus(0), week = dayPlus(7), wk = Date.now() - 7 * 864e5;
+  const base = TD.list.filter(t => (!TF.type || t.type === TF.type) && (!TF.who || (TF.who === '-' ? !t.ownerEmail : t.ownerEmail === TF.who)));
+  const when = t => TF.when === 'all' || (TF.when === 'late' ? overdue(t) : TF.when === 'today' ? t.due <= today : t.due <= week);
+  const by = {todo: [], doing: [], done: []};
+  for (const t of base) { if (t.state === 'done') { if (Date.parse(t.doneAt || t.at) >= wk) by.done.push(t); } else if (when(t)) (by[t.state] || by.todo).push(t); }
+  by.todo.sort(tdSort); by.doing.sort(tdSort); by.done.sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)));
+  const nLate = base.filter(overdue).length, nToday = base.filter(t => t.state !== 'done' && t.due <= today).length;
+  const card = t => { const c = CL.byId.get(t.cid);
+    return `<div class="kc tc${t.state === 'done' ? ' done' : ''}" data-tid="${esc(t.id)}" role="button" tabindex="0" draggable="true">
+      <div class="tc-type">${tdIcon(t.type, 15)}<span>${esc(tdName(t.type))}</span></div>
+      <b class="kc-name">${esc(c ? c.name || mobile(c.phone) || 'No name yet' : t.cname || (t.note ? '' : 'To-do'))}</b>
+      ${t.note ? `<div class="kc-sub tc-note">${esc(t.note)}</div>` : ''}
+      <div class="kc-foot"><span class="kc-next${overdue(t) ? ' late' : ''}">${t.state === 'done' ? 'Done ' + esc(agoTxt(t.doneAt)) : esc(dueTxt(t))}</span>
+        <span class="kc-r">${c && cityOf(c) ? `<span class="hint">${esc(cityOf(c))}</span>` : ''}${admin && t.ownerEmail ? `<span class="av" title="${esc(personName(t.ownerEmail))}">${esc(initials(personName(t.ownerEmail)))}</span>` : ''}</span></div></div>`; };
+  const col = ([k, n]) => `<section class="kcol" data-tcol="${k}"${tCol === k ? ' data-on="1"' : ''} aria-label="${n}"><header class="kcol-h"><b>${n}</b><span class="kcnt">${by[k].length}</span>${k === 'done' ? '<span class="ksum">last 7 days</span>' : ''}</header>
+    ${k === 'todo' ? '<button class="kadd" data-tnew="1">+ New to-do</button>' : ''}
+    <div class="kcol-b">${by[k].map(card).join('') || `<p class="kempty">${k === 'todo' ? 'Nothing to do here. Good.' : k === 'doing' ? 'Drag a card here, or tap it and press Start.' : 'Finished to-dos stay here for 7 days.'}</p>`}</div></section>`;
+  const pill = (k, n, cnt) => `<button class="fpill" data-tw="${k}" aria-pressed="${TF.when === k}">${n}${cnt != null ? `<b>${cnt}</b>` : ''}</button>`;
+  const who = admin ? `<label class="fsort"><span>Person</span><select id="tf-who" class="search"><option value="">Everyone</option>${[...PEOPLE].filter(([e, p]) => canLogin(e) && (p.active !== false || TF.who === e)).map(([e, p]) => `<option value="${esc(e)}"${TF.who === e ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select></label>` : '';
+  el.innerHTML = `<div class="kb-wrap">${head}
+    <div class="cl-tools"><div class="fpills" role="group" aria-label="When">${pill('all', 'All')}${pill('late', 'Overdue', nLate)}${pill('today', 'Today', nToday)}${pill('week', 'Next 7 days')}</div>
+      <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}</div>
+    <div class="kb-tabs" role="tablist">${TCOLS.map(([k, n]) => `<button role="tab" data-tcoltab="${k}" aria-selected="${tCol === k}">${n}<b>${by[k].length}</b></button>`).join('')}</div>
+    <div class="kb">${TCOLS.map(col).join('')}</div></div>`;
+}
+const tdb = $('#todo-body');
+tdb.addEventListener('click', e => {
+  if (e.target.closest('[data-tnew]')) { askTodo({}); return; }
+  const w = e.target.closest('[data-tw]'); if (w) { TF.when = w.dataset.tw; renderTodo(); return; }
+  const ct = e.target.closest('[data-tcoltab]'); if (ct) { tCol = ct.dataset.tcoltab; renderTodo(); return; }
+  const c = e.target.closest('[data-tid]'); if (c) { const t = TD.list.find(x => x.id === c.dataset.tid); if (t) showTodo(t); }
+});
+tdb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tid) { const t = TD.list.find(x => x.id === e.target.dataset.tid); if (t) showTodo(t); } });
+tdb.addEventListener('change', e => { if (e.target.id === 'tf-type') { TF.type = e.target.value; renderTodo(); } if (e.target.id === 'tf-who') { TF.who = e.target.value; renderTodo(); } });
+let dragTid = null;
+tdb.addEventListener('dragstart', e => { const k = e.target.closest && e.target.closest('.tc'); if (!k) return; dragTid = k.dataset.tid; try { e.dataTransfer.setData('text/plain', dragTid); } catch(_){} k.classList.add('drag'); });
+tdb.addEventListener('dragend', e => { const k = e.target.closest && e.target.closest('.tc'); if (k) k.classList.remove('drag'); tdb.querySelectorAll('.kcol.over').forEach(x => x.classList.remove('over')); });
+tdb.addEventListener('dragover', e => { const col = e.target.closest('.kcol'); if (!col || !dragTid) return; e.preventDefault(); tdb.querySelectorAll('.kcol.over').forEach(x => x !== col && x.classList.remove('over')); col.classList.add('over'); });
+tdb.addEventListener('drop', async e => {
+  const col = e.target.closest('.kcol'); if (!col || !dragTid) return; e.preventDefault(); col.classList.remove('over');
+  const t = TD.list.find(x => x.id === dragTid), to = col.dataset.tcol; dragTid = null; if (!t || t.state === to) return;
+  if (PF && !IS_ADMIN && t.ownerEmail !== ME_EMAIL) return;
+  try { await setTodo(t.id, to === 'done' ? {state: 'done', doneAt: new Date().toISOString()} : {state: to, doneAt: ''}); } catch (er) { toast('Not saved. Check the internet.'); }
+});
+
+// ---- Settings (Purvi: "My Account/Settings (pick a name)"): who you are, light/dark, and for Purvi the prices and people
+function renderSettings(){
+  const el = $('#settings-body'); if (!el) return;
+  const admin = !PF || IS_ADMIN;
+  el.innerHTML = `<div class="set">
+    <div class="cl-head"><h2>Settings</h2></div>
+    ${PF ? `<div class="card set-me"><span class="av big">${esc(initials(PF.name || PF.email))}</span><div><b>${esc(PF.name || '')}</b><span class="hint">${esc(PF.email)} · ${IS_ADMIN ? 'Admin' : 'Sales executive'}</span></div><button class="btn" data-set="out">Sign out</button></div>` : ''}
+    <div class="card"><h3>Screen</h3><p class="hint" style="margin:0 0 10px">Light or dark. Remembered on this phone or laptop.</p><div class="set-theme"></div></div>
+    ${admin ? `<div class="set-grid">
+      <button class="bigb" data-set="c-prices"><b>Prices</b><span>Stitching, linings, tracks, motors, installation, blinds price lists.</span></button>
+      ${PF ? '<button class="bigb" data-set="people"><b>People</b><span>Who can sign in, their job and mobile.</span></button>' : ''}</div>` : ''}
+  </div>`;
+  const sw = document.querySelector('.tape .theme-sw');
+  if (sw) { const c = sw.cloneNode(true); c.onclick = e => { const b = e.target.closest('button'); if (b) { sw.querySelector(`[data-t="${b.dataset.t}"]`).click(); renderSettings(); } }; el.querySelector('.set-theme').appendChild(c); }
+}
+$('#settings-body').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (!b) return; const v = b.dataset.set; if (v === 'out') { if (PF) PF.signOut(); return; } go(v === 'c-prices' ? lastPrices : v); });
+
+// ---- a sales executive's Home: what to do today (overdue first), then their numbers (renderDash)
+function todayCard(){
+  const today = dayPlus(0), L = TD.list.filter(t => t.state !== 'done' && t.ownerEmail === ME_EMAIL && t.due <= today).sort(tdSort);
+  const row = t => { const c = CL.byId.get(t.cid);
+    return `<button class="tdrow" data-hometodo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}${c || t.cname ? ' · ' + esc(c ? c.name || mobile(c.phone) : t.cname) : ''}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${esc(dueTxt(t))}</span></button>`; };
+  return `<div class="card"><div class="card-h"><h3>Today</h3><button class="btn" data-hometo="todo">Open To Do</button></div>
+    ${TD.state === 'error' ? '<p class="hint" style="margin:0">To-dos are not switched on yet.</p>' : L.length ? L.map(row).join('') : '<p class="hint" style="margin:0">Nothing due today. Plan your next visits and calls from My Clients.</p>'}</div>`;
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#dash-body')) return;
+  const t = e.target.closest('[data-hometodo]'); if (t) { const x = TD.list.find(y => y.id === t.dataset.hometodo); if (x) showTodo(x); return; }
+  if (e.target.closest('[data-hometo]')) go('todo');
+});
+
 function toast(m){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 
 // Light / dark switch in the yellow bar (Purvi, 2 Oct). Starts from the phone or laptop's own setting; a tap is remembered on this device.
@@ -5047,4 +5683,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-140957 -->
+<!-- build 20261017-171252 -->
