@@ -3221,7 +3221,7 @@ document.addEventListener('click', async e => {
   const btn = e.target.closest('#q-wa'); if (!btn) return;
   const phoneWay = sharePdfOk(), cl = state.clientId && CL.byId.get(state.clientId), m = mobile((cl && cl.phone) || (state.quote || {}).phone);
   if (!phoneWay && m.length !== 10) { toast('Add the client’s 10-digit mobile number first'); return; }
-  const tab = phoneWay ? null : window.open('', 'charpai-wa');   // opened inside the tap, or the browser blocks it; one WhatsApp Web tab for every send
+  const tab = phoneWay ? null : window.open('', WA_TAB);   // opened inside the tap, or the browser blocks it
   btn.disabled = true; const old = btn.innerHTML; btn.textContent = 'Making the PDF…';
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -3234,7 +3234,7 @@ document.addEventListener('click', async e => {
     } else if (await saveFile(name, blob)) {
       state.quote.pdf = {n: v, sig}; save(); await recordVersion(v, sig, t); renderQuoteSum();
       const url = `https://web.whatsapp.com/send?phone=91${m}&text=${encodeURIComponent(text)}`;
-      if (tab && !tab.closed) { tab.location.href = url; tab.focus(); } else window.open(url, 'charpai-wa');
+      if (tab && !tab.closed) { tab.location.href = url; tab.focus(); } else window.open(url, WA_TAB);
       waHint = {v, sig}; renderQuoteSum();
       waSent(c, v);
     } else if (tab) tab.close();
@@ -5466,7 +5466,13 @@ const TD_CAL_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width
 const initials = n => String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
 const starsHTML = (n, edit) => `<span class="stars${edit ? ' edit' : ''}" ${edit ? 'role="group" aria-label="Priority"' : `title="Priority ${n || 0} of 3"`}>${[1, 2, 3].map(i => edit
   ? `<button class="st${i <= (n || 0) ? ' on' : ''}" data-star="${i}" aria-label="${i} star${i > 1 ? 's' : ''}">★</button>` : `<i class="st${i <= (n || 0) ? ' on' : ''}">★</i>`).join('')}</span>`;
-const waLink = p => { const m = mobile(p); return m.length === 10 ? 'https://wa.me/91' + m : ''; };
+// Phones: wa.me opens the WhatsApp app. Laptops (Purvi, 18 Oct: "doesnt open in the same whatsapp web"): wa.me only shows a
+// "Continue to chat" page, so go straight to the chat in WhatsApp Web. It is a new tab each time: WhatsApp Web's
+// Cross-Origin-Opener-Policy stops any site from finding or reusing its tab (tested: a named target opens a second tab).
+const WA_TAB = '_blank';
+const waLink = p => { const m = mobile(p); if (m.length !== 10) return '';
+  let phone = false; try { phone = matchMedia('(pointer: coarse)').matches; } catch(_){}
+  return phone ? 'https://wa.me/91' + m : 'https://web.whatsapp.com/send?phone=91' + m; };
 const ownerName = c => c.ownerEmail ? personName(c.ownerEmail) : (c.exec || '').split(' - ')[0];
 
 // ---- dates in words: Today · Tomorrow · Yesterday · Tue 21 Oct
@@ -5717,7 +5723,7 @@ function renderEnquiryPage(){
       <div class="cp-id"><h2>${esc(c.name || (isNew ? 'New enquiry' : mobile(c.phone) || 'No name yet'))}</h2>
         <div class="cp-meta">${stage}${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}${starsHTML(c.stars || 0, true)}${ownerName(c) ? `<span class="hint">Handled by <b>${esc(ownerName(c))}</b></span>` : ''}<span id="cp-saved" class="cbar-save">${cpId === NEW ? 'Type anything to save' : 'Saved ✓'}</span></div>
         ${PF && IS_ADMIN && !isNew ? `<label class="hint cp-own">Executive <select id="cp-owner" class="search"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => sells(p) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>
-      <div class="cp-reach">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}</div>
+      <div class="cp-reach">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="${WA_TAB}">WhatsApp</a>` : ''}</div>
     </div>
     ${isNew ? '' : `<div class="cp-big">
       <button class="bigb" data-act="sheet"><b>Measurement sheet</b><span>${counts === null || counts === undefined ? 'Opening…' : counts.length ? esc(counts.join(' · ')) : 'Not started. Tap to measure.'}</span></button>
@@ -5818,7 +5824,7 @@ function cpHead(c){
     <div class="n-sub"><span class="n-stat ${s}">${CP_STAT[s]}${s === 'won' && c.outcome ? ', v' + c.outcome.n : ''}</span>${starsHTML(c.stars || 0, true)}${cpQSum(c)}<span id="cp-saved" class="n-saved">Saved</span></div>
     ${c.latest && c.dsig && c.dsig !== c.sig && statusOf(c) !== 'won' && statusOf(c) !== 'lost' ? `<p class="n-asked n-changed"><span class="n-dot"></span><span>The sheet has changed since v${c.latest} was sent. Open <b>Quotation</b> and download the PDF to send v${c.latest + 1}.</span></p>` : ''}
     ${changeAsked(c) ? `<p class="n-asked"><span class="n-dot"></span><span>They asked for changes${c.changeReq.note ? ': ' + esc(c.changeReq.note) : ''} <small>${esc(agoTxt(c.changeReq.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></span><button class="n-link" data-act="unask">Remove</button></p>` : ''}
-    <nav class="n-round">${tel ? round('phone', 'Call', '', 'tel:' + tel) : ''}${wa ? round('wa', 'WhatsApp', 'target="_blank" rel="noopener"', wa) : ''}${round('todo', 'To-do', `data-sched="${esc(c.id)}"`)}${addr ? round('map', 'Map', 'target="_blank" rel="noopener"', 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr)) : ''}</nav>
+    <nav class="n-round">${tel ? round('phone', 'Call', '', 'tel:' + tel) : ''}${wa ? round('wa', 'WhatsApp', `target="${WA_TAB}"`, wa) : ''}${round('todo', 'To-do', `data-sched="${esc(c.id)}"`)}${addr ? round('map', 'Map', 'target="_blank" rel="noopener"', 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr)) : ''}</nav>
   </header>`;
 }
 function cpQSum(c){ const V = CL.vers[c.id], v0 = Array.isArray(V) && V[0] && V[0].n === c.latest ? V[0] : null;
@@ -6134,7 +6140,7 @@ function showTodo(t){
     <p class="sub"><b class="${overdue(t) ? 'late' : ''}">${esc(dueTxt(t))}</b>${t.ownerEmail ? ' · ' + esc(personName(t.ownerEmail)) : ''}</p>
     ${t.note ? `<p class="tdnote">${esc(t.note)}</p>` : ''}
     ${c ? `<div class="tdcl"><b>${esc(c.name || 'No name yet')}</b>${addr ? `<span>${esc(addr)}</span>` : ''}${c.phone ? `<span>${esc(c.phone)}</span>` : ''}
-      <div class="cp-acts">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}${addr ? `<a class="btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}" target="_blank" rel="noopener">Map</a>` : ''}
+      <div class="cp-acts">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="${WA_TAB}">WhatsApp</a>` : ''}${addr ? `<a class="btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}" target="_blank" rel="noopener">Map</a>` : ''}
         <button class="btn" data-tdo="client">Open client</button>${t.type === 'visit' ? '<button class="btn" data-tdo="sheet">Measurement sheet</button>' : ''}</div></div>` : t.cname ? `<p class="hint">${esc(t.cname)} (no longer in your list)</p>` : ''}
     <p class="hint" style="margin:10px 0 0">Added ${esc(agoTxt(t.at))}${t.byName ? ' by ' + esc(t.byName) : ''}${t.auto ? ' (automatically)' : ''}.</p>
     <div class="dlg-acts">${mine ? '<button class="btn ghost" data-tdo="del">Delete</button><button class="btn ghost" data-tdo="edit">Change</button>' : ''}<span style="flex:1"></span>${mine ? next : '<button class="btn" data-dlg="close">Close</button>'}</div></div>`);
@@ -6262,4 +6268,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-192856 -->
+<!-- build 20261017-193818 -->
