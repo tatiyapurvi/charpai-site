@@ -912,7 +912,7 @@ button.n-prop:hover{background:var(--soft)}
 .n-up.late em{color:var(--warn);font-weight:600}
 .n-tip{color:var(--muted);font-size:14.5px;margin:0 0 10px}
 .n-tl{list-style:none;margin:0;padding:0}
-.n-ev{display:flex;gap:14px;position:relative;padding-bottom:20px}
+.n-ev{display:flex;gap:14px;position:relative;padding-bottom:26px}
 .n-ev:not(:last-child)::before{content:'';position:absolute;left:13px;top:30px;bottom:2px;width:1.5px;background:var(--line2)}
 .n-evd{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--soft);color:var(--muted);font:600 12px var(--body)}
 .n-evd.v{background:#E3ECF7;color:#1F4E79}
@@ -921,9 +921,9 @@ button.n-prop:hover{background:var(--soft)}
 .n-evm{flex:1;min-width:0;display:grid;gap:2px;padding-top:3px}
 .n-evbtn{all:unset;cursor:pointer;flex:1;display:grid;gap:2px;padding-top:3px;border-radius:6px}
 .n-evbtn:hover p{text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
-.n-evm p{margin:0;font-size:15px}
+.n-evm p{margin:0;font-size:15.5px}
 .n-evn{display:block;color:var(--muted);font-size:14px}
-.n-evm small{color:var(--faint);font-size:13px}
+.n-evm small{color:var(--muted);font-size:13.5px}
 .n-evb{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
 /* more menu */
 .n-more{position:relative}
@@ -974,6 +974,46 @@ button.n-prop:hover{background:var(--soft)}
 .n-changed .n-dot{background:var(--dim)}
 
 .n-ovsp{flex:1}
+/* activity: the note box, team notes as chat bubbles, what changed in each quotation (18 Oct) */
+.n-comp{border:1px solid var(--line2);border-radius:14px;padding:10px 12px;margin-bottom:18px;background:var(--field)}
+.n-comp:focus-within{border-color:var(--faint)}
+.n-comp textarea{width:100%;border:0;background:none;resize:vertical;min-height:52px;font:15px/1.5 var(--body);padding:4px 2px;outline:none}
+.n-compb{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.n-compb .n-btn{display:inline-flex;gap:6px;align-items:center}
+.n-compb .n-btn[disabled]{opacity:.5;cursor:default}
+.n-comph{flex:1;color:var(--faint);font-size:13px}
+.n-evd.who{background:var(--tape-soft);color:var(--tape-ink);font-size:11px}
+.n-bub{display:inline-block;max-width:100%;background:var(--soft);border-radius:4px 14px 14px 14px;padding:9px 13px;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.n-bub a{color:var(--dim);text-decoration:underline;text-underline-offset:2px}
+.n-ev.note small{margin-top:3px}
+/* what changed: one group per curtain / blind / wall, one line per change (Purvi, 18 Oct: "make it pointers") */
+.n-chgs{display:grid;gap:12px;margin:12px 0 4px;padding:14px 16px;border-radius:12px;background:var(--soft)}
+.n-cg{display:grid;gap:4px}
+.n-cgt{margin:0;font-size:15.5px;color:var(--muted)}
+.n-cgt b{color:var(--ink);font-weight:600}
+.n-cg ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.n-cg li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;font-size:15px;line-height:1.45}
+.n-ck{color:var(--muted)}
+.n-ca{color:var(--muted)}
+.n-arr{color:var(--faint);margin:0 8px}
+.n-cg li b{font-weight:600}
+.n-tag{font-style:normal;font-size:12.5px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--good-soft);color:var(--good);margin-left:6px;white-space:nowrap}
+.n-tag.gone{background:var(--soft2);color:var(--muted)}
+.n-chgnote{margin:8px 0 2px;font-size:15px;color:var(--muted)}
+.n-chgmore summary{cursor:pointer;color:var(--muted);font-size:14px}
+.n-chgmore[open] summary{margin-bottom:12px}
+.n-chgmore .n-cg+.n-cg{margin-top:12px}
+.n-vh{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.n-vt{margin:0;font-size:16.5px;font-weight:600}
+.n-vt b{margin-left:4px}
+.n-ver .n-evb{margin-top:0}
+.n-ver small{font-size:13.5px}
+.n-from{justify-self:start;margin:4px 0 0 -6px}
+.n-diff{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:20px;font-size:12.5px;font-weight:600;background:var(--soft);color:var(--muted);white-space:nowrap}
+.n-diff.down{background:var(--good-soft);color:var(--good)}
+.n-diff.up{background:var(--warn-soft);color:var(--warn)}
+@media (max-width:640px){ .n-cg li{grid-template-columns:1fr;gap:0} .n-chgs{padding:12px} .n-comph{display:none} }
+.n-compb [data-cpnote]{margin-left:auto}
 .tdrow{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line2);padding:10px 2px;cursor:pointer;color:inherit}
 .tdrow:hover{background:var(--sel)}
 .tdrow:last-child{border-bottom:0}
@@ -3942,6 +3982,7 @@ async function deleteClient(cid){
   for (const v of await Store.listVersions(cid)) await db.doc(`qversions/${cid}_v${v.n}`).delete();
   try { await db.doc('drafts/' + cid).delete(); } catch(_){}
   for (const t of TD.byCid.get(cid) || []) { try { await db.doc('todos/' + t.id).delete(); } catch(_){} }   // their to-dos (17 Oct)
+  try { for (const d of (await db.collection('notes').where('cid', '==', cid).get()).docs) await db.doc('notes/' + d.id).delete(); } catch(_){}   // their notes (18 Oct)
   await db.doc('clients/' + cid).delete();   // last, so a half-finished delete still shows the client
   delete CL.vers[cid];
 }
@@ -4150,6 +4191,7 @@ async function reassign(cid, email){
   await db.doc('clients/' + cid).update({ownerEmail: email});
   try { await db.doc('drafts/' + cid).update({ownerEmail: email}); } catch(_){}
   for (const v of await Store.listVersions(cid)) await db.doc(`qversions/${cid}_v${v.n}`).update({ownerEmail: email});
+  try { for (const d of (await db.collection('notes').where('cid', '==', cid).get()).docs) await db.doc('notes/' + d.id).update({ownerEmail: email}); } catch(_){}   // their notes go with them (18 Oct)
   delete CL.vers[cid];
 }
 
@@ -5697,7 +5739,7 @@ cpb.addEventListener('click', async e => {
 cpb.addEventListener('change', e => {
   if (e.target.id !== 'cp-owner') return; const c = CL.byId.get(cpId), to = e.target.value; if (!c || !to) { renderClientPage(); return; }
   confirmDlg(`Hand ${esc(c.name)} to ${esc(personName(to))}?`, `${esc(personName(to))} will see this client, their sheet, every quotation sent and their open to-dos. ${c.ownerEmail ? esc(personName(c.ownerEmail)) + ' will no longer see them.' : ''}`, 'Hand over', async () => {
-    try { await reassign(c.id, to); for (const t of openTodos(c.id)) await quiet(setTodo(t.id, {ownerEmail: to})); toast('Handed over'); } catch (er) { toast('Not saved. Check the internet.'); } renderClientPage(); });
+    try { const from = ownerName(c) || 'nobody'; await reassign(c.id, to); for (const t of openTodos(c.id)) await quiet(setTodo(t.id, {ownerEmail: to})); await quiet(addNote(Object.assign({}, c, {ownerEmail: to}), `Handed over from ${from} to ${personName(to)}`, 'log')); toast('Handed over'); } catch (er) { toast('Not saved. Check the internet.'); } renderClientPage(); });
   setTimeout(() => { if (!dlg.open) renderClientPage(); }, 0);
 });
 // ================= the customer page (Purvi, 18 Oct 2026; picked "Option 2: two panes" after two rounds of rendered options)
@@ -5796,8 +5838,114 @@ function cpProps(c){
       : `<div class="n-adds">${empty.map(([k, i, label]) => `<button class="n-add" data-cped="${k}">${cpIcon('plus', 14)}${label}</button>`).join('')}</div>`) : ''}
   </section>`;
 }
-// ---- activity: coming up, then what happened (newest first)
+// ---- notes on a client's timeline (Purvi, 18 Oct: "let me add text/comment/link … like the right side section on odoo or maybe like
+// a whatsapp chat window … the sales exec is just noting down all proper things related to this project and other things are being
+// auto logged"). notes/<id> {cid, ownerEmail = the client's (so whoever handles the client sees them), by (email), who (name), at,
+// text, kind 'note' (typed) | 'log' (written by the app, e.g. a hand-over)}. No photos: the free plan has no file storage (Purvi: skip).
+const NT = {cid: null, state: 'none', list: [], unsub: null};
+let cpNoteDraft = '';
+function watchNotes(cid){
+  if (NT.cid === cid) return;   // already listening (or refused) for this client; a reload tries again
+  if (NT.unsub) { try { NT.unsub(); } catch(_){} NT.unsub = null; }
+  NT.cid = cid; NT.list = []; NT.state = 'loading';
+  if (!shared || !db) { NT.state = 'error'; return; }
+  const again = () => { if (current === 'client' && cpId === cid && !cpTyping()) renderClientPage(); };
+  try {
+    NT.unsub = scoped(db.collection('notes').where('cid', '==', cid)).onSnapshot(s => {
+      NT.list = s.docs.map(d => Object.assign({id: d.id}, d.data())); NT.state = 'ready'; again();
+    }, () => { NT.state = 'error'; NT.unsub = null; again(); });
+  } catch (e) { NT.state = 'error'; }
+}
+const cpTyping = () => { const a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.closest('#cp-body') && a.id !== 'cp-note'); };
+async function addNote(c, text, kind = 'note'){
+  const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await db.doc('notes/' + id).set(clone({cid: c.id, ownerEmail: c.ownerEmail || null, by: String(ME_EMAIL || UID || '').toLowerCase(), who: PF ? PF.name || '' : '', at: new Date().toISOString(), text, kind}));
+}
+// links typed in a note become tappable; everything else stays plain text
+function linkify(t){
+  return esc(t).replace(/\b((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]'"])/gi, u => `<a href="${u.startsWith('www.') ? 'https://' + u : u}" target="_blank" rel="noopener">${u}</a>`);
+}
+
+// ---- what changed between two quotation versions, in plain words (Purvi, 18 Oct: "drawing room main curtain fabric was changed from
+// ___ to ____ … living room roman blind was turned from manual to motorised … in easy to understand language for anyone").
+// Worked out from the snapshots each version keeps; curtain and blind lines keep their id across versions. Height before width.
+const isMotor = t => /^motori[sz]ed/i.test(String(t || ''));
+const trackOnly = t => String(t || '').replace(/^Motori[sz]ed\s*·\s*/i, '');
+const sameV = (x, y) => JSON.stringify(x == null ? '' : x) === JSON.stringify(y == null ? '' : y);
+const sizeTxt = r => `${r.H || '?'}″ high × ${r.W || '?'}″ wide`;
+// one change = one line {k: label, a: before, b: after} (or {t: text}); Purvi, 18 Oct: "each change can get one line … make it pointers"
+function chg(k, a, b){
+  a = String(a == null ? '' : a).trim(); b = String(b == null ? '' : b).trim();
+  return a === b ? null : {k, a, b};
+}
+// returns groups: {room, what, tag ('New' | 'Removed' | ''), lines: [...]}; a group is one curtain / blind / wall / the quotation itself
+function verChanges(A, B){
+  A = A || {}; B = B || {}; const G = [], live = L => (L || []).filter(r => +r.W || +r.H), byId = L => new Map(L.map(r => [r.id, r]));
+  const add = (room, what, tag, lines) => { lines = lines.filter(Boolean); if (tag || lines.length) G.push({room, what, tag, lines}); };
+  // curtains
+  const cA = live(A.rows), cB = live(B.rows), mA = byId(cA), mB = byId(cB);
+  const cWhat = (r, L) => `${r.layer === 'Sheer' ? 'sheer' : 'main'} curtain${L.filter(x => (x.room || '') === (r.room || '') && x.layer === r.layer).length > 1 ? ` (${r.W || '?'}″ wide)` : ''}`;
+  for (const y of cB) { const x = mA.get(y.id);
+    if (!x) { add(y.room || 'Unnamed room', cWhat(y, cB), 'New', [{k: 'Size', b: sizeTxt(y)}, y.fabric && {k: 'Fabric', b: y.fabric}, y.lining && {k: 'Lining', b: y.lining}, y.track && {k: 'Track', b: `${isMotor(y.track) ? 'Motorised' : 'Manual'} (${trackOnly(y.track)})`}]); continue; }
+    const motor = isMotor(x.track) !== isMotor(y.track);
+    add(y.room || 'Unnamed room', cWhat(y, cB), '', [
+      ((x.room || '') !== (y.room || '') || x.layer !== y.layer) && {k: 'Renamed', a: `${x.room || 'Unnamed room'} ${cWhat(x, cA)}`, b: `${y.room || 'Unnamed room'} ${cWhat(y, cB)}`},
+      (x.W !== y.W || x.H !== y.H) && {k: 'Size', a: sizeTxt(x), b: sizeTxt(y)},
+      chg('Fabric', x.fabric, y.fabric), chg('Lining', x.lining, y.lining), chg('Stitching', x.style, y.style),
+      motor ? {k: 'Track', a: `${isMotor(x.track) ? 'Motorised' : 'Manual'} (${trackOnly(x.track) || 'no track'})`, b: `${isMotor(y.track) ? 'Motorised' : 'Manual'} (${trackOnly(y.track) || 'no track'})`} : chg('Track', trackOnly(x.track), trackOnly(y.track)),
+      chg('Remote', x.remote, y.remote), chg('Motor', x.motor, y.motor), chg('Fixing', x.fixing, y.fixing), chg('Panels', x.panelTxt, y.panelTxt),
+      x.roll !== y.roll && chg('Roll width', x.roll && x.roll + ' cm', y.roll && y.roll + ' cm'), !sameV(x.extras, y.extras) && {t: 'Extras changed'}]); }
+  for (const x of cA) if (!mB.has(x.id)) add(x.room || 'Unnamed room', cWhat(x, cA), 'Removed', []);
+  // blinds
+  const bA = live(A.blinds), bB = live(B.blinds), nA = byId(bA), nB = byId(bB);
+  const bWhat = r => `${r.fam ? r.fam.replace(/\s*blinds?$/i, '') + ' ' : ''}blind`;
+  for (const y of bB) { const x = nA.get(y.id);
+    if (!x) { add(y.room || 'Unnamed room', bWhat(y), 'New', [{k: 'Size', b: sizeTxt(y)}, y.shade && {k: 'Shade', b: y.shade}, {k: 'Works', b: y.motor ? `Motorised (${y.motor})` : 'Manual'}]); continue; }
+    add(y.room || 'Unnamed room', bWhat(y), '', [
+      (x.room || '') !== (y.room || '') && {k: 'Renamed', a: x.room || 'Unnamed room', b: y.room || 'Unnamed room'},
+      (x.W !== y.W || x.H !== y.H) && {k: 'Size', a: sizeTxt(x), b: sizeTxt(y)},
+      !x.motor !== !y.motor ? {k: 'Works', a: x.motor ? `Motorised (${x.motor})` : 'Manual', b: y.motor ? `Motorised (${y.motor})` : 'Manual'} : chg('Motor', x.motor, y.motor),
+      chg('Company', BSUPS[x.sup] || x.sup, BSUPS[y.sup] || y.sup), chg('Type', x.fam, y.fam), chg('System', x.sys, y.sys), chg('Collection', x.series, y.series), chg('Shade', x.shade, y.shade),
+      +(x.qty || 1) !== +(y.qty || 1) && {k: 'Quantity', a: String(x.qty || 1), b: String(y.qty || 1)},
+      !(sameV(x.adds, y.adds) && sameV(x.addon, y.addon)) && {t: 'Extras changed'}, !sameV(x.o, y.o) && {t: 'Options changed'}]); }
+  for (const x of bA) if (!nB.has(x.id)) add(x.room || 'Unnamed room', bWhat(x), 'Removed', []);
+  // wallpaper, upholstery, flooring, mattress: these lines have no id, so they are matched in order
+  for (const k of MP_ORDER) {
+    const P = MP[k], f = L => ((L || {})[k] || []).filter(r => mpFilled(k, r)), xa = f(A.more), xb = f(B.more), one = (P.one || 'line');
+    const room = (r, i) => r.room || `${P.name} ${one} ${i + 1}`, what = r => `${P.name.toLowerCase()}${r.wall ? ', ' + r.wall : ''}`;
+    for (let i = 0; i < Math.max(xa.length, xb.length); i++) { const x = xa[i], y = xb[i];
+      if (!x) { add(room(y, i), what(y), 'New', []); continue; }
+      if (!y) { add(room(x, i), what(x), 'Removed', []); continue; }
+      add(room(y, i), what(y), '', P.cols.filter(col => col.k && col.label && !sameV(x[col.k], y[col.k])).map(col => chg(col.label, x[col.k], y[col.k]))); }
+  }
+  // the quotation itself
+  const qa = A.q || {}, qb = B.q || {}, d = q => q.discAmt ? '₹' + q.discAmt : q.disc ? q.disc + '%' : 'none';
+  const QL = {contact: 'Contact person', phone: 'Contact number', email: 'Email', addr: 'Delivery address', ddate: 'Delivery date', exec: 'Executive', accounts: 'Accounts', ref: 'Reference', no: 'Invoice no.'};
+  add('Quotation', 'details', '', [d(qa) !== d(qb) && {k: 'Discount', a: d(qa), b: d(qb)}, ...Object.keys(QL).map(k => chg(QL[k], qa[k], qb[k]))]);
+  return G;
+}
+// under each version: what changed since the one before, one group per item and one line per change
+function verChangeList(x, V){
+  if (!x.snap) return '';
+  const prev = V.find(v => v.n === x.n - 1);
+  if (!prev) { const n = sheetCounts(x.snap) || []; return n.length ? `<p class="n-chgnote">First quotation: ${esc(n.join(', '))}</p>` : ''; }
+  if (!prev.snap) return '';
+  const G = verChanges(prev.snap, x.snap);
+  if (!G.length) return `<p class="n-chgnote">${Math.round(prev.total) === Math.round(x.total) ? 'Nothing changed. The same quotation was downloaded again.' : 'Nothing in the sheet changed. The price list rates changed.'}</p>`;
+  const line = (l, fresh) => l.t ? `<li><span class="n-ck"></span><span>${esc(l.t)}</span></li>`
+    : !l.b ? `<li><span class="n-ck">${esc(l.k)}</span><span><span class="n-ca">${esc(l.a)}</span> <em class="n-tag gone">removed</em></span></li>`
+    : `<li><span class="n-ck">${esc(l.k)}</span><span>${l.a ? `<span class="n-ca">${esc(l.a)}</span><span class="n-arr" aria-label="changed to">→</span>` : ''}<b>${esc(l.b)}</b>${!l.a && !fresh ? ' <em class="n-tag">added</em>' : ''}</span></li>`;
+  const grp = g => `<div class="n-cg"><p class="n-cgt"><b>${esc(g.room)}</b> ${esc(g.what)}${g.tag ? ` <em class="n-tag${g.tag === 'Removed' ? ' gone' : ''}">${g.tag}</em>` : ''}</p>${g.lines.length ? `<ul>${g.lines.map(l => line(l, g.tag === 'New')).join('')}</ul>` : ''}</div>`;
+  const shown = G.length > 4 ? G.slice(0, 3) : G, rest = G.length > 4 ? G.slice(3) : [];
+  return `<div class="n-chgs">${shown.map(grp).join('')}${rest.length ? `<details class="n-chgmore"><summary>${rest.length} more changed</summary>${rest.map(grp).join('')}</details>` : ''}</div>`;
+}
+const amtDiff = (x, V) => { const p = V.find(v => v.n === x.n - 1); if (!p) return ''; const d = Math.round(x.total) - Math.round(p.total);
+  return d ? `<span class="n-diff ${d < 0 ? 'down' : 'up'}">${rs(Math.abs(d))} ${d < 0 ? 'less' : 'more'} than v${p.n}</span>` : `<span class="n-diff">Same as v${p.n}</span>`; };
+
+// ---- activity: the note box, coming up, then everything that happened (newest first): notes typed by the team as chat bubbles,
+// and what the app logs by itself (enquiry added, quotations with what changed, changes asked, to-dos done, won / lost, hand-overs)
 function cpActivity(c, V){
+  watchNotes(c.id);
   const T = TD.byCid.get(c.id) || [], up = T.filter(t => t.state !== 'done').sort(tdSort).slice(1), s = statusOf(c), o = c.outcome || {};
   const ev = [];
   if (c.created) ev.push({at: c.created, k: 'new'});
@@ -5805,23 +5953,50 @@ function cpActivity(c, V){
   if (c.changeReq && c.changeReq.at) ev.push({at: c.changeReq.at, k: 'ch'});
   if (s === 'won' || s === 'lost') ev.push({at: o.at, k: s});
   for (const t of T.filter(t => t.state === 'done')) ev.push({at: t.doneAt, k: 't', t});
+  if (NT.cid === c.id) for (const n of NT.list) ev.push({at: n.at, k: n.kind === 'log' ? 'log' : 'note', n});
   ev.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
   const who = e => PF && IS_ADMIN && e ? ', ' + esc(personName(e).split(' ')[0]) : '';
+  const mineNote = n => !PF || IS_ADMIN || n.by === String(ME_EMAIL || '').toLowerCase();
   const item = e => {
+    if (e.k === 'note') { const n = e.n;
+      return `<li class="n-ev note"><span class="n-evd who" title="${esc(n.who || '')}">${esc(initials(n.who || n.by))}</span><div class="n-evm"><div class="n-bub">${linkify(n.text || '')}</div><small>${esc(n.who || n.by || '')}, ${esc(agoTxt(n.at))}${mineNote(n) ? ` <button class="n-link sm" data-delnote="${esc(n.id)}">Delete</button>` : ''}</small></div></li>`; }
+    if (e.k === 'log') return `<li class="n-ev"><span class="n-evd">${cpIcon('user', 13)}</span><div class="n-evm"><p>${esc(e.n.text || '')}</p><small>${esc(agoTxt(e.n.at))}${e.n.who ? ', ' + esc(e.n.who) : ''}</small></div></li>`;
     if (e.k === 'v') { const x = e.v, fin = s === 'won' && o.n === x.n;
-      return `<li class="n-ev"><span class="n-evd v${fin ? ' fin' : ''}">v${x.n}</span><div class="n-evm"><p><b>Quotation v${x.n} sent</b> for <b>${rs(x.total)}</b>${fin ? ' <span class="n-stat won">Accepted</span>' : ''}</p><small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''}</small>
-        <span class="n-evb"><button class="n-btn sm" data-act="view" data-n="${x.n}">View</button><button class="n-btn sm" data-act="pdf" data-n="${x.n}">PDF</button><button class="n-link sm" data-act="from" data-n="${x.n}">Start again from this</button></span></div></li>`; }
+      return `<li class="n-ev n-ver"><span class="n-evd v${fin ? ' fin' : ''}">v${x.n}</span><div class="n-evm">
+        <div class="n-vh"><p class="n-vt">Quotation v${x.n} sent <b>${rs(x.total)}</b>${fin ? ' <span class="n-stat won">Accepted</span>' : ''}</p>
+          <span class="n-evb"><button class="n-btn sm" data-act="view" data-n="${x.n}">View</button><button class="n-btn sm" data-act="pdf" data-n="${x.n}">PDF</button></span></div>
+        <small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''} ${amtDiff(x, V)}</small>
+        ${verChangeList(x, V)}
+        <button class="n-link sm n-from" data-act="from" data-n="${x.n}">Start again from v${x.n}</button></div></li>`; }
     if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${who(e.t.ownerEmail)}</small></button></li>`;
     if (e.k === 'ch') return `<li class="n-ev"><span class="n-evd ch">${tdIcon('revise', 14)}</span><div class="n-evm"><p>They asked for changes${c.changeReq.note ? `<span class="n-evn">${esc(c.changeReq.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></div></li>`;
     if (e.k === 'won' || e.k === 'lost') return `<li class="n-ev"><span class="n-evd ${e.k}">${e.k === 'won' ? '✓' : '×'}</span><div class="n-evm"><p>${e.k === 'won' ? `Marked as won, v${o.n}` : `Marked as lost${o.reason ? ': ' + esc(o.reason) : ''}`}${o.note ? `<span class="n-evn">${esc(o.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${o.who ? ', ' + esc(o.who) : ''}</small></div></li>`;
     return `<li class="n-ev"><span class="n-evd">${cpIcon('plus', 12)}</span><div class="n-evm"><p>Enquiry added</p><small>${esc(agoTxt(e.at))}</small></div></li>`;
   };
   const upRow = t => `<button class="n-up${overdue(t) ? ' late' : ''}" data-todo="${esc(t.id)}">${tdIcon(t.type, 16)}<span>${esc(tdName(t.type))}${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><em>${esc(dueTxt(t))}${who(t.ownerEmail)}</em></button>`;
-  return `<section class="n-sec"><h2 class="n-h2">Activity</h2>
+  const box = NT.state === 'error' ? `<p class="n-tip">${PF && PF.owner ? 'Notes are not switched on yet: paste the notes rule in Firebase → Firestore → Rules (Claude has it ready).' : 'Notes are not switched on yet. Ask Purvi.'} <button class="n-link sm" data-sched="${esc(c.id)}">Add a to-do</button></p>`
+    : `<div class="n-comp"><textarea id="cp-note" rows="2" placeholder="Write a note: what they said, a link, what to remember…" aria-label="Write a note">${esc(cpNoteDraft)}</textarea>
+      <div class="n-compb"><button class="n-btn" data-sched="${esc(c.id)}">${cpIcon('todo', 16)} Add to-do</button><span class="n-comph">Everyone handling this client sees it.</span><button class="n-btn${cpNoteDraft.trim() ? ' dark' : ''}" data-cpnote="1"${cpNoteDraft.trim() ? '' : ' disabled'}>Post</button></div></div>`;
+  return `<section class="n-sec"><h2 class="n-h2">Activity</h2>${box}
     ${up.length ? `<div class="n-ups"><span class="n-upl">Also coming up</span>${up.map(upRow).join('')}</div>` : ''}
-    ${!c.latest ? '<p class="n-tip">Each quotation PDF you download is kept here as v1, v2 and so on.</p>' : V === 'error' ? '<p class="n-tip">Could not load the quotations. Open the client again.</p>' : !Array.isArray(V) ? '<p class="n-tip">Loading quotations…</p>' : ''}
+    ${!c.latest ? '<p class="n-tip">Each quotation PDF you download is kept here as v1, v2 and so on, with what changed.</p>' : V === 'error' ? '<p class="n-tip">Could not load the quotations. Open the client again.</p>' : !Array.isArray(V) ? '<p class="n-tip">Loading quotations…</p>' : ''}
     <ol class="n-tl">${ev.map(item).join('')}</ol></section>`;
 }
+// the note box: Post (or Ctrl / ⌘ + Enter); the text survives redraws while you type
+cpb.addEventListener('input', e => { if (e.target.id !== 'cp-note') return; cpNoteDraft = e.target.value;
+  const p = cpb.querySelector('[data-cpnote]'); if (p) { const on = !!cpNoteDraft.trim(); p.disabled = !on; p.classList.toggle('dark', on); } });
+async function postNote(){
+  const c = CL.byId.get(cpId), text = cpNoteDraft.trim(); if (!c || !text) return;
+  const p = cpb.querySelector('[data-cpnote]'); if (p) p.disabled = true;
+  try { await addNote(c, text); cpNoteDraft = ''; const t = $('#cp-note'); if (t) t.value = ''; renderClientPage(); }
+  catch (er) { toast(NT.state === 'error' ? 'Notes are not switched on yet.' : 'Not saved. Check the internet.'); if (p) p.disabled = false; }
+}
+cpb.addEventListener('keydown', e => { if (e.target.id === 'cp-note' && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); postNote(); } });
+cpb.addEventListener('click', e => {
+  if (e.target.closest('[data-cpnote]')) { postNote(); return; }
+  const d = e.target.closest('[data-delnote]'); if (!d) return; const n = NT.list.find(x => x.id === d.dataset.delnote); if (!n) return;
+  confirmDlg('Delete this note?', esc(String(n.text || '').slice(0, 140)), 'Delete', async () => { try { await db.doc('notes/' + n.id).delete(); } catch (er) { toast('Not deleted. Check the internet.'); } });
+});
 
 function renderClientPage(){
   if (cpFresh && cpFresh !== cpId) cpFresh = null;
@@ -6055,4 +6230,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-183247 -->
+<!-- build 20261017-191052 -->
