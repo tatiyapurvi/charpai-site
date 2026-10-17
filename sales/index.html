@@ -570,6 +570,10 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .cp{max-width:900px;display:grid;gap:14px}   /* left-aligned under the client bar */
 .back{border:0;background:none;color:var(--muted);font-weight:600;cursor:pointer;padding:4px 0;font-size:14.5px;justify-self:start}
 .back:hover{color:var(--ink)}
+.cbar .back{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border-radius:8px;margin-right:2px}
+.cbar .back:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.crumb{border:0;background:none;color:var(--muted);font:600 15px var(--body);cursor:pointer;padding:3px 6px;border-radius:6px}
+.crumb:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .cp-head{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
 .cp-head h2{margin:0 0 4px;font:700 34px/1.05 var(--num)}
 .cp-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -595,11 +599,12 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .ctabs-row{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--line)}
 .ctabs{display:flex;gap:2px;overflow-x:auto;flex:1 1 auto;min-width:0;align-items:flex-end;scrollbar-width:none}
 .ctabs::-webkit-scrollbar{display:none}
+@media (max-width:640px){ .ctabs-row{flex-wrap:wrap;column-gap:8px} .ctabs-row .qgo{order:-1;flex:1 1 0;justify-content:center;margin:0 0 6px;font-size:16px} .ctabs-row .ctabs{flex:1 0 100%} }   /* phones: the two buttons on their own line above the tabs */
 .ctab-sep{flex:none;width:1px;height:22px;background:var(--line);margin:0 8px 11px}
 .ctab .cnt{display:inline-block;margin-left:6px;min-width:20px;padding:1px 6px;border-radius:10px;background:var(--line2);color:var(--muted);font:600 12px/1.4 var(--body);text-align:center;vertical-align:2px}
 .ctab[aria-selected="true"] .cnt{background:var(--ink);color:var(--paper)}
-.qgo{flex:none;display:inline-flex;align-items:center;gap:7px;margin:0 0 7px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:8px;padding:7px 15px 7px 12px;font:700 18px/1.1 var(--num);cursor:pointer;white-space:nowrap}
-.qgo:hover{opacity:.88}
+.qgo{flex:none;display:inline-flex;align-items:center;gap:7px;margin:0 0 7px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);border-radius:8px;padding:7px 15px 7px 12px;font:700 18px/1.1 var(--num);cursor:pointer;white-space:nowrap}
+.qgo:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .qgo[aria-pressed="true"]{background:var(--tape);border-color:var(--tape);color:var(--tape-ink)}
 .ctab{border:0;background:none;padding:10px 16px 9px;font:700 18px/1.1 var(--num);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
 .ctab:hover{color:var(--ink)}
@@ -736,7 +741,6 @@ tr.dash-r:hover td{background:var(--sel)}
 .kc:hover{border-color:var(--faint)}
 .kc:focus-visible{outline:2.5px solid var(--dim);outline-offset:1px}
 .kc.drag{opacity:.45}
-.kc.asked{border-left:4px solid var(--warn)}
 .kc-top{display:flex;gap:8px;align-items:baseline;justify-content:space-between}
 .kc-name{font:700 17px/1.2 var(--num);letter-spacing:.01em;min-width:0;overflow-wrap:anywhere}
 .kc-sub{color:var(--muted);font-size:13px}
@@ -811,6 +815,165 @@ tr.dash-r:hover td{background:var(--sel)}
 .tickb[aria-pressed="true"]::before{content:'✓ '}
 .asked-b{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;background:var(--warn-soft);border-color:var(--warn)}
 .asked-b p{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+/* customer page (18 Oct): calm surfaces, one typeface, soft buttons, one dark button. Left: who they are; right: next step + activity */
+#cp-body{--soft:color-mix(in srgb,var(--ink) 6%,transparent);--soft2:color-mix(in srgb,var(--ink) 10%,transparent);--r:16px}
+.n-page{display:grid;gap:16px;font-family:var(--body);grid-template-columns:minmax(0,1fr)}
+.n-card{background:var(--paper);border:1px solid var(--line2);border-radius:var(--r);padding:28px}
+.n-i{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* buttons: soft by default; one dark button per screen */
+.n-btn{border:0;background:var(--soft);color:var(--ink);border-radius:10px;padding:9px 16px;font:500 15px var(--body);cursor:pointer;white-space:nowrap;transition:background .15s}
+.n-btn:hover{background:var(--soft2)}
+.n-btn.dark{background:var(--ink);color:var(--paper)}
+.n-btn.dark:hover{opacity:.88}
+.n-btn.good{background:var(--good-soft);color:var(--good)}
+.n-btn.danger{background:#FBE3E0;color:#A1281B}
+.n-btn.sm{padding:6px 12px;font-size:13.5px;border-radius:8px}
+.n-link{border:0;background:none;color:var(--muted);font:500 14px var(--body);cursor:pointer;padding:4px 6px;border-radius:6px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
+.n-link:hover{color:var(--ink)}
+.n-link.sm{font-size:13.5px}
+:focus-visible{outline:2px solid var(--dim);outline-offset:2px}
+/* header */
+.n-head{display:grid;gap:10px}
+.n-headtop{display:flex;justify-content:space-between;align-items:flex-start}
+.n-av{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--tape-soft);color:var(--tape-ink);font:600 20px var(--body);letter-spacing:.02em}
+.n-name{margin:4px 0 0;font:600 30px/1.15 var(--body);letter-spacing:-.01em}
+.n-name button{all:unset;cursor:text;border-radius:8px;padding:0 4px;margin-left:-4px;overflow-wrap:anywhere}
+.n-name button:hover{background:var(--soft)}
+.n-nameed{display:flex;gap:8px;align-items:center}
+.n-nameed input{flex:1;font:600 26px var(--body);border:1.5px solid var(--ink);border-radius:10px;padding:6px 10px;background:var(--field)}
+.n-sub{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.n-sub .stars.edit .st{font-size:19px}
+#cp-saved{margin-left:0;color:var(--faint);font-size:13px}
+.n-stat{display:inline-block;padding:3px 10px;border-radius:20px;font:500 13.5px var(--body);background:var(--soft);color:var(--muted)}
+.n-stat.quoted{background:#E3ECF7;color:#1F4E79}
+.n-stat.won{background:var(--good-soft);color:var(--good)}
+.n-stat.lost{background:var(--soft2);color:var(--muted)}
+.n-asked{display:flex;gap:10px;align-items:baseline;margin:2px 0 0;font-size:15px;color:var(--warn)}
+.n-asked small{color:var(--muted);font-size:13px;margin-left:4px}
+.n-asked .n-link{margin-left:auto}
+.n-dot{width:8px;height:8px;border-radius:50%;background:var(--warn);flex:none;transform:translateY(-1px)}
+/* the round buttons, Apple Contacts style */
+.n-round{display:flex;gap:22px;margin:10px 0 2px}
+.n-rb{display:flex;flex-direction:column;align-items:center;gap:6px;border:0;background:none;padding:0;cursor:pointer;color:var(--ink);text-decoration:none;font:500 13px var(--body)}
+.n-rb span{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--soft);transition:background .15s}
+.n-rb:hover span{background:var(--soft2)}
+/* next step */
+.n-next{display:flex;gap:14px;align-items:center;margin-top:22px;padding:16px 18px;border-radius:14px;background:var(--tape-soft)}
+.n-next.late{background:var(--warn-soft)}
+.n-next.empty{width:100%;border:1.5px dashed var(--line);background:none;cursor:pointer;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
+.n-next.empty:hover{border-color:var(--faint)}
+.n-nextm{all:unset;cursor:pointer;flex:1;display:grid;gap:3px;min-width:0}
+.n-nextl{font-size:13px;color:var(--muted)}
+.n-next.late .n-nextl{color:var(--warn);font-weight:600}
+.n-nextt{display:flex;gap:8px;align-items:center;font:600 18px var(--body)}
+.n-nexts{font-size:14.5px;color:var(--muted)}
+/* did they book */
+.n-book{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:14px;padding:4px 2px}
+.n-bookq{color:var(--muted);font-size:15px}
+.n-bookb{display:flex;gap:8px;flex-wrap:wrap}
+.n-book.won,.n-book.lost{padding:12px 16px;border-radius:12px;background:var(--good-soft);color:var(--good)}
+.n-book.lost{background:var(--soft);color:var(--ink)}
+.n-book small{color:var(--muted);font-size:13px}
+/* work list */
+/* details */
+.n-h2{margin:0 0 12px;font:600 18px var(--body)}
+.n-props{display:grid}
+.n-prop{display:grid;grid-template-columns:22px 150px minmax(0,1fr);gap:12px;align-items:start;text-align:left;border:0;background:none;padding:9px 8px;margin:0 -8px;border-radius:8px;color:var(--ink);font:400 15px/1.5 var(--body);cursor:pointer}
+div.n-prop{cursor:default}
+button.n-prop:hover{background:var(--soft)}
+.n-pi{color:var(--faint);padding-top:2px}
+.n-pl{color:var(--muted)}
+.n-pv{min-width:0;overflow-wrap:anywhere;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.n-pv small{color:var(--muted);font-size:13.5px}
+.n-pre{white-space:pre-wrap}
+.n-empty{color:var(--faint)}
+.n-chip{display:inline-block;padding:2px 9px;border-radius:6px;background:var(--soft);font-size:14px}
+.n-sel{border:0;background:var(--soft);border-radius:8px;padding:5px 8px;font:inherit;cursor:pointer}
+.n-prop.editing{background:var(--soft);cursor:default}
+.n-pe{flex-direction:column;align-items:stretch;gap:8px}
+.n-pe input,.n-pe textarea{width:100%;border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;background:var(--field);font:inherit;font-size:16px}
+.n-pe .n-btn{align-self:flex-start}
+.n-pe .ticks{display:flex;flex-wrap:wrap;gap:6px}
+.n-pe .tickb{border:0;background:var(--paper);border-radius:8px;padding:6px 11px;font:500 14px var(--body);color:var(--ink);cursor:pointer}
+.n-pe .tickb[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.n-pe .tickb[aria-pressed="true"]::before{content:'✓ '}
+.n-adds{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line2)}
+.n-add{display:inline-flex;gap:5px;align-items:center;border:0;background:none;color:var(--muted);font:500 14px var(--body);padding:6px 10px;border-radius:8px;cursor:pointer}
+.n-add:hover{background:var(--soft);color:var(--ink)}
+.n-addmore{margin-top:8px}
+/* activity */
+.n-ups{display:grid;gap:4px;margin-bottom:16px}
+.n-upl{font-size:13px;color:var(--muted);margin-bottom:2px}
+.n-up{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:var(--soft);border-radius:10px;padding:11px 14px;cursor:pointer;color:var(--ink);font:500 15px var(--body)}
+.n-up:hover{background:var(--soft2)}
+.n-up span{flex:1;display:grid}
+.n-up small{color:var(--muted);font-weight:400;font-size:13.5px}
+.n-up em{font-style:normal;color:var(--muted);font-size:14px;white-space:nowrap}
+.n-up.late em{color:var(--warn);font-weight:600}
+.n-tip{color:var(--muted);font-size:14.5px;margin:0 0 10px}
+.n-tl{list-style:none;margin:0;padding:0}
+.n-ev{display:flex;gap:14px;position:relative;padding-bottom:20px}
+.n-ev:not(:last-child)::before{content:'';position:absolute;left:13px;top:30px;bottom:2px;width:1.5px;background:var(--line2)}
+.n-evd{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--soft);color:var(--muted);font:600 12px var(--body)}
+.n-evd.v{background:#E3ECF7;color:#1F4E79}
+.n-evd.fin,.n-evd.won{background:var(--good-soft);color:var(--good)}
+.n-evd.ch{background:var(--warn-soft);color:var(--warn)}
+.n-evm{flex:1;min-width:0;display:grid;gap:2px;padding-top:3px}
+.n-evbtn{all:unset;cursor:pointer;flex:1;display:grid;gap:2px;padding-top:3px;border-radius:6px}
+.n-evbtn:hover p{text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.n-evm p{margin:0;font-size:15px}
+.n-evn{display:block;color:var(--muted);font-size:14px}
+.n-evm small{color:var(--faint);font-size:13px}
+.n-evb{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+/* more menu */
+.n-more{position:relative}
+.n-more summary{list-style:none;cursor:pointer;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
+.n-more summary::-webkit-details-marker{display:none}
+.n-more summary:hover,.n-more[open] summary{background:var(--soft);color:var(--ink)}
+.n-menu{position:absolute;right:0;top:44px;z-index:10;width:270px;background:var(--paper);border:1px solid var(--line2);border-radius:14px;padding:16px;box-shadow:0 12px 32px rgba(20,30,25,.14)}
+.n-menu p{margin:0 0 12px;font-size:14px;color:var(--muted)}
+.n-main{display:grid;gap:16px;align-content:start}
+.n-page .n-main>.n-next{margin-top:0;padding:20px 22px}
+.n-page .n-main>.n-book{margin-top:0;background:var(--paper);border:1px solid var(--line2);border-radius:var(--r);padding:14px 22px}
+.n-page .n-main>.n-book.won{background:var(--good-soft);border-color:transparent}
+.n-page .n-side .n-sec{margin-top:26px;padding-top:22px;border-top:1px solid var(--line2)}
+.n-page .n-side .n-prop{grid-template-columns:22px 118px minmax(0,1fr)}
+@media (min-width:1000px){
+  .n-page{grid-template-columns:420px minmax(0,1fr);align-items:start}
+  .n-page .n-side{position:sticky;top:76px;max-height:calc(100dvh - 96px);overflow:auto}
+}
+/* phones */
+@media (max-width:640px){
+  .n-card{padding:20px 18px;border-radius:14px}
+  .n-name{font-size:26px}
+  .n-round{gap:0;justify-content:space-between}
+  .n-prop,.n-page .n-side .n-prop{grid-template-columns:22px minmax(0,1fr);gap:2px 12px}
+  .n-prop .n-pv{grid-column:2}
+  .n-next{flex-direction:column;align-items:stretch}
+  .n-next .n-btn{align-self:flex-start}
+  .n-book{flex-direction:column;align-items:flex-start}
+  .n-page .n-main>.n-book,.n-page .n-main>.n-next{padding:16px 18px}
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #cp-body{--soft:color-mix(in srgb,var(--ink) 9%,transparent);--soft2:color-mix(in srgb,var(--ink) 15%,transparent)}
+  :root:not([data-theme="light"]) .n-stat.quoted,:root:not([data-theme="light"]) .n-evd.v{background:#1E3346;color:#9CC3EA}
+  :root:not([data-theme="light"]) .n-av{color:var(--tape)}}
+:root[data-theme="dark"] #cp-body{--soft:color-mix(in srgb,var(--ink) 9%,transparent);--soft2:color-mix(in srgb,var(--ink) 15%,transparent)}
+:root[data-theme="dark"] .n-stat.quoted,:root[data-theme="dark"] .n-evd.v{background:#1E3346;color:#9CC3EA}
+:root[data-theme="dark"] .n-av{color:var(--tape)}
+@media (prefers-reduced-motion:reduce){.n-btn,.n-rb span{transition:none}}
+@media (max-width:999px){
+  .n-page{display:flex;flex-direction:column;gap:16px}
+  .n-page .n-side,.n-page .n-main{display:contents}
+  .n-page .n-side>.n-head,.n-page .n-side>.n-sec{background:var(--paper);border:1px solid var(--line2);border-radius:var(--r);padding:20px 18px}
+  .n-page .n-side>.n-sec{margin-top:0;border-top:1px solid var(--line2)}
+  .n-page .n-side>.n-head{order:1}.n-page .n-main>.n-next{order:2}.n-page .n-main>.n-book{order:3}.n-page .n-side>.n-sec{order:5}.n-page .n-main>.n-card{order:6}
+}
+.n-q{font-size:15px;color:var(--muted)}
+.n-q b{color:var(--ink);font-weight:600}
+.n-changed{color:var(--muted)}
+.n-changed .n-dot{background:var(--dim)}
+
+.n-ovsp{flex:1}
 .tdrow{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line2);padding:10px 2px;cursor:pointer;color:inherit}
 .tdrow:hover{background:var(--sel)}
 .tdrow:last-child{border-bottom:0}
@@ -878,6 +1041,7 @@ tr.dash-r:hover td{background:var(--sel)}
 
 <main class="page">
   <div class="cbar" id="cbar" hidden></div>
+  <div class="cbar" id="setcrumb" hidden></div>
   <div class="subtabs" id="subtabs">
     <button class="subtab" id="sub-measure" data-sub="c-prices">Curtain prices</button>
     <button class="subtab" id="sub-prices" data-sub="b-prices">Blinds prices</button>
@@ -3899,28 +4063,37 @@ function renderCbar(){
     bar.innerHTML = `<div class="cbar-top"><span class="cbar-name" style="cursor:default">Sheet on this device</span></div>${ctabsHTML(false)}`;
     return;
   }
-  const back = `<button class="back" data-act="clients">← ${PF && IS_ADMIN ? 'Clients' : 'My Clients'}</button>`;
+  const back = `<button class="back" data-act="back" aria-label="Back" title="Back">${BACK_SVG}</button><button class="crumb" data-act="clients">${PF && IS_ADMIN ? 'Clients' : 'My Clients'}</button>`;
   if (current === 'client' && cpId === '__new') { bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span><span class="cbar-name">New enquiry</span><span class="pill">New enquiry</span></div>${ctabsHTML(true)}`; return; }   // the same rows as a saved client, so nothing jumps when it is created
   const cid = current === 'client' ? cpId : state.clientId, here = cid === state.clientId;
   const c = CL.byId.get(cid) || {name: here ? state.house : '', latest: 0};
   const saveTxt = !here || current === 'client' ? '' : draftErr === 'perm' ? `<span class="cbar-save err">Not saved for the team: ${PF ? 'ask Purvi to check your access' : 'ask Purvi to make you a Contributor'}</span>`
     : draftErr ? '<span class="cbar-save err">Not saved yet (no internet?). Kept on this device.</span>'
     : draftBusy || draftTimer ? '<span class="cbar-save">Saving…</span>' : '<span class="cbar-save">Saved ✓</span>';
-  bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span><span class="cbar-name">${esc((here ? state.house : '') || c.name || 'No name')}</span>${c.id && current !== 'client' ? pillHTML(c) : ''}${saveTxt}</div>
+  const nm = esc((here ? state.house : '') || c.name || 'No name'), page = current === 'quote' ? 'Quotation' : current === 'client' ? '' : 'Measurement sheet';
+  bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span>${page ? `<button class="crumb" data-ct="client">${nm}</button><span class="sep">/</span><span class="cbar-name">${page}</span>` : `<span class="cbar-name">${nm}</span>`}${c.id && current !== 'client' ? pillHTML(c) : ''}${saveTxt}</div>
     ${ctabsHTML(true)}`;
 }
-// Overview | the products, each with how many it has | Quotation as its own button on the right (Purvi, 3 Oct: "qtn should be a separate button from the product categories")
+// Overview | (inside the sheet only) the products, each with how many it has | Measurement sheet · Quotation on the right.
+// Purvi, 3 Oct: "qtn should be a separate button from the product categories"; 18 Oct: the product tabs show only after
+// "Measurement sheet" is tapped (not on the client page or the quotation), and both buttons sit in the same place on every page.
+// The button of the page you are on is yellow; the other is outlined.
+const MS_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width:17px;height:17px" aria-hidden="true"><rect x="2.5" y="6" width="15" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6v3M9 6v4M12 6v3M15 6v4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+const QT_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width:17px;height:17px" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 function ctabsHTML(overview){
-  const here = !shared || (current === 'client' ? cpId : state.clientId) === state.clientId;
-  const tab = (v, n, k, subs) => { const c = here && k != null ? k : 0; return `<button class="ctab" role="tab" data-ct="${v}" aria-selected="${current === v || (subs || []).includes(current)}">${n}${c ? `<span class="cnt">${c}</span>` : ''}</button>`; };
-  return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') + '<span class="ctab-sep" aria-hidden="true"></span>' : ''}
-    ${tab('c-measure', 'Curtains', state.rows.filter(r => +r.W || +r.H).length)}${tab('b-measure', 'Blinds', state.blinds.filter(b => +b.W || +b.H).length)}
-    ${MP_TABS.map(([k, n, subs]) => tab(k, n || MP[k].name, (subs || [k]).reduce((a, x) => a + mpCount(x), 0), subs)).join('')}</div>
-    <button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}"><svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Quotation</button></div>`;
+  const cid = current === 'client' ? cpId : state.clientId, here = !shared || cid === state.clientId;
+  const n = shared && cid && cid !== '__new' ? sheetN(cid) : here ? sheetN(cid) : {};
+  const tab = (v, name, subs) => `<button class="ctab" role="tab" data-ct="${v}" aria-selected="${current === v || (subs || []).includes(current)}">${name}${n[v] ? `<span class="cnt">${n[v]}</span>` : ''}</button>`;
+  const inSheet = GATED.includes(current) && current !== 'quote';
+  const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
+  const products = !overview || inSheet ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}` : '';
+  return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') : ''}${products}</div>
+    ${overview ? `<button class="qgo" data-ct="${inSheet ? current : first}" aria-pressed="${inSheet}">${MS_SVG}Measurement sheet</button>` : ''}<button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}Quotation</button></div>`;
 }
 $('#cbar').addEventListener('click', async e => {
   const b = e.target.closest('[data-act], [data-ct]'); if (!b) return;
   if (b.dataset.act === 'clients') { go('clients'); return; }
+  if (b.dataset.act === 'back') { goBack(() => { if (current === 'client') go('clients'); else { cpId = state.clientId; go('client'); } }); return; }
   const v = b.dataset.ct; if (!v || v === current) return;
   if (!shared) { go(v); return; }
   if (current === 'client' && cpId === '__new') { if (v === 'client') return; await cpFlush(); await ensureClient(); }   // a tab on a new enquiry: make the client first
@@ -5105,8 +5278,7 @@ function go(v){
   if ((v === 'people' && !(PF && IS_ADMIN)) || (v === 'dash' && !PF)) v = 'clients';
   if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';   // Purvi, 1 Oct: sales don't see the Prices page
   current = v;
-  // The page's address remembers where you are, so a reload opens the same page (Purvi, 2 Oct). replaceState: no history entry, no hashchange.
-  try { const h = v === 'client' && cpId === '__new' ? 'clients' : v === 'client' && cpId ? 'client/' + cpId : v === 'clients' ? 'clients' + cfQuery() : v; if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h); } catch(_){}
+  navWrite(v);   // the address remembers where you are (reload opens the same page, Purvi 2 Oct); a new page = a new history step (18 Oct)
   const noClient = shared && !state.clientId && GATED.includes(v);   // every sheet belongs to a client
   for (const id of new Set(Object.values(VIEWS))) $('#v-' + id).hidden = noClient ? id !== 'none' : id !== VIEWS[v];
   // Top bar (Purvi, 1 Oct): Dashboard · Clients · Prices · People. Curtains, Blinds and Quotation belong to one client,
@@ -5116,6 +5288,8 @@ function go(v){
   for (const k of 'dhts') $('#tab-' + k).setAttribute('aria-selected', top === k ? 'true' : 'false');
   if (prices) lastPrices = v;
   $('#subtabs').hidden = !prices;
+  const sub = prices || v === 'people', sc = $('#setcrumb'); sc.hidden = !sub;   // Settings › Prices / People: the same ← and path as a client
+  if (sub) sc.innerHTML = `<div class="cbar-top"><button class="back" data-act="back" aria-label="Back" title="Back">${BACK_SVG}</button><button class="crumb" data-act="settings">Settings</button><span class="sep">/</span><span class="cbar-name">${v === 'people' ? 'People' : 'Prices'}</span></div>`;
   $('#sub-measure').setAttribute('aria-selected', v === 'c-prices' ? 'true' : 'false');
   $('#sub-prices').setAttribute('aria-selected', v === 'b-prices' ? 'true' : 'false');
   $('#subnote').textContent = v === 'b-prices' ? 'Blinds price lists, motors and remotes, installation.' : 'Stitching, linings, tracks, motor kits and remotes, installation, upholstery material.';
@@ -5140,7 +5314,36 @@ $('#tab-d').onclick = () => go('dash');
 $('#tab-t').onclick = () => go('todo');
 $('#tab-s').onclick = () => go('settings');
 let lastPrices = 'c-prices';
-addEventListener('hashchange', () => { const [h, qs] = location.hash.slice(1).split('?'); if (h === 'clients') cfFromQuery(qs); if (VIEWS[h] || OLD_VIEW[h]) go(h); });
+// ---- Back (Purvi, 18 Oct: "the back arrow button should take me to the page i was previously on … keep it standard figma/notion practice").
+// Every page change is one browser-history step, so ←, the phone's back button and the browser's back all go to the page you were on.
+// Tabs inside the sheet (Curtains → Blinds), filters and board columns only replace the step, so Back never walks through them.
+// ← with no earlier page of ours (opened from a link or reloaded) goes one level up instead: sheet / quotation → client → Clients.
+const BACK_SVG = '<svg viewBox="0 0 20 20" width="18" height="18" style="width:18px;height:18px" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+let navPop = false;   // true while a Back is being shown: nothing is written to the history then
+const pageKey = v => /prices$/.test(v) ? 'prices' : GATED.includes(v) && v !== 'quote' ? 'sheet' : v;
+function navWrite(v){
+  if (navPop) return;
+  try {
+    const h = '#' + (v === 'client' && cpId === '__new' ? 'clients' : v === 'client' && cpId ? 'client/' + cpId : v === 'clients' ? 'clients' + cfQuery() : v);
+    const cid = v === 'client' ? cpId : GATED.includes(v) ? state.clientId || '' : '', k = pageKey(v) + '|' + cid, st = history.state || {};
+    if (st.k == null || st.k === k) { if (st.k !== k || location.hash !== h) history.replaceState({n: st.n || 0, k, cid}, '', h); }
+    else history.pushState({n: (st.n || 0) + 1, k, cid}, '', h);
+  } catch(_){}
+}
+function goBack(up){ const st = history.state; if (st && st.n > 0) history.back(); else up(); }
+addEventListener('popstate', async e => {
+  const st = e.state || {}; let h = '', qs = ''; try { [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); } catch(_){}
+  if (dlg.open) closeDlg();
+  navPop = true;
+  try {
+    if (h === 'clients') cfFromQuery(qs);
+    if (/^client\/./.test(h)) { cpId = h.slice(7); go('client'); }
+    else if (VIEWS[h] || OLD_VIEW[h]) { const v = OLD_VIEW[h] || h;
+      if (shared && GATED.includes(v) && st.cid && st.cid !== state.clientId) await openClient(st.cid, v);   // that page belonged to another client
+      else go(v); }
+  } finally { navPop = false; }
+});
+$('#setcrumb').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'back') goBack(() => go('settings')); else go('settings'); });
 document.querySelectorAll('.subtab').forEach(x => x.onclick = () => go(x.dataset.sub));
 async function copyText(text, box){
   try { await navigator.clipboard.writeText(text); toast('Copied. Paste it in WhatsApp.'); }
@@ -5333,7 +5536,7 @@ async function ensureClient(){
   if (!creating) creating = (async () => {
     const f = cpVals();
     const id = await createClient({name: f.name || '', phone: f.phone || '', addr: f.addr || '', city: tidyCity(f.city || ''), exec: ''}, {stay: true});
-    cpId = id; cpFresh = id; try { history.replaceState(null, '', '#client/' + id); } catch(_){}
+    cpId = id; cpFresh = id; try { history.replaceState(Object.assign({}, history.state, {k: 'client|' + id, cid: id}), '', '#client/' + id); } catch(_){}
     await quiet(addTodo({cid: id, cname: f.name || '', type: 'make', due: dayPlus(2), note: 'Measure and send the quotation', auto: 'new'}));
     return id;
   })();
@@ -5347,7 +5550,13 @@ function cpVals(){ const v = {}; document.querySelectorAll('#cp-body [data-k]').
 const CORE = {name: 'house', phone: 'phone', addr: 'addr', city: 'city', exec: 'exec'};
 const cpTimers = {};
 function cpQueue(k, v, wait = 700){ clearTimeout(cpTimers[k]); cpSaving(true); cpTimers[k] = setTimeout(() => { delete cpTimers[k]; saveField(k, v); }, wait); }
-async function cpFlush(){ for (const k of Object.keys(cpTimers)) { clearTimeout(cpTimers[k]); delete cpTimers[k]; const x = document.querySelector(`#cp-body [data-k="${k}"]`); if (x) await saveField(k, x.value.trim()); } }
+async function cpFlush(){
+  for (const k of Object.keys(cpTimers)) {
+    clearTimeout(cpTimers[k]); delete cpTimers[k];
+    if (k === 'arch') { const v = id => (document.getElementById(id) || {}).value || ''; await saveField('arch', {name: v('cpf-archName').trim(), phone: v('cpf-archPhone').trim()}); continue; }   // two boxes, one field (was lost when leaving fast)
+    const x = document.querySelector(`#cp-body [data-k="${k}"]`); if (x) await saveField(k, x.value.trim());
+  }
+}
 let cpBusy = 0;
 function cpSaving(on, err){ const s = $('#cp-saved'); if (!s) return; s.className = 'cbar-save' + (err ? ' err' : ''); s.textContent = err ? 'Not saved. Check the internet.' : on || cpBusy || Object.keys(cpTimers).length ? 'Saving…' : 'Saved ✓'; }
 async function saveField(k, v){
@@ -5381,7 +5590,8 @@ function sheetOfClient(cid){
 const tick = (k, list, on, name) => `<div class="ticks" role="group" aria-label="${esc(name)}">${list.map(([v, n]) => `<button type="button" class="tickb" data-tick="${k}" data-v="${v}" aria-pressed="${on.includes(v)}">${esc(n)}</button>`).join('')}</div>`;
 const cpField = (k, label, val, attrs = '') => `<label class="cpf"><span>${label}</span><input data-k="${k}" id="cpf-${k}" value="${esc(val || '')}" autocomplete="off" ${attrs}></label>`;
 function archList(){ const m = new Map(); for (const c of CL.list) if (c.arch && c.arch.name) m.set(c.arch.name.trim().toLowerCase(), c.arch); return [...m.values()]; }
-function renderClientPage(){
+// The new-enquiry form (also the fallback while a client loads). Saved clients get renderClientPage below.
+function renderEnquiryPage(){
   if (cpFresh && cpFresh !== cpId) cpFresh = null;
   const el = $('#cp-body'), isNew = cpId === NEW || cpFresh === cpId, c = cpId === NEW ? {} : CL.byId.get(cpId);
   if (!c) { el.innerHTML = `<div class="cp"><div class="card">${CL.state === 'ready' ? 'This client is no longer in the list. <button class="linkbtn" data-act="clients">Back to My Clients</button>' : 'Loading…'}</div></div>`; return; }
@@ -5490,6 +5700,167 @@ cpb.addEventListener('change', e => {
     try { await reassign(c.id, to); for (const t of openTodos(c.id)) await quiet(setTodo(t.id, {ownerEmail: to})); toast('Handed over'); } catch (er) { toast('Not saved. Check the internet.'); } renderClientPage(); });
   setTimeout(() => { if (!dlg.open) renderClientPage(); }, 0);
 });
+// ================= the customer page (Purvi, 18 Oct 2026; picked "Option 2: two panes" after two rounds of rendered options)
+// Left: who they are (avatar, name, status, Call / WhatsApp / To-do / Map, then the details as a Notion-style list: tap a line to
+// change it, empty ones wait as "+ Email" chips). Right: the next step, Did they book?, and one Activity timeline (open to-dos,
+// quotations with View / PDF, changes asked, done to-dos, won / lost). Look: one font, soft buttons, one dark button (Mark done).
+// The Measurement sheet and Quotation buttons live in the client bar (ctabsHTML). A new enquiry keeps the simple form (renderEnquiryPage).
+let cpEd = null, cpMore = false;   // cpEd: the detail being changed; cpMore: empty details shown as rows
+const CP_ICON = {
+  phone: '<path d="M5 3h3l1.5 4-2 1.5a9 9 0 0 0 4 4l1.5-2 4 1.5v3a2 2 0 0 1-2 2A14 14 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+  wa: '<path d="M3.5 16.5l1.1-3.4a7 7 0 1 1 2.6 2.5z"/><path d="M7.6 7.4c.3 2 2.6 4.4 4.9 4.9l1-1.1-1.6-.9-.7.6c-.9-.3-1.9-1.3-2.2-2.2l.6-.7-.9-1.6z"/>',
+  todo: '<rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4M10 11v4M8 13h4"/>',
+  map: '<path d="M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z"/><circle cx="10" cy="8.5" r="2"/>',
+  mail: '<rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M3 5.5l7 5.5 7-5.5"/>',
+  city: '<path d="M3 17V8l4-2v11M7 17V4l6 2.5V17M13 17V9l4 1.5V17M2 17h16"/>',
+  home: '<path d="M3 9.5L10 3.5l7 6V17H3z M8 17v-4.5h4V17"/>',
+  user: '<circle cx="10" cy="7" r="3.2"/><path d="M3.5 17a6.5 6.5 0 0 1 13 0"/>',
+  tag: '<path d="M3 3h6.5l7.5 7.5-6.5 6.5L3 9.5z"/><circle cx="6.8" cy="6.8" r="1.2"/>',
+  ptype: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>',
+  arch: '<path d="M3 17L10 3l7 14M5.8 11.5h8.4"/>',
+  found: '<circle cx="9" cy="9" r="5.5"/><path d="M13 13l4 4"/>',
+  refby: '<circle cx="7" cy="7" r="2.6"/><circle cx="14" cy="8" r="2.2"/><path d="M2.5 16.5a4.5 4.5 0 0 1 9 0M11.5 16.5a3.5 3.5 0 0 1 6 0"/>',
+  exec: '<path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h3"/>',
+  note: '<path d="M4 3.5h12v9l-4 4H4z M12 16.5v-4h4"/>',
+  sheet: '<rect x="2.5" y="6" width="15" height="8" rx="1.5"/><path d="M6 6v3M9 6v4M12 6v3M15 6v4"/>',
+  quote: '<path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h5"/>',
+  chev: '<path d="M8 5l5 5-5 5"/>',
+  more: '<circle cx="5" cy="10" r="1.3"/><circle cx="10" cy="10" r="1.3"/><circle cx="15" cy="10" r="1.3"/>',
+  plus: '<path d="M10 4v12M4 10h12"/>',
+};
+const cpIcon = (k, s = 18) => `<svg class="n-i" viewBox="0 0 20 20" width="${s}" height="${s}" style="width:${s}px;height:${s}px" aria-hidden="true">${CP_ICON[k] || ''}</svg>`;
+const cpLbl = (L, v) => (L.find(x => x[0] === v) || [])[1] || '';
+
+// ---- header: avatar, name, status, the round buttons
+const CP_STAT = {draft: 'New enquiry', quoted: 'Quotation given', won: 'Won', lost: 'Lost'};
+function cpHead(c){
+  const s = statusOf(c), tel = mobile(c.phone), wa = waLink(c.phone), addr = [c.addr, cityOf(c)].filter(Boolean).join(', ');
+  const round = (k, label, attrs, href) => href ? `<a class="n-rb" href="${esc(href)}" ${attrs}><span>${cpIcon(k, 20)}</span>${label}</a>` : `<button class="n-rb" ${attrs}><span>${cpIcon(k, 20)}</span>${label}</button>`;
+  const name = cpEd === 'name' ? `<div class="n-nameed" data-grp="name"><input data-k="name" id="cpf-name" value="${esc(c.name || '')}" placeholder="Name" autocomplete="off"><button class="n-btn dark" data-cpdone="1">Done</button></div>`
+    : `<h1 class="n-name"><button data-cped="name" title="Change the name">${esc(c.name || mobile(c.phone) || 'No name yet')}</button></h1>`;
+  return `<header class="n-head">
+    <div class="n-headtop"><span class="n-av">${esc(initials(c.name))}</span>${cpMoreMenu(c)}</div>
+    ${name}
+    <div class="n-sub"><span class="n-stat ${s}">${CP_STAT[s]}${s === 'won' && c.outcome ? ', v' + c.outcome.n : ''}</span>${starsHTML(c.stars || 0, true)}${cpQSum(c)}<span id="cp-saved" class="n-saved">Saved</span></div>
+    ${c.latest && c.dsig && c.dsig !== c.sig && statusOf(c) !== 'won' && statusOf(c) !== 'lost' ? `<p class="n-asked n-changed"><span class="n-dot"></span><span>The sheet has changed since v${c.latest} was sent. Open <b>Quotation</b> and download the PDF to send v${c.latest + 1}.</span></p>` : ''}
+    ${changeAsked(c) ? `<p class="n-asked"><span class="n-dot"></span><span>They asked for changes${c.changeReq.note ? ': ' + esc(c.changeReq.note) : ''} <small>${esc(agoTxt(c.changeReq.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></span><button class="n-link" data-act="unask">Remove</button></p>` : ''}
+    <nav class="n-round">${tel ? round('phone', 'Call', '', 'tel:' + tel) : ''}${wa ? round('wa', 'WhatsApp', 'target="_blank" rel="noopener"', wa) : ''}${round('todo', 'To-do', `data-sched="${esc(c.id)}"`)}${addr ? round('map', 'Map', 'target="_blank" rel="noopener"', 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr)) : ''}</nav>
+  </header>`;
+}
+function cpQSum(c){ const V = CL.vers[c.id], v0 = Array.isArray(V) && V[0] && V[0].n === c.latest ? V[0] : null;
+  return c.latest ? `<span class="n-q">${v0 ? `<b>${rs(v0.total)}</b> ` : ''}v${c.latest}</span>` : ''; }
+const cpMoreMenu = c => canDelete() ? `<details class="n-more"><summary aria-label="More">${cpIcon('more', 20)}</summary><div class="n-menu"><p>Removes ${esc(c.name || 'them')}, their measurements and every quotation sent. Only you see this.</p><button class="n-btn danger" data-act="delete">Delete client</button></div></details>` : '';
+
+// ---- the next step + did they book
+function cpNext(c){
+  const nx = openTodos(c.id)[0];
+  if (TD.state === 'error') return '';
+  if (!nx) return `<button class="n-next empty" data-sched="${esc(c.id)}"><span class="n-nextl">Next step</span><span class="n-nextt">Nothing planned yet</span><span class="n-nexts">Add the next call or visit</span></button>`;
+  return `<div class="n-next${overdue(nx) ? ' late' : ''}"><button class="n-nextm" data-todo="${esc(nx.id)}"><span class="n-nextl">Next step: ${esc(dueTxt(nx))}</span><span class="n-nextt">${tdIcon(nx.type, 18)}${esc(tdName(nx.type))}</span>${nx.note ? `<span class="n-nexts">${esc(nx.note)}</span>` : ''}</button><button class="n-btn dark" data-cptodone="${esc(nx.id)}">Mark done</button></div>`;
+}
+function cpBook(c){
+  const s = statusOf(c), o = c.outcome || {};
+  if (s === 'won') return `<div class="n-book won"><span><b>Won.</b> They accepted v${o.n}${o.total != null ? ' for ' + rs(o.total) : ''}. <small>Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}</small></span><button class="n-link" data-act="reopen">Undo</button></div>`;
+  if (s === 'lost') return `<div class="n-book lost"><span><b>Lost${o.reason ? ': ' + esc(o.reason) : ''}.</b> ${o.note ? esc(o.note) + '. ' : ''}<small>Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}</small></span><button class="n-link" data-act="reopen">Undo</button></div>`;
+  return `<div class="n-book"><span class="n-bookq">${s === 'quoted' ? 'Did they book?' : 'Not interested any more?'}</span><span class="n-bookb">${s === 'quoted' ? '<button class="n-btn" data-act="asked">Asked for changes</button><button class="n-btn good" data-act="won">Won</button>' : ''}<button class="n-btn" data-act="lost">Lost</button></span></div>`;
+}
+// ---- details: Notion-style properties; empty ones wait under "Add more details"
+const cpInp = (k, val, attrs = '') => `<input data-k="${k}" id="cpf-${k}" value="${esc(val || '')}" autocomplete="off" ${attrs}>`;
+function cpProps(c){
+  const arch = c.arch || {}, admin = PF && IS_ADMIN;
+  const ints = (c.interest || []).map(v => cpLbl(INTEREST, v)).filter(Boolean), pts = (c.ptype || []).map(v => v === 'other' && c.ptypeOther ? c.ptypeOther : cpLbl(PTYPES, v)).filter(Boolean);
+  const P = [
+    ['phone', 'phone', 'Mobile', esc(c.phone || ''), () => cpInp('phone', c.phone, 'inputmode="tel" placeholder="98290 12345"')],
+    ['email', 'mail', 'Email', esc(c.email || ''), () => cpInp('email', c.email, 'inputmode="email" placeholder="name@gmail.com"')],
+    ['city', 'city', 'City', esc(c.city || ''), () => cpInp('city', c.city, 'list="citylist" placeholder="Jodhpur"') + cityList()],
+    ['addr', 'home', 'Address', esc(c.addr || ''), () => cpInp('addr', c.addr, 'placeholder="House, street, area"')],
+    ['owner', 'user', 'Handled by', esc(ownerName(c) || ''), null],
+    ['interest', 'tag', 'Interested in', ints.map(t => `<span class="n-chip">${esc(t)}</span>`).join(''), () => tick('interest', INTEREST, c.interest || [], 'Interested in')],
+    ['ptype', 'ptype', 'Project type', pts.map(t => `<span class="n-chip">${esc(t)}</span>`).join(''), () => tick('ptype', PTYPES, c.ptype || [], 'Project type') + ((c.ptype || []).includes('other') ? `<input class="cpf-other" data-k="ptypeOther" id="cpf-ptypeOther" value="${esc(c.ptypeOther || '')}" placeholder="What kind of project?" autocomplete="off">` : '')],
+    ['arch', 'arch', 'Architect', arch.name ? esc(arch.name) + (arch.phone ? `<small>${esc(arch.phone)}</small>` : '') : '', () => cpInp('archName', arch.name, 'list="archlist" placeholder="Name"') + cpInp('archPhone', arch.phone, 'inputmode="tel" placeholder="Their mobile"') + `<datalist id="archlist">${archList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>`],
+    ['refHow', 'found', 'Found us through', esc(cpLbl(REF_HOW, c.refHow)), () => tick('refHow', REF_HOW, c.refHow ? [c.refHow] : [], 'How they found us')],
+    ['refBy', 'refby', 'Referred by', esc(c.refBy || ''), () => cpInp('refBy', c.refBy, 'placeholder="Name"')],
+    ['exec', 'exec', 'On the quotation', esc(c.exec || ''), () => cpInp('exec', c.exec, 'placeholder="Name and phone"')],
+    ['remarks', 'note', 'Remarks', c.remarks ? `<span class="n-pre">${esc(c.remarks)}</span>` : '', () => `<textarea data-k="remarks" id="cpf-remarks" rows="4" placeholder="Budget, timing, who decides, colours they like">${esc(c.remarks || '')}</textarea>`],
+  ];
+  const row = ([k, i, label, val, edit]) => {
+    if (k === 'owner') return admin ? `<div class="n-prop"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv"><select id="cp-owner" class="n-sel"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => sells(p) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></span></div>`
+      : `<div class="n-prop"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv">${val || '<span class="n-empty">Not assigned</span>'}</span></div>`;
+    if (cpEd === k) return `<div class="n-prop editing" data-grp="${k}"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv n-pe">${edit()}<button class="n-btn dark" data-cpdone="1">Done</button></span></div>`;
+    return `<button class="n-prop" data-cped="${k}"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv">${val || '<span class="n-empty">Empty</span>'}</span></button>`;
+  };
+  const filled = P.filter(p => p[3] || p[0] === 'owner' || cpEd === p[0]), empty = P.filter(p => !filled.includes(p));
+  return `<section class="n-sec"><h2 class="n-h2">Details</h2>
+    <div class="n-props">${filled.map(row).join('')}</div>
+    ${empty.length ? (cpMore ? `<div class="n-props">${empty.map(row).join('')}</div><button class="n-link n-addmore" data-cpmore="0">Hide empty details</button>`
+      : `<div class="n-adds">${empty.map(([k, i, label]) => `<button class="n-add" data-cped="${k}">${cpIcon('plus', 14)}${label}</button>`).join('')}</div>`) : ''}
+  </section>`;
+}
+// ---- activity: coming up, then what happened (newest first)
+function cpActivity(c, V){
+  const T = TD.byCid.get(c.id) || [], up = T.filter(t => t.state !== 'done').sort(tdSort).slice(1), s = statusOf(c), o = c.outcome || {};
+  const ev = [];
+  if (c.created) ev.push({at: c.created, k: 'new'});
+  if (Array.isArray(V)) for (const x of V) ev.push({at: x.at, k: 'v', v: x});
+  if (c.changeReq && c.changeReq.at) ev.push({at: c.changeReq.at, k: 'ch'});
+  if (s === 'won' || s === 'lost') ev.push({at: o.at, k: s});
+  for (const t of T.filter(t => t.state === 'done')) ev.push({at: t.doneAt, k: 't', t});
+  ev.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  const who = e => PF && IS_ADMIN && e ? ', ' + esc(personName(e).split(' ')[0]) : '';
+  const item = e => {
+    if (e.k === 'v') { const x = e.v, fin = s === 'won' && o.n === x.n;
+      return `<li class="n-ev"><span class="n-evd v${fin ? ' fin' : ''}">v${x.n}</span><div class="n-evm"><p><b>Quotation v${x.n} sent</b> for <b>${rs(x.total)}</b>${fin ? ' <span class="n-stat won">Accepted</span>' : ''}</p><small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''}</small>
+        <span class="n-evb"><button class="n-btn sm" data-act="view" data-n="${x.n}">View</button><button class="n-btn sm" data-act="pdf" data-n="${x.n}">PDF</button><button class="n-link sm" data-act="from" data-n="${x.n}">Start again from this</button></span></div></li>`; }
+    if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${who(e.t.ownerEmail)}</small></button></li>`;
+    if (e.k === 'ch') return `<li class="n-ev"><span class="n-evd ch">${tdIcon('revise', 14)}</span><div class="n-evm"><p>They asked for changes${c.changeReq.note ? `<span class="n-evn">${esc(c.changeReq.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></div></li>`;
+    if (e.k === 'won' || e.k === 'lost') return `<li class="n-ev"><span class="n-evd ${e.k}">${e.k === 'won' ? '✓' : '×'}</span><div class="n-evm"><p>${e.k === 'won' ? `Marked as won, v${o.n}` : `Marked as lost${o.reason ? ': ' + esc(o.reason) : ''}`}${o.note ? `<span class="n-evn">${esc(o.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${o.who ? ', ' + esc(o.who) : ''}</small></div></li>`;
+    return `<li class="n-ev"><span class="n-evd">${cpIcon('plus', 12)}</span><div class="n-evm"><p>Enquiry added</p><small>${esc(agoTxt(e.at))}</small></div></li>`;
+  };
+  const upRow = t => `<button class="n-up${overdue(t) ? ' late' : ''}" data-todo="${esc(t.id)}">${tdIcon(t.type, 16)}<span>${esc(tdName(t.type))}${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><em>${esc(dueTxt(t))}${who(t.ownerEmail)}</em></button>`;
+  return `<section class="n-sec"><h2 class="n-h2">Activity</h2>
+    ${up.length ? `<div class="n-ups"><span class="n-upl">Also coming up</span>${up.map(upRow).join('')}</div>` : ''}
+    ${!c.latest ? '<p class="n-tip">Each quotation PDF you download is kept here as v1, v2 and so on.</p>' : V === 'error' ? '<p class="n-tip">Could not load the quotations. Open the client again.</p>' : !Array.isArray(V) ? '<p class="n-tip">Loading quotations…</p>' : ''}
+    <ol class="n-tl">${ev.map(item).join('')}</ol></section>`;
+}
+
+function renderClientPage(){
+  if (cpFresh && cpFresh !== cpId) cpFresh = null;
+  if (cpId === NEW || cpFresh === cpId) return renderEnquiryPage();
+  const el = $('#cp-body'), c = CL.byId.get(cpId); if (!c) return renderEnquiryPage();
+  const keepFocus = document.activeElement && document.activeElement.closest('#cp-body') && document.activeElement.id;
+  const V = CL.vers[c.id];
+  if (c.latest && !V) versionsOf(c.id).then(() => { if (current === 'client' && cpId === c.id) renderClientPage(); });
+  el.innerHTML = `<div class="n-page">
+    <aside class="n-side n-card">${cpHead(c)}${cpProps(c)}</aside>
+    <div class="n-main">${cpNext(c)}${cpBook(c)}<div class="n-card">${cpActivity(c, V)}</div></div></div>`;
+  if (keepFocus) { const x = document.getElementById(keepFocus); if (x) { x.focus(); try { const n = x.value.length; x.setSelectionRange(n, n); } catch(_){} } }
+  renderCbar();   // the Measurement sheet button opens the first product with something measured, known once the sheet has loaded
+}
+async function cpFinish(){ await cpFlush(); cpEd = null; renderClientPage(); }
+function cpStartEdit(g){
+  cpEd = g; renderClientPage();
+  const box = document.querySelector(`#cp-body [data-grp="${g}"]`), x = box && box.querySelector('input,textarea');
+  if (x) { x.focus(); try { const n = x.value.length; x.setSelectionRange(n, n); } catch(_){} }
+}
+cpb.addEventListener('click', async e => {
+  const ed = e.target.closest('[data-cped]'); if (ed) { const g = ed.dataset.cped; if (cpEd) await cpFlush(); cpStartEdit(g); return; }
+  if (e.target.closest('[data-cpdone]')) { cpFinish(); return; }
+  const m = e.target.closest('[data-cpmore]'); if (m) { cpMore = m.dataset.cpmore === '1'; renderClientPage(); return; }
+  const d = e.target.closest('[data-cptodone]'); if (d) { const t = TD.list.find(x => x.id === d.dataset.cptodone); if (t) { d.disabled = true; try { await todoDone(t, true); toast('Done ✓'); } catch (er) { toast('Not saved. Check the internet.'); d.disabled = false; } } }
+});
+cpb.addEventListener('keydown', e => { if (cpEd && (e.key === 'Escape' || (e.key === 'Enter' && e.target.tagName === 'INPUT' && !document.querySelector('.sugg:not([hidden])')))) { e.preventDefault(); cpFinish(); } });
+cpb.addEventListener('focusout', e => {   // leaving a detail closes it, unless the focus moved inside the same detail or onto its list
+  if (!cpEd) return; const g = e.target.closest && e.target.closest('[data-grp]'); if (!g) return;
+  setTimeout(() => { const a = document.activeElement; if (cpEd === g.dataset.grp && !(a && a.closest && (a.closest(`[data-grp="${g.dataset.grp}"]`) || a.closest('.sugg')))) cpFinish(); }, 150);
+});
+// how many things each product sheet of a client has (client bar)
+function sheetN(cid){
+  const here = !shared || cid === state.clientId, sh = here ? state : sheetOfClient(cid) || {}, more = sh.more || {};
+  const n = {'c-measure': (sh.rows || []).filter(r => +r.W || +r.H).length, 'b-measure': (sh.blinds || []).filter(b => +b.W || +b.H).length};
+  for (const [k, , subs] of MP_TABS) n[k] = (subs || [k]).reduce((a, x) => a + (more[x] || []).filter(r => mpFilled(x, r)).length, 0);
+  return n;
+}
+
 function askChanges(c){
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">${esc(c.name || 'They')} asked for changes</h2><p class="sub">The card goes to the top of Quotation Given, and a <b>Revise quotation</b> to-do is made for tomorrow.</p>
     <label class="f" for="ch-note">What do they want changed?</label><textarea id="ch-note" rows="3" autofocus placeholder="e.g. a lighter fabric in the bedroom, remove the blinds"></textarea>
@@ -5684,4 +6055,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-171435 -->
+<!-- build 20261017-183247 -->
