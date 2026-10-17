@@ -366,6 +366,10 @@ svg text{font-family:var(--num);fill:var(--ink)}
 .how b{display:block;font-size:12.5px;color:var(--muted);margin-bottom:2px}
 .how b.n{display:inline;font-size:inherit;color:var(--ink);font-weight:700;margin:0}
 .empty{padding:40px 16px;text-align:center;color:var(--muted)}
+/* empty quotation (Purvi, 17 Oct): icon, one line, one button straight to the measurement sheet */
+.q-empty{display:flex;flex-direction:column;align-items:center;gap:14px;padding:64px 16px;text-align:center}
+.q-empty-i{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--muted)}
+.q-empty b{font-size:20px;color:var(--ink)}
 
 /* quotation */
 .q-grid{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
@@ -3051,7 +3055,8 @@ function paperHTML(q, house, t, showC, ro){
       `<tr class="subrow"><td colspan="8" class="r">${name} total</td><td class="r">${inr(t.sub[k])}</td>${showC ? '<td></td>' : ''}</tr>`;
   });
   const hdr = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
-  return !n ? `<div class="empty">Nothing measured yet. Go to <b>Curtains</b> or <b>Blinds</b> and type a height and width.</div>` : `
+  return !n ? `<div class="q-empty"><span class="q-empty-i">${MS_SVG.replace(/1[57]px/g, '30px').replace(/"17"/g, '"30"')}</span><b>Nothing measured yet</b>
+    ${ro ? '' : '<button class="btn solid" data-qempty>Open measurement sheet</button>'}</div>` : `
     <table class="paper-top"><tr><th colspan="2" class="pi">PERFORMA INVOICE</th></tr>
       <tr><td colspan="2" class="firm"><b>${FIRM.name}</b><br>${FIRM.addr}<br>Phone : ${FIRM.phone}<br>Email : ${FIRM.email} , GSTIN : ${FIRM.gstin}</td></tr>
       ${hdr(`<b>Billing Name :</b> ${esc(house || '')}`, `<b>Performa invoice :</b> ${esc(q.no || '')}`)}
@@ -3193,6 +3198,7 @@ document.addEventListener('click', e => {
   go(blinds ? 'b-prices' : 'c-prices');
   setTimeout(() => { const s = document.getElementById('sec-' + to); if (s) s.scrollIntoView({block: 'start'}); }, 50);
 });
+document.addEventListener('click', e => { if (e.target.closest('[data-qempty]')) go('c-measure'); });   // empty quotation → the sheet, Curtains first
 // Send on WhatsApp (Purvi, 18 Oct: "instead of copy for whatsapp the button becomes send on whatsapp"; the PDF goes too).
 // Phones and tablets (waOnApp): the share menu opens with the PDF attached and a short message; staff pick WhatsApp, then the client.
 // Laptops: a website cannot put a file into WhatsApp Web, so WhatsApp Web opens on the client's chat with the message typed
@@ -6272,4 +6278,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-194615 -->
+<!-- build 20261017-195554 -->
