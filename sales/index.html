@@ -2754,6 +2754,7 @@ async function saveFile(filename, blob){
 // (two formats = two visible buttons, no menu). Both are made from the same rows (orderSheets), so they always match.
 const PRINT_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 17H4V11a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-2M6 14h12v7H6z"/></svg>';
 const COPY_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9h11v11H9zM5 15H4V4h11v1"/></svg>';
+const WA_ICON = '<svg viewBox="0 0 20 20" width="18" height="18" style="width:18px;height:18px;flex:none" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 16.5l1.1-3.4a7 7 0 1 1 2.6 2.5z"/><path d="M7.6 7.4c.3 2 2.6 4.4 4.9 4.9l1-1.1-1.6-.9-.7.6c-.9-.3-1.9-1.3-2.2-2.2l.6-.7-.9-1.6z"/></svg>';
 const DL_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>';
 function orderSheets(sup){
   return orderGroups().filter(g => g.sup === sup).map(gr => { const cols = orderCols(gr);
@@ -3086,8 +3087,8 @@ function renderQuoteSum(t = quoteTotals()){
     ${canSeeCost ? `<label class="switch"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
       ${showCost ? `<div class="margin"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}${t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : ''}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price (blinds have no dealer price yet).</div>` : ''}</div>` : ''}` : ''}
     <div class="q-acts"><button class="btn solid dl" id="q-pdf" title="Download the quotation as a PDF (saved as the next version)">${DL_ICON}PDF</button><button class="btn solid dl" id="q-xlsx" title="Download the quotation as an Excel file">${DL_ICON}Excel</button>
-      <button class="btn dl" id="q-print" title="Print on A4">${PRINT_ICON}Print</button><button class="btn dl" id="q-copy" title="Copy the quotation as text for WhatsApp">${COPY_ICON}Copy for WhatsApp</button>
-      <span class="hint" style="flex-basis:100%">${(() => { const P = lastSaved(), v = nextVersion(t); return !P.n ? 'The first PDF will be <b>v1</b>.' : v === P.n ? `Last saved as <b>v${P.n}</b>. Nothing has changed since.` : `Changed since <b>v${P.n}</b>, so the next PDF will be <b>v${v}</b>.`; })()}</span></div>`;
+      <button class="btn dl" id="q-print" title="Print on A4">${PRINT_ICON}Print</button><button class="btn dl" id="q-wa" title="Send the quotation PDF on WhatsApp (saved as the next version)">${WA_ICON}Send on WhatsApp</button>
+      <span class="hint" style="flex-basis:100%">${(() => { const P = lastSaved(), v = nextVersion(t); return waHint && waHint.v === P.n && v === P.n ? `<b>v${P.n}</b> is open in WhatsApp Web. The PDF is in your Downloads: drag it into the chat, then press Send. Asked to log in? Scan the code with your phone, then tap Send on WhatsApp again.` : !P.n ? 'The first PDF will be <b>v1</b>.' : v === P.n ? `Last saved as <b>v${P.n}</b>. Nothing has changed since.` : `Changed since <b>v${P.n}</b>, so the next PDF will be <b>v${v}</b>.`; })()}</span></div>`;
 }
 function renderQuote(){ renderQuoteHead(); renderPaper(); }
 // Print (Purvi, 2 Oct): the Print button, or Cmd/Ctrl+P on the Quotation tab, prints just the quotation on A4.
@@ -3192,22 +3193,53 @@ document.addEventListener('click', e => {
   go(blinds ? 'b-prices' : 'c-prices');
   setTimeout(() => { const s = document.getElementById('sec-' + to); if (s) s.scrollIntoView({block: 'start'}); }, 50);
 });
-document.addEventListener('click', e => {
-  if (!e.target.closest('#q-copy')) return;
-  const q = state.quote, t = quoteTotals(), L = [`*Performa Invoice ${q.no || ''}* · ${state.house || ''}`, q.date ? 'Date: ' + q.date.split('-').reverse().join('-') : ''];
-  SECTIONS.filter(([k]) => (t.S[k] || []).length).forEach(([k, name], si) => {   // number only the sections that are there: 1, 2, 3…
-    if (!t.S[k].length) return;
-    L.push(`\n*${si + 1}. ${name}*`);
-    const P = secParts(k, t.S[k]);
-    const line = l => L.push(`• ${l.area ? l.area + ' · ' : ''}${l.product} · ${l.what}: ${cpF(r2(l.qty))} ${l.unit}${l.amt != null ? ' × ₹' + inr(l.mrp) + ' = ₹' + inr(l.amt) : ' · price to follow'}`);
-    if (P) P.forEach(p => { L.push(`_${si + 1}${p.ab}. ${p.n}_`); p.L.forEach(line); L.push(`${p.n} total: ₹${inr(p.sub)}`); });
-    else t.S[k].forEach(line);
-    L.push(`${name} total: ₹${inr(t.sub[k])}`);
-  });
-  L.push(`\nTotal: ₹${inr(t.total)}`);
-  if (t.disc) L.push(`${t.discTxt}: − ₹${inr(t.disc)}`);
-  L.push(`*Final: ₹${inr(t.final)}* (GST included)`);
-  copyText(L.filter(x => x !== '').join('\n'), $('#q-paper'));
+// Send on WhatsApp (Purvi, 18 Oct: "instead of copy for whatsapp the button becomes send on whatsapp"; the PDF goes too).
+// Phones and tablets: the share menu opens with the PDF attached and a short message; staff pick WhatsApp, then the client.
+// Laptops: a website cannot put a file into WhatsApp Web, so WhatsApp Web opens on the client's chat with the message typed
+// and the PDF downloads, to drag into the chat. Either way the PDF is saved as the next version, like ↓ PDF.
+let waHint = null;   // the last send to WhatsApp Web, so the quotation can say where the PDF is
+const sharePdfOk = () => { try { return matchMedia('(pointer: coarse)').matches && !!navigator.canShare && navigator.canShare({files: [new File(['%PDF'], 'q.pdf', {type: 'application/pdf'})]}); } catch(_) { return false; } };
+function waMessage(v, t){
+  const q = state.quote || {}, who = q.contact || state.house || '';
+  return [`Namaste${who ? ' ' + who : ''},`, 'Here is your quotation from Charpai.', `Performa Invoice ${q.no || ''} · v${v}`, `Final: ₹${inr(t.final)} (GST included)`].join('\n');
+}
+function waSent(c, v){ if (shared && db && c) addNote(c, `Quotation v${v} sent on WhatsApp`, 'log').catch(() => {}); }   // on the timeline; quiet if notes are not switched on yet
+async function waShare(x){
+  try { await navigator.share({files: [x.file], text: x.text}); waSent(x.c, x.v); }
+  catch (err) {
+    if (err && err.name === 'AbortError') return;   // they closed the share menu
+    if (err && err.name === 'NotAllowedError' && !x.again) {   // making the PDF took too long for the phone: one more tap starts it
+      openDlg(`<div class="dlg-in"><h2 id="dlg-title">The PDF is ready</h2><p class="sub">${esc(x.file.name)}</p>
+        <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" id="wa-go" style="display:inline-flex;align-items:center;gap:6px">${WA_ICON}Send on WhatsApp</button></div></div>`);
+      dlg._wa = Object.assign({}, x, {again: true}); return;
+    }
+    toast('Could not open WhatsApp. Use ↓ PDF instead.');
+  }
+}
+document.addEventListener('click', e => { if (!e.target.closest('#wa-go') || !dlg._wa) return; const x = dlg._wa; dlg._wa = null; closeDlg(); waShare(x); });
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('#q-wa'); if (!btn) return;
+  const phoneWay = sharePdfOk(), cl = state.clientId && CL.byId.get(state.clientId), m = mobile((cl && cl.phone) || (state.quote || {}).phone);
+  if (!phoneWay && m.length !== 10) { toast('Add the client’s 10-digit mobile number first'); return; }
+  const tab = phoneWay ? null : window.open('', 'charpai-wa');   // opened inside the tap, or the browser blocks it; one WhatsApp Web tab for every send
+  btn.disabled = true; const old = btn.innerHTML; btn.textContent = 'Making the PDF…';
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+    await refreshClient();
+    const t = quoteTotals(), v = nextVersion(t), sig = quoteSig(t), blob = quotePDF(v), name = quoteFileName(v), text = waMessage(v, t), c = state.clientId && CL.byId.get(state.clientId);
+    if (phoneWay) {
+      state.quote.pdf = {n: v, sig}; save(); await recordVersion(v, sig, t); renderQuoteSum();
+      await waShare({file: new File([blob], name, {type: 'application/pdf'}), text, c, v});
+    } else if (await saveFile(name, blob)) {
+      state.quote.pdf = {n: v, sig}; save(); await recordVersion(v, sig, t); renderQuoteSum();
+      const url = `https://web.whatsapp.com/send?phone=91${m}&text=${encodeURIComponent(text)}`;
+      if (tab && !tab.closed) { tab.location.href = url; tab.focus(); } else window.open(url, 'charpai-wa');
+      waHint = {v, sig}; renderQuoteSum();
+      waSent(c, v);
+    } else if (tab) tab.close();
+  } catch (err) { if (tab) tab.close(); toast('Could not make the PDF. Check the internet.'); }
+  btn.disabled = false; btn.innerHTML = old;
 });
 document.addEventListener('click', async e => {
   const btn = e.target.closest('#q-pdf'); if (!btn) return;
@@ -6230,4 +6262,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-191052 -->
+<!-- build 20261017-192856 -->
