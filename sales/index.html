@@ -373,6 +373,53 @@ svg text{font-family:var(--num);fill:var(--ink)}
 
 /* quotation */
 .q-grid{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+/* Quotation on phones and tablets (renderQuoteSumM) */
+.qm-det{display:none}
+#v-quote.qm .q-grid{display:flex;flex-direction:column;gap:12px;max-width:640px;margin-inline:auto}
+#v-quote.qm .q-sum{order:-1;background:none;border:0;position:static}
+#v-quote.qm #q-paper,#v-quote.qm .q-head{display:none}
+#v-quote.qm .q-open .q-head{display:grid;border-top:1px solid var(--line2)}
+#v-quote.qm #q-left{border-radius:16px;border-color:var(--line2)}
+#v-quote.qm .qm-det{display:flex;width:100%;align-items:center;gap:8px;border:0;background:none;color:var(--ink);padding:14px 16px;font-size:15px;cursor:pointer}
+.qm-det span:first-child{color:var(--muted);flex:1;text-align:left}
+.qm-det b{font-weight:500;font-size:14px}
+.qm-chev{color:var(--faint);margin-left:6px;display:inline-block;transition:transform .15s}
+.q-open .qm-det .qm-chev,[aria-expanded="true"] .qm-chev{transform:rotate(90deg)}
+.qm-card{background:var(--paper);border:1px solid var(--line2);border-radius:16px;padding:18px}
+.qm-card .q-empty{padding:28px 8px}
+.qm-who{font-size:13px;color:var(--muted)}
+.qm-who b{display:block;font-size:17px;color:var(--ink);font-weight:600;margin-bottom:2px}
+.qm-amt{font-size:38px;font-weight:700;line-height:1.05;margin-top:14px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.qm-amt.dim{color:var(--faint)}
+.qm-amt-l{font-size:13px;color:var(--muted)}
+.qm-ver{display:inline-flex;gap:6px;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);background:color-mix(in srgb,var(--ink) 6%,transparent);padding:4px 10px;border-radius:99px}
+.qm-ver i{width:7px;height:7px;border-radius:50%;background:var(--tape)}
+.qm-wa{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:12px;background:var(--ink);color:var(--paper);font-weight:600;font-size:16.5px;padding:15px;margin-top:16px;cursor:pointer}
+.qm-wa:disabled{opacity:.35;cursor:default}
+.qm-soft{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.qm-soft button,.qv-dock button:not(.qm-wa){display:flex;align-items:center;justify-content:center;gap:5px;border:0;border-radius:10px;padding:11px 4px;font-weight:600;font-size:14px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);cursor:pointer}
+.qm-soft svg,.qv-dock svg{width:16px;height:16px}
+.qm-att{background:var(--warn-soft);border-radius:16px;padding:14px 16px}
+.qm-att h3{margin:0 0 6px;font-size:15px}
+.qm-fix{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--warn) 25%,transparent);font-size:14px}
+.qm-sec{font-size:12.5px;color:var(--muted);margin:4px 4px -4px;font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.qm-list{background:var(--paper);border:1px solid var(--line2);border-radius:16px;overflow:hidden}
+.qm-li{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;padding:13px 16px;border:0;border-top:1px solid var(--line2);background:none;color:var(--ink);font-size:15px;text-align:left}
+.qm-list>.qm-li:first-child{border-top:0}
+button.qm-li{cursor:pointer}
+.qm-li>span{color:var(--muted)}
+.qm-li b{white-space:nowrap}
+.qm-in{padding:4px 16px 14px}
+.qm-fix .miss{background:var(--paper);border:0;border-radius:8px;padding:7px 11px;white-space:nowrap}
+.qm-in .srow input{width:100px}
+.dlg.qv[open]{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;display:flex;flex-direction:column;background:#2A2F2C;color:#fff}
+.qv-top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 10px;font-size:14px}
+.qv-x{width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:16px;cursor:pointer}
+.qv-body{flex:1;overflow:auto;background:#3A403C;padding:12px}
+.qv-fit{background:#fff;width:800px;padding:12px}
+.qv-dock{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px calc(env(safe-area-inset-bottom,0px) + 14px)}
+.qv-dock .qm-wa{grid-column:1/-1;margin:0;background:#fff;color:#1B211E}
+.qv-dock button:not(.qm-wa){background:rgba(255,255,255,.12);color:#fff}
 @media (min-width:1000px){.q-grid{grid-template-columns:minmax(0,1fr) 360px;align-items:start}.q-sum{position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px)}}
 .q-head{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));padding:14px}
 .fld label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:3px}
@@ -1195,7 +1242,8 @@ button.n-prop:hover{background:var(--soft)}
 
   <section id="v-quote" hidden>
     <div class="q-grid">
-      <div class="panel">
+      <div class="panel" id="q-left">
+        <button class="qm-det" id="qm-det" aria-expanded="false"><span>Details</span><b id="qm-det-sum"></b><span class="qm-chev" aria-hidden="true">›</span></button>
         <div class="q-head" id="q-head"></div>
         <div class="paper-wrap" id="q-paper"></div>
       </div>
@@ -3032,8 +3080,12 @@ $('#q-head').addEventListener('input', e => {
   if (k === 'exec') { try { localStorage.setItem(EXKEY, e.target.value); } catch(_){} state.quote.execOwn = !!e.target.value.trim() && e.target.value !== execOf(state.clientId); e.target.classList.toggle('ovr', state.quote.execOwn); }
   save(); renderPaper();
 });
+// The orange button on a line with no price: takes you to where the price comes from.
+function fixBtn(l){
+  return PF && !IS_ADMIN && !['pick', 'remote', 'wpick', 'fpick', 'mpick', 'opick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'fpick' ? 'Pick the product from a list' : l.fix === 'mpick' ? 'Pick the mattress' : l.fix === 'opick' ? 'Fill it in on Upholstery' : l.fix === 'uprice' ? 'Set the rate in Prices' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>`;
+}
 function lineHTML(l, n, showC, ro){
-  const rate = l.mrp == null ? ro ? '—' : PF && !IS_ADMIN && !['pick', 'remote', 'wpick', 'fpick', 'mpick', 'opick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'fpick' ? 'Pick the product from a list' : l.fix === 'mpick' ? 'Pick the mattress' : l.fix === 'opick' ? 'Fill it in on Upholstery' : l.fix === 'uprice' ? 'Set the rate in Prices' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>` : inr(l.mrp);
+  const rate = l.mrp == null ? ro ? '—' : fixBtn(l) : inr(l.mrp);
   return `<tr><td class="c">${n}</td><td>${esc(l.area || '')}</td><td>${esc(l.product)}</td><td>${esc(l.what)}</td><td class="c">${esc(l.hsn || '')}</td>
     <td class="r">${cpF(r2(l.qty))}</td><td class="c">${esc(l.unit)}</td><td class="r">${rate}</td><td class="r"><b>${l.amt == null ? '—' : inr(l.amt)}</b></td>
     ${showC ? `<td class="r cost">${l.camt == null ? '—' : inr(l.camt)}</td>` : ''}</tr>`;
@@ -3075,6 +3127,7 @@ function paperHTML(q, house, t, showC, ro){
       <div class="sign"><span>CUSTOMER SIGNATURE.</span><span>EXECUTIVE SIGN.</span><span>${FIRM.name}.</span></div></div>`;
 }
 function renderQuoteSum(t = quoteTotals()){
+  if (qmOn()) return renderQuoteSumM(t);
   const q = state.quote, marginNet = t.netAfter - t.cost;
   $('#q-sum').innerHTML = `
     ${t.missing ? `<div style="padding:14px 14px 0"><div class="banner warn"><b>${t.missing} line${t.missing > 1 ? 's have' : ' has'} no price,</b> so the total leaves ${t.missing > 1 ? 'them' : 'it'} out. Tap the orange buttons in the quotation.</div></div>` : ''}
@@ -3096,6 +3149,59 @@ function renderQuoteSum(t = quoteTotals()){
       <span class="hint" style="flex-basis:100%">${(() => { const P = lastSaved(), v = nextVersion(t); return waHint && waHint.v === P.n && v === P.n ? `<b>v${P.n}</b> is open in WhatsApp Web. The PDF is in your Downloads: drag it into the chat, then press Send. Asked to log in? Scan the code with your phone, then tap Send on WhatsApp again.` : !P.n ? 'The first PDF will be <b>v1</b>.' : v === P.n ? `Last saved as <b>v${P.n}</b>. Nothing has changed since.` : `Changed since <b>v${P.n}</b>, so the next PDF will be <b>v${v}</b>.`; })()}</span></div>`;
 }
 function renderQuote(){ renderQuoteHead(); renderPaper(); }
+// Quotation on phones and tablets (Purvi, 18 Oct: "the sending ctas should be up … only when you click on view pdf i should be able to
+// view it"; option A picked from two drawn phones). One card: who, the final amount, Send on WhatsApp, then View PDF · ↓ PDF · ↓ Excel.
+// Under it one line per product, and Discount / Installation / our cost open in place. Details (bill to, dates…) fold into one line.
+// No Print on phones. Lines without a price come first with their orange buttons, and Send waits until they are fixed.
+// Laptops keep the paper + side panel. Same buttons (ids) as the side panel, so the PDF / Excel / WhatsApp code is shared.
+const qmOn = () => { const on = waOnApp(); $('#v-quote').classList.toggle('qm', on); return on; };
+const qmOpen = new Set();   // which of Discount / Installation / cost are open
+function renderQuoteSumM(t){
+  const q = state.quote, P = lastSaved(), v = nextVersion(t), c = state.clientId && CL.byId.get(state.clientId);
+  const L = SECTIONS.flatMap(([k]) => t.S[k] || []), miss = L.filter(l => l.mrp == null || l.amt == null), marginNet = t.netAfter - t.cost;
+  const row = (k, label, val, body) => `<button class="qm-li" data-qmx="${k}" aria-expanded="${qmOpen.has(k)}"><span>${label}</span><b>${val}<span class="qm-chev" aria-hidden="true">›</span></b></button>${qmOpen.has(k) ? `<div class="qm-in">${body}</div>` : ''}`;
+  $('#q-sum').innerHTML = !L.length ? `<div class="qm-card">${paperHTML(q, state.house, t, false)}</div>` : `
+    ${prices.dummy ? '<div class="banner info" style="margin-bottom:12px"><b>Dummy prices for now.</b> Real rates go in the Prices pages.</div>' : ''}
+    ${miss.length ? `<div class="qm-att"><h3>${miss.length === 1 ? '1 thing' : miss.length + ' things'} to fix before sending</h3>
+      ${miss.map(l => `<div class="qm-fix"><span>${esc([l.area, l.product].filter(Boolean).join(' · ') || l.what || '')}</span>${l.mrp == null ? fixBtn(l) : ''}</div>`).join('')}</div>` : ''}
+    <div class="qm-card">
+      <div class="qm-who"><b>${esc(state.house || 'No name yet')}</b>${esc([(c && c.phone) || q.phone, c && c.city].filter(Boolean).join(' · '))}</div>
+      <div class="qm-amt${miss.length ? ' dim' : ''}">${rs(t.final)}</div>
+      <div class="qm-amt-l">${miss.length ? `So far: ${miss.length === 1 ? '1 line has' : miss.length + ' lines have'} no price yet` : 'Final, GST included'}</div>
+      <div class="qm-ver"><i></i>${!P.n ? 'First send will be v1' : v === P.n ? `Saved as v${P.n} · no changes since` : `Changed since v${P.n} · sends as v${v}`}</div>
+      <button class="qm-wa" id="q-wa"${miss.length ? ' disabled' : ''}>${WA_ICON}Send on WhatsApp</button>
+      <div class="qm-soft"><button id="qm-view">View PDF</button><button id="q-pdf">${DL_ICON}PDF</button><button id="q-xlsx">${DL_ICON}Excel</button></div>
+    </div>
+    <div class="qm-sec">What’s in it</div>
+    <div class="qm-list">
+      ${SECTIONS.filter(([k]) => (t.S[k] || []).length).map(([k, n]) => `<div class="qm-li"><span>${n}</span><b>${rs(t.sub[k])}</b></div>`).join('')}
+      ${row('disc', 'Discount', t.disc ? '− ' + rs(t.disc) : 'None', `<div class="srow"><label for="q-disc">On curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
+        <div class="srow"><label for="q-discAmt">or ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
+        <div class="hint">Only the curtain fabric amount gets a discount.</div>`)}
+      ${row('inst', 'Installation', q.noInstall ? 'Not added' : 'Added', `<label class="switch" style="padding:0"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>`)}
+      ${canSeeCost ? row('cost', 'Our cost and margin', showCost ? rs(marginNet) + (t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : '') : 'Hidden', `<label class="switch" style="padding:0"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
+        ${showCost ? `<div class="margin" style="margin-top:8px"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price.</div>` : ''}</div>` : ''}`) : ''}
+    </div>`;
+  const d = (q.date || '').split('-'), ex = (q.exec || '').split(' - ')[0];
+  $('#qm-det-sum').textContent = [d.length === 3 ? `${d[2]}/${d[1]}/${d[0].slice(2)}` : '', ex].filter(Boolean).join(' · ');
+}
+document.addEventListener('click', e => {
+  const x = e.target.closest('[data-qmx]'); if (!x) return;
+  const k = x.dataset.qmx; qmOpen.has(k) ? qmOpen.delete(k) : qmOpen.add(k); renderQuoteSum();
+});
+$('#qm-det').addEventListener('click', () => { const o = $('#q-left').classList.toggle('q-open'); $('#qm-det').setAttribute('aria-expanded', o); });
+// View PDF: the quotation full screen, fitted to the phone's width. Only for looking: it saves no version.
+document.addEventListener('click', e => {
+  if (!e.target.closest('#qm-view')) return;
+  const t = quoteTotals(), P = lastSaved(), v = nextVersion(t), wa = $('#q-wa');
+  openDlg(`<div class="qv-top"><button class="qv-x" data-dlg="close" aria-label="Close">✕</button><span id="dlg-title">Quotation · v${v}${v === P.n ? '' : ' (not saved yet)'}</span><span style="width:36px"></span></div>
+    <div class="qv-body"><div class="qv-fit">${paperHTML(state.quote, state.house, t, false, true)}</div></div>
+    <div class="qv-dock"><button class="qm-wa" data-qv="wa"${wa && wa.disabled ? ' disabled' : ''}>${WA_ICON}Send on WhatsApp</button><button data-qv="pdf">${DL_ICON}PDF</button><button data-qv="xlsx">${DL_ICON}Excel</button></div>`);
+  dlg.classList.add('qv');
+  const f = dlg.querySelector('.qv-fit'), w = f.offsetWidth, room = dlg.querySelector('.qv-body').clientWidth - 24;
+  if (w > room) f.style.zoom = room / w;
+});
+document.addEventListener('click', e => { const b = e.target.closest('[data-qv]'); if (!b) return; const go = $('#q-' + b.dataset.qv); closeDlg(); if (go) go.click(); });
 // Print (Purvi, 2 Oct): the Print button, or Cmd/Ctrl+P on the Quotation tab, prints just the quotation on A4.
 // A fresh customer copy (no cost column, no orange buttons) goes into #print-root; everything else is hidden by @media print.
 function fillPrint(){
@@ -6278,4 +6384,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261017-195554 -->
+<!-- build 20261018-161950 -->
