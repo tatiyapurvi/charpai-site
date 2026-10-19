@@ -961,6 +961,8 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .card-h h3{margin:0}
 .card-h .btn{display:inline-flex;gap:6px;align-items:center}
 .cpf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}
+.cpf-grid.two{grid-template-columns:1fr 1fr}   /* 19 Oct: Reference · mobile, Architect · mobile, a name and its number side by side */
+@media (max-width:520px){.cpf-grid.two{grid-template-columns:1fr}}
 .cpf{display:grid;gap:4px;min-width:0}
 .cpf.wide{grid-column:1/-1}
 .cpf>span,.cpf-sec>span{font-weight:600;font-size:13.5px;color:var(--muted)}
@@ -5829,7 +5831,7 @@ if ($('#copy')) $('#copy').onclick = () => {
 // "+ New enquiry" opens the customer page empty; the client is made the moment something is typed (no empty cards).
 // To-dos live in todos/<id> {cid, cname, type, due 'YYYY-MM-DD' (local), time, note, ownerEmail = who does it, by, byName, at,
 // state todo|doing|done, doneAt, auto}. Same who-sees-what as clients: a sales executive gets only their own.
-// New client fields (add-only, ARCHITECTURE §8.1): email, interest[], ptype[], ptypeOther, refHow, refBy, arch {name, phone},
+// New client fields (add-only, ARCHITECTURE §8.1): email, interest[], ptype[], ptypeOther, refHow, refBy, refPhone (19 Oct), arch {name, phone},
 // stars 0–3, remarks, changeReq {at, by, who, note} (cleared when the next version is sent).
 
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;   // local date: toISOString() is a day behind in IST before 5:30 am
@@ -6068,6 +6070,9 @@ function sheetOfClient(cid){
 }
 const tick = (k, list, on, name) => `<div class="ticks" role="group" aria-label="${esc(name)}">${list.map(([v, n]) => `<button type="button" class="tickb" data-tick="${k}" data-v="${v}" aria-pressed="${on.includes(v)}">${esc(n)}</button>`).join('')}</div>`;
 const cpField = (k, label, val, attrs = '') => `<label class="cpf"><span>${label}</span><input data-k="${k}" id="cpf-${k}" value="${esc(val || '')}" autocomplete="off" ${attrs}></label>`;
+// 19 Oct (Purvi): references build up into a list like architects do; picking a known one fills in their mobile
+function refList(){ const m = new Map(); for (const c of CL.list) if (c.refBy && c.refBy.trim()) { const k = c.refBy.trim().toLowerCase(); if (!m.get(k) || (!m.get(k).phone && c.refPhone)) m.set(k, {name: c.refBy.trim(), phone: c.refPhone || ''}); } return [...m.values()]; }
+const refListHTML = () => `<datalist id="reflist">${refList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>`;
 function archList(){ const m = new Map(); for (const c of CL.list) if (c.arch && c.arch.name) m.set(c.arch.name.trim().toLowerCase(), c.arch); return [...m.values()]; }
 // The new-enquiry form (also the fallback while a client loads). Saved clients get renderClientPage below.
 function renderEnquiryPage(){
@@ -6108,12 +6113,13 @@ function renderEnquiryPage(){
     <div class="cpf-sec"><span>Project type</span>${tick('ptype', PTYPES, c.ptype || [], 'Project type')}
       ${(c.ptype || []).includes('other') ? `<input class="cpf-other" data-k="ptypeOther" id="cpf-ptypeOther" value="${esc(c.ptypeOther || '')}" placeholder="What kind of project?" autocomplete="off">` : ''}</div>
     <div class="cpf-sec"><span>How they found us</span>${tick('refHow', REF_HOW, c.refHow ? [c.refHow] : [], 'How they found us')}</div>
-    <div class="cpf-grid">
-      ${cpField('refBy', 'Referred by <small>(name)</small>', c.refBy, 'placeholder="e.g. Kamod Tatiya"')}
+    <div class="cpf-grid two">
+      ${cpField('refBy', 'Reference <small>(name)</small>', c.refBy, 'list="reflist" placeholder="e.g. Kamod Tatiya"')}
+      ${cpField('refPhone', 'Reference mobile', c.refPhone, 'inputmode="tel" placeholder="Mobile"')}
       ${cpField('archName', 'Architect / interior designer', arch.name, 'list="archlist" placeholder="Name"')}
-      ${cpField('archPhone', 'Their mobile', arch.phone, 'inputmode="tel" placeholder="Mobile"')}
-      ${isNew ? '' : cpField('exec', 'Handled by <small>(on the quotation)</small>', c.exec, 'placeholder="Name and phone"')}
-    </div><datalist id="archlist">${archList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>
+      ${cpField('archPhone', 'Architect mobile', arch.phone, 'inputmode="tel" placeholder="Mobile"')}
+    </div>${isNew ? '' : `<div class="cpf-grid" style="margin-top:10px">${cpField('exec', 'Handled by <small>(on the quotation)</small>', c.exec, 'placeholder="Name and phone"')}</div>`}
+    <datalist id="archlist">${archList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>${refListHTML()}
     <label class="cpf wide" style="margin-top:12px"><span>Remarks</span><textarea data-k="remarks" id="cpf-remarks" rows="3" placeholder="Anything to remember: budget, timing, who decides, colours they like…">${esc(c.remarks || '')}</textarea></label>
     ${isNew ? `<div class="cp-done"><span class="hint">Saved as you type. It is on the board under New Enquiry${cpId === NEW ? ' once you type something' : ''}.</span><span class="cp-acts"><button class="btn solid" data-act="done">Done</button></span></div>` : ''}
   </div>`;
@@ -6141,6 +6147,8 @@ cpb.addEventListener('input', e => {
   if (k === 'archName' || k === 'archPhone') { const a = {name: ($('#cpf-archName') || {}).value || '', phone: ($('#cpf-archPhone') || {}).value || ''};
     if (k === 'archName') { const m = archList().find(z => z.name.trim().toLowerCase() === a.name.trim().toLowerCase()); if (m && m.phone && !a.phone && $('#cpf-archPhone')) { $('#cpf-archPhone').value = m.phone; a.phone = m.phone; } }
     cpQueue('arch', {name: a.name.trim(), phone: a.phone.trim()}); return; }
+  if (k === 'refBy') { const ph = $('#cpf-refPhone'), m = refList().find(z => z.name.toLowerCase() === x.value.trim().toLowerCase());
+    if (m && m.phone && ph && !ph.value.trim()) { ph.value = m.phone; cpQueue('refPhone', m.phone); } }
   if (k === 'name') { const h = $('#cp-body .cp-id h2'); if (h) h.textContent = x.value || 'New enquiry'; }
   cpQueue(k, x.value.trim());
 });
@@ -6258,7 +6266,7 @@ function cpProps(c){
     ['ptype', 'ptype', 'Project type', pts.map(t => `<span class="n-chip">${esc(t)}</span>`).join(''), () => tick('ptype', PTYPES, c.ptype || [], 'Project type') + ((c.ptype || []).includes('other') ? `<input class="cpf-other" data-k="ptypeOther" id="cpf-ptypeOther" value="${esc(c.ptypeOther || '')}" placeholder="What kind of project?" autocomplete="off">` : '')],
     ['arch', 'arch', 'Architect', arch.name ? esc(arch.name) + (arch.phone ? `<small>${esc(arch.phone)}</small>` : '') : '', () => cpInp('archName', arch.name, 'list="archlist" placeholder="Name"') + cpInp('archPhone', arch.phone, 'inputmode="tel" placeholder="Their mobile"') + `<datalist id="archlist">${archList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>`],
     ['refHow', 'found', 'Found us through', esc(cpLbl(REF_HOW, c.refHow)), () => tick('refHow', REF_HOW, c.refHow ? [c.refHow] : [], 'How they found us')],
-    ['refBy', 'refby', 'Referred by', esc(c.refBy || ''), () => cpInp('refBy', c.refBy, 'placeholder="Name"')],
+    ['refBy', 'refby', 'Referred by', c.refBy ? esc(c.refBy) + (c.refPhone ? `<small>${esc(c.refPhone)}</small>` : '') : '', () => cpInp('refBy', c.refBy, 'list="reflist" placeholder="Name"') + cpInp('refPhone', c.refPhone, 'inputmode="tel" placeholder="Their mobile"') + refListHTML()],
     ['exec', 'exec', 'On the quotation', esc(c.exec || ''), () => cpInp('exec', c.exec, 'placeholder="Name and phone"')],
     ['remarks', 'note', 'Remarks', c.remarks ? `<span class="n-pre">${esc(c.remarks)}</span>` : '', () => `<textarea data-k="remarks" id="cpf-remarks" rows="4" placeholder="Budget, timing, who decides, colours they like">${esc(c.remarks || '')}</textarea>`],
   ];
@@ -7014,4 +7022,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-175209 -->
+<!-- build 20261019-180004 -->
