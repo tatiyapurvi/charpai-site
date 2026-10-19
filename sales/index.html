@@ -6745,6 +6745,9 @@ function msToggle(kind, k){
   save(); renderMsheet();
 }
 function msShowAll(){ if (state.quote) delete state.quote.mshide; save(); renderMsheet(); }
+// Firestore refuses a list inside a list, so a saved sheet keeps its columns as {k, l, n}; msUnpack turns them back
+const msPack = D => Object.assign({}, D, {S: D.S.map(s => Object.assign({}, s, {cols: s.cols.map(([k, l, n]) => ({k, l, n: !!n}))}))});
+const msUnpack = D => D && Object.assign({}, D, {S: (D.S || []).map(s => Object.assign({}, s, {cols: (s.cols || []).map(c => Array.isArray(c) ? c : [c.k, c.l, c.n])}))});
 function msSig(D){
   const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''), D.S.map(s => [s.k, s.cols.map(c => c[0]), s.rows.map(r => s.cols.map(([k]) => r.c[k]))]), D.amt]);
   let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 ^ txt.charCodeAt(i)) >>> 0;
@@ -6912,11 +6915,11 @@ async function msRecord(n, sig, D){
   try {
     if (await Store.sheetExists(cid, n)) { toast(`Someone saved M${n} a moment ago. Download again to save yours as M${n + 1}.`); delete CL.msv[cid]; return; }
     await Store.addSheet(cid, n, clone({cid, n, kind: 'ms', sig, at, by: UID, name, exec: q.exec || '', total: D.amt ?? null, hid: D.hid || '',
-      snap: {house: name, q, D, rows: state.rows, blinds: state.blinds, more: state.more}}));
+      snap: {house: name, q, D: msPack(D), rows: state.rows, blinds: state.blinds, more: state.more}}));
     await Store.mergeClient(cid, {mlatest: n, msig: sig, edited: at});
     delete CL.msv[cid];
     toast(`Kept as M${n} in ${name || 'this client'}'s page`);
-  } catch (e) { toast(e && e.code === 'invalid_argument' ? 'File saved, but not kept on the client: ask Purvi to check your access.' : 'File saved, but not kept on the client. Check the internet and download again.'); }
+  } catch (e) { console.warn('measurement sheet not kept', e); toast(`The file is saved, but M${n} was not kept on the client's page. Check the internet and download again.`); }
 }
 async function msLibs(){ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'); }
 document.addEventListener('click', async e => {
@@ -6952,11 +6955,11 @@ async function msOf(cid){
 function msShowVersion(c, x){
   openDlg(`<div class="dlg-top"><div><h2 id="dlg-title" style="margin:0">${esc(c.name)} · M${x.n}</h2><span class="hint">${esc(whenTxt(x.at))}${x.total != null ? ' · ' + rs(x.total) : ''}</span>${x.hid ? `<p class="qe-ban" style="margin:8px 0 0"><b>Part sheet.</b> ${esc(x.hid)}</p>` : ''}</div>
     <div class="cp-acts"><button class="btn solid" data-msv="pdf" data-n="${x.n}">Download PDF</button><button class="btn" data-dlg="close">Close</button></div></div>
-    <div class="dlg-body"><div class="paper-wrap" style="border:0">${msPaperHTML(x.snap.q, x.snap.house, x.snap.D, x.n)}</div></div>`, true);
+    <div class="dlg-body"><div class="paper-wrap" style="border:0">${msPaperHTML(x.snap.q, x.snap.house, msUnpack(x.snap.D), x.n)}</div></div>`, true);
 }
 async function msDownloadVersion(x, b){
   if (b) { b.disabled = true; b.textContent = 'Making…'; }
-  try { await msLibs(); await saveFile(msFileName(x.n, x.snap.house, new Date(x.at)), msPDF(x.n, {q: x.snap.q, house: x.snap.house, D: x.snap.D})); }
+  try { await msLibs(); await saveFile(msFileName(x.n, x.snap.house, new Date(x.at)), msPDF(x.n, {q: x.snap.q, house: x.snap.house, D: msUnpack(x.snap.D)})); }
   catch (err) { toast('Could not make the PDF. Check the internet.'); }
   if (b) { b.disabled = false; b.textContent = 'PDF'; }
 }
@@ -6990,4 +6993,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-172108 -->
+<!-- build 20261019-173047 -->
