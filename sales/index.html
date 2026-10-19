@@ -6100,7 +6100,7 @@ function renderEnquiryPage(){
       ${isNew ? '' : cpField('exec', 'Handled by <small>(on the quotation)</small>', c.exec, 'placeholder="Name and phone"')}
     </div><datalist id="archlist">${archList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>
     <label class="cpf wide" style="margin-top:12px"><span>Remarks</span><textarea data-k="remarks" id="cpf-remarks" rows="3" placeholder="Anything to remember: budget, timing, who decides, colours they like…">${esc(c.remarks || '')}</textarea></label>
-    ${isNew ? `<div class="cp-done"><span class="hint">Saved as you type. It is on the board under New Enquiry${cpId === NEW ? ' once you type something' : ''}.</span><span class="cp-acts"><button class="btn" data-act="done">Done</button><button class="btn solid" data-act="sheet">Open measurement sheet</button></span></div>` : ''}
+    ${isNew ? `<div class="cp-done"><span class="hint">Saved as you type. It is on the board under New Enquiry${cpId === NEW ? ' once you type something' : ''}.</span><span class="cp-acts"><button class="btn solid" data-act="done">Done</button></span></div>` : ''}
   </div>`;
   el.innerHTML = `<div class="cp cp2${isNew ? ' narrow' : ''}">
     <div class="cp-top">
@@ -6993,4 +6993,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-173805 -->
+<!-- build 20261019-174236 -->
