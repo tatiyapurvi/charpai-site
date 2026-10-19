@@ -2362,8 +2362,9 @@ $('#add').onclick = () => {
 // ---- Excel shortcuts and drag to move, for every measurement sheet (Purvi, 19 Oct: "the measurement sheet short cuts need to
 // match excel short cuts to match the mental model of my team"). Curtains first, then Blinds; one helper so the other sheets
 // can follow. In a row (or on the yellow selected row when the cursor isn't in any box):
-//   Ctrl/⌘ +  a row below (carries what + Add carries)              Ctrl/⌘ −  delete this row (message with Undo)
-//   Ctrl/⌘ D  copy this box from the row above                      Ctrl/⌘ Z  undo the last add / delete / move / copy
+//   Ctrl/⌘ +  a fresh, empty row below                               Ctrl/⌘ −  delete this row (message with Undo)
+//   Ctrl/⌘ D  a copy of this row below (as ⧉)                        Ctrl/⌘ Z  undo the last add / delete / move / copy
+//   (19 Oct, Purvi: "cmd/ctrl + should open a fresh row but cmd/ctrl d should open a copy row"; D used to copy one box from above)
 //   Enter, ↓  same box, next row      ↑  same box, row above        ← →  previous / next box (at the edge of the text)
 //   Space or Alt + ↓  open a dropdown's list
 // Drag a row by its number. The row follows the pointer, the others slide; Esc cancels; the page scrolls near the edges.
@@ -2386,7 +2387,7 @@ function showBox(x){
   if (td && td.classList.contains('first')) return;
   if (b.left < c.left + fw + 8) sc.scrollLeft -= c.left + fw + 8 - b.left; else if (b.right > c.right - 8) sc.scrollLeft += b.right - c.right + 8;
 }
-function sheetRows(o){   // o: {view, tbody, list(), blank(), carry(from), sel(), setSel(i), select(tr), after(), fieldOf(el), box(tr, f), first, fill, suggestOnly, label(row)}
+function sheetRows(o){   // o: {view, tbody, list(), blank(), sel(), setSel(i), select(tr), after(), fieldOf(el), box(tr, f), first, suggestOnly, label(row)}
   const undoL = []; let typed = false;
   const S = {};
   const idx = id => o.list().findIndex(r => r.id === id);
@@ -2398,7 +2399,7 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), carry(from), sel()
     o.select(tr); x.focus(); showBox(x); if (x.tagName === 'INPUT') { try { x.select(); } catch (_) {} }
   };
   const add = (i, f) => {
-    const L = o.list(), r = o.carry(L[i]); L.splice(i + 1, 0, r); o.setSel(i + 1);
+    const L = o.list(), r = o.blank(); L.splice(i + 1, 0, r); o.setSel(i + 1);
     did('Add row', () => { const L = o.list(), k = idx(r.id); if (k >= 0) L.splice(k, 1); if (!L.length) L.push(o.blank()); o.setSel(Math.min(o.sel(), L.length - 1)); });
     o.after(); focus(r, o.first);
   };
@@ -2416,13 +2417,12 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), carry(from), sel()
     did('Move', () => { const L = o.list(), k = idx(r.id); if (k < 0) return; L.splice(k, 1); L.splice(from, 0, r); o.setSel(from); });
     o.after();
   };
-  const fillDown = (i, f) => {
-    const L = o.list(); if (i < 1 || !f) return; const up = L[i - 1], r = L[i], keys = o.fill[f] || [f], old = {};
-    for (const k of keys) { old[k] = r[k]; const v = up[k]; r[k] = v === undefined ? '' : v && typeof v === 'object' ? clone(v) : v; }
-    did('Copy from above', () => Object.assign(r, old));
-    o.after(); focus(r, f);
+  const dup = (i, f) => {   // a full copy (deep, so the copy's parts / extras are its own) right below, cursor in the same box
+    const L = o.list(), r = Object.assign(clone(L[i]), {id: uid++}); L.splice(i + 1, 0, r); o.setSel(i + 1);
+    did('Copy row', () => { const L = o.list(), k = idx(r.id); if (k >= 0) L.splice(k, 1); o.setSel(Math.min(o.sel(), L.length - 1)); });
+    o.after(); focus(r, f || o.first);
   };
-  Object.assign(S, {add, del, move, focus});
+  Object.assign(S, {add, del, move, focus, dup});
   // on the yellow row when the cursor is in no box (after clicking its number, the drawing or an empty spot)
   document.addEventListener('keydown', e => {
     if (current !== o.view || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return;
@@ -2431,6 +2431,7 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), carry(from), sel()
     const i = Math.min(o.sel() || 0, o.list().length - 1); if (i < 0) return;
     if (isAddKey(e)) { e.preventDefault(); if (!e.repeat) add(i); }
     else if (isDelKey(e)) { e.preventDefault(); if (!e.repeat) del(i); }
+    else if (!e.shiftKey && e.key.toLowerCase() === 'd') { e.preventDefault(); if (!e.repeat) dup(i); }
     else if (!e.shiftKey && e.key.toLowerCase() === 'z' && undoL.length) { e.preventDefault(); S.undo(); }
   });
   o.tbody.addEventListener('input', e => { if (e.isTrusted) typed = true; e.target._nav = false; });
@@ -2441,7 +2442,7 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), carry(from), sel()
     const mod = (e.ctrlKey || e.metaKey) && !e.altKey, k = e.key, f = o.fieldOf(t);
     if (mod && isAddKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); add(i, f); } return; }   // held down: one row, not twenty
     if (mod && isDelKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); del(i, f); } return; }
-    if (mod && !e.shiftKey && k.toLowerCase() === 'd') { e.preventDefault(); closeSugg(); fillDown(i, f); return; }
+    if (mod && !e.shiftKey && k.toLowerCase() === 'd') { e.preventDefault(); if (!e.repeat) { closeSugg(); dup(i, f); } return; }
     if (mod && !e.shiftKey && k.toLowerCase() === 'z' && undoL.length && !typed) { e.preventDefault(); closeSugg(); S.undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !f) return;
     if (k === 'ArrowRight' || k === 'ArrowLeft') {   // 19 Oct (Purvi): ← → go to the box before / after, as in Excel; inside text only at its edge
@@ -2493,12 +2494,9 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), carry(from), sel()
   });
   return S;
 }
-// Curtains. Ctrl/⌘ D: a fabric comes with its company, roll and repeat; a track with its motor, remote and parts.
-const FILL_FAB = ['sup', 'key', 'fabric', 'roll', 'rollOwn', 'repeat', 'turn', 'turn300'], FILL_TRACK = ['track', 'motor', 'remote', 'extras'];
-const curtainRows = sheetRows({view: 'c-measure', tbody: tb, list: () => state.rows, blank, carry: from => carry(blank(), from),
+const curtainRows = sheetRows({view: 'c-measure', tbody: tb, list: () => state.rows, blank,
   sel: () => state.sel, setSel: i => { state.sel = i; }, select, after: afterStructure,
   fieldOf: t => t.dataset.f === 'rollTyping' ? 'roll' : t.dataset.f, box: (tr, f) => tr.querySelector(`[data-f="${f}"]:not([hidden])`), first: 'room',
-  fill: {sup: FILL_FAB, fabric: FILL_FAB, roll: FILL_FAB, track: FILL_TRACK, motor: FILL_TRACK, remote: FILL_TRACK},
   suggestOnly: new Set(['room', 'lining']), label: r => r.room});
 $('#house').value = state.house || '';
 $('#house').oninput = e => { state.house = e.target.value; const qb = $('#q-bill'); if (qb) qb.value = state.house; save(); };
@@ -3057,17 +3055,12 @@ btb.addEventListener('click', e => {
   renderBlinds(); save();
 });
 $('#badd').onclick = () => { const last = state.blinds[state.blinds.length - 1], b = bBlank(); if (last) Object.assign(b, {sup: last.sup, fam: last.fam, sys: last.sys, o: clone(last.o || {})}); state.blinds.push(b); state.bsel = state.blinds.length - 1; renderBlinds(); save(); };
-// Blinds: the same shortcuts and drag as Curtains (Purvi, 19 Oct). Ctrl/⌘ D on company / type / system / collection / shade
-// copies the whole blind above (they belong together); on Motor / Remote / Extras it copies all three.
-const FILL_BLIND = ['sup', 'fam', 'sys', 'pid', 'shade', 'series'], FILL_ADDS = ['adds', 'motor'];
-const BFIELD = {bfam: 'fam', bcoll: 'coll'};
+// Blinds: the same shortcuts and drag as Curtains (Purvi, 19 Oct).
 const blindRows = sheetRows({view: 'b-measure', tbody: btb, list: () => state.blinds, blank: bBlank,
-  carry: last => { const b = bBlank(); if (last) Object.assign(b, {sup: last.sup, fam: last.fam, sys: last.sys, o: clone(last.o || {})}); return b; },
   sel: () => state.bsel, setSel: i => { state.bsel = i; }, select: tr => { bSelect(tr); }, after: () => { renderBlinds(); save(); },
   fieldOf: t => t.dataset.b || (t.dataset.bfam ? 'fam' : t.dataset.bcoll ? 'coll' : t.dataset.bpick ? 'pick-' + t.dataset.bpick : t.dataset.bq != null ? 'pick-q' : ''),
   box: (tr, f) => tr.querySelector(f === 'fam' ? '[data-bfam]' : f === 'coll' ? '[data-bcoll]' : /^pick-/.test(f) ? `[data-bpick="${f.slice(5)}"]` : `[data-b="${f}"]`),
-  first: 'room', fill: {sup: FILL_BLIND, fam: FILL_BLIND, sys: FILL_BLIND, coll: FILL_BLIND, shade: FILL_BLIND, motor: FILL_ADDS, 'pick-motor': FILL_ADDS, 'pick-remote': FILL_ADDS, 'pick-extra': FILL_ADDS, 'pick-q': FILL_ADDS},
-  suggestOnly: new Set(['room']), label: b => b.room});
+  first: 'room', suggestOnly: new Set(['room']), label: b => b.room});
 $('#bord').onclick = () => { const p = $('#b-orders'); p.hidden = !p.hidden; $('#bord').textContent = p.hidden ? 'Order forms for the companies' : 'Hide order forms'; if (!p.hidden) { renderOrders(); p.scrollIntoView({block: 'start'}); } };
 
 // ---- side panel: drawing + the details the company's order form needs
@@ -7238,4 +7231,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-201502 -->
+<!-- build 20261019-201937 -->
