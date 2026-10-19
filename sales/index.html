@@ -1215,7 +1215,7 @@ button.n-prop:hover{background:var(--soft)}
         <div class="panel">
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
           <div class="tbl-scroll"><table class="sheet" style="min-width:1960px"><thead>
-            <tr><th class="first">Room</th><th>Company</th><th>Blind type <small>company's own name</small></th><th>System</th><th>Shade no.</th><th>Collection / series</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Qty</th><th>Motor</th><th>Remote</th><th>Extras <small>brackets, chargers…</small></th><th class="r">Size <small>H × W mm</small></th><th class="r">Area</th><th class="r">MRP / sq ft</th><th class="r">Amount</th><th>For the order</th><th></th></tr>
+            <tr><th class="first">Room</th><th>Company</th><th>Blind type <small>company's own name</small></th><th>System</th><th>Collection / series</th><th>Shade no.</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Qty</th><th>Motor</th><th>Remote</th><th>Extras <small>brackets, chargers…</small></th><th class="r">Size <small>H × W mm</small></th><th class="r">Area</th><th class="r">MRP / sq ft</th><th class="r">Amount</th><th>For the order</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span></div>
         </div>
@@ -2489,10 +2489,10 @@ function bRowHTML(b, i){
     ${loading ? `<td class="hint">${esc(loading)}</td>` : priced ? `
     <td><select data-b="sys" style="width:170px"${b.fam ? '' : ' disabled'}>${bOpts(syss.map(x => [x, x]), b.sys, 'Pick a system')}</select></td>` : `
     <td class="hint" style="font-size:12.5px">price list not added yet</td>`}
-    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="Shade no." title="Type the shade number: the collection fills in" style="width:96px" aria-label="Shade number"></td>
     ${loading ? '<td></td>' : priced ? `
-    <td><input data-bcoll="1" value="${esc(bCollLabel(BL.byId.get(b.pid)))}" autocomplete="off" placeholder="${b.sys ? 'Type to find the collection' : 'Pick a system first'}" style="width:280px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
-    <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:220px" aria-label="Series"></td>`}
+    <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick the collection' : 'Pick a system first'}" style="width:200px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
+    <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:200px" aria-label="Series"></td>`}
+    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick a shade' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:110px" aria-label="Shade number"></td>
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
     <td><input data-b="qty" class="n" inputmode="numeric" value="${esc(b.qty)}" style="width:52px" aria-label="How many"></td>
@@ -2545,20 +2545,55 @@ function bFamSugg(input, b){
 // Shade no. now comes before it: typing the shade still fills it in. The list is that company's type + system; when the box shows the
 // picked collection, a click lists them all (it filters only once something new is typed).
 const bCollLabel = r => r ? [r.coll, r.design].filter(Boolean).join(' · ') + (r.extra ? ` (${r.extra})` : '') : '';
+// Collection first, then its shades (Purvi, 19 Oct: "select the collection/series name first and then have a look at the list of all
+// shade numbers available in that collection"; option A of two drawn). b.coll = the collection name; b.pid = the price row of the shade.
+const bCollOf = b => b.coll || (BL.byId.get(b.pid) || {}).coll || '';
+const bRate = r => Math.round(r.sqm * (1 + r.gst / 100) / SQFT);
 function bCollSugg(input, b){
-  const L0 = BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam && r.sys === b.sys), cur = bCollLabel(BL.byId.get(b.pid));
+  const L0 = BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam && r.sys === b.sys), cur = bCollOf(b);
+  const t = blindType(b.sup, b.fam), sl = t && t.shades && (BL.shades[b.sup] || {})[t.shades];   // Marvel: named shade lists
+  const names = uniq(L0.map(r => r.coll || r.design)).map(n => { const R = L0.filter(r => (r.coll || r.design) === n), p = R.map(bRate);
+    return {n, R, lo: Math.min(...p), hi: Math.max(...p), shades: sl ? sl.filter(([c, m]) => sameName(String(m).split(' - ')[0].replace(/\s+\d+%$/, ''), n)).length : R.reduce((a, r) => a + bShadesOf(r).length, 0)}; });
   const q = input.value.trim() === cur ? '' : input.value.trim().toLowerCase(), toks = q.split(/\s+/).filter(Boolean);
-  const L = toks.length ? L0.filter(r => toks.every(t => bCollLabel(r).toLowerCase().includes(t))).sort((a, c) => bCollLabel(c).toLowerCase().startsWith(toks[0]) - bCollLabel(a).toLowerCase().startsWith(toks[0])) : L0;
-  suggFor = {input, row: b, restore: () => { if (b.pid) input.value = bCollLabel(BL.byId.get(b.pid)); }, pick: r => { b.pid = r.id; b.pidAuto = false; input.value = bCollLabel(r); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); }};
-  suggItems = L.slice(0, 80); suggOn = Math.max(0, suggItems.findIndex(r => r.id === b.pid));
-  sugg.innerHTML = suggItems.length ? suggItems.map((r, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(r.coll || r.design)}</b><br><small>${esc([r.coll && r.design, r.extra].filter(Boolean).join(' · ') || r.sys)}</small></span><span class="pr">₹${Math.round(r.sqm * (1 + r.gst / 100) / SQFT)}<small>per sq ft · incl. GST</small></span></div>`).join('')
+  const L = toks.length ? names.filter(x => toks.every(t => x.n.toLowerCase().includes(t))).sort((a, c) => c.n.toLowerCase().startsWith(toks[0]) - a.n.toLowerCase().startsWith(toks[0])) : names;
+  suggFor = {input, row: b, restore: () => { input.value = bCollOf(b); }, pick: x => {
+    b.coll = x.n; if ((BL.byId.get(b.pid) || {}).coll !== x.n) { b.pid = ''; b.pidAuto = false; }
+    if (x.R.length === 1) { b.pid = x.R[0].id; b.pidAuto = false; }   // one price for the whole collection ("All Designs")
+    input.value = x.n; bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save();
+    const sh = input.closest('tr').querySelector('[data-b=shade]'); if (sh) { sh.placeholder = 'Pick a shade'; sh.focus(); bShadeSugg(sh, b); } }};
+  suggItems = L.slice(0, 120); suggOn = Math.max(0, suggItems.findIndex(x => x.n === cur));
+  sugg.innerHTML = suggItems.length ? suggItems.map((x, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(x.n)}</b><br><small>${x.shades ? x.shades + ' shade' + (x.shades > 1 ? 's' : '') : x.R.length + ' design' + (x.R.length > 1 ? 's' : '')}</small></span><span class="pr">₹${x.lo}${x.hi > x.lo ? '–' + x.hi : ''}<small>MRP / sq ft</small></span></div>`).join('')
     : `<div class="msg">No collection matches “${esc(input.value.trim())}” in ${esc(b.fam)} · ${esc(b.sys)}.</div>`;
+  placeSugg(input);
+  const on = sugg.querySelector('.it.on'); if (on) on.scrollIntoView({block: 'nearest'});
+}
+// The shade numbers of one price row: a range "10350-10355" → 10350 … 10355; one number → itself; a name (honeycomb fabric, wood) → none.
+function bShadesOf(r){ const d = String(r.design || '').replace(/\s+/g, ''), rg = shadeRange(d);
+  if (rg && rg[1] - rg[0] <= 300) return Array.from({length: rg[1] - rg[0] + 1}, (_, i) => String(rg[0] + i));
+  return /^\d{3,}$/.test(d) ? [d] : []; }
+function bCollShades(input, b, coll){
+  const R = BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam && r.sys === b.sys && (r.coll || r.design) === coll);
+  let L = R.flatMap(r => { const sh = bShadesOf(r); return sh.length ? sh.map(c => ({c, r})) : [{c: '', r}]; })
+    .sort((x, y) => bRate(x.r) - bRate(y.r) || (+x.c || 0) - (+y.c || 0) || String(x.r.design).localeCompare(String(y.r.design)));
+  const q = input.value.trim().toLowerCase(), cur = q && L.some(x => x.c === input.value.trim() && x.r.id === b.pid);
+  if (q && !cur) L = L.filter(x => (x.c || x.r.design + ' ' + x.r.extra).toLowerCase().includes(q)).sort((x, y) => x.c.toLowerCase().startsWith(q) ? -1 : y.c.toLowerCase().startsWith(q) ? 1 : 0);
+  suggFor = {input, row: b, restore: () => { input.value = b.shade; }, pick: x => {
+    if (x.c) { b.shade = x.c; input.value = x.c; } b.pid = x.r.id; b.pidAuto = false; b.coll = coll;
+    bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); }};
+  suggItems = L.slice(0, 400); suggOn = Math.max(0, suggItems.findIndex(x => x.r.id === b.pid && (!x.c || x.c === b.shade)));
+  let last = null;
+  sugg.innerHTML = suggItems.length ? `<div class="msg" style="padding:6px 12px">${L.length} ${L.some(x => x.c) ? 'shades' : 'designs'} in ${esc(coll)}</div>` + suggItems.map((x, i) => { const rt = bRate(x.r), h = rt !== last && !q ? `<div class="grp">₹${rt} a sq ft</div>` : ''; last = rt;
+      return h + `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(x.c || x.r.design)}</b>${x.c ? '' : x.r.extra ? `<br><small>${esc(x.r.extra)}</small>` : ''}</span><span class="pr">₹${rt}</span></div>`; }).join('')
+    : `<div class="msg">No shade “${esc(input.value.trim())}” in ${esc(coll)}.</div>`;
   placeSugg(input);
   const on = sugg.querySelector('.it.on'); if (on) on.scrollIntoView({block: 'nearest'});
 }
 // Shade numbers in the curtain-fabric style box (7 Oct): the company's shade list for this type, matching what is typed.
 function bShadeSugg(input, b){
-  const t = blindType(b.sup, b.fam), l = t && t.shades && (BL.shades[b.sup] || {})[t.shades];
+  const t = blindType(b.sup, b.fam), coll = bCollOf(b);
+  let l = t && t.shades && (BL.shades[b.sup] || {})[t.shades];
+  if (coll && l) { const k = l.filter(([c, n]) => sameName(String(n).split(' - ')[0].replace(/\s+\d+%$/, ''), coll)); if (k.length) l = k; }   // Marvel: that series' shades
+  else if (coll) return bCollShades(input, b, coll);
   if (!l) { closeSugg(); return; }
   const q = input.value.trim().toLowerCase(), L = (q ? l.filter(([c, n]) => String(c).toLowerCase().startsWith(q)).concat(l.filter(([c, n]) => !String(c).toLowerCase().startsWith(q) && (c + ' ' + n).toLowerCase().includes(q))) : l).slice(0, 40);
   suggFor = {input, row: b, mp: true, val: x => x[0]}; suggItems = L; suggOn = 0;
@@ -2631,22 +2666,22 @@ btb.addEventListener('input', e => {
   if (e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); return; }
   if (e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); return; }
   if (e.target.dataset.bcoll) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return;
-    if (!e.target.value.trim() && b.pid) { b.pid = ''; b.pidAuto = false; bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); save(); }   // emptied: no collection
+    if (!e.target.value.trim() && (b.pid || b.coll)) { b.pid = b.coll = ''; b.pidAuto = false; bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); save(); }   // emptied: no collection
     bCollSugg(e.target, b); return; }
   if (e.target.dataset.bq) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return; b.adds[+e.target.dataset.bq].q = e.target.value.trim(); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); return; }
   const f = e.target.dataset.b; if (!f) return;
   const tr = e.target.closest('tr'), b = state.blinds.find(x => x.id === +tr.dataset.id);
   if (f === 'shade' && e.isTrusted && document.activeElement === e.target) bShadeSugg(e.target, b);
   b[f] = e.target.value;
-  if (f === 'sup') { b.fam = b.sys = b.pid = ''; b.adds = []; }   // another company's motors and extras don't fit
-  if (f === 'fam') { b.sys = b.pid = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; }
-  if (f === 'sys') { b.pid = ''; b.pidAuto = false; shadePick(b); }
+  if (f === 'sup') { b.fam = b.sys = b.pid = b.coll = ''; b.adds = []; }   // another company's motors and extras don't fit
+  if (f === 'fam') { b.sys = b.pid = b.coll = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; }
+  if (f === 'sys') { b.pid = ''; b.pidAuto = false; shadePick(b); b.coll = (BL.byId.get(b.pid) || {}).coll || ''; }
   if (f === 'pid') b.pidAuto = false;
   if (f === 'shade') { const t = blindType(b.sup, b.fam), l = t && t.shades && (BL.shades[b.sup] || {})[t.shades]; const hit = l && l.find(x => x[0] === b.shade.trim()); if (hit) { b.series = hit[1]; const si = tr.querySelector('[data-b=series]'); if (si) si.value = hit[1]; }
     const sys0 = b.sys;
     if (shadePick(b)) {
       if (b.sys !== sys0) { const i = state.blinds.indexOf(b); tr.outerHTML = bRowHTML(b, i); bMarkSel(); const ni = $('#btb').querySelector(`tr[data-id="${b.id}"] [data-b=shade]`); if (ni) { ni.dataset.quiet = '1'; ni.focus(); delete ni.dataset.quiet; try { ni.setSelectionRange(ni.value.length, ni.value.length); } catch (_) {} } }   // the system changed: redraw the row
-      else { const ps = tr.querySelector('[data-bcoll]'); if (ps) ps.value = bCollLabel(BL.byId.get(b.pid)); } } }
+      else { const ps = tr.querySelector('[data-bcoll]'); b.coll = (BL.byId.get(b.pid) || {}).coll || b.coll; if (ps) ps.value = bCollOf(b); } } }
   if (['sup', 'fam', 'sys'].includes(f)) { const i = state.blinds.indexOf(b); tr.outerHTML = bRowHTML(b, i); bMarkSel(); }
   bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save();
 });
@@ -6354,4 +6389,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-113311 -->
+<!-- build 20261019-114451 -->
