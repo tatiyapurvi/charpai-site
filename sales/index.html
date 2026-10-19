@@ -186,7 +186,7 @@ body:has(#v-measure:not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}
 #v-measure .auto-wrap .reset{position:absolute;left:1px;top:50%;transform:translateY(-50%);font-size:15px;padding:2px}
 #v-measure .sheet select.ovr{padding-left:19px}
 #v-measure .sheet th.r,#v-measure .sheet td.out{padding-left:6px;padding-right:8px}
-/* Moving sideways without a trackpad (Purvi, 20 Oct): ‹ › move one screen, a button per section jumps there and lights up
+/* Moving sideways without a trackpad (Purvi, 19 Oct): ‹ › move one screen, a button per section jumps there and lights up
    while that section is on screen; a fade marks the side with more columns. Hidden when the whole sheet fits. */
 .hnav{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line2)}
 .hnav[hidden]{display:none}
@@ -353,8 +353,8 @@ table.sheet.psheet.uwide{width:100%}
 @media (max-width:520px){ .s-kpis .s-amt{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline} }
 .s-kpis b{white-space:nowrap}
 .s-kpis .kpi{padding:6px 9px}
-@media (min-width:1150px){ #side .s-front svg{max-height:max(300px,calc(100dvh - 300px))}   /* drawing stays big (Purvi, 20 Oct) */ }
-/* 20 Oct (Purvi): "remove the details table from right side panel … we can see all on the sheet itself in one go now. make drawing
+@media (min-width:1150px){ #side .s-front svg{max-height:max(300px,calc(100dvh - 300px))}   /* drawing stays big (Purvi, 19 Oct) */ }
+/* 19 Oct (Purvi): "remove the details table from right side panel … we can see all on the sheet itself in one go now. make drawing
    bigger and give more breathing space". Beside the sheet (desktop) the details list goes; phones and tablets keep it, the sheet
    is above it there and needs swiping. More room between the name, the numbers, the drawing and the panels line. */
 @media (min-width:1150px){
@@ -369,14 +369,14 @@ table.sheet.psheet.uwide{width:100%}
   #side .s-rest{margin-top:6px;padding-top:8px}
   #side .s-h{margin:20px 20px 8px}
 }
-/* Under the front view (Purvi, 20 Oct): "5 panels of 20″ each", yellow like the metres and track length in the table */
+/* Under the front view (Purvi, 19 Oct): "5 panels of 20″ each", yellow like the metres and track length in the table */
 .s-panels{margin:2px 14px 12px;font:600 19px var(--num);color:var(--ink);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .s-panels .v{background:var(--tape);color:var(--tape-ink);padding:2px 9px;border-radius:5px;font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
 .s-h{margin:14px 14px 4px;font:600 12.5px var(--body);color:var(--muted);letter-spacing:.03em}
 .s-rest{border-top:1px solid var(--line2);margin-top:10px;padding-top:2px}
 @media (min-width:1150px){
   #side{max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior-x:contain}
-  /* 20 Oct (Purvi): the panel's scroll used to stop at its end and not hand over to the page, so its bottom stayed below the
+  /* 19 Oct (Purvi): the panel's scroll used to stop at its end and not hand over to the page, so its bottom stayed below the
      screen until you scrolled from the sheet. Up/down now carries on to the page; sideways stays inside (no browser back-swipe). */
 }
 .fig h4{margin:10px 4px 2px;font:600 12.5px var(--body);color:var(--muted);letter-spacing:.03em;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -786,7 +786,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .paper tr.subrow td{font-weight:700;background:#FAFAFA}
 .paper tr.secrow.part td{background:#FAFAFA;padding-left:22px;font-style:italic}
 .paper tr.tot td{font-weight:700;font-size:14px}
-/* Edit quotation (20 Oct): hidden things stay drawn while editing, greyed; the Hide / Show buttons sit in their own column and keep their colour */
+/* Edit quotation (19 Oct): hidden things stay drawn while editing, greyed; the Hide / Show buttons sit in their own column and keep their colour */
 .paper.editing [data-off],.paper.editing tr[data-off] td:not(.qe){color:#B9BDB9;background:#F7F7F5}
 .paper.editing th[data-off]{background:#EEF2F5;color:#9AA3AA}
 .paper.editing tr[data-off] td:not(.qe) b{color:inherit}
@@ -797,7 +797,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .qh.show:hover{background:#F6DD8A}
 th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .qe-open{padding:14px 14px 4px;display:flex;flex-direction:column;gap:6px}
-/* the measurement sheet download page (20 Oct) */
+/* the measurement sheet download page (19 Oct) */
 .ms-dl{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
 .ms-dl svg{width:15px;height:15px}
 #v-msheet .paper.ms-tab{margin-top:14px;border-top:1px solid #333}
@@ -1852,7 +1852,7 @@ function migrate(r){
   if (r.style === 'APT / Double Height') r.style = 'American Pleat Double Height';
   if (!STYLES.includes(r.style)) r.style = 'American Pleat';
   if (r.lining === undefined) r.lining = '';
-  if (!r.stitchBy) r.stitchBy = 'Local';   // rows from before 20 Oct are locally stitched
+  if (!r.stitchBy) r.stitchBy = 'Local';   // rows from before 19 Oct are locally stitched
   if (r.sup === undefined || r.sup === 'OWN') { r.sup = ''; r.key = ''; }
   if (OLD_TRACK[r.track]) r.track = OLD_TRACK[r.track];
   if (r.remote === undefined) r.remote = '';
@@ -1985,7 +1985,7 @@ const ourSelect = el => !!(el && el.tagName === 'SELECT' && !el.multiple && !el.
 function selOpen(sel, q = ''){
   const items = [], rows = [], ql = q.toLowerCase();
   const optRow = o => { if (o.hidden || (o.value === '' && o.selected)) return;   // the empty "Pick…" line only shows once something is picked (to undo it)
-    if (ql && !(o.dataset.full || o.textContent).toLowerCase().includes(ql)) return;   // typed letters narrow the list (20 Oct: this line had slipped into the comment above)
+    if (ql && !(o.dataset.full || o.textContent).toLowerCase().includes(ql)) return;   // typed letters narrow the list (19 Oct: this line had slipped into the comment above)
     if (o.disabled) { rows.push(`<div class="dis">${esc(o.textContent)}<small>no list yet</small></div>`); return; }
     const i = items.length; items.push(o);
     rows.push(`<div class="it${o.selected ? ' on cur' : ''}${o.value === '' ? ' blank' : ''}" data-i="${i}"><span><b>${esc(o.dataset.full || o.textContent)}</b></span><span></span></div>`); };
@@ -2100,9 +2100,9 @@ function autoCell(r, f, w, big){
 }
 function rowHTML(r, i){
   const id = f => `r${r.id}-${f}`;
-  // 20 Oct (Purvi): Stitched = Local (default) or Company, per curtain, before Remarks. Information only for now: the quotation is unchanged.
-  // 20 Oct (Purvi): track length is back as a yellow Result between Track and Fixing.
-  // 20 Oct (Purvi): of the results only Fabric m stays in the table (lining m and track ft are in the side panel and the totals
+  // 19 Oct (Purvi): Stitched = Local (default) or Company, per curtain, before Remarks. Information only for now: the quotation is unchanged.
+  // 19 Oct (Purvi): track length is back as a yellow Result between Track and Fixing.
+  // 19 Oct (Purvi): of the results only Fabric m stays in the table (lining m and track ft are in the side panel and the totals
   // below); Panels and Parts are boxes you can type over, so they moved to "Change only if needed".
   // 19 Oct: the boxes show short names (M / S, DD, AP, 140, Ceiling…) so the whole sheet fits a desktop without
   // scrolling sideways; every list still opens with the full names (data-full). Order: what you measure first, the
@@ -2308,7 +2308,7 @@ $('#add').onclick = () => {
 $('#house').value = state.house || '';
 $('#house').oninput = e => { state.house = e.target.value; const qb = $('#q-bill'); if (qb) qb.value = state.house; save(); };
 // + New client. With the shared store the open client is already saved, so no second tap; on a device alone it asks twice.
-// 20 Oct (Purvi): the Copy for WhatsApp and + New client buttons were taken off the Curtains sheet (new clients start from
+// 19 Oct (Purvi): the Copy for WhatsApp and + New client buttons were taken off the Curtains sheet (new clients start from
 // My Clients → + New enquiry); the handlers stay in case they come back.
 if ($('#clear')) $('#clear').onclick = e => {
   const b = e.currentTarget;
@@ -2355,7 +2355,7 @@ function elevation(row, res, d, lin){
   const head = d.override ? 0 : (R.curtain_heading_in ?? 4);
   const fold = d.override ? d.extra : (R.curtain_fold_in ?? 6);
   const patt = d.cut - d.cut0;
-  const VW = 640, L = 56, RT = 168, T = 54, availW = VW - L - RT, availH = 440;   // 20 Oct (Purvi): bigger drawing (was L 70, height 330)
+  const VW = 640, L = 56, RT = 168, T = 54, availW = VW - L - RT, availH = 440;   // 19 Oct (Purvi): bigger drawing (was L 70, height 330)
   const s = Math.min(availW / W, availH / (H + head + fold + patt));
   const cw = W * s, ch = H * s, x0 = L + (availW - cw) / 2, y0 = T + Math.max(head * s, 8), yb = y0 + ch;
   const below = (fold + patt) * s;
@@ -3156,7 +3156,7 @@ function qSections(){
   S.hw = S.hw.filter(l => l.grp !== 'mot').concat(S.hw.filter(l => l.grp === 'mot'));   // manual first, then motorised
   return S;
 }
-// Edit quotation (Purvi, 20 Oct: "hide a row, hide a column, hide a full section … before sending"). state.quote.hide =
+// Edit quotation (Purvi, 19 Oct: "hide a row, hide a column, hide a full section … before sending"). state.quote.hide =
 // {sec: [section keys], row: [line keys], col: [column keys]}; it stays until shown again (a yellow line on the quotation says so).
 // Hidden things are taken out here, before anything is drawn, so the paper, PDF, Excel, Print, total, version number and the
 // WhatsApp message always match. Hiding the Amount column also leaves out every total and the amount in words.
@@ -3303,7 +3303,7 @@ function renderPaper(){
 }
 // The printed quotation. Also draws a saved version on the Clients page (ro = read only: no orange buttons).
 // ed = {S: every line, hide} while editing: everything is drawn, hidden things greyed, with Hide / Show buttons.
-// t.cols = the columns the client gets (a version saved before 20 Oct has none: all of them).
+// t.cols = the columns the client gets (a version saved before 19 Oct has none: all of them).
 function paperHTML(q, house, t, showC, ro, ed){
   const cols = t.cols || QALL, vis = ed ? QALL : cols, off = c => !!ed && !cols.includes(c), amt = cols.includes('amt');
   const S = ed ? ed.S : t.S, H = ed ? ed.hide : null, ncol = 1 + vis.length + (showC ? 1 : 0), tailE = ed ? '<td class="qe"></td>' : '';
@@ -4083,7 +4083,7 @@ const Store = {
   getDraft: async cid => { const d = await db.doc('drafts/' + cid).get(); return d.exists ? d.data() : null; },
   setDraft: (cid, body) => db.doc('drafts/' + cid).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
   watchDraft: (cid, fn) => db.doc('drafts/' + cid).onSnapshot(s => { if (s.exists && !(s.metadata && s.metadata.hasPendingWrites)) fn(s.data()); }, () => {}),
-  // qversions holds the quotations (<client>_v<n>) and, since 20 Oct, the measurement sheets (<client>_m<n>, kind 'ms')
+  // qversions holds the quotations (<client>_v<n>) and, since 19 Oct, the measurement sheets (<client>_m<n>, kind 'ms')
   listDocs: async cid => (await scoped(db.collection('qversions').where('cid', '==', cid)).get()).docs.map(d => Object.assign({_id: d.id}, d.data())),
   listVersions: async cid => (await Store.listDocs(cid)).filter(x => x.kind !== 'ms').sort((a, b) => b.n - a.n),
   listSheets: async cid => (await Store.listDocs(cid)).filter(x => x.kind === 'ms').sort((a, b) => b.n - a.n),
@@ -4538,7 +4538,7 @@ function ctabsHTML(overview){
   const inSheet = GATED.includes(current) && current !== 'quote';
   const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
   const products = !overview || inSheet ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}
-    <button class="ctab ms-dl" role="tab" data-ct="msheet" aria-selected="${current === 'msheet'}">${DL_ICON}Download sheet</button>` : '';   // 20 Oct: the measurement sheet as a PDF / Excel
+    <button class="ctab ms-dl" role="tab" data-ct="msheet" aria-selected="${current === 'msheet'}">${DL_ICON}Download sheet</button>` : '';   // 19 Oct: the measurement sheet as a PDF / Excel
   return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') : ''}${products}</div>
     ${overview ? `<button class="qgo" data-ct="${inSheet ? current : first}" aria-pressed="${inSheet}">${MS_SVG}Measurement sheet</button>` : ''}<button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}Quotation</button></div>`;
 }
@@ -6343,7 +6343,7 @@ function verChanges(A, B){
   // the quotation itself
   const qa = A.q || {}, qb = B.q || {}, d = q => q.discAmt ? '₹' + q.discAmt : q.disc ? q.disc + '%' : 'none';
   const QL = {contact: 'Contact person', phone: 'Contact number', email: 'Email', addr: 'Delivery address', ddate: 'Delivery date', exec: 'Executive', accounts: 'Accounts', ref: 'Reference', no: 'Invoice no.'};
-  // Edit quotation (20 Oct): a part quotation says what was shared in its own yellow note, so here only the way back to the full one
+  // Edit quotation (19 Oct): a part quotation says what was shared in its own yellow note, so here only the way back to the full one
   // (Purvi: "why is the same info written twice?")
   const hidA = ((A || {}).t || {}).hid, hidB = ((B || {}).t || {}).hid;
   add('Quotation', 'details', '', [d(qa) !== d(qb) && {k: 'Discount', a: d(qa), b: d(qb)}, ...Object.keys(QL).map(k => chg(QL[k], qa[k], qb[k])), hidA && !hidB && {t: 'Everything was shared again (the last one was a part quotation)'}]);
@@ -6379,7 +6379,7 @@ function cpActivity(c, V){
   const ev = [];
   if (c.created) ev.push({at: c.created, k: 'new'});
   if (Array.isArray(V)) for (const x of V) ev.push({at: x.at, k: 'v', v: x});
-  const MV = Array.isArray(CL.msv[c.id]) ? CL.msv[c.id] : [];   // measurement sheets M1, M2… (20 Oct)
+  const MV = Array.isArray(CL.msv[c.id]) ? CL.msv[c.id] : [];   // measurement sheets M1, M2… (19 Oct)
   for (const x of MV) ev.push({at: x.at, k: 'm', v: x});
   if (c.changeReq && c.changeReq.at) ev.push({at: c.changeReq.at, k: 'ch'});
   if (s === 'won' || s === 'lost') ev.push({at: o.at, k: s});
@@ -6646,7 +6646,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-hometo]')) go('todo');
 });
 
-// ================= Measurement sheet download (Purvi, 20 Oct 2026: "similar to how our qtn looks, i need a button to download a similar
+// ================= Measurement sheet download (Purvi, 19 Oct 2026: "similar to how our qtn looks, i need a button to download a similar
 // looking measurement sheet (same blue white excel table format) … an option to … hide or unhide rows/columns/sections … downloads
 // to be in versions just like qtns and same level of activity tracking"). Her picks: with MRP and amounts; every product the client
 // has, one section each; short totals + signatures at the bottom; its own version numbers M1, M2…
@@ -6993,4 +6993,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-173047 -->
+<!-- build 20261019-173805 -->
