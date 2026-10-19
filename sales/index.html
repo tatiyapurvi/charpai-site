@@ -1272,7 +1272,7 @@ button.n-prop:hover{background:var(--soft)}
                   <th class="grp res sep">Result</th>
                   <th class="grp sep">Fitting</th><th class="grp res" data-nopill="1">Result</th><th class="grp"></th>
                   <th class="grp soft sep" colspan="6">Change only if needed</th>
-                  <th class="grp sep" data-pill="Remarks"></th><th class="grp howh" data-pill="How">How it was worked out</th><th class="grp"></th>
+                  <th class="grp sep" data-pill="Stitched"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp howh" data-pill="How">How it was worked out</th><th class="grp"></th>
                 </tr>
                 <tr>
                   <th class="first">Room</th><th title="M = Main curtain, S = Sheer curtain">M / S</th>
@@ -1282,7 +1282,7 @@ button.n-prop:hover{background:var(--soft)}
                   <th class="sep">Track</th><th class="r" title="Track length">Length</th><th>Fixing</th>
                   <th class="r sep">Panels</th><th class="r">Parts</th>
                   <th title="Pattern repeat in inches">Repeat <small>″</small></th><th title="Can the fabric be turned sideways">Turn</th><th title="Inches of window each panel covers">Panel <small>″</small></th><th title="Extra inches for the fold and heading">Extra <small>″</small></th>
-                  <th class="sep">Remarks</th><th class="howh"></th><th></th>
+                  <th class="sep" title="Locally stitched or company stitched">Stitched</th><th class="sep">Remarks</th><th class="howh"></th><th></th>
                 </tr>
               </thead>
               <tbody id="tb"></tbody>
@@ -1815,7 +1815,7 @@ const findFabric = name => prices.fabrics.find(f => f.n.toLowerCase() === String
 
 // ================= the sheet: kept on this device
 let uid = 1;
-function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', motor:'', extras:[], fixing:'', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
+function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', motor:'', extras:[], fixing:'', stitchBy:'Local', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
 function fillFabric(row){
   const f = findFabric(row.fabric);
   if (!f) return false;
@@ -1838,6 +1838,7 @@ function migrate(r){
   if (r.style === 'APT / Double Height') r.style = 'American Pleat Double Height';
   if (!STYLES.includes(r.style)) r.style = 'American Pleat';
   if (r.lining === undefined) r.lining = '';
+  if (!r.stitchBy) r.stitchBy = 'Local';   // rows from before 20 Oct are locally stitched
   if (r.sup === undefined || r.sup === 'OWN') { r.sup = ''; r.key = ''; }
   if (OLD_TRACK[r.track]) r.track = OLD_TRACK[r.track];
   if (r.remote === undefined) r.remote = '';
@@ -2085,6 +2086,7 @@ function autoCell(r, f, w, big){
 }
 function rowHTML(r, i){
   const id = f => `r${r.id}-${f}`;
+  // 20 Oct (Purvi): Stitched = Local (default) or Company, per curtain, before Remarks. Information only for now: the quotation is unchanged.
   // 20 Oct (Purvi): track length is back as a yellow Result between Track and Fixing.
   // 20 Oct (Purvi): of the results only Fabric m stays in the table (lining m and track ft are in the side panel and the totals
   // below); Panels and Parts are boxes you can type over, so they moved to "Change only if needed".
@@ -2111,6 +2113,7 @@ function rowHTML(r, i){
     <td class="soft"><select id="${id('turn')}" data-f="turn" style="width:62px" aria-label="Can turn">${opt(['Yes','No'], r.turn)}</select><button class="btn t3" data-a="t3" hidden></button></td>
     <td>${autoCell(r, 'panelTxt', 60)}</td>
     <td>${autoCell(r, 'allowTxt', 52)}</td>
+    <td class="sep"><select id="${id('stitchBy')}" data-f="stitchBy" style="width:100px" aria-label="Locally or company stitched">${optS(['Local', 'Company'], r.stitchBy || 'Local', v => v, v => v === 'Company' ? 'Company stitched' : 'Locally stitched')}</select></td>
     <td class="sep"><input id="${id('remarks')}" data-f="remarks" value="${esc(r.remarks)}" placeholder="Any note" style="width:200px" aria-label="Remarks"></td>
     <td class="howc" data-o="how"></td>
     <td class="acts"><button class="ico" data-a="dup" title="Copy this row" aria-label="Copy row ${i+1}">⧉</button><button class="ico" data-a="del" title="Delete this row" aria-label="Delete row ${i+1}">✕</button></td>
@@ -2524,6 +2527,7 @@ function renderSide(){
       ${lin ? line('Lining', esc(lin.name)) : ''}
       ${line('Track', r.track ? esc(r.track) + (motorsFor(r) ? ` <small>· ${r.motor ? esc(r.motor) : 'motor not picked'}</small>` : '') + (remotesFor(r) && r.remote && r.remote !== NO_REMOTE ? ` <small>· ${esc(r.remote)}</small>` : '') : miss('Not picked yet'))}
       ${line('Fixing', r.fixing ? esc(r.fixing) : miss('Not picked yet'))}
+      ${line('Stitched', r.stitchBy === 'Company' ? 'Company stitched' : 'Locally stitched')}
       ${String(r.remarks || '').trim() ? line('Remarks', esc(r.remarks), 'note') : ''}
     </dl>`;
   if (!ok) { $('#side').innerHTML = `<div class="s-top">${head}<div class="empty">Type the height and the width in inches to see the drawing.</div></div>${spec}`; return; }
@@ -6290,7 +6294,7 @@ function verChanges(A, B){
       (x.W !== y.W || x.H !== y.H) && {k: 'Size', a: sizeTxt(x), b: sizeTxt(y)},
       chg('Fabric', x.fabric, y.fabric), chg('Lining', x.lining, y.lining), chg('Stitching', x.style, y.style),
       motor ? {k: 'Track', a: `${isMotor(x.track) ? 'Motorised' : 'Manual'} (${trackOnly(x.track) || 'no track'})`, b: `${isMotor(y.track) ? 'Motorised' : 'Manual'} (${trackOnly(y.track) || 'no track'})`} : chg('Track', trackOnly(x.track), trackOnly(y.track)),
-      chg('Remote', x.remote, y.remote), chg('Motor', x.motor, y.motor), chg('Fixing', x.fixing, y.fixing), chg('Panels', x.panelTxt, y.panelTxt),
+      chg('Remote', x.remote, y.remote), chg('Motor', x.motor, y.motor), chg('Fixing', x.fixing, y.fixing), chg('Stitched', x.stitchBy === 'Company' ? 'Company stitched' : 'Locally stitched', y.stitchBy === 'Company' ? 'Company stitched' : 'Locally stitched'), chg('Panels', x.panelTxt, y.panelTxt),
       x.roll !== y.roll && chg('Roll width', x.roll && x.roll + ' cm', y.roll && y.roll + ' cm'), !sameV(x.extras, y.extras) && {t: 'Extras changed'}]); }
   for (const x of cA) if (!mB.has(x.id)) add(x.room || 'Unnamed room', cWhat(x, cA), 'Removed', []);
   // blinds
@@ -6632,4 +6636,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-153014 -->
+<!-- build 20261019-162801 -->
