@@ -171,9 +171,28 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Curtains sheet, 19 Oct (Purvi: on a desktop the side margins were too wide and the table scrolled sideways all the time).
    Only this page: the side margins are the same share of the screen on every size (1.5%, ≥16px), the side panel is 420px
    (was 520px), and the table gets the rest. The header follows, so its edges line up with the sheet. */
-body:has(#v-measure:not([hidden])) .page,body:has(#v-measure:not([hidden])) .tape,body:has(#v-measure:not([hidden])) .tabs{padding-inline:max(16px,1.5vw)}
-body:has(#v-measure:not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}
-@media (min-width:1150px){ #v-measure .wrap{grid-template-columns:minmax(0,1fr) 420px} }
+body:has(:is(#v-measure,#v-blinds):not([hidden])) .page,body:has(:is(#v-measure,#v-blinds):not([hidden])) .tape,body:has(:is(#v-measure,#v-blinds):not([hidden])) .tabs{padding-inline:max(16px,1.5vw)}
+body:has(:is(#v-measure,#v-blinds):not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}
+@media (min-width:1150px){ :is(#v-measure,#v-blinds) .wrap{grid-template-columns:minmax(0,1fr) 420px} }
+/* Blinds sheet, 19 Oct (Purvi: "apply same right left panel and margin settings to the blinds page"): the same margins and 420px
+   panel as Curtains; the panel scrolls inside itself and hands over to the page at its end; more room around the numbers and the
+   drawing. The order details stay in the panel (they are typed there, not in the table). */
+#v-blinds .tbl-scroll{overscroll-behavior-y:auto;overscroll-behavior-x:contain}
+@media (min-width:1150px){
+  #bside{max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior-x:contain}
+  #bside .side-h{padding:18px 20px 8px}
+  #bside .kpis{padding:10px 20px;gap:12px}
+  #bside .kpis{grid-template-columns:1fr 1fr}   /* size + sq ft side by side, the amount across under them (as Curtains) */
+  #bside .kpi.m{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline}
+  #bside .kpi b{white-space:nowrap}
+  #bside .kpi{padding:10px 12px}
+  #bside .kpi small{font-size:13px;margin-bottom:4px}
+  #bside .fig{padding:8px 14px 0}
+  #bside .fig h4{margin:18px 6px 10px;font-size:13.5px}
+  #bside .fig svg{max-height:max(300px,calc(100dvh - 300px))}
+  #bside .sec-h{padding:18px 20px 0 !important}
+  #bside .bform{padding-inline:20px}
+}
 #v-measure table.sheet{min-width:0}
 #v-measure .tbl-scroll{overscroll-behavior-y:auto;overscroll-behavior-x:contain}   /* same for the sheet: at its last row the page scrolls on */
 #v-measure .sheet th{font-size:13.5px}
@@ -1327,7 +1346,7 @@ button.n-prop:hover{background:var(--soft)}
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
         <div class="panel">
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
-          <div class="tbl-scroll"><table class="sheet" style="min-width:1960px"><thead>
+          <div class="tbl-scroll"><table class="sheet"><thead>
             <tr><th class="first">Room</th><th>Company</th><th>Blind type <small>company's own name</small></th><th>System</th><th>Collection / series</th><th>Shade no.</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Qty</th><th>Motor</th><th>Remote</th><th>Extras <small>brackets, chargers…</small></th><th class="r">Size <small>H × W mm</small></th><th class="r">Area</th><th class="r">MRP / sq ft</th><th class="r">Amount</th><th>For the order</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span></div>
@@ -2866,7 +2885,7 @@ $('#bord').onclick = () => { const p = $('#b-orders'); p.hidden = !p.hidden; $('
 
 // ---- side panel: drawing + the details the company's order form needs
 function blindSVG(b, c){
-  const t = c.t, o = b.o || {}, VW = 640, L = 84, T = 44, aw = VW - L - 40, ah = 300;
+  const t = c.t, o = b.o || {}, VW = 640, L = 64, T = 44, aw = VW - L - 40, ah = 420;   // 19 Oct: taller, as the curtain drawing (Purvi: a big drawing)
   const s = Math.min(aw / c.W, ah / c.H), w = c.W * s, h = c.H * s, x0 = L + (aw - w) / 2, y0 = T, yb = y0 + h;
   let g = `<rect class="s-glass" x="${x0 + w * .06}" y="${y0 + h * .06}" width="${w * .88}" height="${h * .88}"/>`;
   const k = t.key, F = 'f-main', FL = 'fold-main';
@@ -7022,4 +7041,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-180004 -->
+<!-- build 20261019-181556 -->
