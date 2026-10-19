@@ -352,7 +352,22 @@ table.sheet.psheet.uwide{width:100%}
 @media (max-width:520px){ .s-kpis .s-amt{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline} }
 .s-kpis b{white-space:nowrap}
 .s-kpis .kpi{padding:6px 9px}
-@media (min-width:1150px){ #side .s-front svg{max-height:max(240px,calc(100dvh - 330px))}   /* drawing stays big (Purvi, 20 Oct); the panels line and details sit below it */ }
+@media (min-width:1150px){ #side .s-front svg{max-height:max(300px,calc(100dvh - 300px))}   /* drawing stays big (Purvi, 20 Oct) */ }
+/* 20 Oct (Purvi): "remove the details table from right side panel … we can see all on the sheet itself in one go now. make drawing
+   bigger and give more breathing space". Beside the sheet (desktop) the details list goes; phones and tablets keep it, the sheet
+   is above it there and needs swiping. More room between the name, the numbers, the drawing and the panels line. */
+@media (min-width:1150px){
+  #side .spec{display:none}
+  #side .side-h{padding:18px 20px 8px}
+  #side .s-kpis{padding:10px 20px;gap:12px}
+  #side .s-kpis .kpi{padding:10px 12px}
+  #side .kpi small{font-size:13px;margin-bottom:4px}
+  #side .fig{padding:8px 14px 0}
+  #side .fig h4{margin:18px 6px 10px;font-size:13.5px}
+  #side .s-panels{margin:16px 20px 22px}
+  #side .s-rest{margin-top:6px;padding-top:8px}
+  #side .s-h{margin:20px 20px 8px}
+}
 /* Under the front view (Purvi, 20 Oct): "5 panels of 20″ each", yellow like the metres and track length in the table */
 .s-panels{margin:2px 14px 12px;font:600 19px var(--num);color:var(--ink);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .s-panels .v{background:var(--tape);color:var(--tape-ink);padding:2px 9px;border-radius:5px;font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
@@ -2274,7 +2289,7 @@ function elevation(row, res, d, lin){
   const head = d.override ? 0 : (R.curtain_heading_in ?? 4);
   const fold = d.override ? d.extra : (R.curtain_fold_in ?? 6);
   const patt = d.cut - d.cut0;
-  const VW = 640, L = 70, RT = 168, T = 54, availW = VW - L - RT, availH = 330;
+  const VW = 640, L = 56, RT = 168, T = 54, availW = VW - L - RT, availH = 440;   // 20 Oct (Purvi): bigger drawing (was L 70, height 330)
   const s = Math.min(availW / W, availH / (H + head + fold + patt));
   const cw = W * s, ch = H * s, x0 = L + (availW - cw) / 2, y0 = T + Math.max(head * s, 8), yb = y0 + ch;
   const below = (fold + patt) * s;
@@ -6466,4 +6481,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-145024 -->
+<!-- build 20261019-145556 -->
