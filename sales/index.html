@@ -580,10 +580,11 @@ table.pr{width:100%;border-collapse:collapse}
 .search{background:var(--field);border:1px solid var(--line);border-radius:6px;padding:7px 10px;width:min(260px,100%)}
 .toast.undo{display:flex;gap:16px;align-items:center}
 .toast.undo button{background:none;border:0;padding:0;color:var(--tape);font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-.idx.grip{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:4px}
+.idx.grip{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:6px;width:24px;min-height:38px;display:flex;align-items:center;justify-content:center;margin-left:-4px}
 .idx.grip:hover{color:var(--ink);background:var(--tape-soft)}
-tr.dragging{opacity:.55}
-.drop-line{position:fixed;height:3px;background:var(--tape);border-radius:2px;z-index:30;pointer-events:none;display:none;box-shadow:0 0 0 1px var(--tape-ink)}
+tr.row.dragging{position:relative;z-index:8;box-shadow:0 10px 28px rgba(0,0,0,.18);cursor:grabbing}
+tr.row.dragging td{background:var(--paper)}
+tr.row.dragging .idx.grip{cursor:grabbing;background:var(--tape);color:var(--tape-ink)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 15px;border-radius:7px;font-weight:600;z-index:10}
 .sugg{position:fixed;z-index:20;background:var(--paper);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:340px;overflow:auto;width:min(460px,calc(100vw - 32px))}
 .sugg .it{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line2)}
@@ -2402,14 +2403,27 @@ function rowFillDown(i, f){
   rowDid('Copy from above', () => Object.assign(r, old));
   afterStructure(); focusCell(r, f);
 }
+const isAddKey = e => e.key === '+' || e.key === '=' || e.code === 'Equal' || e.code === 'NumpadAdd';
+const isDelKey = e => e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract';
+// 19 Oct (Purvi: "ctrl + - works sometimes"): it only worked with the cursor inside a box. Now, on the Curtains sheet, it also
+// works on the yellow (selected) row after clicking its number, the drawing or an empty spot; never while typing in another box.
+document.addEventListener('keydown', e => {
+  if (current !== 'c-measure' || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const a = document.activeElement; if (a && a.closest && a.closest('#tb')) return;   // the row handler has it
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || (a && a.isContentEditable) || document.querySelector('dialog[open]')) return;
+  const i = Math.min(state.sel || 0, state.rows.length - 1); if (i < 0) return;
+  if (isAddKey(e)) { e.preventDefault(); if (!e.repeat) rowAddBelow(i); }
+  else if (isDelKey(e)) { e.preventDefault(); if (!e.repeat) rowDelete(i); }
+  else if (!e.shiftKey && e.key.toLowerCase() === 'z' && rowUndo.length) { e.preventDefault(); rowUndoLast(); }
+});
 tb.addEventListener('input', e => { if (e.isTrusted) typedSince = true; e.target._nav = false; });
 tb.addEventListener('focusin', e => { e.target._nav = false; });
 tb.addEventListener('keydown', e => {
   const t = e.target, tr = t.closest && t.closest('tr.row'); if (!tr) return;
   const i = rowIdx(+tr.dataset.id); if (i < 0) return;
   const mod = (e.ctrlKey || e.metaKey) && !e.altKey, k = e.key, f = t.dataset.f === 'rollTyping' ? 'roll' : t.dataset.f;
-  if (mod && (k === '+' || k === '=' || e.code === 'NumpadAdd')) { e.preventDefault(); closeSugg(); rowAddBelow(i, f); return; }
-  if (mod && (k === '-' || k === '_' || e.code === 'NumpadSubtract')) { e.preventDefault(); closeSugg(); rowDelete(i, f); return; }
+  if (mod && isAddKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); rowAddBelow(i, f); } return; }   // held down: one row, not twenty
+  if (mod && isDelKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); rowDelete(i, f); } return; }
   if (mod && !e.shiftKey && k.toLowerCase() === 'd') { e.preventDefault(); closeSugg(); rowFillDown(i, f); return; }
   if (mod && !e.shiftKey && k.toLowerCase() === 'z' && rowUndo.length && !typedSince) { e.preventDefault(); closeSugg(); rowUndoLast(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !f) return;
@@ -2422,23 +2436,41 @@ tb.addEventListener('keydown', e => {
     closeSugg(); focusCell(state.rows[j], f);
   }
 });
-// drag a row by its number (mouse, or a finger on phones)
+// Drag a row by its number (mouse, or a finger on phones). 19 Oct (Purvi: "not that smooth … sometimes doesn't work"): the row
+// now follows the pointer and the others slide out of the way (as in Notion / Trello); the moves are followed on the whole window,
+// so leaving the small number mid-drag no longer drops it; the page scrolls by itself near the top or bottom; Esc cancels.
+var rowDragging = false;   // var: refreshSheet may ask before this line has run
 tb.addEventListener('pointerdown', e => {
-  const g = e.target.closest('.idx'); if (!g || e.button > 0) return;
+  const g = e.target.closest('.idx.grip'); if (!g || e.button > 0 || rowDragging) return;
   const tr = g.closest('tr.row'), rows = [...tb.querySelectorAll('tr.row')], from = rows.indexOf(tr); if (from < 0) return;
-  e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (_) {}
-  const box = tb.closest('.tbl-scroll').getBoundingClientRect(), line = document.createElement('div'); line.className = 'drop-line'; document.body.appendChild(line);
-  let to = from, moved = false; tr.classList.add('dragging');
-  const move = ev => {
-    if (Math.abs(ev.clientY - e.clientY) > 4) moved = true;
-    const R = rows.map(x => x.getBoundingClientRect()); to = R.findIndex(b => ev.clientY < b.top + b.height / 2); if (to < 0) to = rows.length;
-    const y = to < rows.length ? R[to].top : R[R.length - 1].bottom;
-    Object.assign(line.style, {top: y - 1.5 + 'px', left: box.left + 'px', width: box.width + 'px', display: moved ? 'block' : 'none'});
-    if (ev.clientY < 60) scrollBy(0, -12); else if (ev.clientY > innerHeight - 60) scrollBy(0, 12);
+  e.preventDefault(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); closeSugg();
+  const y0 = e.clientY, s0 = scrollY, mid = rows.map(r => { const b = r.getBoundingClientRect(); return b.top + s0 + b.height / 2; }), h = tr.offsetHeight;
+  let lastY = y0, to = from, moved = false, raf = 0, done = false;
+  rowDragging = true;
+  const paint = () => {
+    const dy = lastY - y0 + (scrollY - s0);
+    if (!moved && Math.abs(dy) > 4) { moved = true; tr.classList.add('dragging'); rows.forEach(r => { if (r !== tr) r.style.transition = 'transform .16s ease'; }); }
+    if (!moved) return;
+    tr.style.transform = `translateY(${dy}px)`;
+    const c = mid[from] + dy; to = 0; mid.forEach((m, j) => { if (j !== from && m < c) to++; });
+    rows.forEach((r, j) => { if (j === from) return; const sh = from < to && j > from && j <= to ? -h : to < from && j >= to && j < from ? h : 0; r.style.transform = sh ? `translateY(${sh}px)` : ''; });
   };
-  const end = () => { g.removeEventListener('pointermove', move); line.remove(); tr.classList.remove('dragging');
-    const dest = to > from ? to - 1 : to; if (moved && dest !== from) rowMove(from, dest); else select(tr); };
-  g.addEventListener('pointermove', move); g.addEventListener('pointerup', end, {once: true}); g.addEventListener('pointercancel', end, {once: true});
+  const loop = () => {   // keeps scrolling while the pointer rests near the top or bottom
+    if (done) return;
+    const edge = 70, v = lastY < edge ? -(edge - lastY) / 3 : lastY > innerHeight - edge ? (lastY - innerHeight + edge) / 3 : 0;
+    if (v) { scrollBy(0, v); paint(); }
+    raf = requestAnimationFrame(loop);
+  };
+  const move = ev => { lastY = ev.clientY; paint(); };
+  const finish = keep => {
+    if (done) return; done = true; rowDragging = false; cancelAnimationFrame(raf);
+    removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); removeEventListener('keydown', esc, true);
+    rows.forEach(r => { r.style.transform = ''; r.style.transition = ''; }); tr.classList.remove('dragging');
+    if (keep && moved && to !== from) rowMove(from, to); else if (!moved) select(tr);
+  };
+  const up = () => finish(true), cancel = () => finish(false), esc = ev => { if (ev.key === 'Escape') { ev.preventDefault(); finish(false); } };
+  addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', cancel); addEventListener('keydown', esc, true);
+  raf = requestAnimationFrame(loop);
 });
 $('#house').value = state.house || '';
 $('#house').oninput = e => { state.house = e.target.value; const qb = $('#q-bill'); if (qb) qb.value = state.house; save(); };
@@ -4320,6 +4352,7 @@ function applyDraft(d, remote){
   if (remote) toast('Updated with changes from another device');
 }
 function refreshSheet(){
+  if (typeof rowDragging !== 'undefined' && rowDragging) { setTimeout(refreshSheet, 400); return; }   // never redraw under a dragged row
   ensureMore(true);
   $('#house').value = state.house || ''; renderNote(); renderTable(); renderTotals(); renderSide(); renderQuoteHead();
   if (current === 'quote') renderPaper(); if (current === 'b-measure') renderBlinds(); if (MP[current]) renderProduct(current); renderCbar();
@@ -7166,4 +7199,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-184026 -->
+<!-- build 20261019-184834 -->
