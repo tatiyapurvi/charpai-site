@@ -217,6 +217,7 @@ body:has(:is(#v-measure,#v-blinds):not([hidden])) :is(.page,.tape-in,.tabs-in){m
    while that section is on screen; a fade marks the side with more columns. Hidden when the whole sheet fits. */
 .hnav{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line2)}
 .hnav[hidden]{display:none}
+.hnav.bottom{border-bottom:0;border-top:1px solid var(--line2)}   /* 19 Oct (Purvi): under the table, next to the last row people type in */
 .hn-arr{flex:none;width:40px;height:36px;border:0;border-radius:10px;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);font:600 22px/1 var(--body);cursor:pointer}
 .hn-arr:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 13%,transparent)}
 .hn-arr:disabled{opacity:.3;cursor:default}
@@ -1304,7 +1305,6 @@ button.n-prop:hover{background:var(--soft)}
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
         <div class="panel" id="m-panel">
           <div class="bar"><span id="note"></span></div>
-          <div class="hnav" id="hnav" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><div class="hn-pills" id="hn-pills"></div><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></div>
           <div class="tbl-wrap" id="m-wrap"><div class="tbl-scroll" id="m-scroll">
             <table class="sheet">
               <thead>
@@ -1331,6 +1331,7 @@ button.n-prop:hover{background:var(--soft)}
               <tbody id="tb"></tbody>
             </table>
           </div></div>
+          <div class="hnav bottom" id="hnav" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><div class="hn-pills" id="hn-pills"></div><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></div>
           <div class="addbar">
             <button class="btn solid" id="add">+ Add</button>
             <span class="hint">Tap a row to see its drawing. Height and width in inches. Dashed boxes are worked out for you: tap one and type to change it, ↺ puts it back.</span>
@@ -1361,11 +1362,11 @@ button.n-prop:hover{background:var(--soft)}
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
         <div class="panel">
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
-          <div class="hnav" id="b-hnav" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><div class="hn-pills" id="b-hn-pills"></div><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></div>
           <div class="tbl-wrap" id="b-wrap"><div class="tbl-scroll" id="b-scroll"><table class="sheet"><thead>
             <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="3">Size</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" data-pill="Order details"></th><th class="grp"></th></tr>
             <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th>Qty</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Order</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div></div>
+          <div class="hnav bottom" id="b-hnav" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><div class="hn-pills" id="b-hn-pills"></div><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span></div>
         </div>
         <div class="panel" id="b-orders" hidden></div>
@@ -2108,7 +2109,7 @@ document.addEventListener('touchstart', e => { if (ourSelect(e.target)) { e.prev
 document.addEventListener('keydown', e => {
   const t = e.target; if (!ourSelect(t)) return;
   const open = !sugg.hidden && suggFor && suggFor.input === t;
-  if (!open && !e.altKey && ['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && t.closest('#tb')) return;   // curtain sheet: rows, as in Excel (19 Oct)
+  if (!open && !e.altKey && ['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && t.closest('#tb, #btb')) return;   // measurement sheets: rows, as in Excel (19 Oct)
   if (!open && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t); return; }
   if (open && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '') + e.key); return; }
   if (open && e.key === 'Backspace') { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '').slice(0, -1)); return; }
@@ -2354,124 +2355,147 @@ $('#add').onclick = () => {
   state.rows.push(r); state.sel = state.rows.length - 1; afterStructure();
   document.getElementById(`r${r.id}-room`).focus();
 };
-// ---- Excel shortcuts and drag to move (Purvi, 19 Oct: "the measurement sheet short cuts need to match excel short cuts to
-// match the mental model of my team"). Only while the cursor is in a curtain row; everywhere else the keys do what they always do.
-//   Ctrl/⌘ +  a row below (carries fabric, style… like + Add)      Ctrl/⌘ −  delete this row (message with Undo)
+// ---- Excel shortcuts and drag to move, for every measurement sheet (Purvi, 19 Oct: "the measurement sheet short cuts need to
+// match excel short cuts to match the mental model of my team"). Curtains first, then Blinds; one helper so the other sheets
+// can follow. In a row (or on the yellow selected row when the cursor isn't in any box):
+//   Ctrl/⌘ +  a row below (carries what + Add carries)              Ctrl/⌘ −  delete this row (message with Undo)
 //   Ctrl/⌘ D  copy this box from the row above                      Ctrl/⌘ Z  undo the last add / delete / move / copy
-//   Enter, ↓  same box, next row      ↑  same box, row above        Space or Alt + ↓  open a dropdown's list
-// Drag a row by its number to move it. Undo puts back only that one change (rows typed in since are left alone).
-const rowUndo = []; let typedSince = false;
-function rowDid(what, undo){ rowUndo.push({what, undo}); if (rowUndo.length > 30) rowUndo.shift(); typedSince = false; }
-function rowUndoLast(){ const u = rowUndo.pop(); if (!u) { toast('Nothing to undo'); return; } u.undo(); afterStructure(); toast(u.what + ' undone'); }
-function undoToast(msg){
-  document.querySelectorAll('.toast.undo').forEach(x => x.remove());
-  const d = document.createElement('div'); d.className = 'toast undo'; d.innerHTML = `<span>${esc(msg)}</span><button type="button">Undo</button>`;
-  d.querySelector('button').onclick = () => { d.remove(); rowUndoLast(); };
-  document.body.appendChild(d); setTimeout(() => d.remove(), 6000);
-}
-const rowIdx = id => state.rows.findIndex(r => r.id === id);
-function focusCell(r, f){
-  const tr = tb.querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
-  const x = (f && tr.querySelector(`[data-f="${f}"]:not([hidden])`)) || tr.querySelector('[data-f=room]'); if (!x) return;
-  select(tr); x.focus(); if (x.tagName === 'INPUT') { try { x.select(); } catch (_) {} }
-}
-function rowAddBelow(i, f){
-  const r = carry(blank(), state.rows[i]); state.rows.splice(i + 1, 0, r); state.sel = i + 1;
-  rowDid('Add row', () => { const k = rowIdx(r.id); if (k >= 0) state.rows.splice(k, 1); if (!state.rows.length) state.rows.push(blank()); state.sel = Math.min(state.sel, state.rows.length - 1); });
-  afterStructure(); focusCell(r, 'room');
-}
-function rowDelete(i, f){
-  const r = state.rows[i], prev = state.rows[i - 1] ? state.rows[i - 1].id : null;
-  state.rows.splice(i, 1); const filler = state.rows.length ? null : blank(); if (filler) state.rows.push(filler);
-  state.sel = Math.min(i, state.rows.length - 1);
-  rowDid('Delete', () => { if (filler) { const k = rowIdx(filler.id); if (k >= 0) state.rows.splice(k, 1); }
-    const at = prev == null ? 0 : rowIdx(prev) + 1; state.rows.splice(Math.max(0, at), 0, r); state.sel = Math.max(0, at); });
-  afterStructure(); focusCell(state.rows[state.sel], f);
-  undoToast(`Row ${i + 1}${r.room ? ' (' + r.room + ')' : ''} deleted`);
-}
-function rowMove(from, to){
-  if (from === to) return; const [r] = state.rows.splice(from, 1); state.rows.splice(to, 0, r); state.sel = to;
-  rowDid('Move', () => { const k = rowIdx(r.id); if (k < 0) return; state.rows.splice(k, 1); state.rows.splice(from, 0, r); state.sel = from; });
-  afterStructure();
-}
-// Ctrl/⌘ D: the box above, with what belongs to it (a fabric comes with its company, roll and repeat; a track with its motor, remote, parts)
-const FILL_FAB = ['sup', 'key', 'fabric', 'roll', 'rollOwn', 'repeat', 'turn', 'turn300'], FILL_TRACK = ['track', 'motor', 'remote', 'extras'];
-const FILL = {sup: FILL_FAB, fabric: FILL_FAB, roll: FILL_FAB, track: FILL_TRACK, motor: FILL_TRACK, remote: FILL_TRACK};
-function rowFillDown(i, f){
-  if (i < 1 || !f) return; const up = state.rows[i - 1], r = state.rows[i], keys = FILL[f] || [f], old = {};
-  for (const k of keys) { old[k] = r[k]; const v = up[k]; r[k] = v === undefined ? '' : v && typeof v === 'object' ? clone(v) : v; }
-  rowDid('Copy from above', () => Object.assign(r, old));
-  afterStructure(); focusCell(r, f);
-}
+//   Enter, ↓  same box, next row      ↑  same box, row above        ← →  previous / next box (at the edge of the text)
+//   Space or Alt + ↓  open a dropdown's list
+// Drag a row by its number. The row follows the pointer, the others slide; Esc cancels; the page scrolls near the edges.
+// Undo puts back only that one change (rows typed in since are left alone). Ctrl/⌘ Z is the box's own undo once you type.
+var rowDragging = false;   // var: refreshSheet may ask before this line has run
 const isAddKey = e => e.key === '+' || e.key === '=' || e.code === 'Equal' || e.code === 'NumpadAdd';
 const isDelKey = e => e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract';
-// 19 Oct (Purvi: "ctrl + - works sometimes"): it only worked with the cursor inside a box. Now, on the Curtains sheet, it also
-// works on the yellow (selected) row after clicking its number, the drawing or an empty spot; never while typing in another box.
-document.addEventListener('keydown', e => {
-  if (current !== 'c-measure' || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return;
-  const a = document.activeElement; if (a && a.closest && a.closest('#tb')) return;   // the row handler has it
-  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || (a && a.isContentEditable) || document.querySelector('dialog[open]')) return;
-  const i = Math.min(state.sel || 0, state.rows.length - 1); if (i < 0) return;
-  if (isAddKey(e)) { e.preventDefault(); if (!e.repeat) rowAddBelow(i); }
-  else if (isDelKey(e)) { e.preventDefault(); if (!e.repeat) rowDelete(i); }
-  else if (!e.shiftKey && e.key.toLowerCase() === 'z' && rowUndo.length) { e.preventDefault(); rowUndoLast(); }
-});
-tb.addEventListener('input', e => { if (e.isTrusted) typedSince = true; e.target._nav = false; });
-tb.addEventListener('focusin', e => { e.target._nav = false; });
-tb.addEventListener('keydown', e => {
-  const t = e.target, tr = t.closest && t.closest('tr.row'); if (!tr) return;
-  const i = rowIdx(+tr.dataset.id); if (i < 0) return;
-  const mod = (e.ctrlKey || e.metaKey) && !e.altKey, k = e.key, f = t.dataset.f === 'rollTyping' ? 'roll' : t.dataset.f;
-  if (mod && isAddKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); rowAddBelow(i, f); } return; }   // held down: one row, not twenty
-  if (mod && isDelKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); rowDelete(i, f); } return; }
-  if (mod && !e.shiftKey && k.toLowerCase() === 'd') { e.preventDefault(); closeSugg(); rowFillDown(i, f); return; }
-  if (mod && !e.shiftKey && k.toLowerCase() === 'z' && rowUndo.length && !typedSince) { e.preventDefault(); closeSugg(); rowUndoLast(); return; }
-  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !f) return;
-  if (!sugg.hidden && suggFor && suggFor.input === t) {   // a list is open: arrows move in it; Enter picks what you arrowed to.
-    if (k === 'ArrowDown' || k === 'ArrowUp') { t._nav = true; return; }   // Room and Lining only suggest (the name is typed),
-    if (!(k === 'Enter' && !t._nav && (f === 'room' || f === 'lining'))) return;   // so there a plain Enter moves down; Fabric must be picked
-  }
-  if (k === 'Enter' || k === 'ArrowDown' || k === 'ArrowUp') {
-    const j = i + (k === 'ArrowUp' ? -1 : 1); e.preventDefault(); if (j < 0 || j >= state.rows.length) return;
-    closeSugg(); focusCell(state.rows[j], f);
-  }
-});
-// Drag a row by its number (mouse, or a finger on phones). 19 Oct (Purvi: "not that smooth … sometimes doesn't work"): the row
-// now follows the pointer and the others slide out of the way (as in Notion / Trello); the moves are followed on the whole window,
-// so leaving the small number mid-drag no longer drops it; the page scrolls by itself near the top or bottom; Esc cancels.
-var rowDragging = false;   // var: refreshSheet may ask before this line has run
-tb.addEventListener('pointerdown', e => {
-  const g = e.target.closest('.idx.grip'); if (!g || e.button > 0 || rowDragging) return;
-  const tr = g.closest('tr.row'), rows = [...tb.querySelectorAll('tr.row')], from = rows.indexOf(tr); if (from < 0) return;
-  e.preventDefault(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); closeSugg();
-  const y0 = e.clientY, s0 = scrollY, mid = rows.map(r => { const b = r.getBoundingClientRect(); return b.top + s0 + b.height / 2; }), h = tr.offsetHeight;
-  let lastY = y0, to = from, moved = false, raf = 0, done = false;
-  rowDragging = true;
-  const paint = () => {
-    const dy = lastY - y0 + (scrollY - s0);
-    if (!moved && Math.abs(dy) > 4) { moved = true; tr.classList.add('dragging'); rows.forEach(r => { if (r !== tr) r.style.transition = 'transform .16s ease'; }); }
-    if (!moved) return;
-    tr.style.transform = `translateY(${dy}px)`;
-    const c = mid[from] + dy; to = 0; mid.forEach((m, j) => { if (j !== from && m < c) to++; });
-    rows.forEach((r, j) => { if (j === from) return; const sh = from < to && j > from && j <= to ? -h : to < from && j >= to && j < from ? h : 0; r.style.transform = sh ? `translateY(${sh}px)` : ''; });
+let undoOwner = null;
+function undoToast(msg, sheet){
+  document.querySelectorAll('.toast.undo').forEach(x => x.remove());
+  const d = document.createElement('div'); d.className = 'toast undo'; d.innerHTML = `<span>${esc(msg)}</span><button type="button">Undo</button>`;
+  d.querySelector('button').onclick = () => { d.remove(); sheet.undo(); };
+  document.body.appendChild(d); setTimeout(() => d.remove(), 6000);
+}
+// ← →: the next / previous box in the same row, scrolled clear of the sticky Room column
+function rowBoxes(tr){ return [...tr.querySelectorAll('input, select')].filter(x => !x.disabled && !x.hidden && x.offsetParent !== null && x.type !== 'hidden'); }
+function showBox(x){
+  const sc = x.closest('.tbl-scroll'); if (!sc) return; const fth = sc.querySelector('th.first'), fw = fth ? fth.offsetWidth : 0;
+  const b = x.getBoundingClientRect(), c = sc.getBoundingClientRect(), td = x.closest('td');
+  if (td && td.classList.contains('first')) return;
+  if (b.left < c.left + fw + 8) sc.scrollLeft -= c.left + fw + 8 - b.left; else if (b.right > c.right - 8) sc.scrollLeft += b.right - c.right + 8;
+}
+function sheetRows(o){   // o: {view, tbody, list(), blank(), carry(from), sel(), setSel(i), select(tr), after(), fieldOf(el), box(tr, f), first, fill, suggestOnly, label(row)}
+  const undoL = []; let typed = false;
+  const S = {};
+  const idx = id => o.list().findIndex(r => r.id === id);
+  const did = (what, undo) => { undoL.push({what, undo}); if (undoL.length > 30) undoL.shift(); typed = false; };
+  S.undo = () => { const u = undoL.pop(); if (!u) { toast('Nothing to undo'); return; } u.undo(); o.after(); toast(u.what + ' undone'); };
+  const focus = (r, f) => {
+    const tr = o.tbody.querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
+    const x = (f && o.box(tr, f)) || o.box(tr, o.first); if (!x) return;
+    o.select(tr); x.focus(); showBox(x); if (x.tagName === 'INPUT') { try { x.select(); } catch (_) {} }
   };
-  const loop = () => {   // keeps scrolling while the pointer rests near the top or bottom
-    if (done) return;
-    const edge = 70, v = lastY < edge ? -(edge - lastY) / 3 : lastY > innerHeight - edge ? (lastY - innerHeight + edge) / 3 : 0;
-    if (v) { scrollBy(0, v); paint(); }
+  const add = (i, f) => {
+    const L = o.list(), r = o.carry(L[i]); L.splice(i + 1, 0, r); o.setSel(i + 1);
+    did('Add row', () => { const L = o.list(), k = idx(r.id); if (k >= 0) L.splice(k, 1); if (!L.length) L.push(o.blank()); o.setSel(Math.min(o.sel(), L.length - 1)); });
+    o.after(); focus(r, o.first);
+  };
+  const del = (i, f) => {
+    const L = o.list(), r = L[i], prev = L[i - 1] ? L[i - 1].id : null;
+    L.splice(i, 1); const filler = L.length ? null : o.blank(); if (filler) L.push(filler);
+    o.setSel(Math.min(i, L.length - 1));
+    did('Delete', () => { const L = o.list(); if (filler) { const k = idx(filler.id); if (k >= 0) L.splice(k, 1); }
+      const at = prev == null ? 0 : idx(prev) + 1; L.splice(Math.max(0, at), 0, r); o.setSel(Math.max(0, at)); });
+    o.after(); focus(o.list()[o.sel()], f);
+    undoToast(`Row ${i + 1}${o.label(r) ? ' (' + o.label(r) + ')' : ''} deleted`, S);
+  };
+  const move = (from, to) => {
+    if (from === to) return; const L = o.list(), [r] = L.splice(from, 1); L.splice(to, 0, r); o.setSel(to);
+    did('Move', () => { const L = o.list(), k = idx(r.id); if (k < 0) return; L.splice(k, 1); L.splice(from, 0, r); o.setSel(from); });
+    o.after();
+  };
+  const fillDown = (i, f) => {
+    const L = o.list(); if (i < 1 || !f) return; const up = L[i - 1], r = L[i], keys = o.fill[f] || [f], old = {};
+    for (const k of keys) { old[k] = r[k]; const v = up[k]; r[k] = v === undefined ? '' : v && typeof v === 'object' ? clone(v) : v; }
+    did('Copy from above', () => Object.assign(r, old));
+    o.after(); focus(r, f);
+  };
+  Object.assign(S, {add, del, move, focus});
+  // on the yellow row when the cursor is in no box (after clicking its number, the drawing or an empty spot)
+  document.addEventListener('keydown', e => {
+    if (current !== o.view || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const a = document.activeElement; if (a && a.closest && a.closest('#' + o.tbody.id)) return;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || (a && a.isContentEditable) || document.querySelector('dialog[open]')) return;
+    const i = Math.min(o.sel() || 0, o.list().length - 1); if (i < 0) return;
+    if (isAddKey(e)) { e.preventDefault(); if (!e.repeat) add(i); }
+    else if (isDelKey(e)) { e.preventDefault(); if (!e.repeat) del(i); }
+    else if (!e.shiftKey && e.key.toLowerCase() === 'z' && undoL.length) { e.preventDefault(); S.undo(); }
+  });
+  o.tbody.addEventListener('input', e => { if (e.isTrusted) typed = true; e.target._nav = false; });
+  o.tbody.addEventListener('focusin', e => { e.target._nav = false; });
+  o.tbody.addEventListener('keydown', e => {
+    const t = e.target, tr = t.closest && t.closest('tr.row'); if (!tr) return;
+    const i = idx(+tr.dataset.id); if (i < 0) return;
+    const mod = (e.ctrlKey || e.metaKey) && !e.altKey, k = e.key, f = o.fieldOf(t);
+    if (mod && isAddKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); add(i, f); } return; }   // held down: one row, not twenty
+    if (mod && isDelKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); del(i, f); } return; }
+    if (mod && !e.shiftKey && k.toLowerCase() === 'd') { e.preventDefault(); closeSugg(); fillDown(i, f); return; }
+    if (mod && !e.shiftKey && k.toLowerCase() === 'z' && undoL.length && !typed) { e.preventDefault(); closeSugg(); S.undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !f) return;
+    if (k === 'ArrowRight' || k === 'ArrowLeft') {   // 19 Oct (Purvi): ← → go to the box before / after, as in Excel; inside text only at its edge
+      const txt = t.tagName === 'INPUT' && typeof t.selectionStart === 'number', all = txt && t.selectionStart === 0 && t.selectionEnd === t.value.length;
+      if (txt && !all && (k === 'ArrowRight' ? t.selectionEnd < t.value.length : t.selectionStart > 0)) return;
+      const B = rowBoxes(tr), j = B.indexOf(t) + (k === 'ArrowRight' ? 1 : -1); if (j < 0 || j >= B.length || B.indexOf(t) < 0) return;
+      e.preventDefault(); closeSugg(); const x = B[j]; x.focus(); showBox(x); if (x.tagName === 'INPUT') { try { x.select(); } catch (_) {} } return;
+    }
+    if (!sugg.hidden && suggFor && suggFor.input === t) {   // a list is open: arrows move in it; Enter picks what you arrowed to.
+      if (k === 'ArrowDown' || k === 'ArrowUp') { t._nav = true; return; }   // Room-type boxes only suggest (the name is typed),
+      if (!(k === 'Enter' && !t._nav && o.suggestOnly.has(f))) return;     // so there a plain Enter moves down; a product must be picked
+    }
+    if (k === 'Enter' || k === 'ArrowDown' || k === 'ArrowUp') {
+      const L = o.list(), j = i + (k === 'ArrowUp' ? -1 : 1); e.preventDefault(); if (j < 0 || j >= L.length) return;
+      closeSugg(); focus(L[j], f);
+    }
+  });
+  o.tbody.addEventListener('pointerdown', e => {
+    const g = e.target.closest('.idx.grip'); if (!g || e.button > 0 || rowDragging) return;
+    const tr = g.closest('tr.row'), rows = [...o.tbody.querySelectorAll('tr.row')], from = rows.indexOf(tr); if (from < 0) return;
+    e.preventDefault(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); closeSugg();
+    const y0 = e.clientY, s0 = scrollY, mid = rows.map(r => { const b = r.getBoundingClientRect(); return b.top + s0 + b.height / 2; }), h = tr.offsetHeight;
+    let lastY = y0, to = from, moved = false, raf = 0, done = false;
+    rowDragging = true;
+    const paint = () => {
+      const dy = lastY - y0 + (scrollY - s0);
+      if (!moved && Math.abs(dy) > 4) { moved = true; tr.classList.add('dragging'); rows.forEach(r => { if (r !== tr) r.style.transition = 'transform .16s ease'; }); }
+      if (!moved) return;
+      tr.style.transform = `translateY(${dy}px)`;
+      const c = mid[from] + dy; to = 0; mid.forEach((m, j) => { if (j !== from && m < c) to++; });
+      rows.forEach((r, j) => { if (j === from) return; const sh = from < to && j > from && j <= to ? -h : to < from && j >= to && j < from ? h : 0; r.style.transform = sh ? `translateY(${sh}px)` : ''; });
+    };
+    const loop = () => {   // keeps scrolling while the pointer rests near the top or bottom
+      if (done) return;
+      const edge = 70, v = lastY < edge ? -(edge - lastY) / 3 : lastY > innerHeight - edge ? (lastY - innerHeight + edge) / 3 : 0;
+      if (v) { scrollBy(0, v); paint(); }
+      raf = requestAnimationFrame(loop);
+    };
+    const mv = ev => { lastY = ev.clientY; paint(); };
+    const finish = keep => {
+      if (done) return; done = true; rowDragging = false; cancelAnimationFrame(raf);
+      removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); removeEventListener('keydown', esc, true);
+      rows.forEach(r => { r.style.transform = ''; r.style.transition = ''; }); tr.classList.remove('dragging');
+      if (keep && moved && to !== from) move(from, to); else if (!moved) o.select(tr);
+    };
+    const up = () => finish(true), cancel = () => finish(false), esc = ev => { if (ev.key === 'Escape') { ev.preventDefault(); finish(false); } };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', cancel); addEventListener('keydown', esc, true);
     raf = requestAnimationFrame(loop);
-  };
-  const move = ev => { lastY = ev.clientY; paint(); };
-  const finish = keep => {
-    if (done) return; done = true; rowDragging = false; cancelAnimationFrame(raf);
-    removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); removeEventListener('keydown', esc, true);
-    rows.forEach(r => { r.style.transform = ''; r.style.transition = ''; }); tr.classList.remove('dragging');
-    if (keep && moved && to !== from) rowMove(from, to); else if (!moved) select(tr);
-  };
-  const up = () => finish(true), cancel = () => finish(false), esc = ev => { if (ev.key === 'Escape') { ev.preventDefault(); finish(false); } };
-  addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', cancel); addEventListener('keydown', esc, true);
-  raf = requestAnimationFrame(loop);
-});
+  });
+  return S;
+}
+// Curtains. Ctrl/⌘ D: a fabric comes with its company, roll and repeat; a track with its motor, remote and parts.
+const FILL_FAB = ['sup', 'key', 'fabric', 'roll', 'rollOwn', 'repeat', 'turn', 'turn300'], FILL_TRACK = ['track', 'motor', 'remote', 'extras'];
+const curtainRows = sheetRows({view: 'c-measure', tbody: tb, list: () => state.rows, blank, carry: from => carry(blank(), from),
+  sel: () => state.sel, setSel: i => { state.sel = i; }, select, after: afterStructure,
+  fieldOf: t => t.dataset.f === 'rollTyping' ? 'roll' : t.dataset.f, box: (tr, f) => tr.querySelector(`[data-f="${f}"]:not([hidden])`), first: 'room',
+  fill: {sup: FILL_FAB, fabric: FILL_FAB, roll: FILL_FAB, track: FILL_TRACK, motor: FILL_TRACK, remote: FILL_TRACK},
+  suggestOnly: new Set(['room', 'lining']), label: r => r.room});
 $('#house').value = state.house || '';
 $('#house').oninput = e => { state.house = e.target.value; const qb = $('#q-bill'); if (qb) qb.value = state.house; save(); };
 // + New client. With the shared store the open client is already saved, so no second tap; on a device alone it asks twice.
@@ -2810,7 +2834,7 @@ function bRowHTML(b, i){
   const adds = BL.addons.filter(a => a.sup === b.sup);
   const list = shadeListId(b, t);
   return `<tr class="row" data-id="${b.id}">
-    <td class="first"><div class="cell"><span class="idx">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:110px"></div></td>
+    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this blind" aria-label="Blind ${i + 1}, drag to move">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:110px"></div></td>
     <td><select data-b="sup" style="width:96px" title="${esc(BSUPS[b.sup] || '')}">${Object.entries(BSUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${k === b.sup ? ' selected' : ''}${BL.state === 'ready' && !bPriced(k) && b.sup !== k ? ' disabled' : ''}>${esc(BSHORT[k] || n)}</option>`).join('')}</select></td>
     <td><input data-bfam="1" value="${esc(b.fam)}" autocomplete="off" placeholder="Pick a type" style="width:140px" aria-label="Blind type"></td>
     ${loading ? `<td class="hint">${esc(loading)}</td>` : priced ? `
@@ -3029,6 +3053,17 @@ btb.addEventListener('click', e => {
   renderBlinds(); save();
 });
 $('#badd').onclick = () => { const last = state.blinds[state.blinds.length - 1], b = bBlank(); if (last) Object.assign(b, {sup: last.sup, fam: last.fam, sys: last.sys, o: clone(last.o || {})}); state.blinds.push(b); state.bsel = state.blinds.length - 1; renderBlinds(); save(); };
+// Blinds: the same shortcuts and drag as Curtains (Purvi, 19 Oct). Ctrl/⌘ D on company / type / system / collection / shade
+// copies the whole blind above (they belong together); on Motor / Remote / Extras it copies all three.
+const FILL_BLIND = ['sup', 'fam', 'sys', 'pid', 'shade', 'series'], FILL_ADDS = ['adds', 'motor'];
+const BFIELD = {bfam: 'fam', bcoll: 'coll'};
+const blindRows = sheetRows({view: 'b-measure', tbody: btb, list: () => state.blinds, blank: bBlank,
+  carry: last => { const b = bBlank(); if (last) Object.assign(b, {sup: last.sup, fam: last.fam, sys: last.sys, o: clone(last.o || {})}); return b; },
+  sel: () => state.bsel, setSel: i => { state.bsel = i; }, select: tr => { bSelect(tr); }, after: () => { renderBlinds(); save(); },
+  fieldOf: t => t.dataset.b || (t.dataset.bfam ? 'fam' : t.dataset.bcoll ? 'coll' : t.dataset.bpick ? 'pick-' + t.dataset.bpick : t.dataset.bq != null ? 'pick-q' : ''),
+  box: (tr, f) => tr.querySelector(f === 'fam' ? '[data-bfam]' : f === 'coll' ? '[data-bcoll]' : /^pick-/.test(f) ? `[data-bpick="${f.slice(5)}"]` : `[data-b="${f}"]`),
+  first: 'room', fill: {sup: FILL_BLIND, fam: FILL_BLIND, sys: FILL_BLIND, coll: FILL_BLIND, shade: FILL_BLIND, motor: FILL_ADDS, 'pick-motor': FILL_ADDS, 'pick-remote': FILL_ADDS, 'pick-extra': FILL_ADDS, 'pick-q': FILL_ADDS},
+  suggestOnly: new Set(['room']), label: b => b.room});
 $('#bord').onclick = () => { const p = $('#b-orders'); p.hidden = !p.hidden; $('#bord').textContent = p.hidden ? 'Order forms for the companies' : 'Hide order forms'; if (!p.hidden) { renderOrders(); p.scrollIntoView({block: 'start'}); } };
 
 // ---- side panel: drawing + the details the company's order form needs
@@ -7199,4 +7234,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-184834 -->
+<!-- build 20261019-200925 -->
