@@ -178,6 +178,14 @@ body:has(:is(#v-measure,#v-blinds):not([hidden])) :is(.page,.tape-in,.tabs-in){m
    panel as Curtains; the panel scrolls inside itself and hands over to the page at its end; more room around the numbers and the
    drawing. The order details stay in the panel (they are typed there, not in the table). */
 #v-blinds .tbl-scroll{overscroll-behavior-y:auto;overscroll-behavior-x:contain}
+#v-blinds table.sheet{min-width:0}
+#v-blinds .sheet th{font-size:13.5px}
+#v-blinds .sheet th.grp{font-size:14px}
+#v-blinds .sheet td{padding:5px 3px}
+#v-blinds .sheet td.sep,#v-blinds .sheet th.sep{border-left:1px solid var(--line);padding-left:6px}
+#v-blinds .sheet th.r,#v-blinds .sheet td.out{padding-left:6px;padding-right:8px}
+#v-blinds .pk{width:210px}
+#v-blinds td[data-o=det] .miss{white-space:nowrap}
 @media (min-width:1150px){
   #bside{max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior-x:contain}
   #bside .side-h{padding:18px 20px 8px}
@@ -223,7 +231,7 @@ body:has(:is(#v-measure,#v-blinds):not([hidden])) :is(.page,.tape-in,.tabs-in){m
 .tbl-wrap.more-r::after,.tbl-wrap.more-l::before{opacity:1}
 @media (max-width:760px){ .hnav{display:none} }   /* phones swipe */
 /* a small arrow instead of Chrome's wide one, so the short names fit */
-#v-measure .sheet select{appearance:none;-webkit-appearance:none;padding-right:18px;background:var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 6px center}
+#v-measure .sheet select,#v-blinds .sheet select{appearance:none;-webkit-appearance:none;padding-right:18px;background:var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 6px center}
 .bar{font-size:14px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
 .bar b{color:var(--ink)}
 .bar .acts2{display:flex;gap:8px;flex-wrap:wrap}
@@ -1346,9 +1354,11 @@ button.n-prop:hover{background:var(--soft)}
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
         <div class="panel">
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
-          <div class="tbl-scroll"><table class="sheet"><thead>
-            <tr><th class="first">Room</th><th>Company</th><th>Blind type <small>company's own name</small></th><th>System</th><th>Collection / series</th><th>Shade no.</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Qty</th><th>Motor</th><th>Remote</th><th>Extras <small>brackets, chargers…</small></th><th class="r">Size <small>H × W mm</small></th><th class="r">Area</th><th class="r">MRP / sq ft</th><th class="r">Amount</th><th>For the order</th><th></th></tr>
-          </thead><tbody id="btb"></tbody></table></div>
+          <div class="hnav" id="b-hnav" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><div class="hn-pills" id="b-hn-pills"></div><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></div>
+          <div class="tbl-wrap" id="b-wrap"><div class="tbl-scroll" id="b-scroll"><table class="sheet"><thead>
+            <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="3">Size</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" data-pill="Order details"></th><th class="grp"></th></tr>
+            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th>Qty</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Order</th><th></th></tr>
+          </thead><tbody id="btb"></tbody></table></div></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span></div>
         </div>
         <div class="panel" id="b-orders" hidden></div>
@@ -2160,25 +2170,34 @@ function renderTable(){
   markSel(); hnavSync();
 }
 // The ‹ › and section buttons above the curtain sheet (see .hnav)
-const mScroll = $('#m-scroll'), mWrap = $('#m-wrap'), hnav = $('#hnav'), hnPills = $('#hn-pills');
-const hnGroups = () => [...mScroll.querySelectorAll('thead tr:first-child th:not(.first)')].filter(th => !th.dataset.nopill).map(th => ({th, name: th.dataset.pill || th.textContent.trim()})).filter(g => g.name);
-function hnavSync(){
-  const sc = mScroll, firstW = sc.querySelector('th.first').offsetWidth, L = sc.scrollLeft, R = L + sc.clientWidth, over = sc.scrollWidth > sc.clientWidth + 2;
-  hnav.hidden = !over; mWrap.style.setProperty('--first-w', firstW + 'px');
-  mWrap.classList.toggle('more-r', over && R < sc.scrollWidth - 2); mWrap.classList.toggle('more-l', over && L > 2);
-  if (!over) return;
-  const G = hnGroups();
-  if (hnPills.children.length !== G.length) hnPills.innerHTML = G.map((g, i) => `<button data-g="${i}">${esc(g.name)}</button>`).join('');
-  G.forEach((g, i) => { const a = g.th.offsetLeft, b = a + g.th.offsetWidth; hnPills.children[i].classList.toggle('on', b > L + firstW + 60 && a < R - 60); });
-  hnav.querySelector('[data-h="-1"]').disabled = L <= 2; hnav.querySelector('[data-h="1"]').disabled = R >= sc.scrollWidth - 2;
+// One helper for every sheet that scrolls sideways (Curtains 19 Oct; Blinds 19 Oct): returns its sync function.
+function makeHnav(sc, wrap, nav, pills){
+  const groups = () => [...sc.querySelectorAll('thead tr:first-child th:not(.first)')].filter(th => !th.dataset.nopill).map(th => ({th, name: th.dataset.pill || th.textContent.trim()})).filter(g => g.name);
+  const sync = () => {
+    const fth = sc.querySelector('th.first'); if (!fth) return;
+    const firstW = fth.offsetWidth, L = sc.scrollLeft, R = L + sc.clientWidth, over = sc.scrollWidth > sc.clientWidth + 2;
+    nav.hidden = !over; wrap.style.setProperty('--first-w', firstW + 'px');
+    wrap.classList.toggle('more-r', over && R < sc.scrollWidth - 2); wrap.classList.toggle('more-l', over && L > 2);
+    if (!over) return;
+    const G = groups();
+    if (pills.children.length !== G.length) pills.innerHTML = G.map((g, i) => `<button data-g="${i}">${esc(g.name)}</button>`).join('');
+    G.forEach((g, i) => { const a = g.th.offsetLeft, b = a + g.th.offsetWidth; pills.children[i].classList.toggle('on', b > L + firstW + 60 && a < R - 60); });
+    nav.querySelector('[data-h="-1"]').disabled = L <= 2; nav.querySelector('[data-h="1"]').disabled = R >= sc.scrollWidth - 2;
+  };
+  nav.addEventListener('click', e => {
+    const firstW = sc.querySelector('th.first').offsetWidth, a = e.target.closest('[data-h]'), p = e.target.closest('[data-g]');
+    if (a) sc.scrollBy({left: +a.dataset.h * Math.max(200, (sc.clientWidth - firstW) * 0.8), behavior: 'smooth'});
+    if (p) { const g = groups()[+p.dataset.g]; if (g) sc.scrollTo({left: g.th.offsetLeft - firstW, behavior: 'smooth'}); }
+  });
+  sc.addEventListener('scroll', sync, {passive: true});
+  new ResizeObserver(sync).observe(sc);
+  return sync;
 }
-hnav.addEventListener('click', e => {
-  const sc = mScroll, firstW = sc.querySelector('th.first').offsetWidth, a = e.target.closest('[data-h]'), p = e.target.closest('[data-g]');
-  if (a) sc.scrollBy({left: +a.dataset.h * Math.max(200, (sc.clientWidth - firstW) * 0.8), behavior: 'smooth'});
-  if (p) { const g = hnGroups()[+p.dataset.g]; if (g) sc.scrollTo({left: g.th.offsetLeft - firstW, behavior: 'smooth'}); }
-});
-mScroll.addEventListener('scroll', hnavSync, {passive: true});
-new ResizeObserver(hnavSync).observe(mScroll);
+const mScroll = $('#m-scroll');
+// var + function: the sheets can render before these lines run (no temporal-dead-zone error)
+var hnavFn = makeHnav(mScroll, $('#m-wrap'), $('#hnav'), $('#hn-pills')), bHnavFn = makeHnav($('#b-scroll'), $('#b-wrap'), $('#b-hnav'), $('#b-hn-pills'));
+function hnavSync(){ if (hnavFn) hnavFn(); }
+function bHnavSync(){ if (bHnavFn) bHnavFn(); }
 const TRACK_MAX_FT = 15;
 const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' + (res.trackPieces ? ` (${res.trackPieces} × ${cpF(res.trackPieceFt)} ft)` : '') : (kitSize(res.track, res.kitMin) ? kitSize(res.track, res.kitMin) + ' m kit' : 'over 9 m: ask ' + res.kitBy);
 // Numbers (with their unit) in bold, so the How column can be read at a glance.
@@ -2595,7 +2614,8 @@ function renderSide(){
 }
 
 // ================= blinds (price lists in the shared store: blinds/<company>; order details from blind-forms.js)
-const BSUPS = {SAN: "D'Decor Sansaar", EXP: "D'Decor Express", FC: "D'Decor FabriCare", AP: 'Asian Paints', MV: 'Marvel'};   // Express its own company from 19 Oct (was inside Sansaar)
+const BSUPS = {SAN: "D'Decor Sansaar", EXP: "D'Decor Express", FC: "D'Decor FabriCare", AP: 'Asian Paints', MV: 'Marvel'};
+const BSHORT = {SAN: 'SS', EXP: 'Express', FC: 'FabriCare', AP: 'AP', MV: 'Marvel'};   // 19 Oct: short in the box (SS as on Purvi's quotations), full name in our list   // Express its own company from 19 Oct (was inside Sansaar)
 const BCODE = {SAN: 'DD', EXP: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL'};   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
 const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}, cost: new Map(), costDocs: []};   // cost: what we pay (catcost/blinds-*, owner only), per m² or per add-on unit
 const SQFT = 10.7639;
@@ -2663,22 +2683,22 @@ function bRowHTML(b, i){
   const adds = BL.addons.filter(a => a.sup === b.sup);
   const list = shadeListId(b, t);
   return `<tr class="row" data-id="${b.id}">
-    <td class="first"><div class="cell"><span class="idx">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:130px"></div></td>
-    <td><select data-b="sup" style="width:160px">${selOpts(Object.entries(BSUPS).map(([k, n]) => [k, n, BL.state === 'ready' && !bPriced(k) && b.sup !== k]), b.sup)}</select></td>
-    <td><input data-bfam="1" value="${esc(b.fam)}" autocomplete="off" placeholder="Pick a type" style="width:190px" aria-label="Blind type"></td>
+    <td class="first"><div class="cell"><span class="idx">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:110px"></div></td>
+    <td><select data-b="sup" style="width:96px" title="${esc(BSUPS[b.sup] || '')}">${Object.entries(BSUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${k === b.sup ? ' selected' : ''}${BL.state === 'ready' && !bPriced(k) && b.sup !== k ? ' disabled' : ''}>${esc(BSHORT[k] || n)}</option>`).join('')}</select></td>
+    <td><input data-bfam="1" value="${esc(b.fam)}" autocomplete="off" placeholder="Pick a type" style="width:140px" aria-label="Blind type"></td>
     ${loading ? `<td class="hint">${esc(loading)}</td>` : priced ? `
-    <td><select data-b="sys" style="width:170px"${b.fam ? '' : ' disabled'}>${bOpts(syss.map(x => [x, x]), b.sys, 'Pick a system')}</select></td>` : `
+    <td><select data-b="sys" style="width:130px"${b.fam ? '' : ' disabled'}>${bOpts(syss.map(x => [x, x]), b.sys, 'Pick a system')}</select></td>` : `
     <td class="hint" style="font-size:12.5px">price list not added yet</td>`}
     ${loading ? '<td></td>' : priced ? `
-    <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick the collection' : 'Pick a system first'}" style="width:200px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
-    <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:200px" aria-label="Series"></td>`}
-    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick a shade' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:110px" aria-label="Shade number"></td>
+    <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick' : 'System first'}" style="width:160px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
+    <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:160px" aria-label="Series"></td>`}
+    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:96px" aria-label="Shade number"></td>
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
     <td><input data-b="qty" class="n" inputmode="numeric" value="${esc(b.qty)}" style="width:52px" aria-label="How many"></td>
-    ${adds.length ? ['motor', 'remote', 'extra'].map(k => `<td>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
-    <td class="out" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>
-    <td data-o="det"></td>
+    ${adds.length ? ['motor', 'remote', 'extra'].map((k, j) => `<td${j ? '' : ' class="sep"'}>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3" class="sep"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
+    <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>
+    <td class="sep" data-o="det"></td>
     <td class="acts"><button class="ico" data-ba="dup" title="Copy this blind">⧉</button><button class="ico" data-ba="del" title="Delete this blind">✕</button></td>
   </tr>`;
 }
@@ -2798,6 +2818,7 @@ function renderBlinds(){
   if (!state.blinds.length) state.blinds.push(bBlank());
   if (state.bsel >= state.blinds.length) state.bsel = 0;
   $('#btb').innerHTML = state.blinds.map(bRowHTML).join('');
+  setTimeout(bHnavSync, 0);   // ‹ › and the section buttons (19 Oct)
   state.blinds.forEach(bUpdateRow); bMarkSel(); bTotal(); renderBSide();
   if (!$('#b-orders').hidden) renderOrders();
   const ix = BL.info.SAN, mv = BL.info.MV;
@@ -7041,4 +7062,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-181556 -->
+<!-- build 20261019-182214 -->
