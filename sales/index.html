@@ -1563,6 +1563,9 @@ const BLIND_NAMES = {
        ['Panel', 'panel', 'fabric'], ['Arcline', 'arcline', 'fabric'], ['Sierra', 'sierra', 'Sierra'], ['Vertical', 'vertical', 'Vertical'],
        ['Wooden', 'wooden', 'Wooden'], ['Patricia', 'loop', 'Patricia'], ['Skylight Colby', 'skyhoney', 'Skylight-Colby'], ['Skylight Roman', 'skyroman', 'fabric']],
 };
+// D'Decor Express (19 Oct 2026): the same names as Sansaar's handbook.
+BLIND_NAMES.EXP = [['Roller', 'roller'], ['Romex', 'roman'], ['Roman (making)', 'roman'], ['Panel', 'panel'], ['Panel (making)', 'panel'],
+                    ['Vertical', 'vertical'], ['Duplex', 'duplex'], ['Wooden', 'wooden']];
 // D'Decor FabriCare: its own names from its Oct 2026 price lists. Zebra = duplex; Zafari and Square (Quadra Roman, Tessela)
 // are read as sheer horizon and duplex from their names only: not confirmed by Purvi.
 BLIND_NAMES.FC = [['Zebra', 'duplex'], ['Zafari', 'sheer'], ['Square', 'duplex'], ['Hive', 'honeycomb'], ['Wooden', 'wooden'], ['Roman (making)', 'roman']];
@@ -1599,24 +1602,15 @@ const STYLE_INFO = {'American Pleat': 'Tailored triple pleats sewn in at the top
 // Manual tracks are priced per running foot. Motorised tracks come from D'Decor (Sansaar) as ready kits, priced by kit length.
 const TRACKS = [{n:'Kohinoor Track', k:'ft'}, {n:'DPFH Track', k:'ft'}, {n:'Zen Motion Track', k:'ft'}, {n:'Forest Track', k:'ft'}, {n:'Rod cum track', k:'ft'},
   {n:"Motorised · Exton Glide (D'Decor motor)", k:'motor', m:'EXTON', rb:'DD'}, {n:'Motorised · Movelite 35 (Somfy motor)', k:'motor', m:'MV35', rb:'SOMFY'}, {n:'Motorised · Movelite 60 (Somfy motor)', k:'motor', m:'MV60', rb:'SOMFY'},
-  // Marvel RRP w.e.f. 1 Apr 2026, pages 24–29, before 18% GST (Purvi, 7 Oct: "yes add both"). Manual = per running ft (mv = Marvel's rate,
-  // used until a "we charge" rate is typed in Prices). Motorised Dura tracks come without the motor (Marvel: "track, bracket, runner & end cap"):
-  // the motor (mb) and the remote are picked separately, sizes 3 m to 9 m (min 3).
-  {n:'Marvel · Dura Track', k:'ft', mv:694}, {n:'Marvel · Dura Track (ripple)', k:'ft', mv:918}, {n:'Marvel · Easyglide Track', k:'ft', mv:308}, {n:'Marvel · Easyglide Track (ripple)', k:'ft', mv:566},
-  {n:'Marvel · Power Track', k:'ft', mv:310}, {n:'Marvel · Power Track (ripple)', k:'ft', mv:566}, {n:'Marvel · Mini Track', k:'ft', mv:224}, {n:'Marvel · Mini Track (ripple)', k:'ft', mv:538},
-  {n:'Marvel · Flexi Track', k:'ft', mv:292}, {n:'Marvel · Hospital Track', k:'ft', mv:960},
-  {n:'Marvel motorised · Dura Track (Solis motor)', k:'motor', m:'MVSOL', rb:'MVSOL', mb:'MVSOL', min:3}, {n:'Marvel motorised · Dura Track ripple (Solis motor)', k:'motor', m:'MVSOLR', rb:'MVSOL', mb:'MVSOL', min:3},
-  {n:'Marvel motorised · Dura Track (Somfy motor)', k:'motor', m:'MVSOM', rb:'MVSOM', mb:'MVSOM', min:3}, {n:'Marvel motorised · Dura Track ripple (Somfy motor)', k:'motor', m:'MVSOMR', rb:'MVSOM', mb:'MVSOM', min:3},
   {n:'No track', k:''}];
-const TRACK_GROUPS = [['Our tracks · per ft', t => t.k === 'ft' && !t.mv], ['Marvel tracks · per ft', t => t.k === 'ft' && t.mv], ['Motorised', t => t.k === 'motor'], ['', t => !t.k]];
+// Marvel tracks, motors, remotes and parts (added 7 Oct) were taken out on 19 Oct (Purvi: "remove marvel tracks, only keep the tracks
+// that i added manually"); no client sheet had used them. The motor / parts helpers below stay, with empty lists.
+const TRACK_GROUPS = [['Our tracks · per ft', t => t.k === 'ft'], ['Motorised', t => t.k === 'motor'], ['', t => !t.k]];
 function trackOptHTML(val){
   return TRACK_GROUPS.map(([g, f]) => { const o = opt(TRACKS.filter(f).map(t => t.n), val); return g ? `<optgroup label="${esc(g)}">${o}</optgroup>` : o; }).join('');
 }
 // Marvel curtain motors (page 27/29), picked under a Marvel motorised track. RTS = radio remote, WT = wired switch.
-const MOTORS_MV = {
-  MVSOL: [['Solis Glide 50 kg', 12400], ['Solis Glide 100 kg', 13800], ['Solis Glide wire-free 50 kg', 25200]],
-  MVSOM: [['Somfy Movelite 35', 30390], ['Somfy Movelite 60', 41190], ['Somfy Movelite wire-free 35', 41000], ['Somfy Glydea 35 (radio, RTS)', 59200], ['Somfy Glydea 35 (wired, WT)', 49830],
-    ['Somfy Glydea 60 (radio, RTS)', 72000], ['Somfy Glydea 60 (wired, WT)', 58650]]};
+const MOTORS_MV = {};
 const motorDefault = () => Object.fromEntries(Object.values(MOTORS_MV).flat());
 const motorsFor = row => { const t = TRACKS.find(x => x.n === row.track); return t && t.mb ? MOTORS_MV[t.mb].map(x => x[0]) : null; };
 const motorRate = n => { const p = (prices.motors || {})[n]; return has(p) ? p : motorDefault()[n]; };
@@ -1626,19 +1620,7 @@ function motorSel(r){
 }
 // Marvel track parts (pages 24–26, RRP before 18% GST; Purvi, 7 Oct: "add the track parts as extras too"). A Marvel track offers its
 // own family's parts first, then wands and bends that fit any track. Row field r.extras = [{k: part name, q}].
-const MV_PARTS = (() => { const L = [], add = (fam, list) => list.forEach(([n, p, u]) => L.push({k: (fam ? fam + ' · ' : '') + n, fam, n, p, u}));
-  add('Dura', [['2 track holder', 280, 'pc'], ['Jointer', 280, 'pc'], ['Medium duty master carrier, overlap arm', 868, 'pc'], ['Medium duty master carrier, small arm', 952, 'pc'],
-    ['Ripple master carrier, one-way opening', 1064, 'pc'], ['Ripple overlap arm and small arm', 1974, 'set'], ['Intermediate stop', 24, 'pc'], ['Hook', 1, 'pc'], ['Ready 90° bend', 1700, 'bend']]);
-  add('Easyglide', [['Long wall holder', 126, 'pc'], ['2 track holder', 266, 'pc'], ['Long 2 track holder', 490, 'pc'], ['Jointer', 154, 'pc'], ['Over lapper', 308, 'pair'],
-    ['Ripple over lapper', 644, 'pair'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc'], ['Ready 90° bend', 1320, 'bend']]);
-  add('Power', [['Long wall holder', 123, 'pc'], ['2 track holder', 168, 'pc'], ['3 track holder', 230, 'pc'], ['Long 2 track holder', 288, 'pc'], ['Jointer', 154, 'pc'],
-    ['Over lapper', 364, 'pair'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc'], ['Ready 90° bend', 1350, 'bend']]);
-  add('Mini', [['Long wall holder', 137, 'pc'], ['2 track holder', 300, 'pc'], ['Long 2 track holder', 518, 'pc'], ['Jointer', 154, 'pc'], ['Over lapper', 322, 'pair'],
-    ['Ripple over lapper', 658, 'pair'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc']]);
-  add('Flexi', [['Long wall holder', 174, 'pc'], ['2 track holder', 364, 'pc'], ['Long 2 track holder', 574, 'pc'], ['Intermediate stop', 34, 'pc'], ['Hook', 1, 'pc']]);
-  add('Hospital', [['Jointer', 170, 'pc'], ['T jointer', 150, 'pc'], ['Wall holder', 260, 'pc'], ['Long wall holder', 200, 'pc'], ['Ready 90° bend', 1480, 'bend']]);
-  add('', [['Wand, plastic white 10 mm · 1.25 m', 1008, 'pc'], ['Wand, plain 12 mm · 1.5 m', 1652, 'pc'], ['Wand, plain 15 mm · 1.5 m', 1946, 'pc'], ['Track bending charge', 1000, 'bend']]);
-  return L; })();
+const MV_PARTS = [];
 const mvFam = track => { const m = /^Marvel.*?(Dura|Easyglide|Power|Mini|Flexi|Hospital)/.exec(track || ''); return m ? m[1] : null; };
 const partsFor = r => { const f = mvFam(r.track); return f ? MV_PARTS.filter(x => x.fam === f || !x.fam) : []; };
 const PART_UNIT = {pc: 'PCS', pair: 'PAIR', set: 'SET', bend: 'BEND'};
@@ -1663,33 +1645,24 @@ function partsRedraw(r, refocus = true){
 // A Marvel manual track uses Marvel's rate (before GST) until we type our own "we charge" rate in Prices.
 const trackRate = n => { const t = TRACKS.find(x => x.n === n) || {}, p = (prices.track || {})[n]; return has(p) ? {rate: p, incl: gstIncl('track')} : {rate: t.mv ?? p, incl: false}; };
 const KIT_SIZES = ['1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9'];
-// Folio price list 2026 (Sansaar), page 19: RRP per kit, by kit length in metres, before 18% GST.
+// Folio price list 2026–27 (Sansaar, updated list of 19 Oct 2026), page 20: RRP per kit, by kit length in metres, before 18% GST.
 const KITS_RRP = {
-  EXTON: [26972, 28463, 29953, 31444, 32929, 34944, 36435, 37925, 39416, 40906, 42392, 43882, 45373, 46864, 48354, 49839],
-  MV35: [35097, 36615, 38128, 39645, 42326, 43844, 45356, 46874, 48392, 49910, 51423, 52940, 54458, 55970, 57489, 59006],
-  MV60: [49686, 51198, 52716, 54235, 56915, 58427, 59946, 61463, 62981, 64493, 66011, 67530, 69042, 70560, 72077, 73596],
-  // Marvel (page 26), 3 m to 9 m only, motor not included
-  MVSOL: [null, null, null, 15540, 17466, 19394, 21320, 23738, 25664, 27590, 29518, 31444, 33370, 35298, 37224, 39150],
-  MVSOLR: [null, null, null, 19804, 22406, 25008, 27610, 30702, 33302, 35904, 38506, 41108, 43708, 46310, 48912, 51514],
-  MVSOM: [null, null, null, 18632, 20558, 22486, 24412, 26830, 28756, 30682, 32610, 34536, 36462, 38390, 40316, 42242],
-  MVSOMR: [null, null, null, 22896, 25498, 28100, 30702, 33794, 36394, 38996, 41598, 44200, 46800, 49402, 52004, 54606]};
+  EXTON: [28321, 29886, 31451, 33016, 34575, 36691, 38257, 39821, 41387, 42951, 44512, 46076, 47642, 49207, 50772, 52331],
+  MV35: [37554, 39178, 40797, 42420, 45289, 46913, 48531, 50155, 51779, 53404, 55023, 56646, 58270, 59888, 61513, 63136],
+  MV60: [53164, 54782, 56406, 58031, 60899, 62517, 64142, 65765, 67390, 69008, 70632, 72257, 73875, 75499, 77122, 78748]};
 const kitPrices = () => Object.assign(kitDefault(), prices.kits || {});   // a saved table from before 7 Oct has no Marvel columns
 const kitDefault = () => Object.fromEntries(Object.entries(KITS_RRP).map(([m, a]) => [m, Object.fromEntries(KIT_SIZES.map((z, i) => [z, a[i]]))]));
 const kitSize = (m, min = 1.5) => { if (!m) return null; const z = Math.max(min, m); return z > 9 ? null : String(z); };  // the smallest kit is 1.5 m (Marvel 3 m), the largest 9 m
 // Remotes for motorised curtains (Purvi, 1 Oct): picked per curtain, a separate line under Accessories and installation.
-// Folio price list 2026: D'Decor remotes page 14 (Exton Glide), Somfy page 15 (Movelite). RRP before 18% GST.
+// Folio price list 2026–27 (updated list, 19 Oct 2026): D'Decor remotes page 15 (Exton Glide), Somfy page 16 (Movelite). RRP before 18% GST.
+// The Smart Home Hub is not in the updated list.
 const REMOTES = {
-  DD: [["D'Decor Button Remote 1 (1 channel)", 4331], ["D'Decor Button Remote 6 (6 channel)", 5423], ["D'Decor Button Remote 16 (16 channel)", 6064],
-    ["D'Decor Lunnette Remote 1 (metallic, 1 channel)", 5565], ["D'Decor Lunnette Remote 6 (metallic, 6 channel)", 7298], ["D'Decor Lunnette Remote 16 (metallic, 16 channel)", 7665],
-    ["D'Decor IRIS Remote 6 (pebble finish, 6 channel)", 4305], ["D'Decor Linex wall switch (1 channel, RTS)", 2258], ["D'Decor Switch AC 505-1 wall switch (1 channel, WT)", 977],
-    ["D'Decor Smart Home Hub (phone app)", 10920]],
-  SOMFY: [['Somfy Situo 1 RTS Pure (1 channel)', 7332], ['Somfy Situo 5 RTS Pure (4 channel)', 9674], ['Somfy Telis 16 RTS Pure (16 channel)', 20451],
-    ['Somfy Smoove RTS Pure wall switch (1 channel)', 5871], ['Somfy Connexoon (phone app, Alexa, Google Home)', 23924]],
-  // Marvel, page 27 (Purvi, 7 Oct)
-  MVSOL: [['Solis Glide remote (1 channel)', 1950], ['Solis Glide remote (15 channel)', 2500], ['Solis Hub WiFi bridge (phone app)', 19000]],
-  MVSOM: [['Somfy Situo remote, 1 motor (Marvel)', 7980], ['Somfy Situo remote, 5 motors (Marvel)', 10680], ['Somfy remote, 16 motors (Marvel)', 21380],
-    ['Somfy wall remote (Marvel)', 5090], ['Somfy wired wall switch, WT (Marvel)', 1870], ['Somfy Telis 6 Chronis timer remote (Marvel)', 25110]]};
-const REM_FOR = {DD: 'Exton Glide', SOMFY: 'Movelite 35 / 60', MVSOL: 'Marvel · Solis Glide', MVSOM: 'Marvel · Somfy'};
+  DD: [["D'Decor Button Remote 1 (1 channel)", 4550], ["D'Decor Button Remote 6 (6 channel)", 5700], ["D'Decor Button Remote 16 (16 channel)", 6365],
+    ["D'Decor Lunnette Remote 1 (metallic, 1 channel)", 5845], ["D'Decor Lunnette Remote 6 (metallic, 6 channel)", 7660], ["D'Decor Lunnette Remote 16 (metallic, 16 channel)", 8050],
+    ["D'Decor IRIS Remote 6 (pebble finish, 6 channel)", 4520], ["D'Decor Linex wall switch (1 channel, RTS)", 2370], ["D'Decor Switch AC 505-1 wall switch (1 channel, WT)", 1025]],
+  SOMFY: [['Somfy Situo 1 RTS Pure (1 channel)', 7700], ['Somfy Situo 5 RTS Pure (4 channel)', 10160], ['Somfy Telis 16 RTS Pure (16 channel)', 21475],
+    ['Somfy Smoove RTS Pure wall switch (1 channel)', 6165], ['Somfy Connexoon (phone app, Alexa, Google Home)', 25120]]};
+const REM_FOR = {DD: 'Exton Glide', SOMFY: 'Movelite 35 / 60'};
 const NO_REMOTE = "No remote (uses another curtain's remote)";
 const remoteDefault = () => Object.fromEntries(Object.values(REMOTES).flat());
 const remotesFor = row => { const t = TRACKS.find(x => x.n === row.track); return t && t.rb ? REMOTES[t.rb].map(x => x[0]) : null; };
@@ -2442,8 +2415,8 @@ function renderSide(){
 }
 
 // ================= blinds (price lists in the shared store: blinds/<company>; order details from blind-forms.js)
-const BSUPS = {SAN: "D'Decor Sansaar", FC: "D'Decor FabriCare", AP: 'Asian Paints', MV: 'Marvel'};
-const BCODE = {SAN: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL'};   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
+const BSUPS = {SAN: "D'Decor Sansaar", EXP: "D'Decor Express", FC: "D'Decor FabriCare", AP: 'Asian Paints', MV: 'Marvel'};   // Express its own company from 19 Oct (was inside Sansaar)
+const BCODE = {SAN: 'DD', EXP: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL'};   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
 const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}, cost: new Map(), costDocs: []};   // cost: what we pay (catcost/blinds-*, owner only), per m² or per add-on unit
 const SQFT = 10.7639;
 const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti']);   // sq ft in a sq m
@@ -2490,7 +2463,7 @@ function bCalc(b){
   if (p) { c.gst = p.gst; c.mrp = Math.round(p.sqm * (1 + p.gst / 100) / SQFT); c.amt = c.charge * c.q * c.mrp; }
   // Extras: each is priced on its own unit; "each" items use the typed number, else 1 (a motor: one per blind)
   c.adds = (b.adds || []).map((x, i) => { const a = BL.addons.find(y => y.key === x.k); if (!a) return null;
-    const units = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : a.uom === 'per m width' ? W * 0.0254 * q
+    const units = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : a.uom === 'per m width' ? W * 0.0254 * q : a.uom === 'per blind' ? q
       : a.uom === 'each' ? Math.max(1, parseInt(x.q, 10) || (bAddKind(a) === 'motor' ? q : 1)) : Math.max(0, parseFloat(x.q) || 1));   // "per m (type metres)": the metres typed
     const mrp = Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)); return {i, a, units, mrp, amt: units * mrp}; }).filter(Boolean);
   c.addonAmt = c.adds.reduce((t, x) => t + x.amt, 0);
@@ -2505,7 +2478,7 @@ const bOpts = (list, val, blank) => (blank ? `<option value="">${blank}</option>
 const shadeListId = (b, t) => t && t.shades && (BL.shades[b.sup] || {})[t.shades] ? `sh-${b.sup}-${t.shades}` : '';
 function bRowHTML(b, i){
   const rows = BL.rows.filter(r => r.sup === b.sup), priced = rows.length > 0, t = blindType(b.sup, b.fam);
-  const loading = ['SAN', 'FC', 'AP', 'MV'].includes(b.sup) && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
+  const loading = ['SAN', 'EXP', 'FC', 'AP', 'MV'].includes(b.sup) && BL.state !== 'ready' ? (shared ? 'Loading the price list…' : 'Price lists load when the page is opened from claude.ai') : '';
   const syss = uniq(rows.filter(r => r.fam === b.fam).map(r => r.sys));
   const adds = BL.addons.filter(a => a.sup === b.sup);
   const list = shadeListId(b, t);
@@ -2614,7 +2587,7 @@ function renderBlinds(){
   if (!$('#b-orders').hidden) renderOrders();
   const ix = BL.info.SAN, mv = BL.info.MV;
   const nn = n => n.toLocaleString('en-IN');   // one line per company that has a list; the shade box picks the collection (6 Oct)
-  $('#bnote').textContent = [ix && `D'Decor Sansaar: ${nn(ix.count)} prices`, BL.info.FC && `D'Decor FabriCare: ${nn(BL.info.FC.count)} prices`, BL.info.AP && BL.info.AP.count && `Asian Paints: ${nn(BL.info.AP.count)} prices`,
+  $('#bnote').textContent = [ix && `D'Decor Sansaar: ${nn(ix.count)} prices`, BL.info.EXP && `D'Decor Express: ${nn(BL.info.EXP.count)} prices`, BL.info.FC && `D'Decor FabriCare: ${nn(BL.info.FC.count)} prices`, BL.info.AP && BL.info.AP.count && `Asian Paints: ${nn(BL.info.AP.count)} prices`,
     mv && (mv.count ? `Marvel: ${nn(mv.count)} prices and ${nn(mv.shades)} shades` : `Marvel: ${nn(mv.shades)} shades, no prices`)].filter(Boolean).join(' · ') + '. Rates are MRP per sq ft, GST included. Type a shade number and the collection fills in.';
 }
 function bTotal(){ const t = state.blinds.reduce((a, b) => { const c = bCalc(b); return a + (c.ok && c.p ? c.amt + (c.addonAmt || 0) : 0); }, 0); $('#btotal').textContent = t ? 'Blinds total ' + rs(t) + ' incl. GST' : ''; }
@@ -3480,7 +3453,8 @@ function hsnSec(list){
 // ================= blinds prices page
 let bpSup = 'SAN', bpFam = '', bpQ = '';
 const BP_NOTE = {
-  SAN: '',
+  SAN: 'From D\'Decor\'s Folio handbook 2026–27 (updated list, 19 Oct 2026). List price only, no dealer price. Express designs are under D\'Decor Express.',
+  EXP: 'From D\'Decor\'s Express handbook 2026–27 (19 Oct 2026): Polo, Polo II, Polo III, Expressions, Graphics, Solitude, Manhattan duplex; wooden, Roman / Panel making, motors and remotes as in Folio. List price only, no dealer price.',
   FC: 'From D\'Decor\'s Oct 2026 lists (Designer, Hive, Wooden, motors). No minimum size printed. Wooden 40–52 missing from D\'Decor\'s file. Roman making charges: price to confirm.',
   AP: 'From the Asian Paints 2026 price list (Illumin8): Roller, Fifty50 (Zebra), Honeycomb, Wooden, Roman making; motors, remotes, Roman fabric per metre. List price only, no dealer price. Minimum 1 sq m.',
   MV: 'From Marvel\'s RRP price list (w.e.f. 1 Apr 2026): every blind type by series and system, motors, remotes and fittings per type. List price only, no dealer price. Minimum 1.5 sq m (Panel 1.8, Patricia 1, skylights 3). Order-form details and shade lists as before.'};
@@ -3588,18 +3562,14 @@ function renderPrices(){
       <div class="q-scroll"><table class="pr"><thead><tr><th>On</th><th class="chg">GST %</th></tr></thead><tbody>${[['fabric', 'Fabric and lining'], ['stitching', 'Stitching'], ['track', 'Track'], ['install', 'Installation']].map(([k, n]) => `<tr><td class="st"><b>${n}</b></td><td>${moneyIn(gstRates()[k], 'chg', `data-p="gst" data-side="sale" data-k="${k}" aria-label="GST percent on ${n}"`).replace('placeholder="₹"', 'placeholder="%"')}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="sec" id="sec-track"><div class="sec-h"><h2>Track</h2><p>Manual tracks per running foot (width ÷ 12, rounded up to the next ½ ft).</p>${gstSwitch('track')}</div>
       <div class="q-scroll"><table class="pr"><thead><tr><th>Track</th><th>Unit</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${trRows}</tbody></table></div>
-      <div class="sec-h" style="margin-top:18px"><h2>Motorised track kits · D'Decor Sansaar</h2><p>Price per kit by length. The kit is the width in metres rounded up to the next ½ m (smallest 1.5 m, largest 9 m). Filled in from D'Decor Sansaar's Folio price list 2026, page 19 (RRP before GST).</p>${gstSwitch('kits')}</div>
+      <div class="sec-h" style="margin-top:18px"><h2>Motorised track kits · D'Decor Sansaar</h2><p>Price per kit by length. The kit is the width in metres rounded up to the next ½ m (smallest 1.5 m, largest 9 m). Filled in from D'Decor Sansaar's Folio price list 2026–27 (updated 19 Oct 2026), page 20 (RRP before GST).</p>${gstSwitch('kits')}</div>
       <div class="q-scroll"><table class="pr"><thead>${kitHead(MOTORS)}</thead><tbody>${kitRows}</tbody></table></div>
-      <div class="sec-h" style="margin-top:18px"><h2>Motorised tracks · Marvel</h2><p>Dura Track by length, 3 m to 9 m, <b>without the motor</b> (Marvel RRP from 1 Apr 2026, page 26, before GST). The motor and the remote are picked on the curtain and go on the quotation as their own lines.</p></div>
-      <div class="q-scroll"><table class="pr"><thead>${kitHead(MVK)}</thead><tbody>${mvKitRows}</tbody></table></div>
-      <div class="sec-h" style="margin-top:18px"><h2>Curtain motors · Marvel</h2><p>For Marvel motorised tracks (pages 27 and 29, RRP before GST).</p>${gstSwitch('motors')}</div>
-      <div class="q-scroll"><table class="pr"><thead><tr><th>Motor</th><th>For track</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${motRows}</tbody></table></div>
-      <div class="sec-h" style="margin-top:18px"><h2>Remotes for motorised curtains</h2><p>Picked under the track on each motorised curtain, and shown as its own line in the quotation. From the Folio price list 2026: D'Decor page 14, Somfy page 15; Marvel page 27 (RRP before GST).</p>${gstSwitch('remotes')}</div>
+      <div class="sec-h" style="margin-top:18px"><h2>Remotes for motorised curtains</h2><p>Picked under the track on each motorised curtain, and shown as its own line in the quotation. From the Folio price list 2026–27 (updated 19 Oct 2026): D'Decor page 15, Somfy page 16 (RRP before GST).</p>${gstSwitch('remotes')}</div>
       <div class="q-scroll"><table class="pr"><thead><tr><th>Remote</th><th>For motor</th>${payH('We pay')}<th class="chg">We charge</th>${mgH}</tr></thead><tbody>${remRows}</tbody></table></div></div>
     ${installSec()}
     ${uphSec()}
     ${swMarginSec()}
-    ${hsnSec([['lining', 'Linings'], ['stitching', 'Stitching'], ['track', 'Curtain track'], ['kits', 'Motorised track kits'], ['remotes', 'Curtain motor remotes'], ['motors', 'Curtain motors (Marvel)'], ['install', 'Installation'],
+    ${hsnSec([['lining', 'Linings'], ['stitching', 'Stitching'], ['track', 'Curtain track'], ['kits', 'Motorised track kits'], ['remotes', 'Curtain motor remotes'], ['install', 'Installation'],
       ['mattress', 'Sleepwell mattresses and pillows (9404 if empty)'], ['foam', 'Sleepwell foam (9404 if empty)'], ['uphFabric', 'Upholstery fabric at our own rate']])}`;
 }
 const pb = $('#p-body');
@@ -6384,4 +6354,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261018-161950 -->
+<!-- build 20261019-113311 -->
