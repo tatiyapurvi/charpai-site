@@ -3556,8 +3556,8 @@ function waMessage(v, t){
   const what = t.hid ? SECTIONS.filter(([k]) => (t.S[k] || []).length).map(([, n]) => n.toLowerCase()) : [];   // a part quotation says what it is for
   return [`Namaste${who ? ' ' + who : ''},`, `Here is your quotation${what.length ? ' for ' + listTxt(what) : ''} from Charpai.`, `Performa Invoice ${q.no || ''} · v${v}`, ...(amt ? [`Final: ₹${inr(t.final)} (GST included)`] : [])].join('\n');
 }
-// on the timeline, with what was left out of a part quotation; quiet if notes are not switched on yet
-function waSent(c, v, hid){ if (shared && db && c) addNote(c, `Quotation v${v} sent on WhatsApp${hid ? '. ' + hid : ''}`, 'log').catch(() => {}); }
+// on the timeline; quiet if notes are not switched on yet. What a part quotation left out is under its version (yellow note), not repeated here.
+function waSent(c, v){ if (shared && db && c) addNote(c, `Quotation v${v} sent on WhatsApp`, 'log').catch(() => {}); }
 async function waShare(x){
   try { await navigator.share({files: [x.file], text: x.text}); waSent(x.c, x.v, x.hid); }
   catch (err) {
@@ -6318,8 +6318,10 @@ function verChanges(A, B){
   // the quotation itself
   const qa = A.q || {}, qb = B.q || {}, d = q => q.discAmt ? '₹' + q.discAmt : q.disc ? q.disc + '%' : 'none';
   const QL = {contact: 'Contact person', phone: 'Contact number', email: 'Email', addr: 'Delivery address', ddate: 'Delivery date', exec: 'Executive', accounts: 'Accounts', ref: 'Reference', no: 'Invoice no.'};
-  const sh = x => ((x || {}).t || {}).hid || 'Everything';   // Edit quotation (20 Oct): what the client got
-  add('Quotation', 'details', '', [d(qa) !== d(qb) && {k: 'Discount', a: d(qa), b: d(qb)}, ...Object.keys(QL).map(k => chg(QL[k], qa[k], qb[k])), chg('What was shared', sh(A), sh(B))]);
+  // Edit quotation (20 Oct): a part quotation says what was shared in its own yellow note, so here only the way back to the full one
+  // (Purvi: "why is the same info written twice?")
+  const hidA = ((A || {}).t || {}).hid, hidB = ((B || {}).t || {}).hid;
+  add('Quotation', 'details', '', [d(qa) !== d(qb) && {k: 'Discount', a: d(qa), b: d(qb)}, ...Object.keys(QL).map(k => chg(QL[k], qa[k], qb[k])), hidA && !hidB && {t: 'Everything was shared again (the last one was a part quotation)'}]);
   return G;
 }
 // under each version: what changed since the one before, one group per item and one line per change
@@ -6329,6 +6331,7 @@ function verChangeList(x, V){
   if (!prev) { const n = sheetCounts(x.snap) || []; return n.length ? `<p class="n-chgnote">First quotation: ${esc(n.join(', '))}</p>` : ''; }
   if (!prev.snap) return '';
   const G = verChanges(prev.snap, x.snap);
+  if (!G.length && (((x.snap.t || {}).hid || '') !== ((prev.snap.t || {}).hid || ''))) return '';   // only what was shared changed: the yellow note says it
   if (!G.length) return `<p class="n-chgnote">${Math.round(prev.total) === Math.round(x.total) ? 'Nothing changed. The same quotation was downloaded again.' : 'Nothing in the sheet changed. The price list rates changed.'}</p>`;
   const line = (l, fresh) => l.t ? `<li><span class="n-ck"></span><span>${esc(l.t)}</span></li>`
     : !l.b ? `<li><span class="n-ck">${esc(l.k)}</span><span><span class="n-ca">${esc(l.a)}</span> <em class="n-tag gone">removed</em></span></li>`
@@ -6629,4 +6632,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-152305 -->
+<!-- build 20261019-153014 -->
