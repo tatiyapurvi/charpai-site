@@ -168,6 +168,42 @@ button,input,select,textarea{font:inherit;color:inherit}
   .side{order:0;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px)}
 }
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:10px}
+/* Curtains sheet, 19 Oct (Purvi: on a desktop the side margins were too wide and the table scrolled sideways all the time).
+   Only this page: the side margins are the same share of the screen on every size (1.5%, ≥16px), the side panel is 420px
+   (was 520px), and the table gets the rest. The header follows, so its edges line up with the sheet. */
+body:has(#v-measure:not([hidden])) .page,body:has(#v-measure:not([hidden])) .tape,body:has(#v-measure:not([hidden])) .tabs{padding-inline:max(16px,1.5vw)}
+body:has(#v-measure:not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}
+@media (min-width:1150px){ #v-measure .wrap{grid-template-columns:minmax(0,1fr) 420px} }
+#v-measure table.sheet{min-width:0}
+#v-measure .sheet th{font-size:13.5px}
+#v-measure .sheet th.grp{font-size:14px}
+#v-measure .sheet input,#v-measure .sheet select{font-size:15px}
+#v-measure .sheet td{padding:5px 3px}
+#v-measure .sheet td.sep,#v-measure .sheet th.sep{border-left:1px solid var(--line);padding-left:6px}
+/* ↺ sits inside the box (left edge; numbers are on the right) instead of taking its own space */
+#v-measure .auto-wrap{position:relative}
+#v-measure .auto-wrap .reset{position:absolute;left:1px;top:50%;transform:translateY(-50%);font-size:15px;padding:2px}
+#v-measure .sheet select.ovr{padding-left:19px}
+#v-measure .sheet th.r,#v-measure .sheet td.out{padding-left:6px;padding-right:8px}
+/* Moving sideways without a trackpad (Purvi, 20 Oct): ‹ › move one screen, a button per section jumps there and lights up
+   while that section is on screen; a fade marks the side with more columns. Hidden when the whole sheet fits. */
+.hnav{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line2)}
+.hnav[hidden]{display:none}
+.hn-arr{flex:none;width:40px;height:36px;border:0;border-radius:10px;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);font:600 22px/1 var(--body);cursor:pointer}
+.hn-arr:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 13%,transparent)}
+.hn-arr:disabled{opacity:.3;cursor:default}
+.hn-pills{flex:1;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.hn-pills button{flex:none;border:0;border-radius:999px;padding:7px 14px;background:none;color:var(--muted);font:500 15px var(--body);cursor:pointer;white-space:nowrap}
+.hn-pills button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.hn-pills button.on{background:var(--tape-soft);color:var(--ink);font-weight:600}
+.tbl-wrap{position:relative}
+.tbl-wrap::before,.tbl-wrap::after{content:'';position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:6;opacity:0;transition:opacity .2s}
+.tbl-wrap::after{right:0;background:linear-gradient(to left,color-mix(in srgb,var(--ink) 8%,transparent),transparent)}
+.tbl-wrap::before{left:var(--first-w,0px);background:linear-gradient(to right,color-mix(in srgb,var(--ink) 8%,transparent),transparent)}
+.tbl-wrap.more-r::after,.tbl-wrap.more-l::before{opacity:1}
+@media (max-width:760px){ .hnav{display:none} }   /* phones swipe */
+/* a small arrow instead of Chrome's wide one, so the short names fit */
+#v-measure .sheet select{appearance:none;-webkit-appearance:none;padding-right:18px;background:var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 6px center}
 .bar{font-size:14px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
 .bar b{color:var(--ink)}
 .bar .acts2{display:flex;gap:8px;flex-wrap:wrap}
@@ -1157,33 +1193,34 @@ button.n-prop:hover{background:var(--soft)}
     <div class="wrap">
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
         <div class="panel" id="m-panel">
-          <div class="bar"><span id="note"></span>
-            <span class="acts2"><button class="btn" id="copy">Copy for WhatsApp</button><button class="btn" id="clear">+ New client</button></span></div>
-          <div class="tbl-scroll">
+          <div class="bar"><span id="note"></span></div>
+          <div class="hnav" id="hnav" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><div class="hn-pills" id="hn-pills"></div><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></div>
+          <div class="tbl-wrap" id="m-wrap"><div class="tbl-scroll" id="m-scroll">
             <table class="sheet">
               <thead>
                 <tr>
                   <th class="grp first">Where</th><th class="grp"></th>
                   <th class="grp" colspan="3">Fabric</th>
-                  <th class="grp soft" colspan="3">Fabric details <small>(filled in from the fabric)</small></th>
-                  <th class="grp" colspan="5">Size &amp; style</th>
-                  <th class="grp" colspan="2">Change only if needed</th>
-                  <th class="grp res" colspan="5">Result</th><th class="grp howh">How it was worked out</th>
-                  <th class="grp"></th><th class="grp"></th>
+                  <th class="grp" colspan="4">Size &amp; style</th>
+                  <th class="grp res sep">Result</th>
+                  <th class="grp sep">Fitting</th><th class="grp res" data-nopill="1">Result</th><th class="grp"></th>
+                  <th class="grp soft sep" colspan="6">Change only if needed</th>
+                  <th class="grp sep" data-pill="Remarks"></th><th class="grp howh" data-pill="How">How it was worked out</th><th class="grp"></th>
                 </tr>
                 <tr>
-                  <th class="first">Room</th><th>Layer</th>
-                  <th>Company</th><th>Curtain fabric <small>type name, collection or SKU</small></th><th>Lining <small>empty = none</small></th>
-                  <th>Roll</th><th>Repeat <small>″</small></th><th>Can turn <small>/ Turn</small></th>
-                  <th>Style</th><th>Height <small>″</small></th><th>Width <small>″</small></th><th>Track</th><th>Fixing</th>
-                  <th>Panel <small>″ each</small></th><th>Extra <small>″</small></th>
-                  <th class="r">Panels</th><th class="r">Parts</th><th class="r">Fabric</th><th class="r">Lining</th><th class="r">Track</th><th class="howh"></th>
-                  <th>Remarks</th><th></th>
+                  <th class="first">Room</th><th title="M = Main curtain, S = Sheer curtain">M / S</th>
+                  <th title="Company">Co.</th><th>Curtain fabric</th><th>Lining</th>
+                  <th title="Roll width in cm">Roll <small>cm</small></th><th>Style</th><th title="Height in inches">H <small>″</small></th><th title="Width in inches">W <small>″</small></th>
+                  <th class="r sep">Fabric</th>
+                  <th class="sep">Track</th><th class="r" title="Track length">Length</th><th>Fixing</th>
+                  <th class="r sep">Panels</th><th class="r">Parts</th>
+                  <th title="Pattern repeat in inches">Repeat <small>″</small></th><th title="Can the fabric be turned sideways">Turn</th><th title="Inches of window each panel covers">Panel <small>″</small></th><th title="Extra inches for the fold and heading">Extra <small>″</small></th>
+                  <th class="sep">Remarks</th><th class="howh"></th><th></th>
                 </tr>
               </thead>
               <tbody id="tb"></tbody>
             </table>
-          </div>
+          </div></div>
           <div class="addbar">
             <button class="btn solid" id="add">+ Add</button>
             <span class="hint">Tap a row to see its drawing. Height and width in inches. Dashed boxes are worked out for you: tap one and type to change it, ↺ puts it back.</span>
@@ -1607,7 +1644,7 @@ const TRACKS = [{n:'Kohinoor Track', k:'ft'}, {n:'DPFH Track', k:'ft'}, {n:'Zen 
 // that i added manually"); no client sheet had used them. The motor / parts helpers below stay, with empty lists.
 const TRACK_GROUPS = [['Our tracks · per ft', t => t.k === 'ft'], ['Motorised', t => t.k === 'motor'], ['', t => !t.k]];
 function trackOptHTML(val){
-  return TRACK_GROUPS.map(([g, f]) => { const o = opt(TRACKS.filter(f).map(t => t.n), val); return g ? `<optgroup label="${esc(g)}">${o}</optgroup>` : o; }).join('');
+  return TRACK_GROUPS.map(([g, f]) => { const o = optS(TRACKS.filter(f).map(t => t.n), val, trackShort); return g ? `<optgroup label="${esc(g)}">${o}</optgroup>` : o; }).join('');
 }
 // Marvel curtain motors (page 27/29), picked under a Marvel motorised track. RTS = radio remote, WT = wired switch.
 const MOTORS_MV = {};
@@ -1669,7 +1706,7 @@ const remotesFor = row => { const t = TRACKS.find(x => x.n === row.track); retur
 const remoteRate = n => { const p = (prices.remotes || {})[n]; return has(p) ? p : remoteDefault()[n]; };   // Marvel remotes are not in a table saved before 7 Oct
 function remoteSel(r){
   const list = remotesFor(r); if (!list) return '';
-  return `<select id="r${r.id}-remote" data-f="remote" style="width:250px;margin-top:6px" class="${r.remote ? '' : 'todo'}" aria-label="Remote"><option value="">Pick a remote</option>${opt([...list, NO_REMOTE], r.remote)}</select>`;
+  return `<select id="r${r.id}-remote" data-f="remote" style="width:114px;margin-top:6px" class="${r.remote ? '' : 'todo'}" aria-label="Remote"><option value="" data-full="Pick a remote">Remote?</option>${optS([...list, NO_REMOTE], r.remote, n => n === NO_REMOTE ? 'No remote' : n.replace(/^(D'Decor|Somfy) /, '').replace(/ \(.*\)$/, ''))}</select>`;
 }
 const OLD_TRACK = {'Manual track': 'Kohinoor Track', 'Motorised (WiFi)': "Motorised · Exton Glide (D'Decor motor)"};
 const ROLLS = [140, 150, 280, 300];   // linings on the Prices page
@@ -1685,8 +1722,8 @@ function rollOpts(r){
   const o = [...ROLL_STD]; if (+r.roll && !o.includes(+r.roll)) o.push(+r.roll);
   return o.sort((a, b) => a - b);
 }
-const rollOptHTML = r => (+r.rollOwn ? `<option value="own" selected>${cpF(+r.rollOwn)} cm · edited</option>` : '') +
-  rollOpts(r).map(v => `<option value="${v}"${!+r.rollOwn && +v === rollOf(r) ? ' selected' : ''}>${cpF(v)} cm</option>`).join('') + '<option value="other">Type a width…</option>';
+const rollOptHTML = r => (+r.rollOwn ? `<option value="own" data-full="${cpF(+r.rollOwn)} cm · edited" selected>${cpF(+r.rollOwn)}</option>` : '') +
+  rollOpts(r).map(v => `<option value="${v}" data-full="${cpF(v)} cm"${!+r.rollOwn && +v === rollOf(r) ? ' selected' : ''}>${cpF(v)}</option>`).join('') + '<option value="other">Type a width…</option>';
 const KEY = 'charpai-curtain-sheet-v1', PKEY = 'charpai-curtain-prices-v1', TKEY = 'charpai-curtain-tab';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1868,7 +1905,7 @@ function selOpen(sel, q = ''){
   const optRow = o => { if (o.hidden || (o.value === '' && o.selected)) return;   // the empty "Pick…" line only shows once something is picked (to undo it) if (ql && !o.textContent.toLowerCase().includes(ql)) return;
     if (o.disabled) { rows.push(`<div class="dis">${esc(o.textContent)}<small>no list yet</small></div>`); return; }
     const i = items.length; items.push(o);
-    rows.push(`<div class="it${o.selected ? ' on cur' : ''}${o.value === '' ? ' blank' : ''}" data-i="${i}"><span><b>${esc(o.textContent)}</b></span><span></span></div>`); };
+    rows.push(`<div class="it${o.selected ? ' on cur' : ''}${o.value === '' ? ' blank' : ''}" data-i="${i}"><span><b>${esc(o.dataset.full || o.textContent)}</b></span><span></span></div>`); };
   for (const ch of sel.children) {
     if (ch.tagName === 'OPTGROUP') { const before = rows.length; rows.push(`<div class="grp">${esc(ch.label)}</div>`); [...ch.children].forEach(optRow); if (rows.length === before + 1) rows.pop(); }
     else optRow(ch);
@@ -1970,42 +2007,72 @@ const AUTO = {
 const PARTS_DEFAULT = 2, FIXINGS = ['Ceiling fixing', 'Face fixing'];
 const AUTO_LABEL = {hand: 'Panels', parts: 'Number of parts', panelTxt: 'Inches of window each panel covers', allowTxt: 'Extra inches for the fold and heading'};
 function opt(list, val){ return list.map(v => `<option${String(v) === String(val) ? ' selected' : ''}>${esc(v)}</option>`).join(''); }
+// The box shows short(v), the list shows full(v) (data-full, read by selOpen); the value stays the full name.
+function optS(list, val, short, full = v => v){ return list.map(v => `<option value="${esc(v)}" data-full="${esc(full(v))}"${String(v) === String(val) ? ' selected' : ''}>${esc(short(v))}</option>`).join(''); }
+const styleShort = s => s.replace('American Pleat', 'AP').replace(' Double Height', ' DH');
+const trackShort = n => n === 'No track' ? 'None' : n.replace(/^Motorised · /, '').replace(/ \(.*\)$/, '').replace(/ track$/i, '').replace(/ Track$/, '');
+const linShort = n => { const t = String(n || '').trim(); return t.split(' — ').pop().replace(/\s*\blining\b\s*/i, ' ').replace(/^Cotton /, '').trim() || t; };   // Blackout Lining → Blackout, Curtain Lining — Cotton Satin → Satin
 function autoCell(r, f, w, big){
   return `<div class="auto-wrap"><input id="r${r.id}-${f}" data-f="${f}" data-auto="1" class="n auto${big ? ' big' : ''}" inputmode="decimal" autocomplete="off" style="width:${w}px" aria-label="${AUTO_LABEL[f]}"><button class="reset" data-reset="${f}" title="Go back to the worked-out number" aria-label="Reset ${AUTO_LABEL[f]}">↺</button></div>`;
 }
 function rowHTML(r, i){
   const id = f => `r${r.id}-${f}`;
+  // 20 Oct (Purvi): track length is back as a yellow Result between Track and Fixing.
+  // 20 Oct (Purvi): of the results only Fabric m stays in the table (lining m and track ft are in the side panel and the totals
+  // below); Panels and Parts are boxes you can type over, so they moved to "Change only if needed".
+  // 19 Oct: the boxes show short names (M / S, DD, AP, 140, Ceiling…) so the whole sheet fits a desktop without
+  // scrolling sideways; every list still opens with the full names (data-full). Order: what you measure first, the
+  // results next, then track + fixing, then the boxes you change only when needed.
   return `<tr class="row" data-id="${r.id}">
-    <td class="first"><div class="cell"><span class="idx">${i+1}</span><input id="${id('room')}" data-f="room" list="roomlist" value="${esc(r.room)}" placeholder="Room / door" style="width:130px"></div></td>
-    <td><select id="${id('layer')}" data-f="layer" style="width:78px">${opt(['Main','Sheer'], r.layer)}</select></td>
-    <td><select id="${id('sup')}" data-f="sup" style="width:132px"><option value="">Any company</option>${Object.entries(SUPS).map(([k, n]) => `<option value="${k}"${r.sup === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></td>
-    <td><input id="${id('fabric')}" data-f="fabric" autocomplete="off" value="${esc(r.fabric)}" placeholder="Type to search" style="width:250px" class="${fabricState(r)}" aria-label="Curtain fabric"></td>
-    <td><input id="${id('lining')}" data-f="lining" list="linlist" value="${esc(r.lining)}" placeholder="No lining" style="width:150px"></td>
-    <td class="soft"><div class="auto-wrap"><select id="${id('roll')}" data-f="roll" style="width:136px" aria-label="Roll width">${rollOptHTML(r)}</select><button class="reset" data-reset="rollOwn" title="Go back to the list's width" aria-label="Reset roll width">↺</button></div></td>
-    <td class="soft"><input id="${id('repeat')}" data-f="repeat" class="n" inputmode="decimal" value="${esc(r.repeat)}" placeholder="none" style="width:62px"></td>
-    <td class="soft"><select id="${id('turn')}" data-f="turn" style="width:66px">${opt(['Yes','No'], r.turn)}</select><button class="btn t3" data-a="t3" hidden></button></td>
-    <td><select id="${id('style')}" data-f="style" style="width:215px">${opt(STYLES, r.style)}</select></td>
-    <td><input id="${id('H')}" data-f="H" class="n key" inputmode="decimal" value="${esc(r.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
-    <td><input id="${id('W')}" data-f="W" class="n key" inputmode="decimal" value="${esc(r.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
-    <td><select id="${id('track')}" data-f="track" style="width:250px" class="${r.track ? '' : 'todo'}"><option value="">Pick a track</option>${trackOptHTML(r.track)}</select><div data-motor>${motorSel(r)}</div><div data-remote>${remoteSel(r)}</div><div data-xp>${partsHTML(r)}</div></td>
-    <td><select id="${id('fixing')}" data-f="fixing" style="width:140px" class="${r.fixing ? '' : 'todo'}" aria-label="Ceiling or face fixing"><option value="">Pick fixing</option>${opt(FIXINGS, r.fixing)}</select></td>
-    <td>${autoCell(r, 'panelTxt', 64)}</td>
-    <td>${autoCell(r, 'allowTxt', 56)}</td>
-    <td>${autoCell(r, 'hand', 58, true)}</td>
-    <td>${autoCell(r, 'parts', 50, true)}</td>
-    <td class="out m" data-o="qty"></td>
-    <td class="out" data-o="lin"></td>
-    <td class="out" data-o="track"></td>
+    <td class="first"><div class="cell"><span class="idx">${i+1}</span><input id="${id('room')}" data-f="room" list="roomlist" value="${esc(r.room)}" placeholder="Room" style="width:104px"></div></td>
+    <td><select id="${id('layer')}" data-f="layer" style="width:50px" aria-label="Main or sheer curtain">${optS(['Main','Sheer'], r.layer, v => v[0], v => v + ' curtain')}</select></td>
+    <td><select id="${id('sup')}" data-f="sup" style="width:80px" aria-label="Company"><option value="" data-full="Any company">Any</option>${Object.entries(SUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${r.sup === k ? ' selected' : ''}>${esc(QCODE[k] || k)}</option>`).join('')}</select></td>
+    <td><input id="${id('fabric')}" data-f="fabric" autocomplete="off" value="${esc(r.fabric)}" placeholder="Type to search" style="width:178px" class="${fabricState(r)}" aria-label="Curtain fabric" title="${esc(r.fabric)}"></td>
+    <td><input id="${id('lining')}" data-f="lining" list="linlist" value="${esc(linShort(r.lining))}" placeholder="None" style="width:92px" aria-label="Lining" title="${esc(r.lining)}"></td>
+    <td class="soft"><div class="auto-wrap"><select id="${id('roll')}" data-f="roll" style="width:70px" aria-label="Roll width in cm">${rollOptHTML(r)}</select><button class="reset" data-reset="rollOwn" title="Go back to the list's width" aria-label="Reset roll width">↺</button></div></td>
+    <td><select id="${id('style')}" data-f="style" style="width:100px" aria-label="Style">${optS(STYLES, r.style, styleShort)}</select></td>
+    <td><input id="${id('H')}" data-f="H" class="n key" inputmode="decimal" value="${esc(r.H)}" placeholder="0" style="width:66px" aria-label="Height in inches"></td>
+    <td><input id="${id('W')}" data-f="W" class="n key" inputmode="decimal" value="${esc(r.W)}" placeholder="0" style="width:66px" aria-label="Width in inches"></td>
+    <td class="out m sep" data-o="qty"></td>
+    <td class="sep"><select id="${id('track')}" data-f="track" style="width:114px" class="${r.track ? '' : 'todo'}" aria-label="Track"><option value="" data-full="Pick a track">Pick</option>${trackOptHTML(r.track)}</select><div data-motor>${motorSel(r)}</div><div data-remote>${remoteSel(r)}</div><div data-xp>${partsHTML(r)}</div></td>
+    <td class="out m" data-o="track"></td>
+    <td><select id="${id('fixing')}" data-f="fixing" style="width:80px" class="${r.fixing ? '' : 'todo'}" aria-label="Ceiling or face fixing"><option value="" data-full="Pick fixing">Pick</option>${optS(FIXINGS, r.fixing, v => v.replace(' fixing', ''))}</select></td>
+    <td class="sep">${autoCell(r, 'hand', 48, true)}</td>
+    <td>${autoCell(r, 'parts', 42, true)}</td>
+    <td class="soft"><input id="${id('repeat')}" data-f="repeat" class="n" inputmode="decimal" value="${esc(r.repeat)}" placeholder="none" style="width:62px" aria-label="Pattern repeat in inches"></td>
+    <td class="soft"><select id="${id('turn')}" data-f="turn" style="width:62px" aria-label="Can turn">${opt(['Yes','No'], r.turn)}</select><button class="btn t3" data-a="t3" hidden></button></td>
+    <td>${autoCell(r, 'panelTxt', 60)}</td>
+    <td>${autoCell(r, 'allowTxt', 52)}</td>
+    <td class="sep"><input id="${id('remarks')}" data-f="remarks" value="${esc(r.remarks)}" placeholder="Any note" style="width:200px" aria-label="Remarks"></td>
     <td class="howc" data-o="how"></td>
-    <td><input id="${id('remarks')}" data-f="remarks" value="${esc(r.remarks)}" placeholder="Any note" style="width:220px" aria-label="Remarks"></td>
     <td class="acts"><button class="ico" data-a="dup" title="Copy this row" aria-label="Copy row ${i+1}">⧉</button><button class="ico" data-a="del" title="Delete this row" aria-label="Delete row ${i+1}">✕</button></td>
   </tr>`;
 }
 function renderTable(){
   tb.innerHTML = state.rows.map(rowHTML).join('');
   state.rows.forEach(updateRow);
-  markSel();
+  markSel(); hnavSync();
 }
+// The ‹ › and section buttons above the curtain sheet (see .hnav)
+const mScroll = $('#m-scroll'), mWrap = $('#m-wrap'), hnav = $('#hnav'), hnPills = $('#hn-pills');
+const hnGroups = () => [...mScroll.querySelectorAll('thead tr:first-child th:not(.first)')].filter(th => !th.dataset.nopill).map(th => ({th, name: th.dataset.pill || th.textContent.trim()})).filter(g => g.name);
+function hnavSync(){
+  const sc = mScroll, firstW = sc.querySelector('th.first').offsetWidth, L = sc.scrollLeft, R = L + sc.clientWidth, over = sc.scrollWidth > sc.clientWidth + 2;
+  hnav.hidden = !over; mWrap.style.setProperty('--first-w', firstW + 'px');
+  mWrap.classList.toggle('more-r', over && R < sc.scrollWidth - 2); mWrap.classList.toggle('more-l', over && L > 2);
+  if (!over) return;
+  const G = hnGroups();
+  if (hnPills.children.length !== G.length) hnPills.innerHTML = G.map((g, i) => `<button data-g="${i}">${esc(g.name)}</button>`).join('');
+  G.forEach((g, i) => { const a = g.th.offsetLeft, b = a + g.th.offsetWidth; hnPills.children[i].classList.toggle('on', b > L + firstW + 60 && a < R - 60); });
+  hnav.querySelector('[data-h="-1"]').disabled = L <= 2; hnav.querySelector('[data-h="1"]').disabled = R >= sc.scrollWidth - 2;
+}
+hnav.addEventListener('click', e => {
+  const sc = mScroll, firstW = sc.querySelector('th.first').offsetWidth, a = e.target.closest('[data-h]'), p = e.target.closest('[data-g]');
+  if (a) sc.scrollBy({left: +a.dataset.h * Math.max(200, (sc.clientWidth - firstW) * 0.8), behavior: 'smooth'});
+  if (p) { const g = hnGroups()[+p.dataset.g]; if (g) sc.scrollTo({left: g.th.offsetLeft - firstW, behavior: 'smooth'}); }
+});
+mScroll.addEventListener('scroll', hnavSync, {passive: true});
+new ResizeObserver(hnavSync).observe(mScroll);
 const TRACK_MAX_FT = 15;
 const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' + (res.trackPieces ? ` (${res.trackPieces} × ${cpF(res.trackPieceFt)} ft)` : '') : (kitSize(res.track, res.kitMin) ? kitSize(res.track, res.kitMin) + ' m kit' : 'over 9 m: ask ' + res.kitBy);
 // Numbers (with their unit) in bold, so the How column can be read at a glance.
@@ -2018,8 +2085,8 @@ function updateRow(r){
   q.innerHTML = ok ? `<span class="v">${cpF(res.qty)}<span class="u" style="color:inherit"> m</span></span>${(c.d.wide ? res.rotated : res.turned) ? '<span class="tag">turned</span>' : ''}` : '<span class="none">—</span>';
   q.title = res.how;
   tr.querySelector('[data-o=how]').innerHTML = ok ? boldNums(res.how + linHowOf(lin)) : '';
-  tr.querySelector('[data-o=lin]').innerHTML = ok ? (lin ? `${cpF(lin.m)}<span class="u"> m</span>` : '<span class="none">none</span>') : '';
-  tr.querySelector('[data-o=track]').innerHTML = ok && res.track ? `${cpF(res.track)}<span class="u"> ${res.trackUnit === 'ft' ? 'ft' : 'm kit'}</span>` : '';
+  const lo = tr.querySelector('[data-o=lin]'); if (lo) lo.innerHTML = ok ? (lin ? `${cpF(lin.m)}<span class="u"> m</span>` : '<span class="none">none</span>') : '';
+  const to = tr.querySelector('[data-o=track]'); if (to) to.innerHTML = ok && res.track ? `<span class="v">${cpF(res.track)}<span class="u" style="color:inherit"> ${res.trackUnit === 'ft' ? 'ft' : 'm kit'}</span></span>` : '';
   for (const f of Object.keys(AUTO)) {
     const inp = tr.querySelector(`[data-f=${f}]`), own = String(r[f] || '').trim();
     tr.querySelector(`[data-reset=${f}]`).classList.toggle('on', !!own);
@@ -2038,7 +2105,9 @@ function updateRow(r){
   rs_.classList.toggle('ovr', !!+r.rollOwn); tr.querySelector('[data-reset=rollOwn]').classList.toggle('on', !!+r.rollOwn);
   // The supplier lists load after the table first draws, so the picked / not-on-list colour is refreshed here.
   const fi = tr.querySelector('[data-f=fabric]');
-  if (fi !== document.activeElement) fi.className = fabricState(r);
+  if (fi !== document.activeElement) { fi.className = fabricState(r); fi.title = r.fabric || ''; }
+  const li = tr.querySelector('[data-f=lining]');
+  if (li !== document.activeElement) { li.value = linShort(r.lining); li.title = r.lining || ''; }
 }
 function markSel(){ tb.querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('sel', +tr.dataset.id === selId())); }
 function selId(){ const r = state.rows[state.sel] || state.rows[0]; return r ? r.id : -1; }
@@ -2053,6 +2122,7 @@ tb.addEventListener('focusin', e => {
   select(e.target.closest('tr'));
   const t = e.target;
   if (t.tagName === 'INPUT' && t.classList.contains('n')) { t.dataset.start = t.value; selectOnFocus(t); }
+  if (t.dataset.f === 'lining') { const r = rowById(t.closest('tr').dataset.id); if (r && t.value !== r.lining) t.value = r.lining || ''; }
 });
 tb.addEventListener('mouseup', e => { const t = e.target; if (t._sel) { e.preventDefault(); t._sel = false; } });
 tb.addEventListener('focusout', e => {
@@ -2060,7 +2130,7 @@ tb.addEventListener('focusout', e => {
     const t = e.target, r = rowById(t.closest('tr').dataset.id), sel = t.previousElementSibling; t.remove();
     sel.hidden = false; sel.innerHTML = sel.dataset.h = rollOptHTML(r); updateRow(r); return;
   }
-  const t = e.target; if (!t.dataset || !t.dataset.auto) return;
+  const t = e.target; if (!t.dataset || !(t.dataset.auto || t.dataset.f === 'lining')) return;
   const r = rowById(t.closest('tr').dataset.id); setTimeout(() => updateRow(r), 0);
 });
 tb.addEventListener('input', e => {
@@ -2153,7 +2223,9 @@ $('#add').onclick = () => {
 $('#house').value = state.house || '';
 $('#house').oninput = e => { state.house = e.target.value; const qb = $('#q-bill'); if (qb) qb.value = state.house; save(); };
 // + New client. With the shared store the open client is already saved, so no second tap; on a device alone it asks twice.
-$('#clear').onclick = e => {
+// 20 Oct (Purvi): the Copy for WhatsApp and + New client buttons were taken off the Curtains sheet (new clients start from
+// My Clients → + New enquiry); the handlers stay in case they come back.
+if ($('#clear')) $('#clear').onclick = e => {
   const b = e.currentTarget;
   if (!shared && !b.classList.contains('danger')) { b.classList.add('danger'); b.textContent = 'Tap again: clears this sheet'; setTimeout(() => { b.classList.remove('danger'); b.textContent = '+ New client'; }, 3000); return; }
   b.classList.remove('danger'); b.textContent = '+ New client';
@@ -2161,7 +2233,7 @@ $('#clear').onclick = e => {
 };
 function renderNote(){
   $('#note').innerHTML = state.example
-    ? `<span><b>These are example rows</b> so you can see how it works. Change any of them, or tap <b>+ New client</b> to start a real one.</span>`
+    ? `<span><b>These are example rows</b> so you can see how it works. Change any of them, or start a real one from <b>My Clients → + New enquiry</b>.</span>`
     : !shared ? `<span>This sheet is saved on this phone or laptop.</span>`
     : `<span>Tap a row to see its drawing and its amount.</span>`;
 }
@@ -5543,7 +5615,7 @@ async function copyText(text, box){
     box.prepend(ta); ta.select(); toast('Select all and copy the text below');
   }
 }
-$('#copy').onclick = () => {
+if ($('#copy')) $('#copy').onclick = () => {
   const L = [`*Curtains · ${state.house || 'house'}*`];
   state.rows.forEach((r, i) => {
     const {res, ok, lin} = calc(r); if (!ok) return;
@@ -6389,4 +6461,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-115107 -->
+<!-- build 20261019-143842 -->
