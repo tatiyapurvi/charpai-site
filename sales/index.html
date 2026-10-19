@@ -4539,6 +4539,9 @@ function ctabsHTML(overview){
   const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
   const products = !overview || inSheet ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}
     <button class="ctab ms-dl" role="tab" data-ct="msheet" aria-selected="${current === 'msheet'}">${DL_ICON}Download sheet</button>` : '';   // 19 Oct: the measurement sheet as a PDF / Excel
+  // 19 Oct (Purvi): a new enquiry shows no Measurement sheet / Quotation buttons; Done at the bottom is its only way on
+  const fresh = shared && current === 'client' && (cpId === '__new' || cpFresh === cpId);
+  if (fresh) return `<div class="ctabs-row"><div class="ctabs" role="tablist">${tab('client', 'Overview')}</div></div>`;
   return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') : ''}${products}</div>
     ${overview ? `<button class="qgo" data-ct="${inSheet ? current : first}" aria-pressed="${inSheet}">${MS_SVG}Measurement sheet</button>` : ''}<button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}Quotation</button></div>`;
 }
@@ -6993,4 +6996,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-174236 -->
+<!-- build 20261019-174558 -->
