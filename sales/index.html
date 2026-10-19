@@ -578,6 +578,12 @@ table.pr{width:100%;border-collapse:collapse}
 .status.ok{background:var(--good-soft);color:var(--good)}
 .status.err{background:var(--warn-soft);color:var(--warn)}
 .search{background:var(--field);border:1px solid var(--line);border-radius:6px;padding:7px 10px;width:min(260px,100%)}
+.toast.undo{display:flex;gap:16px;align-items:center}
+.toast.undo button{background:none;border:0;padding:0;color:var(--tape);font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.idx.grip{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:4px}
+.idx.grip:hover{color:var(--ink);background:var(--tape-soft)}
+tr.dragging{opacity:.55}
+.drop-line{position:fixed;height:3px;background:var(--tape);border-radius:2px;z-index:30;pointer-events:none;display:none;box-shadow:0 0 0 1px var(--tape-ink)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 15px;border-radius:7px;font-weight:600;z-index:10}
 .sugg{position:fixed;z-index:20;background:var(--paper);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:340px;overflow:auto;width:min(460px,calc(100vw - 32px))}
 .sugg .it{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--line2)}
@@ -2101,6 +2107,7 @@ document.addEventListener('touchstart', e => { if (ourSelect(e.target)) { e.prev
 document.addEventListener('keydown', e => {
   const t = e.target; if (!ourSelect(t)) return;
   const open = !sugg.hidden && suggFor && suggFor.input === t;
+  if (!open && !e.altKey && ['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && t.closest('#tb')) return;   // curtain sheet: rows, as in Excel (19 Oct)
   if (!open && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t); return; }
   if (open && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '') + e.key); return; }
   if (open && e.key === 'Backspace') { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '').slice(0, -1)); return; }
@@ -2139,7 +2146,7 @@ function rowHTML(r, i){
   // scrolling sideways; every list still opens with the full names (data-full). Order: what you measure first, the
   // results next, then track + fixing, then the boxes you change only when needed.
   return `<tr class="row" data-id="${r.id}">
-    <td class="first"><div class="cell"><span class="idx">${i+1}</span><input id="${id('room')}" data-f="room" list="roomlist" value="${esc(r.room)}" placeholder="Room" style="width:104px"></div></td>
+    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this row" aria-label="Row ${i+1}, drag to move">${i+1}</span><input id="${id('room')}" data-f="room" list="roomlist" value="${esc(r.room)}" placeholder="Room" style="width:104px"></div></td>
     <td><select id="${id('layer')}" data-f="layer" style="width:50px" aria-label="Main or sheer curtain">${optS(['Main','Sheer'], r.layer, v => v[0], v => v + ' curtain')}</select></td>
     <td><select id="${id('sup')}" data-f="sup" style="width:80px" aria-label="Company"><option value="" data-full="Any company">Any</option>${Object.entries(SUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${r.sup === k ? ' selected' : ''}>${esc(QCODE[k] || k)}</option>`).join('')}</select></td>
     <td><input id="${id('fabric')}" data-f="fabric" autocomplete="off" value="${esc(r.fabric)}" placeholder="Type to search" style="width:178px" class="${fabricState(r)}" aria-label="Curtain fabric" title="${esc(r.fabric)}"></td>
@@ -2338,13 +2345,101 @@ function changed(r){
   updateRow(r); renderTotals(); if (r.id === selId()) renderSide(); save();
 }
 function afterStructure(){ renderTable(); renderTotals(); renderSide(); save(); }
+// a new row carries the fabric, lining, style and fixing of the row it follows (+ Add and Ctrl/⌘ +)
+const carry = (r, from) => { if (from) Object.assign(r, {layer:from.layer, fabric:from.fabric, lining:from.lining, roll:from.roll, rollOwn:from.rollOwn || '', repeat:from.repeat, turn:from.turn, style:from.style, fixing:from.fixing || ''}); return r; };
 $('#add').onclick = () => {
   const last = state.rows[state.rows.length - 1];
-  const r = blank();
-  if (last) Object.assign(r, {layer:last.layer, fabric:last.fabric, lining:last.lining, roll:last.roll, rollOwn:last.rollOwn || '', repeat:last.repeat, turn:last.turn, style:last.style, fixing:last.fixing || ''});   // track, parts and remarks are not copied: the salesperson picks it for each opening
+  const r = carry(blank(), last);   // track, parts and remarks are not copied: the salesperson picks it for each opening
   state.rows.push(r); state.sel = state.rows.length - 1; afterStructure();
   document.getElementById(`r${r.id}-room`).focus();
 };
+// ---- Excel shortcuts and drag to move (Purvi, 19 Oct: "the measurement sheet short cuts need to match excel short cuts to
+// match the mental model of my team"). Only while the cursor is in a curtain row; everywhere else the keys do what they always do.
+//   Ctrl/⌘ +  a row below (carries fabric, style… like + Add)      Ctrl/⌘ −  delete this row (message with Undo)
+//   Ctrl/⌘ D  copy this box from the row above                      Ctrl/⌘ Z  undo the last add / delete / move / copy
+//   Enter, ↓  same box, next row      ↑  same box, row above        Space or Alt + ↓  open a dropdown's list
+// Drag a row by its number to move it. Undo puts back only that one change (rows typed in since are left alone).
+const rowUndo = []; let typedSince = false;
+function rowDid(what, undo){ rowUndo.push({what, undo}); if (rowUndo.length > 30) rowUndo.shift(); typedSince = false; }
+function rowUndoLast(){ const u = rowUndo.pop(); if (!u) { toast('Nothing to undo'); return; } u.undo(); afterStructure(); toast(u.what + ' undone'); }
+function undoToast(msg){
+  document.querySelectorAll('.toast.undo').forEach(x => x.remove());
+  const d = document.createElement('div'); d.className = 'toast undo'; d.innerHTML = `<span>${esc(msg)}</span><button type="button">Undo</button>`;
+  d.querySelector('button').onclick = () => { d.remove(); rowUndoLast(); };
+  document.body.appendChild(d); setTimeout(() => d.remove(), 6000);
+}
+const rowIdx = id => state.rows.findIndex(r => r.id === id);
+function focusCell(r, f){
+  const tr = tb.querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
+  const x = (f && tr.querySelector(`[data-f="${f}"]:not([hidden])`)) || tr.querySelector('[data-f=room]'); if (!x) return;
+  select(tr); x.focus(); if (x.tagName === 'INPUT') { try { x.select(); } catch (_) {} }
+}
+function rowAddBelow(i, f){
+  const r = carry(blank(), state.rows[i]); state.rows.splice(i + 1, 0, r); state.sel = i + 1;
+  rowDid('Add row', () => { const k = rowIdx(r.id); if (k >= 0) state.rows.splice(k, 1); if (!state.rows.length) state.rows.push(blank()); state.sel = Math.min(state.sel, state.rows.length - 1); });
+  afterStructure(); focusCell(r, 'room');
+}
+function rowDelete(i, f){
+  const r = state.rows[i], prev = state.rows[i - 1] ? state.rows[i - 1].id : null;
+  state.rows.splice(i, 1); const filler = state.rows.length ? null : blank(); if (filler) state.rows.push(filler);
+  state.sel = Math.min(i, state.rows.length - 1);
+  rowDid('Delete', () => { if (filler) { const k = rowIdx(filler.id); if (k >= 0) state.rows.splice(k, 1); }
+    const at = prev == null ? 0 : rowIdx(prev) + 1; state.rows.splice(Math.max(0, at), 0, r); state.sel = Math.max(0, at); });
+  afterStructure(); focusCell(state.rows[state.sel], f);
+  undoToast(`Row ${i + 1}${r.room ? ' (' + r.room + ')' : ''} deleted`);
+}
+function rowMove(from, to){
+  if (from === to) return; const [r] = state.rows.splice(from, 1); state.rows.splice(to, 0, r); state.sel = to;
+  rowDid('Move', () => { const k = rowIdx(r.id); if (k < 0) return; state.rows.splice(k, 1); state.rows.splice(from, 0, r); state.sel = from; });
+  afterStructure();
+}
+// Ctrl/⌘ D: the box above, with what belongs to it (a fabric comes with its company, roll and repeat; a track with its motor, remote, parts)
+const FILL_FAB = ['sup', 'key', 'fabric', 'roll', 'rollOwn', 'repeat', 'turn', 'turn300'], FILL_TRACK = ['track', 'motor', 'remote', 'extras'];
+const FILL = {sup: FILL_FAB, fabric: FILL_FAB, roll: FILL_FAB, track: FILL_TRACK, motor: FILL_TRACK, remote: FILL_TRACK};
+function rowFillDown(i, f){
+  if (i < 1 || !f) return; const up = state.rows[i - 1], r = state.rows[i], keys = FILL[f] || [f], old = {};
+  for (const k of keys) { old[k] = r[k]; const v = up[k]; r[k] = v === undefined ? '' : v && typeof v === 'object' ? clone(v) : v; }
+  rowDid('Copy from above', () => Object.assign(r, old));
+  afterStructure(); focusCell(r, f);
+}
+tb.addEventListener('input', e => { if (e.isTrusted) typedSince = true; e.target._nav = false; });
+tb.addEventListener('focusin', e => { e.target._nav = false; });
+tb.addEventListener('keydown', e => {
+  const t = e.target, tr = t.closest && t.closest('tr.row'); if (!tr) return;
+  const i = rowIdx(+tr.dataset.id); if (i < 0) return;
+  const mod = (e.ctrlKey || e.metaKey) && !e.altKey, k = e.key, f = t.dataset.f === 'rollTyping' ? 'roll' : t.dataset.f;
+  if (mod && (k === '+' || k === '=' || e.code === 'NumpadAdd')) { e.preventDefault(); closeSugg(); rowAddBelow(i, f); return; }
+  if (mod && (k === '-' || k === '_' || e.code === 'NumpadSubtract')) { e.preventDefault(); closeSugg(); rowDelete(i, f); return; }
+  if (mod && !e.shiftKey && k.toLowerCase() === 'd') { e.preventDefault(); closeSugg(); rowFillDown(i, f); return; }
+  if (mod && !e.shiftKey && k.toLowerCase() === 'z' && rowUndo.length && !typedSince) { e.preventDefault(); closeSugg(); rowUndoLast(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !f) return;
+  if (!sugg.hidden && suggFor && suggFor.input === t) {   // a list is open: arrows move in it; Enter picks what you arrowed to.
+    if (k === 'ArrowDown' || k === 'ArrowUp') { t._nav = true; return; }   // Room and Lining only suggest (the name is typed),
+    if (!(k === 'Enter' && !t._nav && (f === 'room' || f === 'lining'))) return;   // so there a plain Enter moves down; Fabric must be picked
+  }
+  if (k === 'Enter' || k === 'ArrowDown' || k === 'ArrowUp') {
+    const j = i + (k === 'ArrowUp' ? -1 : 1); e.preventDefault(); if (j < 0 || j >= state.rows.length) return;
+    closeSugg(); focusCell(state.rows[j], f);
+  }
+});
+// drag a row by its number (mouse, or a finger on phones)
+tb.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.idx'); if (!g || e.button > 0) return;
+  const tr = g.closest('tr.row'), rows = [...tb.querySelectorAll('tr.row')], from = rows.indexOf(tr); if (from < 0) return;
+  e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (_) {}
+  const box = tb.closest('.tbl-scroll').getBoundingClientRect(), line = document.createElement('div'); line.className = 'drop-line'; document.body.appendChild(line);
+  let to = from, moved = false; tr.classList.add('dragging');
+  const move = ev => {
+    if (Math.abs(ev.clientY - e.clientY) > 4) moved = true;
+    const R = rows.map(x => x.getBoundingClientRect()); to = R.findIndex(b => ev.clientY < b.top + b.height / 2); if (to < 0) to = rows.length;
+    const y = to < rows.length ? R[to].top : R[R.length - 1].bottom;
+    Object.assign(line.style, {top: y - 1.5 + 'px', left: box.left + 'px', width: box.width + 'px', display: moved ? 'block' : 'none'});
+    if (ev.clientY < 60) scrollBy(0, -12); else if (ev.clientY > innerHeight - 60) scrollBy(0, 12);
+  };
+  const end = () => { g.removeEventListener('pointermove', move); line.remove(); tr.classList.remove('dragging');
+    const dest = to > from ? to - 1 : to; if (moved && dest !== from) rowMove(from, dest); else select(tr); };
+  g.addEventListener('pointermove', move); g.addEventListener('pointerup', end, {once: true}); g.addEventListener('pointercancel', end, {once: true});
+});
 $('#house').value = state.house || '';
 $('#house').oninput = e => { state.house = e.target.value; const qb = $('#q-bill'); if (qb) qb.value = state.house; save(); };
 // + New client. With the shared store the open client is already saved, so no second tap; on a device alone it asks twice.
@@ -3097,6 +3192,15 @@ function fabricName(row){
   const base = row.sup === 'AP' ? x.n.split(' · ').slice(0, 2).reverse().join(' ') : row.key.split('|').join(' ');
   return `${QCODE[row.sup]} ${base}`;
 }
+// 19 Oct (Purvi): on the quotation and the measurement sheet download, rows with the same room name sit together inside each
+// product, in the order the rooms were first typed (Living, Dining, MBR, Living → Living, Living, Dining, MBR). Names are not
+// merged: only the same name counts (capitals and extra spaces ignored), and each row keeps the name typed in it.
+// The sheets themselves keep the order the salesperson typed.
+const roomKey = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+function byRoom(list, roomOf = x => x.room){
+  const first = new Map(); list.forEach((x, i) => { const k = roomKey(roomOf(x)); if (!first.has(k)) first.set(k, i); });
+  return list.map((x, i) => [x, i]).sort((a, b) => first.get(roomKey(roomOf(a[0]))) - first.get(roomKey(roomOf(b[0]))) || a[1] - b[1]).map(a => a[0]);
+}
 function qSections(){
   const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], mattress: [], uph: [], foam: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
   // Supplier list prices (fabric RRP, blinds per m²) are before GST, so GST is added. Our own tables follow their GST switch (gstIncl).
@@ -3110,7 +3214,7 @@ function qSections(){
   const motor = [], mo = (room, l) => motor.push(Object.assign(l, {area: room || '—'}));
   // Area on clubbed lines (Purvi, 2 Oct): up to 3 rooms by name, 4+ = "All Rooms", never "5 rooms". Lined stitching always names every room.
   const roomsTxt = (r, all) => all || r.size <= 3 ? [...r].join(', ') : 'All Rooms';
-  state.rows.forEach(row => {
+  byRoom(state.rows).forEach(row => {
     const c = calc(row); if (!c.ok) return;
     const {res, lin} = c, cf = catRow(row);
     add('fabric', {area: row.room, product: row.layer === 'Sheer' ? 'Sheer curtain fabric' : 'Main curtain fabric', what: fabricName(row), hsn: cf ? cf.h || '' : '', qty: res.qty, unit: 'MTR',
@@ -3134,7 +3238,7 @@ function qSections(){
   });
   for (const s of stitch.values()) add('stitch', {area: roomsTxt(s.rooms, s.lins.size > 0), product: 'Curtain stitching', what: `${s.style} curtain${s.lins.size ? ' with ' + [...s.lins].join(' / ') : ''}`, hsn: H.stitching || '',
     qty: s.panels, unit: 'PCS', rate: prices.stitch[s.k], gst: +G.stitching, cost: costs.stitch[s.k], incl: gstIncl('stitching'), fix: 'stitch'});
-  state.blinds.forEach(b => {
+  byRoom(state.blinds).forEach(b => {
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
     add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
@@ -3145,7 +3249,7 @@ function qSections(){
   // Wallpaper (Purvi, 6 Oct): one line per design, walls of the same design clubbed so boxes are counted on the total rolls.
   // A design from a company list is priced per box (RRP + GST); anything else shows its rolls (or a mural's sq ft) with no price yet.
   const wp = new Map();
-  ensureMore(); (state.more.wallpaper || []).forEach(r => {
+  ensureMore(); byRoom(state.more.wallpaper || []).forEach(r => {
     const c = MP.wallpaper.calc(r); if (!c.ok) return;
     const it = wpItem(r), mural = r.kind !== 'Roll'; if (!mural && !c.rolls) return;
     const k = it ? r.sup + '|' + it.sku : [r.sup, r.design, r.kind, r.roll].join('|'), g = wp.get(k) || {rooms: new Set(), rolls: 0, sqft: 0, r, it, mural};
@@ -3161,7 +3265,7 @@ function qSections(){
   // Flooring (Purvi, 6 Oct): one line per product, rooms of the same product clubbed; quantity = sq ft to order (area + wastage).
   // A product from a company list is priced per sq ft (RRP + GST); anything else shows its sq ft with no price yet. Skirting is not priced yet.
   const fl = new Map();
-  (state.more.flooring || []).forEach(r => {
+  byRoom(state.more.flooring || []).forEach(r => {
     const c = MP.flooring.calc(r); if (!c.ok || !c.order) return;
     const it = flItem(r), k = it ? r.sup + '|' + it.code : [r.sup, r.type, r.product].join('|'), g = fl.get(k) || {rooms: new Set(), sqft: 0, r, it};
     g.rooms.add(r.room || '—'); g.sqft += c.order; fl.set(k, g);
@@ -3172,18 +3276,18 @@ function qSections(){
       rate: it ? it.rrp : null, gst: it ? it.gst : 18, cost: it && FLC.has(r.sup + '|' + it.code.toUpperCase()) ? FLC.get(r.sup + '|' + it.code.toUpperCase()) : null, fix: 'fpick'});
   }
   // Mattresses and foam (6 Oct): Sleepwell MRP already includes GST (incl), one line per row. Pillows and the rest are clubbed by item.
-  (state.more.mattress || []).filter(r => r.p === 'Mattress').forEach(r => {
+  byRoom((state.more.mattress || []).filter(r => r.p === 'Mattress')).forEach(r => {
     const c = mtCalc(r); if (!c.ok) return;
     const m = swMat(r), q = Math.max(1, parseInt(r.qty, 10) || 1), size = `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″${c.std ? '' : ' (custom size)'}`;
     add('mattress', {area: [r.room, r.bed].filter(Boolean).join(' · '), product: 'Mattress', what: m && c.each ? `Sleepwell ${m.n} ${inchTxt(parseFloat(r.T))} · ${size}` : [r.sup, r.model, r.T].filter(Boolean).join(' ') + ' · ' + size,
       hsn: H.mattress || '9404', qty: q, unit: 'PCS', rate: c.each || null, gst: 18, cost: c.cost ?? null, incl: true, fix: 'mpick'});   // "Other" mattress: our own rate, GST included
   });
   const hc = new Map();
-  (state.more.mattress || []).filter(r => r.p && r.p !== 'Mattress').forEach(r => { const x = swHcp(r); if (!x) return; const g = hc.get(r.item) || {x, rooms: new Set(), q: 0}; g.rooms.add(r.room || '—'); g.q += Math.max(1, parseInt(r.qty, 10) || 1); hc.set(r.item, g); });
+  byRoom((state.more.mattress || []).filter(r => r.p && r.p !== 'Mattress')).forEach(r => { const x = swHcp(r); if (!x) return; const g = hc.get(r.item) || {x, rooms: new Set(), q: 0}; g.rooms.add(r.room || '—'); g.q += Math.max(1, parseInt(r.qty, 10) || 1); hc.set(r.item, g); });
   for (const g of hc.values()) add('mattress', {area: roomsTxt(g.rooms), product: g.x.g, what: `Sleepwell ${g.x.n} · ${g.x.s}″`, hsn: H.mattress || '9404', qty: g.q, unit: 'PCS', rate: g.x.v, gst: 18, cost: null, incl: true, fix: 'mpick'});
   // Upholstery material (6 Oct night): one line per product and details, the same thing on two lines added up.
   const up = new Map();
-  (state.more.uph || []).forEach(r => {
+  byRoom(state.more.uph || []).forEach(r => {
     const c = MP.uph.calc(r); if (!c.ok) return;
     const k = [c.q.product, c.what, c.q.rate, c.q.incl].join('|'), g = up.get(k);
     if (g) g.qty += c.qty; else up.set(k, Object.assign({area: '—', what: c.what, qty: c.qty, fix: c.q.rate == null ? (r.p === 'Fabric' ? 'opick' : 'uprice') : 'opick'}, c.q));
@@ -6727,7 +6831,7 @@ const msNum = v => nv(v) ? cpF(nv(v)) : '';
 const msSum = (L, f) => L.reduce((a, x) => a + (+f(x) || 0), 0);
 // Each section: its columns [key, heading, right-aligned?] and one entry per row: {key, c: {column: text}, amt, n: numbers for the totals}
 function msData(){
-  ensureMore(); const S = [], sec = (k, name, cols, rows, sum) => { if (rows.length) S.push({k, name, cols, rows, sum}); };
+  ensureMore(); const S = [], sec = (k, name, cols, rows, sum) => { if (rows.length) S.push({k, name, cols, rows: byRoom(rows, r => r.c.room), sum}); };   // same rooms together (19 Oct)
   const G = gstRates();
   { const R = [];
     state.rows.forEach(r => { if (!(+r.W || +r.H)) return;
@@ -7062,4 +7166,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-182214 -->
+<!-- build 20261019-184026 -->
