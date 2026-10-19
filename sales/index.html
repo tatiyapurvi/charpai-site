@@ -786,6 +786,52 @@ tr.dash-r:hover td{background:var(--sel)}
 .paper tr.subrow td{font-weight:700;background:#FAFAFA}
 .paper tr.secrow.part td{background:#FAFAFA;padding-left:22px;font-style:italic}
 .paper tr.tot td{font-weight:700;font-size:14px}
+/* Edit quotation (20 Oct): hidden things stay drawn while editing, greyed; the Hide / Show buttons sit in their own column and keep their colour */
+.paper.editing [data-off],.paper.editing tr[data-off] td:not(.qe){color:#B9BDB9;background:#F7F7F5}
+.paper.editing th[data-off]{background:#EEF2F5;color:#9AA3AA}
+.paper.editing tr[data-off] td:not(.qe) b{color:inherit}
+.paper .qe{border-color:#E4E6E3;background:#fff;width:1%;white-space:nowrap;text-align:center}
+.qh{border:0;border-radius:7px;background:#ECEFEC;color:#222;font:600 12.5px var(--body);padding:5px 10px;cursor:pointer;white-space:nowrap}
+.qh:hover{background:#DFE3DF}
+.qh.show{background:#FBEBB5;color:#2B230A}
+.qh.show:hover{background:#F6DD8A}
+th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
+.qe-open{padding:14px 14px 4px;display:flex;flex-direction:column;gap:6px}
+.qe-open .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:10px;padding:10px;font-size:15px}
+.qe-open .btn:hover{background:color-mix(in srgb,var(--ink) 12%,transparent)}
+.qe-card{margin:14px 14px 4px;padding:14px 16px;border-radius:12px;background:var(--tape-soft);color:var(--ink)}
+.qe-card h3{margin:0 0 6px;font:700 17px var(--body)}
+.qe-card p{margin:0 0 8px;font-size:14.5px;line-height:1.5}
+.qe-now{color:var(--ink)}
+.qe-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.qe-acts .btn{border:0;border-radius:9px;padding:9px 14px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.qe-acts .btn.solid{background:var(--ink);color:var(--paper)}
+.qe-ban{margin:14px 14px 4px;padding:12px 14px;border-radius:12px;background:var(--tape-soft);border-left:4px solid var(--tape);font-size:14.5px;line-height:1.5;color:var(--ink)}
+.qe-ban b{font-weight:700}
+.qm-card .qe-ban,.qe-body .qe-ban{margin:12px 0 0}
+.n-part{margin:8px 0 0}
+.qm-edit{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:8px;border:0;border-radius:10px;padding:11px;font-weight:600;font-size:14.5px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);cursor:pointer}
+.dlg.qe[open]{background:var(--bg);color:var(--ink)}
+.dlg.qe .qv-x{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+.qe-top{border-bottom:1px solid var(--line2);font-weight:700;font-size:16px}
+.qe-done{border:0;border-radius:9px;padding:8px 16px;background:var(--ink);color:var(--paper);font:600 15px var(--body);cursor:pointer}
+.qe-body{flex:1;overflow:auto;padding:4px 16px calc(env(safe-area-inset-bottom,0px) + 24px)}
+.qe-help{color:var(--muted);font-size:14.5px;line-height:1.5;margin:12px 0 0}
+.qe-h{margin:22px 0 8px;font:600 13px var(--body);color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.qe-grp{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.qe-sw{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-top:1px solid var(--line2);cursor:pointer}
+.qe-sw:first-child{border-top:0}
+.qe-sw:not(.sec){padding-left:28px}
+.qe-sw span{display:flex;flex-direction:column;min-width:0}
+.qe-sw b{font-weight:600;font-size:15px}
+.qe-sw.sec b{font-size:16px;font-weight:700}
+.qe-sw small{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qe-sw input{position:absolute;opacity:0;pointer-events:none}
+.qe-sw i{flex:none;width:46px;height:28px;border-radius:14px;background:color-mix(in srgb,var(--ink) 18%,transparent);position:relative;transition:background .15s}
+.qe-sw i::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.qe-sw input:checked + i{background:#34A853}
+.qe-sw input:checked + i::after{transform:translateX(18px)}
+.qe-sw input:focus-visible + i{outline:2.5px solid var(--dim);outline-offset:2px}
 .paper tr.tot.big td{font-size:16px;background:#FFF6D6}
 .paper .cost{color:#666}
 .paper-foot{background:#fff;color:#111;border:1px solid #333;border-top:0;padding:10px 12px;font-size:12.5px;min-width:760px}
@@ -811,9 +857,9 @@ tr.dash-r:hover td{background:var(--sel)}
   #print-root .paper-top .firm b{font-size:14pt}
   #print-root .paper{table-layout:fixed;border-top:0}
   #print-root .paper th{font-size:8pt}
-  #print-root .paper th:nth-child(1){width:7%}#print-root .paper th:nth-child(2){width:13%}#print-root .paper th:nth-child(3){width:15%}
-  #print-root .paper th:nth-child(5){width:9%}#print-root .paper th:nth-child(6){width:6.5%}#print-root .paper th:nth-child(7){width:6.5%}
-  #print-root .paper th:nth-child(8){width:9%}#print-root .paper th:nth-child(9){width:11%}
+  #print-root .paper th.qc-no{width:7%}#print-root .paper th.qc-area{width:13%}#print-root .paper th.qc-product{width:15%}
+  #print-root .paper th.qc-hsn{width:9%}#print-root .paper th.qc-qty{width:6.5%}#print-root .paper th.qc-unit{width:6.5%}
+  #print-root .paper th.qc-mrp{width:9%}#print-root .paper th.qc-amt{width:11%}   /* by column, so a hidden column (Edit quotation) moves nothing */
   #print-root .paper td{word-wrap:break-word;overflow-wrap:anywhere}
   #print-root .paper td.r{overflow-wrap:normal}
   #print-root .paper thead{display:table-header-group}
@@ -3092,7 +3138,43 @@ function qSections(){
   S.hw = S.hw.filter(l => l.grp !== 'mot').concat(S.hw.filter(l => l.grp === 'mot'));   // manual first, then motorised
   return S;
 }
-function quoteTotals(S = qSections()){
+// Edit quotation (Purvi, 20 Oct: "hide a row, hide a column, hide a full section … before sending"). state.quote.hide =
+// {sec: [section keys], row: [line keys], col: [column keys]}; it stays until shown again (a yellow line on the quotation says so).
+// Hidden things are taken out here, before anything is drawn, so the paper, PDF, Excel, Print, total, version number and the
+// WhatsApp message always match. Hiding the Amount column also leaves out every total and the amount in words.
+const QCOLS = [['area', 'AREA'], ['product', 'PRODUCT'], ['what', 'FABRIC DETAILS'], ['hsn', 'HSN'], ['qty', 'Qty'], ['unit', 'Unit'], ['mrp', 'MRP'], ['amt', 'Amount']];
+const QALL = QCOLS.map(c => c[0]), QCOL_NAME = {area: 'Area', product: 'Product', what: 'Fabric details', hsn: 'HSN', qty: 'Qty', unit: 'Unit', mrp: 'MRP', amt: 'Amount'};
+const lineKey = (k, l) => [k, l.area || '', l.product || '', l.what || '', l.unit || ''].join('|');
+const qHide = () => { const h = (state.quote || {}).hide || {}; return {sec: h.sec || [], row: h.row || [], col: h.col || []}; };
+function qShown(S){ const h = qHide(), out = {}; for (const k of Object.keys(S)) out[k] = h.sec.includes(k) ? [] : S[k].filter(l => !h.row.includes(lineKey(k, l))); return out; }
+const listTxt = a => a.length < 2 ? (a[0] || '') : a.some(x => / and /.test(x)) ? a.join(', ') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];   // "Stitching, Accessories and installation"
+// what the client gets and what was left out, in plain words (banner, timeline, saved version)
+function hideTxt(full, shown){
+  const h = qHide(), secs = SECTIONS.filter(([k]) => (full[k] || []).length);
+  const inn = secs.filter(([k]) => shown[k].length).map(([, n]) => n), out = secs.filter(([k]) => !shown[k].length).map(([, n]) => n);
+  const part = secs.filter(([k]) => shown[k].length && shown[k].length < full[k].length);
+  const cols = QALL.filter(c => h.col.includes(c)).map(c => QCOL_NAME[c]);
+  const L = [];
+  if (!inn.length && secs.length) L.push('Everything is hidden.');
+  else if (out.length) L.push(`Only ${listTxt(inn)} ${inn.length > 1 ? 'were' : 'was'} shared. Not included: ${listTxt(out)}.`);
+  for (const [k, n] of part) { const sk = new Set(shown[k].map(l => lineKey(k, l))), gone = full[k].filter(l => !sk.has(lineKey(k, l)));
+    L.push(`${n}: ${gone.length} line${gone.length > 1 ? 's' : ''} left out (${gone.map(l => [l.area, l.product].filter(Boolean).join(' ')).join(', ')}).`); }
+  if (cols.length) L.push(`Column${cols.length > 1 ? 's' : ''} hidden: ${listTxt(cols)}${cols.includes('Amount') ? ', so no amounts or totals were shown' : ''}.`);
+  return L.join(' ');
+}
+function qToggle(kind, k){
+  const q = state.quote || (state.quote = {}), h = q.hide = Object.assign({sec: [], row: [], col: []}, q.hide), a = h[kind], i = a.indexOf(k);
+  if (i >= 0) a.splice(i, 1);
+  else { if (kind === 'col' && QALL.length - h.col.length <= 1) { toast('Keep at least one column'); return; } a.push(k); }
+  if (kind === 'sec') h.row = h.row.filter(r => !r.startsWith(k + '|'));   // a section hidden or shown again: its lines start fresh
+  if (!h.sec.length && !h.row.length && !h.col.length) delete q.hide;
+  save(); renderPaper();
+}
+function qShowAll(){ if (state.quote) delete state.quote.hide; save(); renderPaper(); }
+let qEdit = false;   // the quotation paper shows Hide / Show buttons
+function quoteTotals(S){
+  let full = null; if (!S) { full = qSections(); S = qShown(full); }
+  const cols = QALL.filter(c => !qHide().col.includes(c)), hid = full ? hideTxt(full, S) : '';
   let total = 0, missing = 0, costMissing = 0; const sub = {};
   for (const [k] of SECTIONS) { sub[k] = 0; for (const l of S[k]) { if (l.amt == null) missing++; else { total += l.amt; sub[k] += l.amt; } if (l.camt == null) costMissing++; } }
   const q = state.quote || {}, pct = parseFloat(q.disc) || 0, amt = parseFloat(q.discAmt) || 0;
@@ -3102,7 +3184,7 @@ function quoteTotals(S = qSections()){
   // Margin: amounts carry GST, costs don't, so both are compared before GST; the discount comes off the fabric lines.
   let netSale = 0, netFab = 0; for (const [k] of SECTIONS) for (const l of S[k]) if (l.amt != null) { const n = l.amt / (1 + (+l.gst || 0) / 100); netSale += n; if (k === 'fabric') netFab += n; }
   const netAfter = netSale - (sub.fabric ? netFab * disc / sub.fabric : 0), rawCost = [].concat(...SECTIONS.map(([k]) => S[k])).reduce((a, l) => a + (l.camt || 0), 0);
-  return {S, sub, total, disc, discTxt, final, missing, costMissing, netAfter, cost: rawCost};
+  return {S, sub, total, disc, discTxt, final, missing, costMissing, netAfter, cost: rawCost, cols, hid};
 }
 const ONES = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
 const TENS = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
@@ -3187,30 +3269,43 @@ $('#q-head').addEventListener('input', e => {
 function fixBtn(l){
   return PF && !IS_ADMIN && !['pick', 'remote', 'wpick', 'fpick', 'mpick', 'opick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'fpick' ? 'Pick the product from a list' : l.fix === 'mpick' ? 'Pick the mattress' : l.fix === 'opick' ? 'Fill it in on Upholstery' : l.fix === 'uprice' ? 'Set the rate in Prices' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>`;
 }
-function lineHTML(l, n, showC, ro){
+// vis = the columns drawn, off(c) = drawn greyed (editing), tail = the Hide / Show cell (editing), dim = a hidden line (editing)
+function lineHTML(l, n, showC, ro, vis = QALL, off = () => false, tail = '', dim = false){
   const rate = l.mrp == null ? ro ? '—' : fixBtn(l) : inr(l.mrp);
-  return `<tr><td class="c">${n}</td><td>${esc(l.area || '')}</td><td>${esc(l.product)}</td><td>${esc(l.what)}</td><td class="c">${esc(l.hsn || '')}</td>
-    <td class="r">${cpF(r2(l.qty))}</td><td class="c">${esc(l.unit)}</td><td class="r">${rate}</td><td class="r"><b>${l.amt == null ? '—' : inr(l.amt)}</b></td>
-    ${showC ? `<td class="r cost">${l.camt == null ? '—' : inr(l.camt)}</td>` : ''}</tr>`;
+  const C = {area: ['', esc(l.area || '')], product: ['', esc(l.product)], what: ['', esc(l.what)], hsn: ['c', esc(l.hsn || '')], qty: ['r', cpF(r2(l.qty))],
+    unit: ['c', esc(l.unit)], mrp: ['r', rate], amt: ['r', `<b>${l.amt == null ? '—' : inr(l.amt)}</b>`]};
+  return `<tr${dim ? ' data-off' : ''}><td class="c">${n}</td>${vis.map(c => `<td${C[c][0] ? ` class="${C[c][0]}"` : ''}${off(c) ? ' data-off' : ''}>${C[c][1]}</td>`).join('')}
+    ${showC ? `<td class="r cost">${l.camt == null ? '—' : inr(l.camt)}</td>` : ''}${tail}</tr>`;
 }
 function renderPaper(){
   const t = quoteTotals();
-  $('#q-paper').innerHTML = paperHTML(state.quote, state.house, t, showCost && canSeeCost);
+  $('#q-paper').innerHTML = paperHTML(state.quote, state.house, t, showCost && canSeeCost, false, qEdit && !qmOn() ? {S: qSections(), hide: qHide()} : null);
   renderQuoteSum(t);
+  if (dlg.open && dlg.querySelector('#qe-list')) qeDlgFill();   // the phone's edit screen follows too
 }
 // The printed quotation. Also draws a saved version on the Clients page (ro = read only: no orange buttons).
-function paperHTML(q, house, t, showC, ro){
-  const cols = showC ? 10 : 9;
-  let n = 0, body = '';
-  SECTIONS.filter(([k]) => (t.S[k] || []).length).forEach(([k, name], si) => {   // number only the sections that are there: 1, 2, 3…
-    const L = t.S[k], P = secParts(k, L); if (!L.length) return;
-    body += `<tr class="secrow"><td colspan="${cols}">${si + 1} · ${name}</td></tr>` + (P ? P.map(p => `<tr class="secrow part"><td colspan="${cols}">${si + 1}${p.ab} · ${p.n}</td></tr>` +
-      p.L.map(l => lineHTML(l, ++n, showC, ro)).join('') + `<tr class="subrow"><td colspan="8" class="r">${p.n} total</td><td class="r">${inr(p.sub)}</td>${showC ? '<td></td>' : ''}</tr>`).join('')
-      : L.map(l => lineHTML(l, ++n, showC, ro)).join('')) +
-      `<tr class="subrow"><td colspan="8" class="r">${name} total</td><td class="r">${inr(t.sub[k])}</td>${showC ? '<td></td>' : ''}</tr>`;
+// ed = {S: every line, hide} while editing: everything is drawn, hidden things greyed, with Hide / Show buttons.
+// t.cols = the columns the client gets (a version saved before 20 Oct has none: all of them).
+function paperHTML(q, house, t, showC, ro, ed){
+  const cols = t.cols || QALL, vis = ed ? QALL : cols, off = c => !!ed && !cols.includes(c), amt = cols.includes('amt');
+  const S = ed ? ed.S : t.S, H = ed ? ed.hide : null, ncol = 1 + vis.length + (showC ? 1 : 0), tailE = ed ? '<td class="qe"></td>' : '';
+  // a total line: label across every column before Amount (Amount is always the last column); none when Amount is hidden
+  const sumRow = (cls, label, val, costCell = showC ? '<td></td>' : '', dim) => amt || ed ? `<tr class="${cls}"${dim ? ' data-off' : ''}><td colspan="${vis.length}" class="r">${label}</td><td class="r"${amt ? '' : ' data-off'}>${dim ? '—' : val}</td>${costCell}${tailE}</tr>` : '';
+  const qbtn = (kind, k, on, a, b) => `<button class="qh${on ? '' : ' show'}" data-qh="${kind}" data-k="${esc(k)}">${on ? a : b}</button>`;
+  let n = 0, si = 0, body = '';
+  SECTIONS.filter(([k]) => (S[k] || []).length).forEach(([k, name]) => {
+    const F = S[k], secOff = !!ed && H.sec.includes(k), vk = new Set((t.S[k] || []).map(l => lineKey(k, l))), on = vk.size > 0, no = on ? ++si : '';
+    body += `<tr class="secrow"${on ? '' : ' data-off'}><td colspan="${ncol}">${no ? no + ' · ' : ''}${name}</td>${ed ? `<td class="qe">${qbtn('sec', k, !secOff, 'Hide section', 'Show section')}</td>` : ''}</tr>`;
+    const row = l => { const key = lineKey(k, l), lon = vk.has(key);
+      return lineHTML(l, lon ? ++n : '—', showC, ro, vis, off, ed ? `<td class="qe">${secOff ? '' : qbtn('row', key, lon, 'Hide', 'Show')}</td>` : '', !!ed && !lon); };
+    const subOf = L => L.filter(l => vk.has(lineKey(k, l))).reduce((a, l) => a + (l.amt || 0), 0), P = secParts(k, F);
+    body += (P ? P.map(p => `<tr class="secrow part"${on ? '' : ' data-off'}><td colspan="${ncol}">${no}${p.ab} · ${p.n}</td>${tailE}</tr>` + p.L.map(row).join('') + sumRow('subrow', `${p.n} total`, inr(subOf(p.L)), undefined, !on)).join('')
+      : F.map(row).join('')) + sumRow('subrow', `${name} total`, inr(t.sub[k] || 0), undefined, !on);
   });
+  const empty = !body, allHid = empty && !ed && t.hid;
   const hdr = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
-  return !n ? `<div class="q-empty"><span class="q-empty-i">${MS_SVG.replace(/1[57]px/g, '30px').replace(/"17"/g, '"30"')}</span><b>Nothing measured yet</b>
+  return allHid ? `<div class="q-empty"><b>Everything is hidden from this quotation</b>${ro ? '' : '<button class="btn solid" data-qedit="1">Edit quotation</button>'}</div>`
+    : empty ? `<div class="q-empty"><span class="q-empty-i">${MS_SVG.replace(/1[57]px/g, '30px').replace(/"17"/g, '"30"')}</span><b>Nothing measured yet</b>
     ${ro ? '' : '<button class="btn solid" data-qempty>Open measurement sheet</button>'}</div>` : `
     <table class="paper-top"><tr><th colspan="2" class="pi">PERFORMA INVOICE</th></tr>
       <tr><td colspan="2" class="firm"><b>${FIRM.name}</b><br>${FIRM.addr}<br>Phone : ${FIRM.phone}<br>Email : ${FIRM.email} , GSTIN : ${FIRM.gstin}</td></tr>
@@ -3219,12 +3314,12 @@ function paperHTML(q, house, t, showC, ro){
       ${hdr(`<b>Contact Number :</b> ${esc(q.phone || '')}`, `<b>Executive :</b> ${esc(q.exec || '')}`)}
       ${hdr(`<b>Delivery Address :</b> ${esc(q.addr || '')}`, `<b>Delivery Date (After Booking) :</b> ${esc(ddateTxt(q.ddate))}`)}
       ${hdr(`<b>Email Id :</b> ${esc(q.email || '')}`, `<b>Accounts :</b> ${esc(q.accounts || '')}`)}</table>
-    <div class="q-scroll"><table class="paper"><thead><tr><th>Sr.No.</th><th>AREA</th><th>PRODUCT</th><th>FABRIC DETAILS</th><th>HSN</th><th>Qty</th><th>Unit</th><th>MRP</th><th>Amount</th>${showC ? '<th class="cost">Our cost</th>' : ''}</tr></thead>
+    <div class="q-scroll"><table class="paper${ed ? ' editing' : ''}"><thead><tr><th class="qc-no">Sr.No.</th>${vis.map(c => `<th class="qc-${c}"${off(c) ? ' data-off' : ''}>${QCOLS.find(x => x[0] === c)[1]}${ed ? qbtn('col', c, !off(c), 'Hide', 'Show') : ''}</th>`).join('')}${showC ? '<th class="cost">Our cost</th>' : ''}${ed ? '<th class="qe"></th>' : ''}</tr></thead>
       <tbody>${body}
-      <tr class="tot"><td colspan="8" class="r">TOTAL</td><td class="r">₹ ${inr(t.total)}</td>${showC ? `<td class="r cost">${inr(t.cost)}</td>` : ''}</tr>
-      ${t.disc ? `<tr class="tot"><td colspan="8" class="r">${esc(t.discTxt || 'Discount on curtain fabric')}</td><td class="r">− ₹ ${inr(t.disc)}</td>${showC ? '<td></td>' : ''}</tr><tr class="tot big"><td colspan="8" class="r">FINAL</td><td class="r">₹ ${inr(t.final)}</td>${showC ? '<td></td>' : ''}</tr>` : ''}
+      ${sumRow('tot', 'TOTAL', '₹ ' + inr(t.total), showC ? `<td class="r cost">${inr(t.cost)}</td>` : '')}
+      ${t.disc ? sumRow('tot', esc(t.discTxt || 'Discount on curtain fabric'), '− ₹ ' + inr(t.disc)) + sumRow('tot big', 'FINAL', '₹ ' + inr(t.final)) : ''}
       </tbody></table></div>
-    <div class="paper-foot"><p><b>INR :</b> ${words(t.final)} ONLY.</p>
+    <div class="paper-foot">${amt ? `<p><b>INR :</b> ${words(t.final)} ONLY.</p>` : ''}
       <div class="pf-grid"><div><b>Bank Detail :</b>${FIRM.bank.map(([a, b]) => `<br>${a} : ${b}`).join('')}</div>
       <div><b>T&amp;C</b><ol>${TNC.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div></div>
       <div class="sign"><span>CUSTOMER SIGNATURE.</span><span>EXECUTIVE SIGN.</span><span>${FIRM.name}.</span></div></div>`;
@@ -3233,6 +3328,7 @@ function renderQuoteSum(t = quoteTotals()){
   if (qmOn()) return renderQuoteSumM(t);
   const q = state.quote, marginNet = t.netAfter - t.cost;
   $('#q-sum').innerHTML = `
+    ${qeTopHTML(t)}
     ${t.missing ? `<div style="padding:14px 14px 0"><div class="banner warn"><b>${t.missing} line${t.missing > 1 ? 's have' : ' has'} no price,</b> so the total leaves ${t.missing > 1 ? 'them' : 'it'} out. Tap the orange buttons in the quotation.</div></div>` : ''}
     ${prices.dummy ? `<div style="padding:14px 14px 0"><div class="banner info"><b>Dummy prices for now.</b> Real rates go in the Prices pages.</div></div>` : ''}
     <div class="rows">
@@ -3252,6 +3348,40 @@ function renderQuoteSum(t = quoteTotals()){
       <span class="hint" style="flex-basis:100%">${(() => { const P = lastSaved(), v = nextVersion(t); return waHint && waHint.v === P.n && v === P.n ? `<b>v${P.n}</b> is open in WhatsApp Web. The PDF is in your Downloads: drag it into the chat, then press Send. Asked to log in? Scan the code with your phone, then tap Send on WhatsApp again.` : !P.n ? 'The first PDF will be <b>v1</b>.' : v === P.n ? `Last saved as <b>v${P.n}</b>. Nothing has changed since.` : `Changed since <b>v${P.n}</b>, so the next PDF will be <b>v${v}</b>.`; })()}</span></div>`;
 }
 function renderQuote(){ renderQuoteHead(); renderPaper(); }
+// Top of the quotation's side panel: Edit quotation; while editing, what to do + Done; when something is hidden, a yellow line saying what.
+function qeTopHTML(t){
+  if (qEdit) return `<div class="qe-card"><h3>Editing the quotation</h3><p>Press <b>Hide</b> on a column, a line or a section. Hidden things are left out of the PDF, Excel, WhatsApp and the total.</p>
+    ${t.hid ? `<p class="qe-now"><b>The client gets:</b> ${esc(t.hid)}</p>` : '<p class="qe-now">Nothing hidden yet.</p>'}
+    <div class="qe-acts">${t.hid ? '<button class="btn" data-qall="1">Show everything</button>' : ''}<button class="btn solid" data-qedit="0">Done</button></div></div>`;
+  return (t.hid ? `<div class="qe-ban"><b>Part quotation.</b> ${esc(t.hid)}<div class="qe-acts"><button class="btn" data-qall="1">Show everything</button></div></div>` : '')
+    + `<div class="qe-open"><button class="btn" data-qedit="1">${EDIT_ICON}Edit quotation</button><span class="hint">Hide a section, a line or a column before sending.</span></div>`;
+}
+const EDIT_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" style="width:16px;height:16px;flex:none" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
+// Phones and tablets: one screen with a switch for every section, line and column (on = the client gets it).
+function qeDlg(){
+  openDlg(`<div class="qv-top qe-top"><button class="qv-x" data-dlg="close" aria-label="Close">✕</button><span id="dlg-title">Edit quotation</span><button class="qe-done" data-dlg="close">Done</button></div>
+    <div class="qe-body" id="qe-list"></div>`);
+  dlg.classList.add('qv', 'qe'); qeDlgFill();
+}
+function qeDlgFill(){
+  const box = dlg.querySelector('#qe-list'); if (!box) return;
+  const full = qSections(), h = qHide(), t = quoteTotals(), y = box.scrollTop;
+  const sw = (kind, k, on, label, sub, cls = '') => `<label class="qe-sw ${cls}"><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><input type="checkbox" data-qh="${kind}" data-k="${esc(k)}"${on ? ' checked' : ''}><i aria-hidden="true"></i></label>`;
+  box.innerHTML = `<p class="qe-help">Switch off what the client should not get. It is left out of the PDF, Excel, WhatsApp and the total.</p>
+    ${t.hid ? `<div class="qe-ban"><b>The client gets:</b> ${esc(t.hid)}<div class="qe-acts"><button class="btn" data-qall="1">Show everything</button></div></div>` : ''}
+    <h3 class="qe-h">Sections and lines</h3>
+    ${SECTIONS.filter(([k]) => (full[k] || []).length).map(([k, n]) => { const son = !h.sec.includes(k);
+      return `<div class="qe-grp">${sw('sec', k, son, n, son ? rs(t.sub[k] || 0) : 'Hidden', 'sec')}${son ? full[k].map(l => sw('row', lineKey(k, l), !h.row.includes(lineKey(k, l)), esc([l.area, l.product].filter(Boolean).join(' · ') || l.what || ''), esc(l.what || ''))).join('') : ''}</div>`; }).join('')}
+    <h3 class="qe-h">Columns</h3><div class="qe-grp">${QALL.map(c => sw('col', c, !h.col.includes(c), QCOL_NAME[c], c === 'amt' ? 'Off = no amounts or totals at all' : '')).join('')}</div>`;
+  box.scrollTop = y;
+}
+document.addEventListener('click', e => {
+  const ed = e.target.closest('[data-qedit]');
+  if (ed) { if (qmOn() && ed.dataset.qedit === '1') { qeDlg(); return; } qEdit = ed.dataset.qedit === '1'; renderPaper(); return; }
+  if (e.target.closest('[data-qall]')) { qShowAll(); return; }
+  const b = e.target.closest('button[data-qh]'); if (b) qToggle(b.dataset.qh, b.dataset.k);
+});
+document.addEventListener('change', e => { const x = e.target.closest('input[data-qh]'); if (x) qToggle(x.dataset.qh, x.dataset.k); });
 // Quotation on phones and tablets (Purvi, 18 Oct: "the sending ctas should be up … only when you click on view pdf i should be able to
 // view it"; option A picked from two drawn phones). One card: who, the final amount, Send on WhatsApp, then View PDF · ↓ PDF · ↓ Excel.
 // Under it one line per product, and Discount / Installation / our cost open in place. Details (bill to, dates…) fold into one line.
@@ -3263,7 +3393,7 @@ function renderQuoteSumM(t){
   const q = state.quote, P = lastSaved(), v = nextVersion(t), c = state.clientId && CL.byId.get(state.clientId);
   const L = SECTIONS.flatMap(([k]) => t.S[k] || []), miss = L.filter(l => l.mrp == null || l.amt == null), marginNet = t.netAfter - t.cost;
   const row = (k, label, val, body) => `<button class="qm-li" data-qmx="${k}" aria-expanded="${qmOpen.has(k)}"><span>${label}</span><b>${val}<span class="qm-chev" aria-hidden="true">›</span></b></button>${qmOpen.has(k) ? `<div class="qm-in">${body}</div>` : ''}`;
-  $('#q-sum').innerHTML = !L.length ? `<div class="qm-card">${paperHTML(q, state.house, t, false)}</div>` : `
+  $('#q-sum').innerHTML = !L.length ? `<div class="qm-card">${paperHTML(q, state.house, t, false)}${t.hid ? `<div class="qe-acts" style="justify-content:center"><button class="btn" data-qall="1">Show everything</button><button class="btn" data-qedit="1">Edit quotation</button></div>` : ''}</div>` : `
     ${prices.dummy ? '<div class="banner info" style="margin-bottom:12px"><b>Dummy prices for now.</b> Real rates go in the Prices pages.</div>' : ''}
     ${miss.length ? `<div class="qm-att"><h3>${miss.length === 1 ? '1 thing' : miss.length + ' things'} to fix before sending</h3>
       ${miss.map(l => `<div class="qm-fix"><span>${esc([l.area, l.product].filter(Boolean).join(' · ') || l.what || '')}</span>${l.mrp == null ? fixBtn(l) : ''}</div>`).join('')}</div>` : ''}
@@ -3274,6 +3404,8 @@ function renderQuoteSumM(t){
       <div class="qm-ver"><i></i>${!P.n ? 'First send will be v1' : v === P.n ? `Saved as v${P.n} · no changes since` : `Changed since v${P.n} · sends as v${v}`}</div>
       <button class="qm-wa" id="q-wa"${miss.length ? ' disabled' : ''}>${WA_ICON}Send on WhatsApp</button>
       <div class="qm-soft"><button id="qm-view">View PDF</button><button id="q-pdf">${DL_ICON}PDF</button><button id="q-xlsx">${DL_ICON}Excel</button></div>
+      <button class="qm-edit" data-qedit="1">${EDIT_ICON}Edit quotation</button>
+      ${t.hid ? `<div class="qe-ban"><b>Part quotation.</b> ${esc(t.hid)}<div class="qe-acts"><button class="btn" data-qall="1">Show everything</button></div></div>` : ''}
     </div>
     <div class="qm-sec">What’s in it</div>
     <div class="qm-list">
@@ -3326,39 +3458,43 @@ async function quoteXLSX(){
     pageSetup: {paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true,
       margins: {left: .4, right: .4, top: .5, bottom: .55, header: .25, footer: .25}}});
   ws.headerFooter.oddFooter = '&L&8Tatiya Industries · Performa invoice&R&8Page &P of &N';
-  ws.columns = [7, 14, 18, 38, 11, 8, 7, 10, 13].map(width => ({width}));
+  const cols = t.cols || QALL, NC = 1 + cols.length, amt = cols.includes('amt'), XW = {area: 14, product: 18, what: 38, hsn: 11, qty: 8, unit: 7, mrp: 10, amt: 13};   // Edit quotation: only the columns the client gets
+  ws.columns = [7, ...cols.map(c => XW[c])].map(width => ({width}));
+  const mrg = (a, b) => { if (b > a) ws.mergeCells(r, a, r, b); };
   const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin};
   const fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: c}});
   const inrFmt = (pre = '') => `[>=10000000]${pre}##\\,##\\,##\\,##0;[>=100000]${pre}##\\,##\\,##0;${pre}##,##0`, INR = inrFmt();
   let r = 0;
-  const merged = (txt, o = {}) => { r++; ws.mergeCells(r, o.from || 1, r, o.to || 9); const c = ws.getCell(r, o.from || 1); c.value = txt;
+  const merged = (txt, o = {}) => { r++; mrg(o.from || 1, o.to || NC); const c = ws.getCell(r, o.from || 1); c.value = txt;
     c.font = Object.assign({name: 'Arial', size: 9}, o.font); c.alignment = Object.assign({vertical: 'middle', wrapText: true}, o.align);
-    if (o.fill) c.fill = fill(o.fill); for (let i = 1; i <= 9; i++) ws.getCell(r, i).border = o.border || box; if (o.h) ws.getRow(r).height = o.h; return c; };
+    if (o.fill) c.fill = fill(o.fill); for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = o.border || box; if (o.h) ws.getRow(r).height = o.h; return c; };
   merged('PERFORMA INVOICE', {font: {bold: true, size: 12}, align: {horizontal: 'center'}, fill: 'FFDDEBF7', h: 20});
   merged(FIRM.name, {font: {bold: true, size: 14, underline: true}, align: {horizontal: 'center'}, h: 22});
   merged(`${FIRM.addr}\nPhone : ${FIRM.phone}\nEmail : ${FIRM.email} , GSTIN : ${FIRM.gstin}`, {align: {horizontal: 'center'}, h: 40});
-  const pair = (a, b) => { r++; ws.mergeCells(r, 1, r, 4); ws.mergeCells(r, 5, r, 9);
-    [[1, a], [5, b]].forEach(([col, [k, v]]) => { const c = ws.getCell(r, col); c.value = {richText: [{text: k + ' : ', font: {name: 'Arial', size: 9, bold: true}}, {text: v || '', font: {name: 'Arial', size: 9}}]}; c.alignment = {vertical: 'middle', wrapText: true}; });
-    for (let i = 1; i <= 9; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = 16; };
+  const mid = Math.max(1, Math.round(NC * 4 / 9));   // 9 columns: 1–4 | 5–9
+  const pair = (a, b) => { r++; mrg(1, mid); mrg(mid + 1, NC);
+    [[1, a], [mid + 1, b]].forEach(([col, [k, v]]) => { const c = ws.getCell(r, col); c.value = {richText: [{text: k + ' : ', font: {name: 'Arial', size: 9, bold: true}}, {text: v || '', font: {name: 'Arial', size: 9}}]}; c.alignment = {vertical: 'middle', wrapText: true}; });
+    for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = 16; };
   pair(['Billing Name', house], ['Performa invoice', q.no]);
   pair(['Contact Person', q.contact], ['Date', q.date ? q.date.split('-').reverse().join('-') : '']);
   pair(['Contact Number', q.phone], ['Executive', q.exec]);
   pair(['Delivery Address', q.addr], ['Delivery Date (After Booking)', ddateTxt(q.ddate)]);
   pair(['Email Id', q.email], ['Accounts', q.accounts]);
   r++; const head = r;
-  ['Sr.No.', 'AREA', 'PRODUCT', 'FABRIC DETAILS', 'HSN', 'Qty', 'Unit', 'MRP', 'Amount'].forEach((h, i) => { const c = ws.getCell(r, i + 1); c.value = h;
+  ['Sr.No.', ...cols.map(c => QCOLS.find(x => x[0] === c)[1])].forEach((h, i) => { const c = ws.getCell(r, i + 1); c.value = h;
     c.font = {name: 'Arial', size: 9, bold: true}; c.fill = fill('FFDDEBF7'); c.border = box; c.alignment = {horizontal: 'center', vertical: 'middle'}; });
   ws.getRow(r).height = 18;
   ws.pageSetup.printTitlesRow = `${head}:${head}`;
-  const total = (label, val, o = {}) => { r++; ws.mergeCells(r, 1, r, 8); const c = ws.getCell(r, 1); c.value = label; c.alignment = {horizontal: 'right', vertical: 'middle'};
-    c.font = {name: 'Arial', size: o.size || 9, bold: true}; const v = ws.getCell(r, 9); v.value = val; v.numFmt = o.rs ? inrFmt(o.minus ? '"− ₹ "' : '"₹ "') : INR; v.font = {name: 'Arial', size: o.size || 9, bold: true};
-    v.alignment = {horizontal: 'right', vertical: 'middle'}; for (let i = 1; i <= 9; i++) { ws.getCell(r, i).border = box; if (o.fill) ws.getCell(r, i).fill = fill(o.fill); } ws.getRow(r).height = 16; };
+  const total = (label, val, o = {}) => { if (!amt) return; r++; mrg(1, NC - 1); const c = ws.getCell(r, 1); c.value = label; c.alignment = {horizontal: 'right', vertical: 'middle'};
+    c.font = {name: 'Arial', size: o.size || 9, bold: true}; const v = ws.getCell(r, NC); v.value = val; v.numFmt = o.rs ? inrFmt(o.minus ? '"− ₹ "' : '"₹ "') : INR; v.font = {name: 'Arial', size: o.size || 9, bold: true};
+    v.alignment = {horizontal: 'right', vertical: 'middle'}; for (let i = 1; i <= NC; i++) { ws.getCell(r, i).border = box; if (o.fill) ws.getCell(r, i).fill = fill(o.fill); } ws.getRow(r).height = 16; };
   let n = 0;
   const line = l => { r++; n++;
-    const vals = [n, l.area || '', l.product, l.what, l.hsn || '', r2(l.qty), l.unit, l.mrp == null ? '—' : l.mrp, l.amt == null ? '—' : l.amt];
-    vals.forEach((v, i) => { const c = ws.getCell(r, i + 1); c.value = v; c.border = box; c.font = {name: 'Arial', size: 9, bold: i === 8};
-      c.alignment = {vertical: 'middle', wrapText: true, horizontal: [0, 4, 6].includes(i) ? 'center' : i >= 5 ? 'right' : 'left'};
-      if (i === 5 && typeof v === 'number') c.numFmt = '0.##'; if (i >= 7 && typeof v === 'number') c.numFmt = INR; }); };
+    const XV = {area: l.area || '', product: l.product, what: l.what, hsn: l.hsn || '', qty: r2(l.qty), unit: l.unit, mrp: l.mrp == null ? '—' : l.mrp, amt: l.amt == null ? '—' : l.amt};
+    const keys = ['no', ...cols], vals = [n, ...cols.map(c => XV[c])];
+    vals.forEach((v, i) => { const k = keys[i], c = ws.getCell(r, i + 1); c.value = v; c.border = box; c.font = {name: 'Arial', size: 9, bold: k === 'amt'};
+      c.alignment = {vertical: 'middle', wrapText: true, horizontal: ['no', 'hsn', 'unit'].includes(k) ? 'center' : ['qty', 'mrp', 'amt'].includes(k) ? 'right' : 'left'};
+      if (k === 'qty' && typeof v === 'number') c.numFmt = '0.##'; if ((k === 'mrp' || k === 'amt') && typeof v === 'number') c.numFmt = INR; }); };
   SECTIONS.filter(([k]) => (t.S[k] || []).length).forEach(([k, name], si) => {
     merged(`${si + 1} · ${name}`, {font: {bold: true}, fill: 'FFF2F2F2', h: 17});
     const P = secParts(k, t.S[k]);
@@ -3369,12 +3505,13 @@ async function quoteXLSX(){
   total('TOTAL', t.total, {rs: true, size: 10});
   if (t.disc) { total(t.discTxt, t.disc, {rs: true, minus: true}); total('FINAL', t.final, {rs: true, size: 11, fill: 'FFFFF6D6'}); }
   const side = {left: thin, right: thin};
-  merged(`INR : ${words(t.final)} ONLY.`, {font: {bold: true}, border: side, h: 18});
+  if (amt) merged(`INR : ${words(t.final)} ONLY.`, {font: {bold: true}, border: side, h: 18});
   merged('Bank Detail :\n' + FIRM.bank.map(([a, b]) => `${a} : ${b}`).join('\n'), {font: {bold: true}, border: side, h: 70});
   merged('T&C\n' + TNC.map((x, i) => `${i + 1}. ${x}`).join('\n'), {font: {size: 8}, border: side, h: 12 * (TNC.length + 3)});
-  r++; [[1, 3, 'CUSTOMER SIGNATURE.', 'left'], [4, 6, 'EXECUTIVE SIGN.', 'center'], [7, 9, FIRM.name + '.', 'right']].forEach(([a, b, txt, h]) => {
-    ws.mergeCells(r, a, r, b); const c = ws.getCell(r, a); c.value = txt; c.font = {name: 'Arial', size: 9, bold: true}; c.alignment = {horizontal: h, vertical: 'bottom'}; });
-  for (let i = 1; i <= 9; i++) ws.getCell(r, i).border = {left: i === 1 ? thin : undefined, right: i === 9 ? thin : undefined, bottom: thin};
+  r++; const a3 = Math.ceil(NC / 3), b3 = Math.ceil(NC * 2 / 3);
+  (NC >= 3 ? [[1, a3, 'CUSTOMER SIGNATURE.', 'left'], [a3 + 1, b3, 'EXECUTIVE SIGN.', 'center'], [b3 + 1, NC, FIRM.name + '.', 'right']] : [[1, NC, `CUSTOMER SIGNATURE.    EXECUTIVE SIGN.    ${FIRM.name}.`, 'left']]).forEach(([a, b, txt, h]) => {
+    mrg(a, b); const c = ws.getCell(r, a); c.value = txt; c.font = {name: 'Arial', size: 9, bold: true}; c.alignment = {horizontal: h, vertical: 'bottom'}; });
+  for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = {left: i === 1 ? thin : undefined, right: i === NC ? thin : undefined, bottom: thin};
   ws.getRow(r).height = 48;
   return new Blob([await wb.xlsx.writeBuffer()], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
@@ -3415,12 +3552,14 @@ document.addEventListener('click', e => { if (e.target.closest('[data-qempty]'))
 let waHint = null;   // the last send to WhatsApp Web, so the quotation can say where the PDF is
 const sharePdfOk = () => { try { return waOnApp() && !!navigator.canShare && navigator.canShare({files: [new File(['%PDF'], 'q.pdf', {type: 'application/pdf'})]}); } catch(_) { return false; } };
 function waMessage(v, t){
-  const q = state.quote || {}, who = q.contact || state.house || '';
-  return [`Namaste${who ? ' ' + who : ''},`, 'Here is your quotation from Charpai.', `Performa Invoice ${q.no || ''} · v${v}`, `Final: ₹${inr(t.final)} (GST included)`].join('\n');
+  const q = state.quote || {}, who = q.contact || state.house || '', amt = (t.cols || QALL).includes('amt');
+  const what = t.hid ? SECTIONS.filter(([k]) => (t.S[k] || []).length).map(([, n]) => n.toLowerCase()) : [];   // a part quotation says what it is for
+  return [`Namaste${who ? ' ' + who : ''},`, `Here is your quotation${what.length ? ' for ' + listTxt(what) : ''} from Charpai.`, `Performa Invoice ${q.no || ''} · v${v}`, ...(amt ? [`Final: ₹${inr(t.final)} (GST included)`] : [])].join('\n');
 }
-function waSent(c, v){ if (shared && db && c) addNote(c, `Quotation v${v} sent on WhatsApp`, 'log').catch(() => {}); }   // on the timeline; quiet if notes are not switched on yet
+// on the timeline, with what was left out of a part quotation; quiet if notes are not switched on yet
+function waSent(c, v, hid){ if (shared && db && c) addNote(c, `Quotation v${v} sent on WhatsApp${hid ? '. ' + hid : ''}`, 'log').catch(() => {}); }
 async function waShare(x){
-  try { await navigator.share({files: [x.file], text: x.text}); waSent(x.c, x.v); }
+  try { await navigator.share({files: [x.file], text: x.text}); waSent(x.c, x.v, x.hid); }
   catch (err) {
     if (err && err.name === 'AbortError') return;   // they closed the share menu
     if (err && err.name === 'NotAllowedError' && !x.again) {   // making the PDF took too long for the phone: one more tap starts it
@@ -3445,13 +3584,13 @@ document.addEventListener('click', async e => {
     const t = quoteTotals(), v = nextVersion(t), sig = quoteSig(t), blob = quotePDF(v), name = quoteFileName(v), text = waMessage(v, t), c = state.clientId && CL.byId.get(state.clientId);
     if (phoneWay) {
       state.quote.pdf = {n: v, sig}; save(); await recordVersion(v, sig, t); renderQuoteSum();
-      await waShare({file: new File([blob], name, {type: 'application/pdf'}), text, c, v});
+      await waShare({file: new File([blob], name, {type: 'application/pdf'}), text, c, v, hid: t.hid});
     } else if (await saveFile(name, blob)) {
       state.quote.pdf = {n: v, sig}; save(); await recordVersion(v, sig, t); renderQuoteSum();
       const url = waUrl(m, text);   // a tablet that cannot share files gets the app link
       if (tab && !tab.closed) { tab.location.href = url; tab.focus(); } else window.open(url, WA_TAB);
       waHint = {v, sig}; renderQuoteSum();
-      waSent(c, v);
+      waSent(c, v, t.hid);
     } else if (tab) tab.close();
   } catch (err) { if (tab) tab.close(); toast('Could not make the PDF. Check the internet.'); }
   btn.disabled = false; btn.innerHTML = old;
@@ -3473,7 +3612,8 @@ document.addEventListener('click', async e => {
 // downloading again with no change keeps the same number. Kept with the sheet, so Clear sheet starts again at v1.
 function quoteSig(t){
   const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''),
-    SECTIONS.filter(([k]) => !QOPT.includes(k) || t.S[k].length).map(([k]) => t.S[k].map(l => [l.area, l.product, l.what, l.hsn, l.qty, l.unit, l.mrp, l.amt])), t.total, t.disc]);
+    SECTIONS.filter(([k]) => !QOPT.includes(k) || t.S[k].length).map(([k]) => t.S[k].map(l => [l.area, l.product, l.what, l.hsn, l.qty, l.unit, l.mrp, l.amt])), t.total, t.disc,
+    ...(t.cols && t.cols.length < QALL.length ? [t.cols] : [])]);
   let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 ^ txt.charCodeAt(i)) >>> 0;
   return h.toString(36);
 }
@@ -3500,26 +3640,29 @@ function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()})
     two(`Contact Number : ${q.phone || ''}`, `Executive : ${q.exec || ''}`),
     two(`Delivery Address : ${q.addr || ''}`, `Delivery Date (AFTER BOOKING) : ${ddateTxt(q.ddate)}`),
     two(`Email Id : ${q.email || ''}`, `Accounts : ${q.accounts || ''}`)]}));   // Ref. is internal: never on the customer's copy
-  const body = []; let n = 0;
+  // only the columns the client gets (Edit quotation); with Amount hidden there are no totals and no amount in words
+  const body = [], cols = t.cols || QALL, NC = 1 + cols.length, amt = cols.includes('amt'); let n = 0;
+  const V = {area: l => (l.area || '').toUpperCase(), product: l => l.product.toUpperCase(), what: l => l.what.toUpperCase(), hsn: l => l.hsn || '', qty: l => cpF(r2(l.qty)), unit: l => l.unit,
+    mrp: l => l.mrp == null ? '—' : inr(l.mrp), amt: l => l.amt == null ? '—' : inr(l.amt)};
+  const row = l => body.push([++n, ...cols.map(c => V[c](l))]);
+  const tot = (a, b) => [{content: a, colSpan: NC - 1, styles: {halign: 'right', fontStyle: 'bold'}}, {content: b, styles: {halign: 'right', fontStyle: 'bold'}}];
   SECTIONS.filter(([k]) => (t.S[k] || []).length).forEach(([k, name], si) => {   // number only the sections that are there: 1, 2, 3…
     if (!t.S[k].length) return;
-    body.push([{content: `${si + 1} · ${name.toUpperCase()}`, colSpan: 9, styles: {fontStyle: 'bold', fillColor: [242, 242, 242]}}]);
+    body.push([{content: `${si + 1} · ${name.toUpperCase()}`, colSpan: NC, styles: {fontStyle: 'bold', fillColor: [242, 242, 242]}}]);
     const P = secParts(k, t.S[k]);
-    const row = l => body.push([++n, (l.area || '').toUpperCase(), l.product.toUpperCase(), l.what.toUpperCase(), l.hsn || '', cpF(r2(l.qty)), l.unit, l.mrp == null ? '—' : inr(l.mrp), l.amt == null ? '—' : inr(l.amt)]);
-    if (P) P.forEach(p => { body.push([{content: `${si + 1}${p.ab} · ${p.n.toUpperCase()}`, colSpan: 9, styles: {fontStyle: 'bold', fillColor: [250, 250, 250], cellPadding: {top: 3.5, bottom: 3.5, left: 14, right: 3.5}}}]);
-      p.L.forEach(row); body.push([{content: `${p.n.toUpperCase()} TOTAL`, colSpan: 8, styles: {halign: 'right', fontStyle: 'bold'}}, {content: inr(p.sub), styles: {halign: 'right', fontStyle: 'bold'}}]); });
-    else t.S[k].forEach(l => body.push([++n, (l.area || '').toUpperCase(), l.product.toUpperCase(), l.what.toUpperCase(), l.hsn || '', cpF(r2(l.qty)), l.unit, l.mrp == null ? '—' : inr(l.mrp), l.amt == null ? '—' : inr(l.amt)]));
-    body.push([{content: `${name.toUpperCase()} TOTAL`, colSpan: 8, styles: {halign: 'right', fontStyle: 'bold'}}, {content: inr(t.sub[k]), styles: {halign: 'right', fontStyle: 'bold'}}]);
+    if (P) P.forEach(p => { body.push([{content: `${si + 1}${p.ab} · ${p.n.toUpperCase()}`, colSpan: NC, styles: {fontStyle: 'bold', fillColor: [250, 250, 250], cellPadding: {top: 3.5, bottom: 3.5, left: 14, right: 3.5}}}]);
+      p.L.forEach(row); if (amt) body.push(tot(`${p.n.toUpperCase()} TOTAL`, inr(p.sub))); });
+    else t.S[k].forEach(row);
+    if (amt) body.push(tot(`${name.toUpperCase()} TOTAL`, inr(t.sub[k])));
   });
-  const tot = (a, b) => [{content: a, colSpan: 8, styles: {halign: 'right', fontStyle: 'bold'}}, {content: b, styles: {halign: 'right', fontStyle: 'bold'}}];
-  body.push(tot('TOTAL', 'Rs. ' + inr(t.total)));
-  if (t.disc) { body.push(tot((t.discTxt || 'Discount on curtain fabric').toUpperCase(), '- Rs. ' + inr(t.disc))); body.push(tot('FINAL', 'Rs. ' + inr(t.final))); }
-  doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY, head: [['Sr.No.', 'AREA', 'PRODUCT', 'FABRIC DETAILS', 'HSN', 'Qty', 'Unit', 'MRP', 'Amount']], body,
-    headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center'}, line),
-    columnStyles: {0: {halign: 'center', cellWidth: 38}, 1: {halign: 'center', cellWidth: 74}, 2: {halign: 'center', cellWidth: 72}, 3: {halign: 'center'}, 4: {halign: 'center', cellWidth: 50},
-      5: {halign: 'center', cellWidth: 38, fontStyle: 'bold'}, 6: {halign: 'center', cellWidth: 36}, 7: {halign: 'center', cellWidth: 46}, 8: {halign: 'center', cellWidth: 56}}}));
+  if (amt) { body.push(tot('TOTAL', 'Rs. ' + inr(t.total)));
+    if (t.disc) { body.push(tot((t.discTxt || 'Discount on curtain fabric').toUpperCase(), '- Rs. ' + inr(t.disc))); body.push(tot('FINAL', 'Rs. ' + inr(t.final))); } }
+  const PW = {area: 74, product: 72, hsn: 50, qty: 38, unit: 36, mrp: 46, amt: 56}, wide = ['what', 'product', 'area'].find(c => cols.includes(c));   // one column takes the spare width
+  const colSt = {0: {halign: 'center', cellWidth: 38}}; cols.forEach((c, i) => { colSt[i + 1] = Object.assign({halign: 'center'}, c === wide ? {} : {cellWidth: PW[c] || 60}, c === 'qty' ? {fontStyle: 'bold'} : {}); });
+  doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY, head: [['Sr.No.', ...cols.map(c => QCOLS.find(x => x[0] === c)[1])]], body,
+    headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center'}, line), columnStyles: colSt}));
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY, pageBreak: 'avoid', body: [
-    [{content: `INR : ${words(t.final)} ONLY.`, styles: {fontStyle: 'bold'}}],
+    ...(amt ? [[{content: `INR : ${words(t.final)} ONLY.`, styles: {fontStyle: 'bold'}}]] : []),
     [{content: 'Bank Detail :\n' + FIRM.bank.map(([a, b]) => `${a} : ${b}`).join('\n'), styles: {fontStyle: 'bold'}}],
     [{content: 'T&C\n' + TNC.map((x, i) => `${i + 1}. ${x}`).join('\n'), styles: {fontSize: 8}}],
     [{content: 'CUSTOMER SIGNATURE.                                      EXECUTIVE SIGN.                                      ' + FIRM.name + '.', styles: {fontStyle: 'bold', minCellHeight: 46, valign: 'bottom'}}]]}));
@@ -4078,8 +4221,8 @@ async function recordVersion(v, sig, t){
   const at = new Date().toISOString(), name = state.house || '', total = t.final;
   try {
     if (await Store.versionExists(cid, v)) { toast(`Someone saved v${v} of this client a moment ago. Download again to save yours as v${v + 1}.`); delete CL.vers[cid]; return; }
-    await Store.addVersion(cid, v, clone({cid, n: v, sig, at, by: UID, name, no: q.no || '', exec: q.exec || '', total,
-      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, final: t.final}, rows: state.rows, blinds: state.blinds, more: state.more}}));
+    await Store.addVersion(cid, v, clone({cid, n: v, sig, at, by: UID, name, no: q.no || '', exec: q.exec || '', total, hid: t.hid || '',
+      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, final: t.final, cols: t.cols || QALL, hid: t.hid || ''}, rows: state.rows, blinds: state.blinds, more: state.more}}));
     await Store.mergeClient(cid, Object.assign({name, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', latest: v, sig, at, total, dsig: sig, edited: at, cats: sheetCats(sheetOf()), changeReq: null}, q.city ? {city: q.city} : {}));
     delete CL.vers[cid]; autoAfterVersion(cid);
     toast(`Kept as v${v} in ${name || 'this client'}'s quotations`);
@@ -4332,7 +4475,7 @@ function confirmDlg(title, text, okLabel, onOk){
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">${title}</h2><p class="sub">${text}</p><div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">${okLabel}</button></div></div>`, false, async () => { await onOk(); });
 }
 function showVersion(c, x){
-  openDlg(`<div class="dlg-top"><div><h2 id="dlg-title" style="margin:0">${esc(c.name)} · v${x.n}</h2><span class="hint">${esc(whenTxt(x.at))} · ${rs(x.total)}</span></div>
+  openDlg(`<div class="dlg-top"><div><h2 id="dlg-title" style="margin:0">${esc(c.name)} · v${x.n}</h2><span class="hint">${esc(whenTxt(x.at))} · ${rs(x.total)}</span>${x.hid ? `<p class="qe-ban" style="margin:8px 0 0"><b>Part quotation.</b> ${esc(x.hid)}</p>` : ''}</div>
     <div class="cp-acts"><button class="btn solid" data-dlg="pdf" data-label="Download PDF">Download PDF</button><button class="btn" data-dlg="close">Close</button></div></div>
     <div class="dlg-body"><div class="paper-wrap" style="border:0">${paperHTML(x.snap.q, x.snap.house, x.snap.t, false, true)}</div></div>`, true);
   dlg._x = x;
@@ -6175,7 +6318,8 @@ function verChanges(A, B){
   // the quotation itself
   const qa = A.q || {}, qb = B.q || {}, d = q => q.discAmt ? '₹' + q.discAmt : q.disc ? q.disc + '%' : 'none';
   const QL = {contact: 'Contact person', phone: 'Contact number', email: 'Email', addr: 'Delivery address', ddate: 'Delivery date', exec: 'Executive', accounts: 'Accounts', ref: 'Reference', no: 'Invoice no.'};
-  add('Quotation', 'details', '', [d(qa) !== d(qb) && {k: 'Discount', a: d(qa), b: d(qb)}, ...Object.keys(QL).map(k => chg(QL[k], qa[k], qb[k]))]);
+  const sh = x => ((x || {}).t || {}).hid || 'Everything';   // Edit quotation (20 Oct): what the client got
+  add('Quotation', 'details', '', [d(qa) !== d(qb) && {k: 'Discount', a: d(qa), b: d(qb)}, ...Object.keys(QL).map(k => chg(QL[k], qa[k], qb[k])), chg('What was shared', sh(A), sh(B))]);
   return G;
 }
 // under each version: what changed since the one before, one group per item and one line per change
@@ -6220,6 +6364,7 @@ function cpActivity(c, V){
         <div class="n-vh"><p class="n-vt">Quotation v${x.n} sent <b>${rs(x.total)}</b>${fin ? ' <span class="n-stat won">Accepted</span>' : ''}</p>
           <span class="n-evb"><button class="n-btn sm" data-act="view" data-n="${x.n}">View</button><button class="n-btn sm" data-act="pdf" data-n="${x.n}">PDF</button></span></div>
         <small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''} ${amtDiff(x, V)}</small>
+        ${x.hid ? `<p class="qe-ban n-part"><b>Part quotation.</b> ${esc(x.hid)}</p>` : ''}
         ${verChangeList(x, V)}
         <button class="n-link sm n-from" data-act="from" data-n="${x.n}">Start again from v${x.n}</button></div></li>`; }
     if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${who(e.t.ownerEmail)}</small></button></li>`;
@@ -6484,4 +6629,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-150121 -->
+<!-- build 20261019-152305 -->
