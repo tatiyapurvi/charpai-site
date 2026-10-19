@@ -2576,9 +2576,9 @@ function bCollShades(input, b, coll){
   let L = R.flatMap(r => { const sh = bShadesOf(r); return sh.length ? sh.map(c => ({c, r})) : [{c: '', r}]; })
     .sort((x, y) => bRate(x.r) - bRate(y.r) || (+x.c || 0) - (+y.c || 0) || String(x.r.design).localeCompare(String(y.r.design)));
   const q = input.value.trim().toLowerCase(), cur = q && L.some(x => x.c === input.value.trim() && x.r.id === b.pid);
-  if (q && !cur) L = L.filter(x => (x.c || x.r.design + ' ' + x.r.extra).toLowerCase().includes(q)).sort((x, y) => x.c.toLowerCase().startsWith(q) ? -1 : y.c.toLowerCase().startsWith(q) ? 1 : 0);
+  if (q && !cur) L = L.filter(x => (x.c || x.r.design + ' ' + x.r.extra).toLowerCase().includes(q)).sort((x, y) => !x.c.toLowerCase().startsWith(q) - !y.c.toLowerCase().startsWith(q) || (+x.c || 0) - (+y.c || 0));
   suggFor = {input, row: b, restore: () => { input.value = b.shade; }, pick: x => {
-    if (x.c) { b.shade = x.c; input.value = x.c; } b.pid = x.r.id; b.pidAuto = false; b.coll = coll;
+    b.shade = x.c || x.r.design; input.value = b.shade; b.pid = x.r.id; b.pidAuto = false; b.coll = coll;   // a named design (Sansaar: Bliss, Damara…) goes in as it is
     bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); }};
   suggItems = L.slice(0, 400); suggOn = Math.max(0, suggItems.findIndex(x => x.r.id === b.pid && (!x.c || x.c === b.shade)));
   let last = null;
@@ -6389,4 +6389,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-114451 -->
+<!-- build 20261019-115107 -->
