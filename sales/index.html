@@ -797,6 +797,13 @@ tr.dash-r:hover td{background:var(--sel)}
 .qh.show:hover{background:#F6DD8A}
 th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .qe-open{padding:14px 14px 4px;display:flex;flex-direction:column;gap:6px}
+/* the measurement sheet download page (20 Oct) */
+.ms-dl{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.ms-dl svg{width:15px;height:15px}
+#v-msheet .paper.ms-tab{margin-top:14px;border-top:1px solid #333}
+#v-msheet .paper.ms-tab thead .secrow td{background:#F2F2F2;font-weight:700}
+.ms-foot p{margin:8px 0}
+@media (max-width:999px){ #v-msheet .q-sum{order:-1} }
 .qe-open .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:10px;padding:10px;font-size:15px}
 .qe-open .btn:hover{background:color-mix(in srgb,var(--ink) 12%,transparent)}
 .qe-card{margin:14px 14px 4px;padding:14px 16px;border-radius:12px;background:var(--tape-soft);color:var(--ink)}
@@ -1352,6 +1359,13 @@ button.n-prop:hover{background:var(--soft)}
         <div class="paper-wrap" id="q-paper"></div>
       </div>
       <aside class="panel q-sum" id="q-sum"></aside>
+    </div>
+  </section>
+
+  <section id="v-msheet" hidden>
+    <div class="q-grid">
+      <div class="panel"><div class="paper-wrap" id="ms-paper"></div></div>
+      <aside class="panel q-sum" id="ms-sum"></aside>
     </div>
   </section>
 
@@ -4069,11 +4083,16 @@ const Store = {
   getDraft: async cid => { const d = await db.doc('drafts/' + cid).get(); return d.exists ? d.data() : null; },
   setDraft: (cid, body) => db.doc('drafts/' + cid).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
   watchDraft: (cid, fn) => db.doc('drafts/' + cid).onSnapshot(s => { if (s.exists && !(s.metadata && s.metadata.hasPendingWrites)) fn(s.data()); }, () => {}),
-  listVersions: async cid => (await scoped(db.collection('qversions').where('cid', '==', cid)).get()).docs.map(d => d.data()).sort((a, b) => b.n - a.n),
+  // qversions holds the quotations (<client>_v<n>) and, since 20 Oct, the measurement sheets (<client>_m<n>, kind 'ms')
+  listDocs: async cid => (await scoped(db.collection('qversions').where('cid', '==', cid)).get()).docs.map(d => Object.assign({_id: d.id}, d.data())),
+  listVersions: async cid => (await Store.listDocs(cid)).filter(x => x.kind !== 'ms').sort((a, b) => b.n - a.n),
+  listSheets: async cid => (await Store.listDocs(cid)).filter(x => x.kind === 'ms').sort((a, b) => b.n - a.n),
   versionExists: async (cid, n) => (await db.doc(`qversions/${cid}_v${n}`).get()).exists,
   addVersion: (cid, n, body) => db.doc(`qversions/${cid}_v${n}`).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
+  sheetExists: async (cid, n) => (await db.doc(`qversions/${cid}_m${n}`).get()).exists,
+  addSheet: (cid, n, body) => db.doc(`qversions/${cid}_m${n}`).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
 };
-const CL = {state: 'none', list: [], byId: new Map(), vers: {}};
+const CL = {state: 'none', list: [], byId: new Map(), vers: {}, msv: {}};   // msv: measurement sheet versions per client
 let cpId = null, UID = null;
 const newClientId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const DEV = (() => { try { let d = localStorage.getItem('charpai-device'); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem('charpai-device', d); } return d; } catch(_) { return 'x' + Math.random().toString(36).slice(2, 8); } })();
@@ -4370,7 +4389,7 @@ async function deleteClient(cid){
     if (draftUnsub) { try { draftUnsub(); } catch(_){} draftUnsub = null; }
     state = {house: '', example: false, sel: 0, bsel: 0, quote: {}, rows: [blank()], blinds: []}; ensureMore(true); draftLast = ''; keepLocal();
   }
-  for (const v of await Store.listVersions(cid)) await db.doc(`qversions/${cid}_v${v.n}`).delete();
+  for (const v of await Store.listDocs(cid)) await db.doc(`qversions/${v._id || cid + '_v' + v.n}`).delete();   // quotations and measurement sheets
   try { await db.doc('drafts/' + cid).delete(); } catch(_){}
   for (const t of TD.byCid.get(cid) || []) { try { await db.doc('todos/' + t.id).delete(); } catch(_){} }   // their to-dos (17 Oct)
   try { for (const d of (await db.collection('notes').where('cid', '==', cid).get()).docs) await db.doc('notes/' + d.id).delete(); } catch(_){}   // their notes (18 Oct)
@@ -4518,7 +4537,8 @@ function ctabsHTML(overview){
   const tab = (v, name, subs) => `<button class="ctab" role="tab" data-ct="${v}" aria-selected="${current === v || (subs || []).includes(current)}">${name}${n[v] ? `<span class="cnt">${n[v]}</span>` : ''}</button>`;
   const inSheet = GATED.includes(current) && current !== 'quote';
   const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
-  const products = !overview || inSheet ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}` : '';
+  const products = !overview || inSheet ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}
+    <button class="ctab ms-dl" role="tab" data-ct="msheet" aria-selected="${current === 'msheet'}">${DL_ICON}Download sheet</button>` : '';   // 20 Oct: the measurement sheet as a PDF / Excel
   return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') : ''}${products}</div>
     ${overview ? `<button class="qgo" data-ct="${inSheet ? current : first}" aria-pressed="${inSheet}">${MS_SVG}Measurement sheet</button>` : ''}<button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}Quotation</button></div>`;
 }
@@ -4535,7 +4555,7 @@ $('#cbar').addEventListener('click', async e => {
 });
 $('#v-none').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'new') askNewClient(); else go('clients'); });
 // With the shared store every sheet belongs to a client: the sheet, blinds and quotation show "No client open" without one.
-const GATED = ['c-measure', 'b-measure', 'wallpaper', 'uph', 'flooring', 'mattress', 'quote'];
+const GATED = ['c-measure', 'b-measure', 'wallpaper', 'uph', 'flooring', 'mattress', 'quote', 'msheet'];
 function gate(){ if (shared && GATED.includes(current)) go(current); }
 function newLocalSheet(){
   state = {house:'', example:false, sel:0, bsel:0, quote:{}, rows:[blank()], blinds:[]}; refreshSheet(); save(); go('c-measure'); $('#house').focus();
@@ -4581,7 +4601,7 @@ async function reassign(cid, email){
   await flushDraft();
   await db.doc('clients/' + cid).update({ownerEmail: email});
   try { await db.doc('drafts/' + cid).update({ownerEmail: email}); } catch(_){}
-  for (const v of await Store.listVersions(cid)) await db.doc(`qversions/${cid}_v${v.n}`).update({ownerEmail: email});
+  for (const v of await Store.listDocs(cid)) await db.doc(`qversions/${v._id || cid + '_v' + v.n}`).update({ownerEmail: email});   // quotations and measurement sheets
   try { for (const d of (await db.collection('notes').where('cid', '==', cid).get()).docs) await db.doc('notes/' + d.id).update({ownerEmail: email}); } catch(_){}   // their notes go with them (18 Oct)
   delete CL.vers[cid];
 }
@@ -5701,7 +5721,7 @@ $('#p-add').onclick = () => {
 };
 
 // ================= tabs, copy, start
-const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote',
+const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote', 'msheet': 'msheet',
   'wallpaper': 'product', 'flooring': 'product', 'mattress': 'product', 'uph': 'product'};   // the four product sheets share one section (3 Oct)
 const OLD_VIEW = {measure: 'c-measure', blinds: 'b-measure', prices: 'c-prices', quote: 'quote', fabric: 'uph', foam: 'uph', hcp: 'mattress'};   // Fabric and Foam became Upholstery (6 Oct)   // tab names before 30 Sep
 let current = 'c-measure', lastMain = 'c';
@@ -5737,6 +5757,7 @@ function go(v){
   if (v === 'c-prices') renderPrices();
   if (v === 'b-prices') renderBPrices();
   if (v === 'b-measure') renderBlinds();
+  if (v === 'msheet') renderMsheet();
   if (v === 'c-measure') { state.rows.forEach(updateRow); renderTotals(); renderSide(); }
   if (MP[v]) renderProduct(v);
   try { localStorage.setItem(TKEY, v); } catch(_){}
@@ -6337,6 +6358,9 @@ function verChangeList(x, V){
   const G = verChanges(prev.snap, x.snap);
   if (!G.length && (((x.snap.t || {}).hid || '') !== ((prev.snap.t || {}).hid || ''))) return '';   // only what was shared changed: the yellow note says it
   if (!G.length) return `<p class="n-chgnote">${Math.round(prev.total) === Math.round(x.total) ? 'Nothing changed. The same quotation was downloaded again.' : 'Nothing in the sheet changed. The price list rates changed.'}</p>`;
+  return verChangeGroups(G);
+}
+function verChangeGroups(G){
   const line = (l, fresh) => l.t ? `<li><span class="n-ck"></span><span>${esc(l.t)}</span></li>`
     : !l.b ? `<li><span class="n-ck">${esc(l.k)}</span><span><span class="n-ca">${esc(l.a)}</span> <em class="n-tag gone">removed</em></span></li>`
     : `<li><span class="n-ck">${esc(l.k)}</span><span>${l.a ? `<span class="n-ca">${esc(l.a)}</span><span class="n-arr" aria-label="changed to">→</span>` : ''}<b>${esc(l.b)}</b>${!l.a && !fresh ? ' <em class="n-tag">added</em>' : ''}</span></li>`;
@@ -6355,6 +6379,8 @@ function cpActivity(c, V){
   const ev = [];
   if (c.created) ev.push({at: c.created, k: 'new'});
   if (Array.isArray(V)) for (const x of V) ev.push({at: x.at, k: 'v', v: x});
+  const MV = Array.isArray(CL.msv[c.id]) ? CL.msv[c.id] : [];   // measurement sheets M1, M2… (20 Oct)
+  for (const x of MV) ev.push({at: x.at, k: 'm', v: x});
   if (c.changeReq && c.changeReq.at) ev.push({at: c.changeReq.at, k: 'ch'});
   if (s === 'won' || s === 'lost') ev.push({at: o.at, k: s});
   for (const t of T.filter(t => t.state === 'done')) ev.push({at: t.doneAt, k: 't', t});
@@ -6374,6 +6400,13 @@ function cpActivity(c, V){
         ${x.hid ? `<p class="qe-ban n-part"><b>Part quotation.</b> ${esc(x.hid)}</p>` : ''}
         ${verChangeList(x, V)}
         <button class="n-link sm n-from" data-act="from" data-n="${x.n}">Start again from v${x.n}</button></div></li>`; }
+    if (e.k === 'm') { const x = e.v, prev = MV.find(v => v.n === x.n - 1), G = prev && prev.snap && x.snap ? verChanges(prev.snap, x.snap) : null;
+      return `<li class="n-ev n-ver"><span class="n-evd v">M${x.n}</span><div class="n-evm">
+        <div class="n-vh"><p class="n-vt">Measurement sheet M${x.n} saved${x.total != null ? ` <b>${rs(x.total)}</b>` : ''}</p>
+          <span class="n-evb"><button class="n-btn sm" data-msv="view" data-n="${x.n}">View</button><button class="n-btn sm" data-msv="pdf" data-n="${x.n}">PDF</button></span></div>
+        <small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''}</small>
+        ${x.hid ? `<p class="qe-ban n-part"><b>Part sheet.</b> ${esc(x.hid)}</p>` : ''}
+        ${!prev ? (x.snap ? `<p class="n-chgnote">First measurement sheet: ${esc((sheetCounts(x.snap) || []).join(', '))}</p>` : '') : G && G.length ? verChangeGroups(G) : ''}</div></li>`; }
     if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${who(e.t.ownerEmail)}</small></button></li>`;
     if (e.k === 'ch') return `<li class="n-ev"><span class="n-evd ch">${tdIcon('revise', 14)}</span><div class="n-evm"><p>They asked for changes${c.changeReq.note ? `<span class="n-evn">${esc(c.changeReq.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></div></li>`;
     if (e.k === 'won' || e.k === 'lost') return `<li class="n-ev"><span class="n-evd ${e.k}">${e.k === 'won' ? '✓' : '×'}</span><div class="n-evm"><p>${e.k === 'won' ? `Marked as won, v${o.n}` : `Marked as lost${o.reason ? ': ' + esc(o.reason) : ''}`}${o.note ? `<span class="n-evn">${esc(o.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${o.who ? ', ' + esc(o.who) : ''}</small></div></li>`;
@@ -6411,6 +6444,7 @@ function renderClientPage(){
   const keepFocus = document.activeElement && document.activeElement.closest('#cp-body') && document.activeElement.id;
   const V = CL.vers[c.id];
   if (c.latest && !V) versionsOf(c.id).then(() => { if (current === 'client' && cpId === c.id) renderClientPage(); });
+  if (c.mlatest && !Array.isArray(CL.msv[c.id]) && CL.msv[c.id] !== 'error') msOf(c.id).then(() => { if (current === 'client' && cpId === c.id) renderClientPage(); });
   el.innerHTML = `<div class="n-page">
     <aside class="n-side n-card">${cpHead(c)}${cpProps(c)}</aside>
     <div class="n-main">${cpNext(c)}${cpBook(c)}<div class="n-card">${cpActivity(c, V)}</div></div></div>`;
@@ -6612,6 +6646,326 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-hometo]')) go('todo');
 });
 
+// ================= Measurement sheet download (Purvi, 20 Oct 2026: "similar to how our qtn looks, i need a button to download a similar
+// looking measurement sheet (same blue white excel table format) … an option to … hide or unhide rows/columns/sections … downloads
+// to be in versions just like qtns and same level of activity tracking"). Her picks: with MRP and amounts; every product the client
+// has, one section each; short totals + signatures at the bottom; its own version numbers M1, M2…
+// One list (msData) is read from the sheets; hiding (state.quote.mshide = {sec, row, col}) is taken out in msShown, and the paper,
+// PDF, Excel, version number and WhatsApp all draw from that, like the quotation. Versions live next to the quotation's
+// (qversions/<client>_m<n>, kind 'ms'); the client card keeps mlatest / msig.
+let msEdit = false;
+const msNum = v => nv(v) ? cpF(nv(v)) : '';
+const msSum = (L, f) => L.reduce((a, x) => a + (+f(x) || 0), 0);
+// Each section: its columns [key, heading, right-aligned?] and one entry per row: {key, c: {column: text}, amt, n: numbers for the totals}
+function msData(){
+  ensureMore(); const S = [], sec = (k, name, cols, rows, sum) => { if (rows.length) S.push({k, name, cols, rows, sum}); };
+  const G = gstRates();
+  { const R = [];
+    state.rows.forEach(r => { if (!(+r.W || +r.H)) return;
+      const c = calc(r), {res, ok, lin} = c, a = ok ? rowAmount(r, c) : null, cf = catRow(r);
+      R.push({key: 'curtains|' + r.id, amt: a ? a.total : 0, n: {cur: 1, panels: ok ? res.panels : 0, fab: ok ? res.qty : 0, lin: ok && lin ? lin.m : 0, ft: ok && res.trackUnit === 'ft' ? res.track : 0, kit: ok && res.track && res.trackUnit !== 'ft' ? 1 : 0},
+        c: {room: r.room || '', layer: r.layer === 'Sheer' ? 'S' : 'M', fabric: r.fabric || '', lining: r.lining || '', style: r.style || '', H: msNum(r.H), W: msNum(r.W),
+          panels: ok ? `${res.panels} × ${f1(c.d.W / res.panels)}″` : '', fabm: ok ? cpF(res.qty) : '', linm: ok && lin ? cpF(lin.m) : '', track: r.track ? trackShort(r.track) : '', tlen: ok && res.track ? trackStr(res) : '',
+          fixing: r.fixing ? r.fixing.replace(' fixing', '') : '', stitched: r.stitchBy === 'Company' ? 'Company' : 'Local', remarks: r.remarks || '',
+          mrp: cf && has(cf.r) ? inr(mrpOf2(cf.r, cf.g || +G.fabric || 5)) : '', amt: a && a.total ? inr(a.total) : ''}}); });
+    sec('curtains', 'Curtains', [['room', 'Room'], ['layer', 'M/S'], ['fabric', 'Fabric'], ['lining', 'Lining'], ['style', 'Style'], ['H', 'H″', 1], ['W', 'W″', 1], ['panels', 'Panels'], ['fabm', 'Fabric m', 1],
+      ['linm', 'Lining m', 1], ['track', 'Track'], ['tlen', 'Track length'], ['fixing', 'Fixing'], ['stitched', 'Stitched'], ['remarks', 'Remarks'], ['mrp', 'Fabric MRP /m', 1], ['amt', 'Amount', 1]], R,
+      L => [`${msSum(L, x => x.n.cur)} curtain${msSum(L, x => x.n.cur) === 1 ? '' : 's'}`, `${msSum(L, x => x.n.panels)} panels`, `${cpF(msSum(L, x => x.n.fab))} m fabric`,
+        msSum(L, x => x.n.lin) ? `${cpF(msSum(L, x => x.n.lin))} m lining` : '', msSum(L, x => x.n.ft) ? `${cpF(msSum(L, x => x.n.ft))} ft track` : '', msSum(L, x => x.n.kit) ? `${msSum(L, x => x.n.kit)} motor kit${msSum(L, x => x.n.kit) > 1 ? 's' : ''}` : '']); }
+  { const R = [];
+    state.blinds.forEach(b => { if (!(+b.W && +b.H)) return; const c = bCalc(b), p = c.p, motor = (c.adds || []).some(x => bAddKind(x.a) === 'motor') || String(b.motor || '').trim();
+      const amt = c.amt ? c.amt + (c.addonAmt || 0) : 0;
+      R.push({key: 'blinds|' + b.id, amt, n: {q: c.q, sq: c.ok ? c.charge * c.q : 0},
+        c: {room: b.room || '', type: b.fam || '', sys: (p && p.sys) || b.sys || '', coll: bCollOf(b) || b.series || '', shade: b.shade || (p ? p.design || '' : ''), H: msNum(b.H), W: msNum(b.W), qty: String(c.q),
+          sqft: c.ok ? cpF(c.charge * c.q) : '', works: motor ? 'Motorised' : 'Manual', remarks: b.remarks || '', mrp: c.mrp ? inr(c.mrp) : '', amt: amt ? inr(amt) : ''}}); });
+    sec('blinds', 'Blinds', [['room', 'Room'], ['type', 'Type'], ['sys', 'System'], ['coll', 'Collection'], ['shade', 'Shade'], ['H', 'H″', 1], ['W', 'W″', 1], ['qty', 'Qty', 1], ['sqft', 'Sq ft', 1],
+      ['works', 'Works'], ['remarks', 'Remarks'], ['mrp', 'MRP /sq ft', 1], ['amt', 'Amount', 1]], R,
+      L => [`${msSum(L, x => x.n.q)} blind${msSum(L, x => x.n.q) === 1 ? '' : 's'}`, `${cpF(Math.round(msSum(L, x => x.n.sq) * 100) / 100)} sq ft`]); }
+  { const R = [];
+    (state.more.wallpaper || []).forEach((r, i) => { if (!mpFilled('wallpaper', r)) return; const c = MP.wallpaper.calc(r), it = wpItem(r), roll = r.kind === 'Roll';
+      const byRoll = !!(it && WPL[r.sup] && WPL[r.sup].uom === 'roll'), mrp = it && !wpSq(it) && has(it.rrp) ? mrpOf2(it.rrp, it.gst) : null, rolls = roll ? (nv(r.rolls) || c.calcRolls || 0) : 0;
+      R.push({key: 'wallpaper|' + i, amt: byRoll && mrp ? rolls * mrp : 0, n: {w: 1, rolls},
+        c: {room: r.room || '', wall: r.wall || '', sup: r.sup || '', design: it ? `${it.sku} ${it.name}` : r.design || '', kind: roll ? r.roll || '' : 'Mural', H: msNum(r.H), W: msNum(r.W),
+          area: c.ok ? cpF(c.area) : '', rolls: rolls ? String(rolls) : '', remarks: r.remarks || '', mrp: mrp ? inr(mrp) + (byRoll ? ' /roll' : ' /box') : '', amt: byRoll && mrp && rolls ? inr(rolls * mrp) : ''}}); });
+    sec('wallpaper', 'Wallpaper', [['room', 'Room'], ['wall', 'Wall'], ['sup', 'Company'], ['design', 'Design'], ['kind', 'Roll / mural'], ['H', 'H″', 1], ['W', 'W″', 1], ['area', 'Sq ft', 1], ['rolls', 'Rolls', 1],
+      ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.w)} wall${msSum(L, x => x.n.w) === 1 ? '' : 's'}`, msSum(L, x => x.n.rolls) ? `${msSum(L, x => x.n.rolls)} rolls` : '']); }
+  { const R = [];
+    (state.more.flooring || []).forEach((r, i) => { if (!mpFilled('flooring', r)) return; const c = MP.flooring.calc(r), it = flItem(r), mrp = it && has(it.rrp) ? mrpOf2(it.rrp, it.gst) : null;
+      const amt = mrp && c.order ? Math.round(c.order * mrp) : 0;
+      R.push({key: 'flooring|' + i, amt, n: {a: 1, sq: c.order || 0},
+        c: {room: r.room || '', type: r.type || '', sup: r.sup || '', product: it ? it.name : r.product || '', L: msNum(r.L), W: msNum(r.W), area: c.ok ? cpF(c.area) : '', order: c.order ? cpF(c.order) + (c.boxes ? ` (${c.boxes} boxes)` : '') : '',
+          edge: r.edge || '', remarks: r.remarks || '', mrp: mrp ? inr(mrp) : '', amt: amt ? inr(amt) : ''}}); });
+    sec('flooring', 'Flooring', [['room', 'Room'], ['type', 'Type'], ['sup', 'Company'], ['product', 'Product'], ['L', 'L″', 1], ['W', 'W″', 1], ['area', 'Area sq ft', 1], ['order', 'To order sq ft', 1],
+      ['edge', 'Edges'], ['remarks', 'Remarks'], ['mrp', 'MRP /sq ft', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.a)} area${msSum(L, x => x.n.a) === 1 ? '' : 's'}`, `${cpF(msSum(L, x => x.n.sq))} sq ft to order`]); }
+  { const R = [];
+    (state.more.uph || []).forEach((r, i) => { const c = MP.uph.calc(r); if (!c.ok) return;
+      R.push({key: 'uph|' + i, amt: c.tot || 0, n: {l: 1}, c: {item: c.q ? c.q.product : r.p || '', what: c.what || '', qty: `${cpF(r2(c.qty))} ${c.u || ''}`.trim(), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''}}); });
+    sec('uph', 'Upholstery material', [['item', 'Item'], ['what', 'Details'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.l)} line${msSum(L, x => x.n.l) === 1 ? '' : 's'}`]); }
+  { const R = [];
+    (state.more.mattress || []).forEach((r, i) => { if (!r.p) return; const c = mtCalc(r); if (!c.ok) return; const mat = r.p === 'Mattress';
+      R.push({key: 'mattress|' + i, amt: c.tot || 0, n: {q: c.qty || 1},
+        c: {room: r.room || '', bed: r.bed || '', item: mat ? ['Mattress', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' · ') : r.item || r.p, size: mat && nv(r.L) ? `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″` : '',
+          qty: String(c.qty || 1), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''}}); });
+    sec('mattress', 'Mattresses and pillows', [['room', 'Room'], ['bed', 'Bed'], ['item', 'Item'], ['size', 'Size'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R,
+      L => [`${msSum(L, x => x.n.q)} piece${msSum(L, x => x.n.q) === 1 ? '' : 's'}`]); }
+  // a column nobody filled in (e.g. Remarks, or Lining with no lined curtain) is left out, so the sheet stays short
+  for (const s of S) s.cols = s.cols.filter(([k]) => s.rows.some(r => String(r.c[k] || '').trim()));
+  return S;
+}
+const msHide = () => { const h = (state.quote || {}).mshide || {}; return {sec: h.sec || [], row: h.row || [], col: h.col || []}; };
+// what the client gets: sections, rows and columns that are not hidden, with their totals worked out again
+function msShown(full = msData()){
+  const h = msHide(), out = [];
+  for (const s of full) {
+    if (h.sec.includes(s.k)) continue;
+    const rows = s.rows.filter(r => !h.row.includes(r.key)); if (!rows.length) continue;
+    const cols = s.cols.filter(([k]) => !h.col.includes(s.k + '.' + k)), amtOn = cols.some(([k]) => k === 'amt');
+    out.push({k: s.k, name: s.name, cols, rows: rows.map(r => ({key: r.key, c: r.c, amt: r.amt})), sum: s.sum(rows).filter(Boolean), amt: amtOn ? msSum(rows, r => r.amt) : null});
+  }
+  const shown = out.filter(s => s.amt != null);
+  return {S: out, amt: shown.length ? msSum(shown, s => s.amt) : null, hid: msHideTxt(full, out)};
+}
+function msHideTxt(full, out){
+  const h = msHide(), on = new Map(out.map(s => [s.k, s])), L = [];
+  const inn = full.filter(s => on.has(s.k)).map(s => s.name), gone = full.filter(s => !on.has(s.k)).map(s => s.name);
+  if (!inn.length && full.length) L.push('Everything is hidden.');
+  else if (gone.length) L.push(`Only ${listTxt(inn)} ${inn.length > 1 ? 'were' : 'was'} shared. Not included: ${listTxt(gone)}.`);
+  for (const s of full) { const o = on.get(s.k); if (!o) continue;
+    const left = s.rows.filter(r => !o.rows.some(x => x.key === r.key)), hc = s.cols.filter(([k]) => h.col.includes(s.k + '.' + k)).map(c => c[1]), P = [];
+    if (left.length) P.push(`${left.length} row${left.length > 1 ? 's' : ''} left out (${left.map(r => r.c.room || r.c.item || r.c.what || '—').join(', ')})`);
+    if (hc.length) P.push(`${hc.length > 1 ? 'columns' : 'column'} ${listTxt(hc)} hidden`);
+    if (P.length) L.push(`${s.name}: ${P.join('; ')}.`); }
+  return L.join(' ');
+}
+function msToggle(kind, k){
+  const q = state.quote || (state.quote = {}), h = q.mshide = Object.assign({sec: [], row: [], col: []}, q.mshide), a = h[kind], i = a.indexOf(k);
+  if (i >= 0) a.splice(i, 1); else a.push(k);
+  if (kind === 'sec') { h.row = h.row.filter(r => !r.startsWith(k + '|')); h.col = h.col.filter(c => !c.startsWith(k + '.')); }   // a section hidden or shown again starts fresh
+  if (!h.sec.length && !h.row.length && !h.col.length) delete q.mshide;
+  save(); renderMsheet();
+}
+function msShowAll(){ if (state.quote) delete state.quote.mshide; save(); renderMsheet(); }
+function msSig(D){
+  const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''), D.S.map(s => [s.k, s.cols.map(c => c[0]), s.rows.map(r => s.cols.map(([k]) => r.c[k]))]), D.amt]);
+  let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 ^ txt.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function msLast(){ if (shared) { const c = state.clientId && CL.byId.get(state.clientId); return c ? {n: c.mlatest || 0, sig: c.msig} : {n: 0}; } return (state.quote || {}).mpdf || {n: 0}; }
+function msNext(D){ const P = msLast(); return !P.n ? 1 : P.sig === msSig(D) ? P.n : P.n + 1; }
+const msFileName = (n, house = state.house, d = new Date()) => quoteFileName(n, house, '', d).replace(/^v(\d+)_/, 'M$1_Measurement_');
+
+// ---- the paper: the quotation's blue-and-white look; ed = editing (everything drawn, hidden things greyed, Hide / Show buttons)
+function msPaperHTML(q, house, D, n, ed){
+  const full = ed ? msData() : null, h = ed ? msHide() : null, S = ed ? full : D.S;
+  const hdr = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
+  const btn = (kind, k, on, a, b) => `<button class="qh${on ? '' : ' show'}" data-msh="${kind}" data-k="${esc(k)}">${on ? a : b}</button>`;
+  if (!S.length) return `<div class="q-empty"><b>Nothing measured yet</b>${ed ? '' : '<button class="btn solid" data-qempty>Open measurement sheet</button>'}</div>`;
+  const shown = new Map(D.S.map(s => [s.k, s]));
+  let si = 0;
+  const tables = S.map(s => {
+    const o = shown.get(s.k), secOn = !!o, no = secOn ? ++si : '', cols = ed ? s.cols : o.cols, onCol = k => !ed || (secOn && o.cols.some(c => c[0] === k)) || (!secOn && !h.col.includes(s.k + '.' + k));
+    const rowOn = r => !ed || (secOn && o.rows.some(x => x.key === r.key));
+    let i = 0;
+    const head = `<tr><th class="qc-no">Sr.</th>${cols.map(([k, l]) => `<th${onCol(k) ? '' : ' data-off'}>${esc(l)}${ed && secOn ? btn('col', s.k + '.' + k, onCol(k), 'Hide', 'Show') : ''}</th>`).join('')}${ed ? '<th class="qe"></th>' : ''}</tr>`;
+    const body = s.rows.map(r => { const on = rowOn(r);
+      return `<tr${on ? '' : ' data-off'}><td class="c">${on ? ++i : '—'}</td>${cols.map(([k, , num]) => `<td${num ? ' class="r"' : ''}${onCol(k) ? '' : ' data-off'}>${esc(r.c[k] || '')}</td>`).join('')}${ed ? `<td class="qe">${secOn ? btn('row', r.key, on, 'Hide', 'Show') : ''}</td>` : ''}</tr>`; }).join('');
+    const tot = secOn ? `<tr class="subrow"><td colspan="${cols.length + 1}">${esc(o.sum.join(' · '))}${o.amt != null ? ` · <b>${s.name} amount ₹ ${inr(o.amt)}</b>` : ''}</td>${ed ? '<td class="qe"></td>' : ''}</tr>` : '';
+    return `<table class="paper ms-tab${ed ? ' editing' : ''}"><thead><tr class="secrow"${secOn ? '' : ' data-off'}><td colspan="${cols.length + 1}">${no ? no + ' · ' : ''}${esc(s.name)}</td>${ed ? `<td class="qe">${btn('sec', s.k, secOn, 'Hide section', 'Show section')}</td>` : ''}</tr>${head}</thead><tbody>${body}${tot}</tbody></table>`;
+  }).join('');
+  return `<table class="paper-top"><tr><th colspan="2" class="pi">MEASUREMENT SHEET</th></tr>
+      <tr><td colspan="2" class="firm"><b>${FIRM.name}</b><br>${FIRM.addr}<br>Phone : ${FIRM.phone}<br>Email : ${FIRM.email} , GSTIN : ${FIRM.gstin}</td></tr>
+      ${hdr(`<b>Billing Name :</b> ${esc(house || '')}`, `<b>Measurement sheet :</b> ${n ? 'M' + n : ''}${q.no ? ` · Performa invoice ${esc(q.no)}` : ''}`)}
+      ${hdr(`<b>Contact Person :</b> ${esc(q.contact || '')}`, `<b>Date :</b> ${q.date ? q.date.split('-').reverse().join('-') : ''}`)}
+      ${hdr(`<b>Contact Number :</b> ${esc(q.phone || '')}`, `<b>Executive :</b> ${esc(q.exec || '')}`)}
+      ${hdr(`<b>Delivery Address :</b> ${esc(q.addr || '')}`, `<b>Delivery Date (After Booking) :</b> ${esc(ddateTxt(q.ddate))}`)}
+      ${hdr(`<b>Email Id :</b> ${esc(q.email || '')}`, `<b>Accounts :</b> ${esc(q.accounts || '')}`)}</table>
+    <div class="q-scroll">${tables}</div>
+    <div class="paper-foot ms-foot"><p><b>Totals :</b> ${D.S.map(s => `${esc(s.name)}: ${esc(s.sum.join(', '))}`).join(' · ') || '—'}</p>
+      ${D.amt != null ? `<p><b>Amount of the items above :</b> ₹ ${inr(D.amt)} <span style="font-weight:400">(GST included; installation and discount are on the quotation)</span></p>` : ''}
+      <div class="sign"><span>MEASURED BY${q.exec ? ' : ' + esc(String(q.exec).split(' - ')[0]).toUpperCase() : ''}</span><span>CUSTOMER SIGNATURE.</span><span>${FIRM.name}.</span></div></div>`;
+}
+
+// ---- the page: paper on the left, the buttons on the right (phones: buttons first)
+function renderMsheet(){
+  if (current !== 'msheet') return;
+  renderQuoteHead();   // fills today's date, the executive from People and the invoice no., as the quotation page does
+  const D = msShown(), q = state.quote || (state.quote = {}), P = msLast(), n = msNext(D), phone = qmOn();
+  $('#ms-paper').innerHTML = msPaperHTML(q, state.house, D, n, msEdit && !phone);
+  const ver = !P.n ? 'The first download will be <b>M1</b>.' : n === P.n ? `Last saved as <b>M${P.n}</b>. Nothing has changed since.` : `Changed since <b>M${P.n}</b>, so the next download will be <b>M${n}</b>.`;
+  const ban = D.hid ? `<div class="qe-ban"><b>Part sheet.</b> ${esc(D.hid)}<div class="qe-acts"><button class="btn" data-msall="1">Show everything</button></div></div>` : '';
+  $('#ms-sum').innerHTML = (msEdit && !phone ? `<div class="qe-card"><h3>Editing the measurement sheet</h3><p>Press <b>Hide</b> on a column, a row or a section. Hidden things are left out of the PDF, Excel and WhatsApp.</p>
+      ${D.hid ? `<p class="qe-now"><b>The client gets:</b> ${esc(D.hid)}</p>` : '<p class="qe-now">Nothing hidden yet.</p>'}
+      <div class="qe-acts">${D.hid ? '<button class="btn" data-msall="1">Show everything</button>' : ''}<button class="btn solid" data-msedit="0">Done</button></div></div>`
+    : ban + `<div class="qe-open"><button class="btn" data-msedit="1">${EDIT_ICON}Edit measurement sheet</button><span class="hint">Hide a section, a row or a column before sending.</span></div>`)
+    + `<div class="rows">${D.S.map(s => `<div class="srow"><span>${esc(s.name)}</span><b>${esc(s.sum[0] || '')}</b></div>`).join('')}${D.amt != null ? `<div class="srow"><span>Amount</span><b>${rs(D.amt)}</b></div>` : ''}</div>
+    <div class="q-acts"><button class="btn solid dl" id="ms-pdf">${DL_ICON}PDF</button><button class="btn solid dl" id="ms-xlsx">${DL_ICON}Excel</button>
+      <button class="btn dl" id="ms-wa" style="grid-column:1/-1">${WA_ICON}Send on WhatsApp</button><span class="hint">${ver} Each download or send is kept on the client's page.</span></div>`;
+  if (dlg.open && dlg.querySelector('#mse-list')) msDlgFill();
+}
+// phones: one screen with a switch for every section, row and column
+function msDlg(){
+  openDlg(`<div class="qv-top qe-top"><button class="qv-x" data-dlg="close" aria-label="Close">✕</button><span id="dlg-title">Edit measurement sheet</span><button class="qe-done" data-dlg="close">Done</button></div><div class="qe-body" id="mse-list"></div>`);
+  dlg.classList.add('qv', 'qe'); msDlgFill();
+}
+function msDlgFill(){
+  const box = dlg.querySelector('#mse-list'); if (!box) return;
+  const full = msData(), h = msHide(), D = msShown(full), y = box.scrollTop;
+  const sw = (kind, k, on, label, sub, cls = '') => `<label class="qe-sw ${cls}"><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span><input type="checkbox" data-msh="${kind}" data-k="${esc(k)}"${on ? ' checked' : ''}><i aria-hidden="true"></i></label>`;
+  box.innerHTML = `<p class="qe-help">Switch off what the client should not get. It is left out of the PDF, Excel and WhatsApp.</p>
+    ${D.hid ? `<div class="qe-ban"><b>The client gets:</b> ${esc(D.hid)}<div class="qe-acts"><button class="btn" data-msall="1">Show everything</button></div></div>` : ''}
+    ${full.map(s => { const on = !h.sec.includes(s.k);
+      return `<h3 class="qe-h">${esc(s.name)}</h3><div class="qe-grp">${sw('sec', s.k, on, 'Whole section', on ? `${s.rows.length} rows` : 'Hidden', 'sec')}
+        ${on ? s.rows.map(r => sw('row', r.key, !h.row.includes(r.key), esc([r.c.room, r.c.layer && (r.c.layer === 'S' ? 'Sheer' : 'Main'), r.c.item, r.c.wall].filter(Boolean).join(' · ') || '—'), esc(r.c.fabric || r.c.coll || r.c.design || r.c.product || r.c.what || ''))).join('')
+          + s.cols.map(([k, l]) => sw('col', s.k + '.' + k, !h.col.includes(s.k + '.' + k), 'Column: ' + esc(l), '')).join('') : ''}</div>`; }).join('')}`;
+  box.scrollTop = y;
+}
+document.addEventListener('click', e => {
+  const ed = e.target.closest('[data-msedit]');
+  if (ed) { if (qmOn() && ed.dataset.msedit === '1') { msDlg(); return; } msEdit = ed.dataset.msedit === '1'; renderMsheet(); return; }
+  if (e.target.closest('[data-msall]')) { msShowAll(); return; }
+  const b = e.target.closest('button[data-msh]'); if (b) msToggle(b.dataset.msh, b.dataset.k);
+});
+document.addEventListener('change', e => { const x = e.target.closest('input[data-msh]'); if (x) msToggle(x.dataset.msh, x.dataset.k); });
+
+// ---- PDF (A4 landscape: the sheet has many columns) and Excel, the same blue-and-white look as the quotation
+function msPDF(n, d = {q: state.quote || {}, house: state.house, D: msShown()}){
+  const {jsPDF} = window.jspdf, doc = new jsPDF({unit: 'pt', format: 'a4', orientation: 'landscape'}), q = d.q, D = d.D, house = d.house;
+  const M = 24, blue = [221, 235, 247], line = {lineColor: [0, 0, 0], lineWidth: .6, textColor: [0, 0, 0]};
+  const base = {theme: 'grid', margin: {left: M, right: M}, styles: Object.assign({fontSize: 8, cellPadding: 3, valign: 'middle'}, line)};
+  const two = (a, b) => [{content: a, styles: {fontStyle: 'bold'}}, {content: b, styles: {fontStyle: 'bold'}}];
+  doc.autoTable(Object.assign({}, base, {startY: M, columnStyles: {0: {cellWidth: 400}}, body: [
+    [{content: 'MEASUREMENT SHEET', colSpan: 2, styles: {halign: 'center', fontStyle: 'bold', fontSize: 12, fillColor: blue}}],
+    [{content: FIRM.name, colSpan: 2, styles: {halign: 'center', fontStyle: 'bold', fontSize: 14, lineWidth: {top: .6, left: .6, right: .6, bottom: 0}}}],
+    [{content: `${FIRM.addr}\nPhone : ${FIRM.phone}\nEmail : ${FIRM.email} , GSTIN : ${FIRM.gstin}`, colSpan: 2, styles: {halign: 'center', fontSize: 9}}],
+    two(`Billing Name : ${house || ''}`, `Measurement sheet : M${n}${q.no ? `   ·   Performa invoice : ${q.no}` : ''}`),
+    two(`Contact Person : ${q.contact || ''}`, `Date : ${q.date ? q.date.split('-').reverse().join('-') : ''}`),
+    two(`Contact Number : ${q.phone || ''}`, `Executive : ${q.exec || ''}`),
+    two(`Delivery Address : ${q.addr || ''}`, `Delivery Date (AFTER BOOKING) : ${ddateTxt(q.ddate)}`),
+    two(`Email Id : ${q.email || ''}`, `Accounts : ${q.accounts || ''}`)]}));
+  D.S.forEach((s, si) => {
+    const NC = s.cols.length + 1, colSt = {0: {halign: 'center', cellWidth: 26}};
+    s.cols.forEach(([, , num], i) => { colSt[i + 1] = {halign: num ? 'right' : 'left'}; });
+    const pdfTxt = t => String(t || '').replace(/″/g, '"').replace(/×/g, 'x').replace(/₹/g, 'Rs. ');   // the PDF's font has no ″ or ×
+    const body = s.rows.map((r, i) => [i + 1, ...s.cols.map(([k]) => pdfTxt(r.c[k]))]);
+    body.push([{content: s.sum.join(' · ') + (s.amt != null ? `   ·   ${s.name.toUpperCase()} AMOUNT Rs. ${inr(s.amt)}` : ''), colSpan: NC, styles: {fontStyle: 'bold', fillColor: [250, 250, 250]}}]);
+    doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + (si ? 8 : 0),
+      head: [[{content: `${si + 1} · ${s.name.toUpperCase()}`, colSpan: NC, styles: {fillColor: [242, 242, 242], halign: 'left'}}], ['Sr.', ...s.cols.map(c => c[1].replace('″', ' (in)'))]], body,
+      headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center'}, line), columnStyles: colSt}));
+  });
+  doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 8, pageBreak: 'avoid', body: [
+    [{content: 'Totals : ' + (D.S.map(s => `${s.name}: ${s.sum.join(', ')}`).join('   ·   ') || '-'), styles: {fontStyle: 'bold'}}],
+    ...(D.amt != null ? [[{content: `Amount of the items above : Rs. ${inr(D.amt)} (GST included; installation and discount are on the quotation)`, styles: {fontStyle: 'bold'}}]] : []),
+    [{content: `MEASURED BY${q.exec ? ' : ' + String(q.exec).split(' - ')[0].toUpperCase() : ''}                                                  CUSTOMER SIGNATURE.                                                  ${FIRM.name}.`, styles: {fontStyle: 'bold', minCellHeight: 46, valign: 'bottom'}}]]}));
+  return doc.output('blob');
+}
+async function msXLSX(n, d = {q: state.quote || {}, house: state.house, D: msShown()}){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+  const q = d.q, D = d.D, house = d.house, NC = Math.max(9, 1 + Math.max(0, ...D.S.map(s => s.cols.length)));
+  const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Measurement sheet', {views: [{showGridLines: false}],
+    pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: {left: .4, right: .4, top: .5, bottom: .55, header: .25, footer: .25}}});
+  ws.headerFooter.oddFooter = '&L&8Tatiya Industries · Measurement sheet&R&8Page &P of &N';
+  ws.columns = [6, ...Array(NC - 1).fill(13)].map(width => ({width}));
+  const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin}, fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: c}});
+  let r = 0; const mrg = (a, b) => { if (b > a) ws.mergeCells(r, a, r, b); };
+  const merged = (txt, o = {}) => { r++; mrg(1, o.to || NC); const c = ws.getCell(r, 1); c.value = txt; c.font = Object.assign({name: 'Arial', size: 9}, o.font);
+    c.alignment = Object.assign({vertical: 'middle', wrapText: true}, o.align); if (o.fill) c.fill = fill(o.fill); for (let i = 1; i <= (o.to || NC); i++) ws.getCell(r, i).border = o.border || box; if (o.h) ws.getRow(r).height = o.h; };
+  merged('MEASUREMENT SHEET', {font: {bold: true, size: 12}, align: {horizontal: 'center'}, fill: 'FFDDEBF7', h: 20});
+  merged(FIRM.name, {font: {bold: true, size: 14, underline: true}, align: {horizontal: 'center'}, h: 22});
+  merged(`${FIRM.addr}\nPhone : ${FIRM.phone}\nEmail : ${FIRM.email} , GSTIN : ${FIRM.gstin}`, {align: {horizontal: 'center'}, h: 40});
+  const mid = Math.round(NC / 2);
+  const pair = (a, b) => { r++; mrg(1, mid); mrg(mid + 1, NC);
+    [[1, a], [mid + 1, b]].forEach(([col, [k, v]]) => { const c = ws.getCell(r, col); c.value = {richText: [{text: k + ' : ', font: {name: 'Arial', size: 9, bold: true}}, {text: v || '', font: {name: 'Arial', size: 9}}]}; c.alignment = {vertical: 'middle', wrapText: true}; });
+    for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = 16; };
+  pair(['Billing Name', house], ['Measurement sheet', `M${n}${q.no ? ' · Performa invoice ' + q.no : ''}`]);
+  pair(['Contact Person', q.contact], ['Date', q.date ? q.date.split('-').reverse().join('-') : '']);
+  pair(['Contact Number', q.phone], ['Executive', q.exec]);
+  pair(['Delivery Address', q.addr], ['Delivery Date (After Booking)', ddateTxt(q.ddate)]);
+  pair(['Email Id', q.email], ['Accounts', q.accounts]);
+  D.S.forEach((s, si) => {
+    const nc = s.cols.length + 1;
+    merged(`${si + 1} · ${s.name}`, {font: {bold: true}, fill: 'FFF2F2F2', h: 17, to: nc});
+    r++; ['Sr.', ...s.cols.map(c => c[1])].forEach((t, i) => { const c = ws.getCell(r, i + 1); c.value = t; c.font = {name: 'Arial', size: 9, bold: true}; c.fill = fill('FFDDEBF7'); c.border = box; c.alignment = {horizontal: 'center', vertical: 'middle', wrapText: true}; });
+    s.rows.forEach((row, ri) => { r++; [ri + 1, ...s.cols.map(([k]) => row.c[k] || '')].forEach((v, i) => { const c = ws.getCell(r, i + 1); c.value = v; c.border = box; c.font = {name: 'Arial', size: 9, bold: s.cols[i - 1] && s.cols[i - 1][0] === 'amt'};
+      c.alignment = {vertical: 'middle', wrapText: true, horizontal: !i ? 'center' : s.cols[i - 1][2] ? 'right' : 'left'}; }); });
+    merged(s.sum.join(' · ') + (s.amt != null ? ` · ${s.name} amount ₹ ${inr(s.amt)}` : ''), {font: {bold: true}, fill: 'FFFAFAFA', to: nc, h: 16});
+    r++;   // a blank line between sections
+  });
+  const side = {left: thin, right: thin};
+  merged('Totals : ' + (D.S.map(s => `${s.name}: ${s.sum.join(', ')}`).join(' · ') || '—'), {font: {bold: true}, border: side, h: 30});
+  if (D.amt != null) merged(`Amount of the items above : ₹ ${inr(D.amt)} (GST included; installation and discount are on the quotation)`, {font: {bold: true}, border: side, h: 18});
+  r++; const a3 = Math.ceil(NC / 3), b3 = Math.ceil(NC * 2 / 3);
+  [[1, a3, `MEASURED BY${q.exec ? ' : ' + String(q.exec).split(' - ')[0].toUpperCase() : ''}`, 'left'], [a3 + 1, b3, 'CUSTOMER SIGNATURE.', 'center'], [b3 + 1, NC, FIRM.name + '.', 'right']].forEach(([a, b, txt, h]) => {
+    mrg(a, b); const c = ws.getCell(r, a); c.value = txt; c.font = {name: 'Arial', size: 9, bold: true}; c.alignment = {horizontal: h, vertical: 'bottom'}; });
+  for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = {left: i === 1 ? thin : undefined, right: i === NC ? thin : undefined, bottom: thin};
+  ws.getRow(r).height = 48;
+  return new Blob([await wb.xlsx.writeBuffer()], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+
+// ---- versions M1, M2…: every download or send is kept (the same sheet downloaded again keeps its number)
+async function msRecord(n, sig, D){
+  if (!shared || !db) { state.quote.mpdf = {n, sig}; save(); return; }
+  await flushDraft();
+  const cid = state.clientId, c = CL.byId.get(cid); if (!cid) return;
+  if (c && c.mlatest === n && c.msig === sig) return;
+  const q = clone(state.quote || {}); delete q.pdf; delete q.mpdf;
+  const at = new Date().toISOString(), name = state.house || '';
+  try {
+    if (await Store.sheetExists(cid, n)) { toast(`Someone saved M${n} a moment ago. Download again to save yours as M${n + 1}.`); delete CL.msv[cid]; return; }
+    await Store.addSheet(cid, n, clone({cid, n, kind: 'ms', sig, at, by: UID, name, exec: q.exec || '', total: D.amt ?? null, hid: D.hid || '',
+      snap: {house: name, q, D, rows: state.rows, blinds: state.blinds, more: state.more}}));
+    await Store.mergeClient(cid, {mlatest: n, msig: sig, edited: at});
+    delete CL.msv[cid];
+    toast(`Kept as M${n} in ${name || 'this client'}'s page`);
+  } catch (e) { toast(e && e.code === 'invalid_argument' ? 'File saved, but not kept on the client: ask Purvi to check your access.' : 'File saved, but not kept on the client. Check the internet and download again.'); }
+}
+async function msLibs(){ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'); }
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('#ms-pdf, #ms-xlsx, #ms-wa'); if (!btn) return;
+  const wa = btn.id === 'ms-wa', phoneWay = wa && sharePdfOk(), cl = state.clientId && CL.byId.get(state.clientId), m = mobile((cl && cl.phone) || (state.quote || {}).phone);
+  if (wa && !phoneWay && m.length !== 10) { toast('Add the client’s 10-digit mobile number first'); return; }
+  const tab = wa && !phoneWay ? window.open('', WA_TAB) : null;
+  btn.disabled = true; const old = btn.innerHTML; btn.textContent = btn.id === 'ms-xlsx' ? 'Making the Excel…' : 'Making the PDF…';
+  try {
+    await refreshClient();
+    const D = msShown(), n = msNext(D), sig = msSig(D), xl = btn.id === 'ms-xlsx';
+    if (!xl) await msLibs();
+    const blob = xl ? await msXLSX(n) : msPDF(n), name = xl ? msFileName(n).replace(/\.pdf$/, '.xlsx') : msFileName(n);
+    const q = state.quote || {}, who = q.contact || state.house || '';
+    const text = [`Namaste${who ? ' ' + who : ''},`, 'Here is your measurement sheet from Charpai.', `Measurement sheet M${n}`].join('\n');
+    if (phoneWay) {
+      await msRecord(n, sig, D); renderMsheet();
+      try { await navigator.share({files: [new File([blob], name, {type: 'application/pdf'})], text}); if (shared && db && cl) addNote(cl, `Measurement sheet M${n} sent on WhatsApp`, 'log').catch(() => {}); }
+      catch (err) { if (!(err && err.name === 'AbortError')) toast('Could not open WhatsApp. Use ↓ PDF instead.'); }
+    } else if (await saveFile(name, blob)) {
+      await msRecord(n, sig, D); renderMsheet();
+      if (wa) { const url = waUrl(m, text); if (tab && !tab.closed) { tab.location.href = url; tab.focus(); } else window.open(url, WA_TAB);
+        if (shared && db && cl) addNote(cl, `Measurement sheet M${n} sent on WhatsApp`, 'log').catch(() => {}); toast('The PDF is in your Downloads: drag it into the WhatsApp chat.'); }
+    } else if (tab) tab.close();
+  } catch (err) { if (tab) tab.close(); toast('Could not make the file. Check the internet.'); }
+  btn.disabled = false; btn.innerHTML = old;
+});
+// an old version, from the client's page
+async function msOf(cid){
+  if (!Array.isArray(CL.msv[cid])) { try { CL.msv[cid] = await Store.listSheets(cid); } catch (e) { CL.msv[cid] = 'error'; return []; } }
+  return CL.msv[cid];
+}
+function msShowVersion(c, x){
+  openDlg(`<div class="dlg-top"><div><h2 id="dlg-title" style="margin:0">${esc(c.name)} · M${x.n}</h2><span class="hint">${esc(whenTxt(x.at))}${x.total != null ? ' · ' + rs(x.total) : ''}</span>${x.hid ? `<p class="qe-ban" style="margin:8px 0 0"><b>Part sheet.</b> ${esc(x.hid)}</p>` : ''}</div>
+    <div class="cp-acts"><button class="btn solid" data-msv="pdf" data-n="${x.n}">Download PDF</button><button class="btn" data-dlg="close">Close</button></div></div>
+    <div class="dlg-body"><div class="paper-wrap" style="border:0">${msPaperHTML(x.snap.q, x.snap.house, x.snap.D, x.n)}</div></div>`, true);
+}
+async function msDownloadVersion(x, b){
+  if (b) { b.disabled = true; b.textContent = 'Making…'; }
+  try { await msLibs(); await saveFile(msFileName(x.n, x.snap.house, new Date(x.at)), msPDF(x.n, {q: x.snap.q, house: x.snap.house, D: x.snap.D})); }
+  catch (err) { toast('Could not make the PDF. Check the internet.'); }
+  if (b) { b.disabled = false; b.textContent = 'PDF'; }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-msv]'); if (!b) return;
+  const c = CL.byId.get(cpId), M = Array.isArray(CL.msv[cpId]) ? CL.msv[cpId] : [], x = M.find(v => v.n === +b.dataset.n); if (!c || !x) return;
+  if (b.dataset.msv === 'view') msShowVersion(c, x); else msDownloadVersion(x, b);
+});
+
 function toast(m){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 
 // Light / dark switch in the yellow bar (Purvi, 2 Oct). Starts from the phone or laptop's own setting; a tap is remembered on this device.
@@ -6636,4 +6990,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-162801 -->
+<!-- build 20261019-172108 -->
