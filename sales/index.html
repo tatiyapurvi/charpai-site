@@ -171,8 +171,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Curtains sheet, 19 Oct (Purvi: on a desktop the side margins were too wide and the table scrolled sideways all the time).
    Only this page: the side margins are the same share of the screen on every size (1.5%, ≥16px), the side panel is 420px
    (was 520px), and the table gets the rest. The header follows, so its edges line up with the sheet. */
-body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) .page,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) .tape,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) .tabs{padding-inline:max(16px,1.5vw)}
-body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}
+body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) .page,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) .tape,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) .tabs{padding-inline:max(16px,1.5vw)}
+body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}   /* + the client page (20 Oct, Purvi): Overview and the 3 buttons in the same place */
 /* 20 Oct (Purvi): every sheet, the measurement sheet view and the quotation share the same margins, and the client bar (Overview ·
    products · View measurement sheet · Measurement sheet · Quotation) stays fixed under the menu while scrolling (laptops/tablets;
    phones keep the screen for the sheet). --tabs-h / --cbar-h are measured (fitTopBars), so the side panels sit just below it. */
@@ -7323,4 +7323,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-125138 -->
+<!-- build 20261020-125725 -->
