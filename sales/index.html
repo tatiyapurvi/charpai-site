@@ -4797,13 +4797,15 @@ const EYE_ICON = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="t
 // them; same column widths, follows the table sideways; the Room column stays put as in the table. Laptops/tablets only.
 function floatHeads(){
   const big = matchMedia('(min-width: 761px)').matches;
-  document.querySelectorAll('#v-measure .tbl-scroll, #v-blinds .tbl-scroll, #v-product .tbl-scroll').forEach(sc => {
+  document.querySelectorAll('.fhead').forEach(f => { if (!f._sc || !f._sc.isConnected) f.remove(); });   // its table was redrawn (quotation, sheet view)
+  // + View quotation and View measurement sheet (20 Oct, Purvi: "i just want to know what is what if i have scrolled down")
+  document.querySelectorAll('#v-measure .tbl-scroll, #v-blinds .tbl-scroll, #v-product .tbl-scroll, #q-paper .q-scroll, #ms-paper .q-scroll').forEach(sc => {
     let f = sc._fh; const th = sc.querySelector('thead'), on = big && th && sc.offsetParent !== null;
     if (!on) { if (f) f.hidden = true; return; }
     const top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabs-h')) || 0) + ($('#cbar') && !$('#cbar').hidden ? $('#cbar').offsetHeight : 0);
     const r = sc.getBoundingClientRect(), h = th.getBoundingClientRect();
     const show = h.top < top && r.bottom > top + h.height + 30;
-    if (!f) { f = sc._fh = document.createElement('div'); f.className = 'fhead'; f.hidden = true; document.body.appendChild(f); }
+    if (!f) { f = sc._fh = document.createElement('div'); f.className = 'fhead'; f.hidden = true; f._sc = sc; document.body.appendChild(f); }
     if (!show) { f.hidden = true; return; }
     const sig = th.innerHTML.length + '|' + sc.scrollWidth;
     if (f._sig !== sig || !f.firstChild) {
@@ -7373,4 +7375,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-131920 -->
+<!-- build 20261020-132456 -->
