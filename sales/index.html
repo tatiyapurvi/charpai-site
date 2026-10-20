@@ -840,6 +840,16 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 #v-msheet .paper.ms-tab{margin-top:14px;border-top:1px solid #333}
 #v-msheet .paper.ms-tab thead .secrow td{background:#F2F2F2;font-weight:700}
 .ms-foot p{margin:8px 0}
+/* 20 Oct: the team's room-wise sheet (their Excel): Area written once per room, MZD green, remarks red under Fixing */
+#v-msheet .paper.ms-room{margin-top:14px;border-top:1px solid #333}
+.paper.ms-room th{background:#DDEBF7;text-align:center;font-size:11.5px;line-height:1.25}
+.paper.ms-room td{font-size:12.5px}
+.paper.ms-room td.c{text-align:center}
+.paper.ms-room td.r{text-align:right;font-variant-numeric:tabular-nums}
+.paper.ms-room .ms-area{font-weight:700;text-align:center;background:#fff}
+.paper.ms-room .ms-mzd{background:#C6EFCE;color:#006100;font-weight:700}
+.paper.ms-room .ms-note{display:block;color:#C00000;font-weight:600;font-size:11.5px}
+.paper-top.ms-top td{font-size:12.5px}
 @media (max-width:999px){ #v-msheet .q-sum{order:-1} }
 .qe-open .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:10px;padding:10px;font-size:15px}
 .qe-open .btn:hover{background:color-mix(in srgb,var(--ink) 12%,transparent)}
@@ -4737,6 +4747,7 @@ function renderCbar(){
 const MS_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width:17px;height:17px" aria-hidden="true"><rect x="2.5" y="6" width="15" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6v3M9 6v4M12 6v3M15 6v4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 const QT_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width:17px;height:17px" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 var ctLastSheet = '';
+const EYE_ICON = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M1.8 10S5 4.5 10 4.5 18.2 10 18.2 10 15 15.5 10 15.5 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 function ctabsHTML(overview){
   const cid = current === 'client' ? cpId : state.clientId, here = !shared || cid === state.clientId;
   const n = shared && cid && cid !== '__new' ? sheetN(cid) : here ? sheetN(cid) : {};
@@ -4746,7 +4757,7 @@ function ctabsHTML(overview){
   const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
   // 20 Oct (Purvi): on the Quotation the bar stays exactly as on the sheet (product tabs + Download sheet); was sheet-only (18 Oct)
   const products = !overview || inSheet || current === 'quote' ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}
-    <button class="ctab ms-dl" role="tab" data-ct="msheet" aria-selected="${current === 'msheet'}">${DL_ICON}Download sheet</button>` : '';   // 19 Oct: the measurement sheet as a PDF / Excel
+    <button class="ctab ms-dl" role="tab" data-ct="msheet" aria-selected="${current === 'msheet'}">${EYE_ICON}View measurement sheet</button>` : '';   // 19 Oct: the sheet as a PDF / Excel; 20 Oct: renamed (Purvi), the team's room-wise layout
   // 19 Oct (Purvi): a new enquiry shows no Measurement sheet / Quotation buttons; Done at the bottom is its only way on
   const fresh = shared && current === 'client' && (cpId === '__new' || cpFresh === cpId);
   if (fresh) return `<div class="ctabs-row"><div class="ctabs" role="tablist">${tab('client', 'Overview')}</div></div>`;
@@ -6631,7 +6642,7 @@ function cpActivity(c, V){
         <button class="n-link sm n-from" data-act="from" data-n="${x.n}">Start again from v${x.n}</button></div></li>`; }
     if (e.k === 'm') { const x = e.v, prev = MV.find(v => v.n === x.n - 1), G = prev && prev.snap && x.snap ? verChanges(prev.snap, x.snap) : null;
       return `<li class="n-ev n-ver"><span class="n-evd v">M${x.n}</span><div class="n-evm">
-        <div class="n-vh"><p class="n-vt">Measurement sheet M${x.n} saved${x.total != null ? ` <b>${rs(x.total)}</b>` : ''}</p>
+        <div class="n-vh"><p class="n-vt">Measurement sheet M${x.n} saved</p>
           <span class="n-evb"><button class="n-btn sm" data-msv="view" data-n="${x.n}">View</button><button class="n-btn sm" data-msv="pdf" data-n="${x.n}">PDF</button></span></div>
         <small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''}</small>
         ${x.hid ? `<p class="qe-ban n-part"><b>Part sheet.</b> ${esc(x.hid)}</p>` : ''}
@@ -6902,7 +6913,12 @@ function msData(){
         c: {room: r.room || '', layer: r.layer === 'Sheer' ? 'S' : 'M', fabric: r.fabric || '', lining: r.lining || '', style: r.style || '', H: msNum(r.H), W: msNum(r.W),
           panels: ok ? `${res.panels} × ${f1(c.d.W / res.panels)}″` : '', fabm: ok ? cpF(res.qty) : '', linm: ok && lin ? cpF(lin.m) : '', track: r.track ? trackShort(r.track) : '', tlen: ok && res.track ? trackStr(res) : '',
           fixing: r.fixing ? r.fixing.replace(' fixing', '') : '', stitched: r.stitchBy === 'Company' ? 'Company' : 'Local', remarks: r.remarks || '',
-          mrp: cf && has(cf.r) ? inr(mrpOf2(cf.r, cf.g || +G.fabric || 5)) : '', amt: a && a.total ? inr(a.total) : ''}}); });
+          mrp: cf && has(cf.r) ? inr(mrpOf2(cf.r, cf.g || +G.fabric || 5)) : '', amt: a && a.total ? inr(a.total) : ''},
+        u: {area: r.room || '', product: 'CURTAIN', pattern: r.layer === 'Sheer' ? 'SHEER' : 'MAIN', details: cf ? fabricName(r) : r.fabric || '', H: msNum(r.H), W: msNum(r.W),
+          panel: ok ? String(res.panels) : '', part: String(String(r.parts || '').trim() || PARTS_DEFAULT), qty: ok ? cpF(res.qty) : '',
+          lining: lin ? `${linShort(r.lining)} ${cpF(lin.m)} m` : '', kit: ok && res.track && res.trackUnit !== 'ft' ? (kitSize(res.track, res.kitMin) || 'over 9') : '',
+          rft: ok && res.track && res.trackUnit === 'ft' ? cpF(res.track) : '', mzd: ok && res.track && res.trackUnit !== 'ft' ? 'MZD' : '',
+          fixing: r.fixing ? r.fixing.replace(' fixing', ' fix') : '', note: r.remarks || ''}}); });
     sec('curtains', 'Curtains', [['room', 'Room'], ['layer', 'M/S'], ['fabric', 'Fabric'], ['lining', 'Lining'], ['style', 'Style'], ['H', 'H″', 1], ['W', 'W″', 1], ['panels', 'Panels'], ['fabm', 'Fabric m', 1],
       ['linm', 'Lining m', 1], ['track', 'Track'], ['tlen', 'Track length'], ['fixing', 'Fixing'], ['stitched', 'Stitched'], ['remarks', 'Remarks'], ['mrp', 'Fabric MRP /m', 1], ['amt', 'Amount', 1]], R,
       L => [`${msSum(L, x => x.n.cur)} curtain${msSum(L, x => x.n.cur) === 1 ? '' : 's'}`, `${msSum(L, x => x.n.panels)} panels`, `${cpF(msSum(L, x => x.n.fab))} m fabric`,
@@ -6912,7 +6928,9 @@ function msData(){
       const amt = c.amt ? c.amt + (c.addonAmt || 0) : 0;
       R.push({key: 'blinds|' + b.id, amt, n: {q: c.q, sq: c.ok ? c.charge * c.q : 0},
         c: {room: b.room || '', type: b.fam || '', sys: (p && p.sys) || b.sys || '', coll: bCollOf(b) || b.series || '', shade: b.shade || (p ? p.design || '' : ''), H: msNum(b.H), W: msNum(b.W), qty: String(c.q),
-          sqft: c.ok ? cpF(c.charge * c.q) : '', works: motor ? 'Motorised' : 'Manual', remarks: b.remarks || '', mrp: c.mrp ? inr(c.mrp) : '', amt: amt ? inr(amt) : ''}}); });
+          sqft: c.ok ? cpF(c.charge * c.q) : '', works: motor ? 'Motorised' : 'Manual', remarks: b.remarks || '', mrp: c.mrp ? inr(c.mrp) : '', amt: amt ? inr(amt) : ''},
+        u: {area: b.room || '', product: 'BLIND', pattern: String(b.fam || '').toUpperCase(), details: [BCODE[b.sup], bCollOf(b) || b.series || '', b.shade || (p ? p.design || '' : '')].filter(Boolean).join(' '),
+          H: msNum(b.H), W: msNum(b.W), qty: c.q > 1 ? `${c.q} pcs` : '', sqft: c.ok ? cpF(c.charge * c.q) : '', mzd: motor ? 'MZD' : '', fixing: (b.o || {}).fixing || '', note: b.remarks || ''}}); });
     sec('blinds', 'Blinds', [['room', 'Room'], ['type', 'Type'], ['sys', 'System'], ['coll', 'Collection'], ['shade', 'Shade'], ['H', 'H″', 1], ['W', 'W″', 1], ['qty', 'Qty', 1], ['sqft', 'Sq ft', 1],
       ['works', 'Works'], ['remarks', 'Remarks'], ['mrp', 'MRP /sq ft', 1], ['amt', 'Amount', 1]], R,
       L => [`${msSum(L, x => x.n.q)} blind${msSum(L, x => x.n.q) === 1 ? '' : 's'}`, `${cpF(Math.round(msSum(L, x => x.n.sq) * 100) / 100)} sq ft`]); }
@@ -6921,7 +6939,9 @@ function msData(){
       const byRoll = !!(it && WPL[r.sup] && WPL[r.sup].uom === 'roll'), mrp = it && !wpSq(it) && has(it.rrp) ? mrpOf2(it.rrp, it.gst) : null, rolls = roll ? (nv(r.rolls) || c.calcRolls || 0) : 0;
       R.push({key: 'wallpaper|' + i, amt: byRoll && mrp ? rolls * mrp : 0, n: {w: 1, rolls},
         c: {room: r.room || '', wall: r.wall || '', sup: r.sup || '', design: it ? `${it.sku} ${it.name}` : r.design || '', kind: roll ? r.roll || '' : 'Mural', H: msNum(r.H), W: msNum(r.W),
-          area: c.ok ? cpF(c.area) : '', rolls: rolls ? String(rolls) : '', remarks: r.remarks || '', mrp: mrp ? inr(mrp) + (byRoll ? ' /roll' : ' /box') : '', amt: byRoll && mrp && rolls ? inr(rolls * mrp) : ''}}); });
+          area: c.ok ? cpF(c.area) : '', rolls: rolls ? String(rolls) : '', remarks: r.remarks || '', mrp: mrp ? inr(mrp) + (byRoll ? ' /roll' : ' /box') : '', amt: byRoll && mrp && rolls ? inr(rolls * mrp) : ''},
+        u: {area: r.room || '', product: 'WALLPAPER', pattern: [r.wall, roll ? '' : 'MURAL'].filter(Boolean).join(' · ').toUpperCase(), details: [r.sup, it ? `${it.sku} ${it.name}` : r.design || ''].filter(Boolean).join(' '),
+          H: msNum(r.H), W: msNum(r.W), qty: rolls ? `${rolls} rolls` : '', sqft: c.ok ? cpF(c.area) : '', note: r.remarks || ''}}); });
     sec('wallpaper', 'Wallpaper', [['room', 'Room'], ['wall', 'Wall'], ['sup', 'Company'], ['design', 'Design'], ['kind', 'Roll / mural'], ['H', 'H″', 1], ['W', 'W″', 1], ['area', 'Sq ft', 1], ['rolls', 'Rolls', 1],
       ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.w)} wall${msSum(L, x => x.n.w) === 1 ? '' : 's'}`, msSum(L, x => x.n.rolls) ? `${msSum(L, x => x.n.rolls)} rolls` : '']); }
   { const R = [];
@@ -6929,18 +6949,23 @@ function msData(){
       const amt = mrp && c.order ? Math.round(c.order * mrp) : 0;
       R.push({key: 'flooring|' + i, amt, n: {a: 1, sq: c.order || 0},
         c: {room: r.room || '', type: r.type || '', sup: r.sup || '', product: it ? it.name : r.product || '', L: msNum(r.L), W: msNum(r.W), area: c.ok ? cpF(c.area) : '', order: c.order ? cpF(c.order) + (c.boxes ? ` (${c.boxes} boxes)` : '') : '',
-          edge: r.edge || '', remarks: r.remarks || '', mrp: mrp ? inr(mrp) : '', amt: amt ? inr(amt) : ''}}); });
+          edge: r.edge || '', remarks: r.remarks || '', mrp: mrp ? inr(mrp) : '', amt: amt ? inr(amt) : ''},
+        u: {area: r.room || '', product: 'FLOORING', pattern: String(r.type || '').toUpperCase(), details: [r.sup, it ? it.name : r.product || ''].filter(Boolean).join(' '), H: msNum(r.L), W: msNum(r.W),
+          qty: c.boxes ? `${c.boxes} boxes` : '', sqft: c.order ? cpF(c.order) : c.ok ? cpF(c.area) : '', note: [r.edge, r.remarks].filter(Boolean).join(' · ')}}); });
     sec('flooring', 'Flooring', [['room', 'Room'], ['type', 'Type'], ['sup', 'Company'], ['product', 'Product'], ['L', 'L″', 1], ['W', 'W″', 1], ['area', 'Area sq ft', 1], ['order', 'To order sq ft', 1],
       ['edge', 'Edges'], ['remarks', 'Remarks'], ['mrp', 'MRP /sq ft', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.a)} area${msSum(L, x => x.n.a) === 1 ? '' : 's'}`, `${cpF(msSum(L, x => x.n.sq))} sq ft to order`]); }
   { const R = [];
     (state.more.uph || []).forEach((r, i) => { const c = MP.uph.calc(r); if (!c.ok) return;
-      R.push({key: 'uph|' + i, amt: c.tot || 0, n: {l: 1}, c: {item: c.q ? c.q.product : r.p || '', what: c.what || '', qty: `${cpF(r2(c.qty))} ${c.u || ''}`.trim(), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''}}); });
+      R.push({key: 'uph|' + i, amt: c.tot || 0, n: {l: 1}, c: {item: c.q ? c.q.product : r.p || '', what: c.what || '', qty: `${cpF(r2(c.qty))} ${c.u || ''}`.trim(), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''},
+        u: {area: r.room || '', product: 'UPHOLSTERY', pattern: String(c.q ? c.q.product : r.p || '').toUpperCase(), details: c.what || '', qty: `${cpF(r2(c.qty))} ${c.u || ''}`.trim(), note: r.remarks || ''}}); });
     sec('uph', 'Upholstery material', [['item', 'Item'], ['what', 'Details'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.l)} line${msSum(L, x => x.n.l) === 1 ? '' : 's'}`]); }
   { const R = [];
     (state.more.mattress || []).forEach((r, i) => { if (!r.p) return; const c = mtCalc(r); if (!c.ok) return; const mat = r.p === 'Mattress';
       R.push({key: 'mattress|' + i, amt: c.tot || 0, n: {q: c.qty || 1},
         c: {room: r.room || '', bed: r.bed || '', item: mat ? ['Mattress', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' · ') : r.item || r.p, size: mat && nv(r.L) ? `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″` : '',
-          qty: String(c.qty || 1), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''}}); });
+          qty: String(c.qty || 1), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''},
+        u: {area: r.room || '', product: 'MATTRESS', pattern: String(r.bed || '').toUpperCase(), details: mat ? ['Sleepwell', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' ') : r.item || r.p,
+          H: mat && nv(r.L) ? fmt(nv(r.L)) : '', W: mat && nv(r.W) ? fmt(nv(r.W)) : '', qty: `${c.qty || 1} pcs`, note: r.remarks || ''}}); });
     sec('mattress', 'Mattresses and pillows', [['room', 'Room'], ['bed', 'Bed'], ['item', 'Item'], ['size', 'Size'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R,
       L => [`${msSum(L, x => x.n.q)} piece${msSum(L, x => x.n.q) === 1 ? '' : 's'}`]); }
   // a column nobody filled in (e.g. Remarks, or Lining with no lined curtain) is left out, so the sheet stays short
@@ -6955,10 +6980,10 @@ function msShown(full = msData()){
     if (h.sec.includes(s.k)) continue;
     const rows = s.rows.filter(r => !h.row.includes(r.key)); if (!rows.length) continue;
     const cols = s.cols.filter(([k]) => !h.col.includes(s.k + '.' + k)), amtOn = cols.some(([k]) => k === 'amt');
-    out.push({k: s.k, name: s.name, cols, rows: rows.map(r => ({key: r.key, c: r.c, amt: r.amt})), sum: s.sum(rows).filter(Boolean), amt: amtOn ? msSum(rows, r => r.amt) : null});
+    out.push({k: s.k, name: s.name, cols, rows: rows.map(r => ({key: r.key, c: r.c, amt: r.amt, u: r.u})), sum: s.sum(rows).filter(Boolean), amt: amtOn ? msSum(rows, r => r.amt) : null});
   }
   const shown = out.filter(s => s.amt != null);
-  return {S: out, amt: shown.length ? msSum(shown, s => s.amt) : null, hid: msHideTxt(full, out)};
+  return {S: out, amt: shown.length ? msSum(shown, s => s.amt) : null, hid: msHideTxt(full, out), ref: msRef()};
 }
 function msHideTxt(full, out){
   const h = msHide(), on = new Map(out.map(s => [s.k, s])), L = [];
@@ -6970,6 +6995,8 @@ function msHideTxt(full, out){
     if (left.length) P.push(`${left.length} row${left.length > 1 ? 's' : ''} left out (${left.map(r => r.c.room || r.c.item || r.c.what || '—').join(', ')})`);
     if (hc.length) P.push(`${hc.length > 1 ? 'columns' : 'column'} ${listTxt(hc)} hidden`);
     if (P.length) L.push(`${s.name}: ${P.join('; ')}.`); }
+  const uc = MS_COLS.filter(([k]) => h.col.includes('u.' + k)).map(c => c[1].toLowerCase());
+  if (uc.length) L.push(`${uc.length > 1 ? 'Columns' : 'Column'} ${listTxt(uc)} hidden.`);
   return L.join(' ');
 }
 function msToggle(kind, k){
@@ -6984,7 +7011,7 @@ function msShowAll(){ if (state.quote) delete state.quote.mshide; save(); render
 const msPack = D => Object.assign({}, D, {S: D.S.map(s => Object.assign({}, s, {cols: s.cols.map(([k, l, n]) => ({k, l, n: !!n}))}))});
 const msUnpack = D => D && Object.assign({}, D, {S: (D.S || []).map(s => Object.assign({}, s, {cols: (s.cols || []).map(c => Array.isArray(c) ? c : [c.k, c.l, c.n])}))});
 function msSig(D){
-  const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''), D.S.map(s => [s.k, s.cols.map(c => c[0]), s.rows.map(r => s.cols.map(([k]) => r.c[k]))]), D.amt]);
+  const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''), D.S.map(s => [s.k, s.cols.map(c => c[0]), s.rows.map(r => [s.cols.map(([k]) => r.c[k]), r.u || null])]), D.amt, msHide().col]);
   let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 ^ txt.charCodeAt(i)) >>> 0;
   return h.toString(36);
 }
@@ -6992,35 +7019,57 @@ function msLast(){ if (shared) { const c = state.clientId && CL.byId.get(state.c
 function msNext(D){ const P = msLast(); return !P.n ? 1 : P.sig === msSig(D) ? P.n : P.n + 1; }
 const msFileName = (n, house = state.house, d = new Date()) => quoteFileName(n, house, '', d).replace(/^v(\d+)_/, 'M$1_Measurement_');
 
-// ---- the paper: the quotation's blue-and-white look; ed = editing (everything drawn, hidden things greyed, Hide / Show buttons)
+// ---- the team's own layout (Purvi, 20 Oct 2026: "my team is used to seeing the measurement sheet in this format … everything is
+// clubbed roomwise not product wise, first roomwise then in room productwise"; her answers: Sr. No separate for main and sheer;
+// track = running feet when manual, metre kit (D'Decor kit sizes) when motorised, in two columns as in their Excel; Black out = the
+// lining's name and metres; no prices; wallpaper, flooring, upholstery and mattresses in the same table under their room).
+// One table: Sr. No · Area (written once per room) · Product · Pattern · Fabric details · Size (inch) Height / Width · Panel · Part ·
+// Qty · Sq ft · Black out · Track/Rod/Roman qty (m kit) · Track qty (Rft) · MZD · Fixing (+ remarks in red). Empty columns drop out.
+// Making the sheets is unchanged; each row carries its values in `u` (msData). Old saved versions (no `u`) are read from `c`.
+const MS_COLS = [['product', 'PRODUCT'], ['pattern', 'PATTERN'], ['details', 'FABRIC DETAILS'], ['H', 'HEIGHT', 1], ['W', 'WIDTH', 1], ['panel', 'PANEL', 1], ['part', 'PART', 1],
+  ['qty', 'QTY', 1], ['sqft', 'SQ.FT QTY', 1], ['lining', 'BLACK OUT'], ['kit', 'TRACK/ROD/ROMAN QTY (MTR KIT)', 1], ['rft', 'TRACK QTY (RFT)', 1], ['mzd', 'MZD'], ['fixing', 'FIXING']];
+const msU = (s, r) => r.u || {area: r.c.room || '', product: String(s.name || '').toUpperCase(), pattern: r.c.layer === 'S' ? 'SHEER' : r.c.layer === 'M' ? 'MAIN' : String(r.c.type || r.c.kind || r.c.bed || '').toUpperCase(),
+  details: r.c.fabric || [r.c.coll, r.c.shade].filter(Boolean).join(' ') || r.c.design || r.c.product || r.c.item || r.c.what || '', H: r.c.H || '', W: r.c.W || r.c.L || '',
+  qty: r.c.fabm || r.c.rolls || r.c.qty || '', sqft: r.c.sqft || r.c.area || '', lining: [r.c.lining && linShort(r.c.lining), r.c.linm && r.c.linm + ' m'].filter(Boolean).join(' '),
+  fixing: r.c.fixing || '', note: r.c.remarks || ''};
+function msRef(){ const c = shared && state.clientId && CL.byId.get(state.clientId); if (!c) return ''; return [c.refBy, c.arch && c.arch.name ? 'Ar. ' + c.arch.name : ''].filter(Boolean).join(' · '); }
+// rooms in the order they were first measured (curtains first, then blinds…), products in that order inside each room
+function msRooms(D){
+  const flat = []; (D.S || []).forEach(s => s.rows.forEach(r => flat.push({key: r.key, sec: s.k, u: msU(s, r)})));
+  const G = []; let cur = null;
+  byRoom(flat, x => x.u.area).forEach(x => { const k = roomKey(x.u.area); if (!cur || cur.k !== k) G.push(cur = {k, room: x.u.area, rows: []}); cur.rows.push(x); });
+  return G;
+}
+const msFilled = (x, k) => String(x.u[k] || '').trim() || (k === 'fixing' && String(x.u.note || '').trim());
+function msCols(G, ed){ const h = msHide(); return MS_COLS.filter(([k]) => G.some(g => g.rows.some(x => msFilled(x, k)))).filter(([k]) => ed || !h.col.includes('u.' + k)); }
+const msDateTxt = q => q.date ? q.date.split('-').reverse().join('-') : '';
+const msMeasurer = q => q.exec ? String(q.exec).split(' - ')[0] : '';
+
+// ---- the paper (blue-and-white, as the quotation); ed = editing (everything drawn, hidden things greyed, Hide / Show buttons)
 function msPaperHTML(q, house, D, n, ed){
-  const full = ed ? msData() : null, h = ed ? msHide() : null, S = ed ? full : D.S;
-  const hdr = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
-  const btn = (kind, k, on, a, b) => `<button class="qh${on ? '' : ' show'}" data-msh="${kind}" data-k="${esc(k)}">${on ? a : b}</button>`;
-  if (!S.length) return `<div class="q-empty"><b>Nothing measured yet</b>${ed ? '' : '<button class="btn solid" data-qempty>Open measurement sheet</button>'}</div>`;
-  const shown = new Map(D.S.map(s => [s.k, s]));
-  let si = 0;
-  const tables = S.map(s => {
-    const o = shown.get(s.k), secOn = !!o, no = secOn ? ++si : '', cols = ed ? s.cols : o.cols, onCol = k => !ed || (secOn && o.cols.some(c => c[0] === k)) || (!secOn && !h.col.includes(s.k + '.' + k));
-    const rowOn = r => !ed || (secOn && o.rows.some(x => x.key === r.key));
-    let i = 0;
-    const head = `<tr><th class="qc-no">Sr.</th>${cols.map(([k, l]) => `<th${onCol(k) ? '' : ' data-off'}>${esc(l)}${ed && secOn ? btn('col', s.k + '.' + k, onCol(k), 'Hide', 'Show') : ''}</th>`).join('')}${ed ? '<th class="qe"></th>' : ''}</tr>`;
-    const body = s.rows.map(r => { const on = rowOn(r);
-      return `<tr${on ? '' : ' data-off'}><td class="c">${on ? ++i : '—'}</td>${cols.map(([k, , num]) => `<td${num ? ' class="r"' : ''}${onCol(k) ? '' : ' data-off'}>${esc(r.c[k] || '')}</td>`).join('')}${ed ? `<td class="qe">${secOn ? btn('row', r.key, on, 'Hide', 'Show') : ''}</td>` : ''}</tr>`; }).join('');
-    const tot = secOn ? `<tr class="subrow"><td colspan="${cols.length + 1}">${esc(o.sum.join(' · '))}${o.amt != null ? ` · <b>${s.name} amount ₹ ${inr(o.amt)}</b>` : ''}</td>${ed ? '<td class="qe"></td>' : ''}</tr>` : '';
-    return `<table class="paper ms-tab${ed ? ' editing' : ''}"><thead><tr class="secrow"${secOn ? '' : ' data-off'}><td colspan="${cols.length + 1}">${no ? no + ' · ' : ''}${esc(s.name)}</td>${ed ? `<td class="qe">${btn('sec', s.k, secOn, 'Hide section', 'Show section')}</td>` : ''}</tr>${head}</thead><tbody>${body}${tot}</tbody></table>`;
-  }).join('');
-  return `<table class="paper-top"><tr><th colspan="2" class="pi">MEASUREMENT SHEET</th></tr>
-      <tr><td colspan="2" class="firm"><b>${FIRM.name}</b><br>${FIRM.addr}<br>Phone : ${FIRM.phone}<br>Email : ${FIRM.email} , GSTIN : ${FIRM.gstin}</td></tr>
-      ${hdr(`<b>Billing Name :</b> ${esc(house || '')}`, `<b>Measurement sheet :</b> ${n ? 'M' + n : ''}${q.no ? ` · Performa invoice ${esc(q.no)}` : ''}`)}
-      ${hdr(`<b>Contact Person :</b> ${esc(q.contact || '')}`, `<b>Date :</b> ${q.date ? q.date.split('-').reverse().join('-') : ''}`)}
-      ${hdr(`<b>Contact Number :</b> ${esc(q.phone || '')}`, `<b>Executive :</b> ${esc(q.exec || '')}`)}
-      ${hdr(`<b>Delivery Address :</b> ${esc(q.addr || '')}`, `<b>Delivery Date (After Booking) :</b> ${esc(ddateTxt(q.ddate))}`)}
-      ${hdr(`<b>Email Id :</b> ${esc(q.email || '')}`, `<b>Accounts :</b> ${esc(q.accounts || '')}`)}</table>
-    <div class="q-scroll">${tables}</div>
-    <div class="paper-foot ms-foot"><p><b>Totals :</b> ${D.S.map(s => `${esc(s.name)}: ${esc(s.sum.join(', '))}`).join(' · ') || '—'}</p>
-      ${D.amt != null ? `<p><b>Amount of the items above :</b> ₹ ${inr(D.amt)} <span style="font-weight:400">(GST included; installation and discount are on the quotation)</span></p>` : ''}
-      <div class="sign"><span>MEASURED BY${q.exec ? ' : ' + esc(String(q.exec).split(' - ')[0]).toUpperCase() : ''}</span><span>CUSTOMER SIGNATURE.</span><span>${FIRM.name}.</span></div></div>`;
+  const h = ed ? msHide() : null, G = msRooms(ed ? {S: msData()} : D), on = new Set((D.S || []).flatMap(s => s.rows.map(r => r.key)));
+  const btn = (kind, k, yes, a, b) => `<button class="qh${yes ? '' : ' show'}" data-msh="${kind}" data-k="${esc(k)}">${yes ? a : b}</button>`;
+  if (!G.length) return `<div class="q-empty"><b>Nothing measured yet</b>${ed ? '' : '<button class="btn solid" data-qempty>Open measurement sheet</button>'}</div>`;
+  const cols = msCols(G, ed), colOn = k => !ed || !h.col.includes('u.' + k), size = cols.some(c => c[0] === 'H') && cols.some(c => c[0] === 'W');
+  const hb = k => ed ? btn('col', 'u.' + k, colOn(k), 'Hide', 'Show') : '';
+  const th = ([k, l], rs) => `<th${rs ? ' rowspan="2"' : ''}${colOn(k) ? '' : ' data-off'}>${esc(l)}${hb(k)}</th>`;
+  const head1 = cols.map(c => c[0] === 'W' && size ? '' : c[0] === 'H' && size ? '<th colspan="2">SIZE (INCH.)</th>' : th(c, true)).join('');
+  const head2 = size ? cols.filter(c => c[0] === 'H' || c[0] === 'W').map(c => th(c)).join('') : '';
+  let sr = 0;
+  const cell = (x, [k, , num]) => { const v = x.u[k] || '', off = colOn(k) ? '' : ' data-off';
+    if (k === 'mzd') return `<td class="c${v ? ' ms-mzd' : ''}"${off}>${esc(v)}</td>`;
+    if (k === 'fixing') return `<td${off}>${esc(v)}${x.u.note ? `<span class="ms-note">${esc(x.u.note)}</span>` : ''}</td>`;
+    return `<td class="${num ? 'r' : k === 'product' || k === 'pattern' ? 'c' : ''}"${off}>${esc(v)}</td>`; };
+  const body = G.map(g => g.rows.map((x, i) => { const yes = !ed || on.has(x.key);
+    return `<tr${yes ? '' : ' data-off'}><td class="c">${yes ? ++sr : '—'}</td>${i ? '' : `<td class="ms-area" rowspan="${g.rows.length}">${esc(String(g.room || '—').toUpperCase())}</td>`}${cols.map(c => cell(x, c)).join('')}${ed ? `<td class="qe">${btn('row', x.key, yes, 'Hide', 'Show')}</td>` : ''}</tr>`; }).join('')).join('');
+  return `<table class="paper-top ms-top"><tr><th colspan="3" class="pi">MEASUREMENT SHEET${n ? ' · M' + n : ''}</th></tr>
+      <tr><td colspan="3" class="firm"><b>${FIRM.name}</b> · ${FIRM.phone}</td></tr>
+      <tr><td colspan="2"><b>REFERENCE :</b> ${esc(D.ref || '')}</td><td><b>DATE :</b> ${esc(msDateTxt(q))}</td></tr>
+      <tr><td><b>CUSTOMER NAME :</b> ${esc(house || '')}</td><td><b>EXECUTIVE :</b> ${esc(q.exec || '')}</td><td><b>MEASURED BY :</b> ${esc(msMeasurer(q))}</td></tr></table>
+    <div class="q-scroll"><table class="paper ms-tab ms-room${ed ? ' editing' : ''}"><thead><tr><th rowspan="2" class="qc-no">SR.NO</th><th rowspan="2">AREA</th>${head1}${ed ? '<th rowspan="2" class="qe"></th>' : ''}</tr>${size ? `<tr>${head2}</tr>` : ''}</thead>
+      <tbody>${body}</tbody></table></div>
+    <div class="paper-foot ms-foot"><p><b>Totals :</b> ${(D.S || []).map(s => `${esc(s.name)}: ${esc(s.sum.join(', '))}`).join(' · ') || '—'}</p>
+      <div class="sign"><span>MEASURED BY${q.exec ? ' : ' + esc(msMeasurer(q)).toUpperCase() : ''}</span><span>CUSTOMER SIGNATURE.</span><span>${FIRM.name}.</span></div></div>`;
 }
 
 // ---- the page: paper on the left, the buttons on the right (phones: buttons first)
@@ -7031,11 +7080,12 @@ function renderMsheet(){
   $('#ms-paper').innerHTML = msPaperHTML(q, state.house, D, n, msEdit && !phone);
   const ver = !P.n ? 'The first download will be <b>M1</b>.' : n === P.n ? `Last saved as <b>M${P.n}</b>. Nothing has changed since.` : `Changed since <b>M${P.n}</b>, so the next download will be <b>M${n}</b>.`;
   const ban = D.hid ? `<div class="qe-ban"><b>Part sheet.</b> ${esc(D.hid)}<div class="qe-acts"><button class="btn" data-msall="1">Show everything</button></div></div>` : '';
-  $('#ms-sum').innerHTML = (msEdit && !phone ? `<div class="qe-card"><h3>Editing the measurement sheet</h3><p>Press <b>Hide</b> on a column, a row or a section. Hidden things are left out of the PDF, Excel and WhatsApp.</p>
+  $('#ms-sum').innerHTML = (msEdit && !phone ? `<div class="qe-card"><h3>Editing the measurement sheet</h3><p>Press <b>Hide</b> on a column, a row or a product. Hidden things are left out of the PDF, Excel and WhatsApp.</p>
       ${D.hid ? `<p class="qe-now"><b>The client gets:</b> ${esc(D.hid)}</p>` : '<p class="qe-now">Nothing hidden yet.</p>'}
+      <div class="rows">${msData().map(s => { const yes = !msHide().sec.includes(s.k); return `<div class="srow"><span>${esc(s.name)}</span><button class="qh${yes ? '' : ' show'}" data-msh="sec" data-k="${esc(s.k)}">${yes ? 'Hide' : 'Show'}</button></div>`; }).join('')}</div>
       <div class="qe-acts">${D.hid ? '<button class="btn" data-msall="1">Show everything</button>' : ''}<button class="btn solid" data-msedit="0">Done</button></div></div>`
-    : ban + `<div class="qe-open"><button class="btn" data-msedit="1">${EDIT_ICON}Edit measurement sheet</button><span class="hint">Hide a section, a row or a column before sending.</span></div>`)
-    + `<div class="rows">${D.S.map(s => `<div class="srow"><span>${esc(s.name)}</span><b>${esc(s.sum[0] || '')}</b></div>`).join('')}${D.amt != null ? `<div class="srow"><span>Amount</span><b>${rs(D.amt)}</b></div>` : ''}</div>
+    : ban + `<div class="qe-open"><button class="btn" data-msedit="1">${EDIT_ICON}Edit measurement sheet</button><span class="hint">Hide a product, a row or a column before sending.</span></div>`)
+    + `<div class="rows">${D.S.map(s => `<div class="srow"><span>${esc(s.name)}</span><b>${esc(s.sum[0] || '')}</b></div>`).join('')}</div>
     <div class="q-acts"><button class="btn solid dl" id="ms-pdf">${DL_ICON}PDF</button><button class="btn solid dl" id="ms-xlsx">${DL_ICON}Excel</button>
       <button class="btn dl" id="ms-wa" style="grid-column:1/-1">${WA_ICON}Send on WhatsApp</button><span class="hint">${ver} Each download or send is kept on the client's page.</span></div>`;
   if (dlg.open && dlg.querySelector('#mse-list')) msDlgFill();
@@ -7054,7 +7104,8 @@ function msDlgFill(){
     ${full.map(s => { const on = !h.sec.includes(s.k);
       return `<h3 class="qe-h">${esc(s.name)}</h3><div class="qe-grp">${sw('sec', s.k, on, 'Whole section', on ? `${s.rows.length} rows` : 'Hidden', 'sec')}
         ${on ? s.rows.map(r => sw('row', r.key, !h.row.includes(r.key), esc([r.c.room, r.c.layer && (r.c.layer === 'S' ? 'Sheer' : 'Main'), r.c.item, r.c.wall].filter(Boolean).join(' · ') || '—'), esc(r.c.fabric || r.c.coll || r.c.design || r.c.product || r.c.what || ''))).join('')
-          + s.cols.map(([k, l]) => sw('col', s.k + '.' + k, !h.col.includes(s.k + '.' + k), 'Column: ' + esc(l), '')).join('') : ''}</div>`; }).join('')}`;
+          : ''}</div>`; }).join('')}
+    <h3 class="qe-h">Columns</h3><div class="qe-grp">${MS_COLS.map(([k, l]) => sw('col', 'u.' + k, !h.col.includes('u.' + k), esc(l), '')).join('')}</div>`;
   box.scrollTop = y;
 }
 document.addEventListener('click', e => {
@@ -7065,75 +7116,82 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => { const x = e.target.closest('input[data-msh]'); if (x) msToggle(x.dataset.msh, x.dataset.k); });
 
-// ---- PDF (A4 landscape: the sheet has many columns) and Excel, the same blue-and-white look as the quotation
+// ---- PDF (A4 landscape) and Excel in the team's layout: one table, rooms first, Area written once per room, Size (inch.) over
+// Height / Width, MZD in green, remarks in red under Fixing (20 Oct). No prices.
+const pdfTxt = t => String(t || '').replace(/″/g, '"').replace(/×/g, 'x').replace(/₹/g, 'Rs. ');   // the PDF's font has no ″ or ×
 function msPDF(n, d = {q: state.quote || {}, house: state.house, D: msShown()}){
   const {jsPDF} = window.jspdf, doc = new jsPDF({unit: 'pt', format: 'a4', orientation: 'landscape'}), q = d.q, D = d.D, house = d.house;
-  const M = 24, blue = [221, 235, 247], line = {lineColor: [0, 0, 0], lineWidth: .6, textColor: [0, 0, 0]};
+  const M = 22, blue = [221, 235, 247], line = {lineColor: [0, 0, 0], lineWidth: .6, textColor: [0, 0, 0]};
   const base = {theme: 'grid', margin: {left: M, right: M}, styles: Object.assign({fontSize: 8, cellPadding: 3, valign: 'middle'}, line)};
-  const two = (a, b) => [{content: a, styles: {fontStyle: 'bold'}}, {content: b, styles: {fontStyle: 'bold'}}];
-  doc.autoTable(Object.assign({}, base, {startY: M, columnStyles: {0: {cellWidth: 400}}, body: [
-    [{content: 'MEASUREMENT SHEET', colSpan: 2, styles: {halign: 'center', fontStyle: 'bold', fontSize: 12, fillColor: blue}}],
-    [{content: FIRM.name, colSpan: 2, styles: {halign: 'center', fontStyle: 'bold', fontSize: 14, lineWidth: {top: .6, left: .6, right: .6, bottom: 0}}}],
-    [{content: `${FIRM.addr}\nPhone : ${FIRM.phone}\nEmail : ${FIRM.email} , GSTIN : ${FIRM.gstin}`, colSpan: 2, styles: {halign: 'center', fontSize: 9}}],
-    two(`Billing Name : ${house || ''}`, `Measurement sheet : M${n}${q.no ? `   ·   Performa invoice : ${q.no}` : ''}`),
-    two(`Contact Person : ${q.contact || ''}`, `Date : ${q.date ? q.date.split('-').reverse().join('-') : ''}`),
-    two(`Contact Number : ${q.phone || ''}`, `Executive : ${q.exec || ''}`),
-    two(`Delivery Address : ${q.addr || ''}`, `Delivery Date (AFTER BOOKING) : ${ddateTxt(q.ddate)}`),
-    two(`Email Id : ${q.email || ''}`, `Accounts : ${q.accounts || ''}`)]}));
-  D.S.forEach((s, si) => {
-    const NC = s.cols.length + 1, colSt = {0: {halign: 'center', cellWidth: 26}};
-    s.cols.forEach(([, , num], i) => { colSt[i + 1] = {halign: num ? 'right' : 'left'}; });
-    const pdfTxt = t => String(t || '').replace(/″/g, '"').replace(/×/g, 'x').replace(/₹/g, 'Rs. ');   // the PDF's font has no ″ or ×
-    const body = s.rows.map((r, i) => [i + 1, ...s.cols.map(([k]) => pdfTxt(r.c[k]))]);
-    body.push([{content: s.sum.join(' · ') + (s.amt != null ? `   ·   ${s.name.toUpperCase()} AMOUNT Rs. ${inr(s.amt)}` : ''), colSpan: NC, styles: {fontStyle: 'bold', fillColor: [250, 250, 250]}}]);
-    doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + (si ? 8 : 0),
-      head: [[{content: `${si + 1} · ${s.name.toUpperCase()}`, colSpan: NC, styles: {fillColor: [242, 242, 242], halign: 'left'}}], ['Sr.', ...s.cols.map(c => c[1].replace('″', ' (in)'))]], body,
-      headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center'}, line), columnStyles: colSt}));
-  });
+  const b = t => ({content: t, styles: {fontStyle: 'bold'}});
+  doc.autoTable(Object.assign({}, base, {startY: M, body: [
+    [{content: `MEASUREMENT SHEET · M${n}`, colSpan: 3, styles: {halign: 'center', fontStyle: 'bold', fontSize: 12, fillColor: blue}}],
+    [{content: `${FIRM.name} · ${FIRM.phone}`, colSpan: 3, styles: {halign: 'center', fontStyle: 'bold', fontSize: 10}}],
+    [{content: `REFERENCE : ${D.ref || ''}`, colSpan: 2, styles: {fontStyle: 'bold'}}, b(`DATE : ${msDateTxt(q)}`)],
+    [b(`CUSTOMER NAME : ${house || ''}`), b(`EXECUTIVE : ${q.exec || ''}`), b(`MEASURED BY : ${msMeasurer(q)}`)]]}));
+  const G = msRooms(D), cols = msCols(G), size = cols.some(c => c[0] === 'H') && cols.some(c => c[0] === 'W');
+  const hd = (t, o = {}) => ({content: t, ...o});
+  const h1 = [hd('SR.NO', {rowSpan: size ? 2 : 1}), hd('AREA', {rowSpan: size ? 2 : 1})], h2 = [];
+  cols.forEach(([k, l]) => { if (size && k === 'W') return; if (size && k === 'H') { h1.push(hd('SIZE (INCH.)', {colSpan: 2})); h2.push('HEIGHT', 'WIDTH'); } else h1.push(hd(l, {rowSpan: size ? 2 : 1})); });
+  const body = []; let sr = 0;
+  G.forEach(g => g.rows.forEach((x, i) => {
+    const row = [++sr]; if (!i) row.push({content: pdfTxt(String(g.room || '-').toUpperCase()), rowSpan: g.rows.length, styles: {fontStyle: 'bold', halign: 'center'}});
+    cols.forEach(([k]) => { const v = pdfTxt(x.u[k]);
+      if (k === 'mzd') row.push({content: v, styles: v ? {fillColor: [198, 239, 206], textColor: [0, 97, 0], fontStyle: 'bold', halign: 'center'} : {}});
+      else if (k === 'fixing') row.push({content: [v, pdfTxt(x.u.note)].filter(Boolean).join('\n'), styles: x.u.note ? {textColor: [192, 0, 0]} : {}});
+      else row.push(v); });
+    body.push(row); }));
+  const colSt = {0: {halign: 'center', cellWidth: 30}, 1: {cellWidth: 74}};
+  cols.forEach(([k, , num], i) => { colSt[i + 2] = {halign: num ? 'right' : k === 'product' || k === 'pattern' ? 'center' : 'left'}; if (k === 'details') colSt[i + 2].cellWidth = 120; });
+  doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 6, head: size ? [h1, h2] : [h1], body,
+    headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center', fontSize: 7.5}, line), columnStyles: colSt}));
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 8, pageBreak: 'avoid', body: [
     [{content: 'Totals : ' + (D.S.map(s => `${s.name}: ${s.sum.join(', ')}`).join('   ·   ') || '-'), styles: {fontStyle: 'bold'}}],
-    ...(D.amt != null ? [[{content: `Amount of the items above : Rs. ${inr(D.amt)} (GST included; installation and discount are on the quotation)`, styles: {fontStyle: 'bold'}}]] : []),
-    [{content: `MEASURED BY${q.exec ? ' : ' + String(q.exec).split(' - ')[0].toUpperCase() : ''}                                                  CUSTOMER SIGNATURE.                                                  ${FIRM.name}.`, styles: {fontStyle: 'bold', minCellHeight: 46, valign: 'bottom'}}]]}));
+    [{content: `MEASURED BY${q.exec ? ' : ' + msMeasurer(q).toUpperCase() : ''}                                                  CUSTOMER SIGNATURE.                                                  ${FIRM.name}.`, styles: {fontStyle: 'bold', minCellHeight: 46, valign: 'bottom'}}]]}));
   return doc.output('blob');
 }
 async function msXLSX(n, d = {q: state.quote || {}, house: state.house, D: msShown()}){
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
-  const q = d.q, D = d.D, house = d.house, NC = Math.max(9, 1 + Math.max(0, ...D.S.map(s => s.cols.length)));
+  const q = d.q, D = d.D, house = d.house, G = msRooms(D), cols = msCols(G), size = cols.some(c => c[0] === 'H') && cols.some(c => c[0] === 'W'), NC = cols.length + 2;
   const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Measurement sheet', {views: [{showGridLines: false}],
     pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: {left: .4, right: .4, top: .5, bottom: .55, header: .25, footer: .25}}});
   ws.headerFooter.oddFooter = '&L&8Tatiya Industries · Measurement sheet&R&8Page &P of &N';
-  ws.columns = [6, ...Array(NC - 1).fill(13)].map(width => ({width}));
+  ws.columns = [7, 18, ...cols.map(([k, , num]) => k === 'details' ? 34 : k === 'lining' ? 16 : k === 'kit' || k === 'rft' ? 13 : k === 'fixing' ? 20 : num ? 9 : 11)].map(width => ({width}));
   const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin}, fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: c}});
-  let r = 0; const mrg = (a, b) => { if (b > a) ws.mergeCells(r, a, r, b); };
-  const merged = (txt, o = {}) => { r++; mrg(1, o.to || NC); const c = ws.getCell(r, 1); c.value = txt; c.font = Object.assign({name: 'Arial', size: 9}, o.font);
-    c.alignment = Object.assign({vertical: 'middle', wrapText: true}, o.align); if (o.fill) c.fill = fill(o.fill); for (let i = 1; i <= (o.to || NC); i++) ws.getCell(r, i).border = o.border || box; if (o.h) ws.getRow(r).height = o.h; };
-  merged('MEASUREMENT SHEET', {font: {bold: true, size: 12}, align: {horizontal: 'center'}, fill: 'FFDDEBF7', h: 20});
-  merged(FIRM.name, {font: {bold: true, size: 14, underline: true}, align: {horizontal: 'center'}, h: 22});
-  merged(`${FIRM.addr}\nPhone : ${FIRM.phone}\nEmail : ${FIRM.email} , GSTIN : ${FIRM.gstin}`, {align: {horizontal: 'center'}, h: 40});
-  const mid = Math.round(NC / 2);
-  const pair = (a, b) => { r++; mrg(1, mid); mrg(mid + 1, NC);
-    [[1, a], [mid + 1, b]].forEach(([col, [k, v]]) => { const c = ws.getCell(r, col); c.value = {richText: [{text: k + ' : ', font: {name: 'Arial', size: 9, bold: true}}, {text: v || '', font: {name: 'Arial', size: 9}}]}; c.alignment = {vertical: 'middle', wrapText: true}; });
-    for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = 16; };
-  pair(['Billing Name', house], ['Measurement sheet', `M${n}${q.no ? ' · Performa invoice ' + q.no : ''}`]);
-  pair(['Contact Person', q.contact], ['Date', q.date ? q.date.split('-').reverse().join('-') : '']);
-  pair(['Contact Number', q.phone], ['Executive', q.exec]);
-  pair(['Delivery Address', q.addr], ['Delivery Date (After Booking)', ddateTxt(q.ddate)]);
-  pair(['Email Id', q.email], ['Accounts', q.accounts]);
-  D.S.forEach((s, si) => {
-    const nc = s.cols.length + 1;
-    merged(`${si + 1} · ${s.name}`, {font: {bold: true}, fill: 'FFF2F2F2', h: 17, to: nc});
-    r++; ['Sr.', ...s.cols.map(c => c[1])].forEach((t, i) => { const c = ws.getCell(r, i + 1); c.value = t; c.font = {name: 'Arial', size: 9, bold: true}; c.fill = fill('FFDDEBF7'); c.border = box; c.alignment = {horizontal: 'center', vertical: 'middle', wrapText: true}; });
-    s.rows.forEach((row, ri) => { r++; [ri + 1, ...s.cols.map(([k]) => row.c[k] || '')].forEach((v, i) => { const c = ws.getCell(r, i + 1); c.value = v; c.border = box; c.font = {name: 'Arial', size: 9, bold: s.cols[i - 1] && s.cols[i - 1][0] === 'amt'};
-      c.alignment = {vertical: 'middle', wrapText: true, horizontal: !i ? 'center' : s.cols[i - 1][2] ? 'right' : 'left'}; }); });
-    merged(s.sum.join(' · ') + (s.amt != null ? ` · ${s.name} amount ₹ ${inr(s.amt)}` : ''), {font: {bold: true}, fill: 'FFFAFAFA', to: nc, h: 16});
-    r++;   // a blank line between sections
-  });
-  const side = {left: thin, right: thin};
-  merged('Totals : ' + (D.S.map(s => `${s.name}: ${s.sum.join(', ')}`).join(' · ') || '—'), {font: {bold: true}, border: side, h: 30});
-  if (D.amt != null) merged(`Amount of the items above : ₹ ${inr(D.amt)} (GST included; installation and discount are on the quotation)`, {font: {bold: true}, border: side, h: 18});
+  const F = (o = {}) => Object.assign({name: 'Arial', size: 9}, o);
+  let r = 0;
+  const band = (parts, o = {}) => { r++; let col = 1; parts.forEach(([txt, span]) => { const to = col + span - 1; if (to > col) ws.mergeCells(r, col, r, to);
+      const c = ws.getCell(r, col); c.value = txt; c.font = F(Object.assign({bold: true}, o.font)); c.alignment = {vertical: 'middle', wrapText: true, horizontal: o.center ? 'center' : 'left'}; if (o.fill) c.fill = fill(o.fill); col = to + 1; });
+    for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = o.h || 18; };
+  const third = Math.floor(NC / 3), two = NC - third;
+  band([[`MEASUREMENT SHEET · M${n}`, NC]], {center: true, fill: 'FFDDEBF7', font: {size: 12}, h: 20});
+  band([[`${FIRM.name} · ${FIRM.phone}`, NC]], {center: true, font: {size: 11}});
+  band([[`REFERENCE : ${D.ref || ''}`, two], [`DATE : ${msDateTxt(q)}`, third]]);
+  band([[`CUSTOMER NAME : ${house || ''}`, NC - 2 * third], [`EXECUTIVE : ${q.exec || ''}`, third], [`MEASURED BY : ${msMeasurer(q)}`, third]]);
+  // the two heading rows
+  const r1 = ++r, r2 = size ? ++r : r1; let col = 1;
+  const head = (row, c, txt) => { const x = ws.getCell(row, c); x.value = txt; x.font = F({bold: true}); x.fill = fill('FFDDEBF7'); x.alignment = {horizontal: 'center', vertical: 'middle', wrapText: true}; };
+  const put = txt => { head(r1, col, txt); if (size) ws.mergeCells(r1, col, r2, col); col++; };
+  put('SR.NO'); put('AREA');
+  cols.forEach(([k, l]) => { if (size && k === 'W') return; if (size && k === 'H') { head(r1, col, 'SIZE (INCH.)'); ws.mergeCells(r1, col, r1, col + 1); head(r2, col, 'HEIGHT'); head(r2, col + 1, 'WIDTH'); col += 2; } else put(l); });
+  for (let rr = r1; rr <= r2; rr++) { for (let i = 1; i <= NC; i++) { ws.getCell(rr, i).border = box; ws.getCell(rr, i).fill = fill('FFDDEBF7'); } ws.getRow(rr).height = 22; }
+  let sr = 0;
+  G.forEach(g => { const top = r + 1;
+    g.rows.forEach(x => { r++; ws.getCell(r, 1).value = ++sr;
+      cols.forEach(([k, , num], i) => { const c = ws.getCell(r, i + 3), v = x.u[k] || '';
+        if (k === 'fixing' && x.u.note) c.value = {richText: [...(v ? [{text: v + '\n', font: F()}] : []), {text: x.u.note, font: F({color: {argb: 'FFC00000'}, bold: true})}]};
+        else c.value = num && v !== '' && !isNaN(+v) ? +v : v;
+        if (k === 'mzd' && v) { c.fill = fill('FFC6EFCE'); c.font = F({bold: true, color: {argb: 'FF006100'}}); } else if (!(k === 'fixing' && x.u.note)) c.font = F();
+        c.alignment = {vertical: 'middle', wrapText: true, horizontal: num ? 'right' : k === 'product' || k === 'pattern' || k === 'mzd' ? 'center' : 'left'}; });
+      ws.getCell(r, 1).alignment = {horizontal: 'center', vertical: 'middle'}; ws.getCell(r, 1).font = F();
+      for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; });
+    if (r > top) ws.mergeCells(top, 2, r, 2);
+    const a = ws.getCell(top, 2); a.value = String(g.room || '—').toUpperCase(); a.font = F({bold: true}); a.alignment = {horizontal: 'center', vertical: 'middle', wrapText: true}; });
+  r++;
+  band([['Totals : ' + (D.S.map(s => `${s.name}: ${s.sum.join(', ')}`).join(' · ') || '—'), NC]], {h: 30});
   r++; const a3 = Math.ceil(NC / 3), b3 = Math.ceil(NC * 2 / 3);
-  [[1, a3, `MEASURED BY${q.exec ? ' : ' + String(q.exec).split(' - ')[0].toUpperCase() : ''}`, 'left'], [a3 + 1, b3, 'CUSTOMER SIGNATURE.', 'center'], [b3 + 1, NC, FIRM.name + '.', 'right']].forEach(([a, b, txt, h]) => {
-    mrg(a, b); const c = ws.getCell(r, a); c.value = txt; c.font = {name: 'Arial', size: 9, bold: true}; c.alignment = {horizontal: h, vertical: 'bottom'}; });
+  [[1, a3, `MEASURED BY${q.exec ? ' : ' + msMeasurer(q).toUpperCase() : ''}`, 'left'], [a3 + 1, b3, 'CUSTOMER SIGNATURE.', 'center'], [b3 + 1, NC, FIRM.name + '.', 'right']].forEach(([x, y, txt, h]) => {
+    if (y > x) ws.mergeCells(r, x, r, y); const c = ws.getCell(r, x); c.value = txt; c.font = F({bold: true}); c.alignment = {horizontal: h, vertical: 'bottom'}; });
   for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = {left: i === 1 ? thin : undefined, right: i === NC ? thin : undefined, bottom: thin};
   ws.getRow(r).height = 48;
   return new Blob([await wb.xlsx.writeBuffer()], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -7149,7 +7207,7 @@ async function msRecord(n, sig, D){
   const at = new Date().toISOString(), name = state.house || '';
   try {
     if (await Store.sheetExists(cid, n)) { toast(`Someone saved M${n} a moment ago. Download again to save yours as M${n + 1}.`); delete CL.msv[cid]; return; }
-    await Store.addSheet(cid, n, clone({cid, n, kind: 'ms', sig, at, by: UID, name, exec: q.exec || '', total: D.amt ?? null, hid: D.hid || '',
+    await Store.addSheet(cid, n, clone({cid, n, kind: 'ms', sig, at, by: UID, name, exec: q.exec || '', total: null, hid: D.hid || '',
       snap: {house: name, q, D: msPack(D), rows: state.rows, blinds: state.blinds, more: state.more}}));
     await Store.mergeClient(cid, {mlatest: n, msig: sig, edited: at});
     delete CL.msv[cid];
@@ -7188,7 +7246,7 @@ async function msOf(cid){
   return CL.msv[cid];
 }
 function msShowVersion(c, x){
-  openDlg(`<div class="dlg-top"><div><h2 id="dlg-title" style="margin:0">${esc(c.name)} · M${x.n}</h2><span class="hint">${esc(whenTxt(x.at))}${x.total != null ? ' · ' + rs(x.total) : ''}</span>${x.hid ? `<p class="qe-ban" style="margin:8px 0 0"><b>Part sheet.</b> ${esc(x.hid)}</p>` : ''}</div>
+  openDlg(`<div class="dlg-top"><div><h2 id="dlg-title" style="margin:0">${esc(c.name)} · M${x.n}</h2><span class="hint">${esc(whenTxt(x.at))}</span>${x.hid ? `<p class="qe-ban" style="margin:8px 0 0"><b>Part sheet.</b> ${esc(x.hid)}</p>` : ''}</div>
     <div class="cp-acts"><button class="btn solid" data-msv="pdf" data-n="${x.n}">Download PDF</button><button class="btn" data-dlg="close">Close</button></div></div>
     <div class="dlg-body"><div class="paper-wrap" style="border:0">${msPaperHTML(x.snap.q, x.snap.house, msUnpack(x.snap.D), x.n)}</div></div>`, true);
 }
@@ -7228,4 +7286,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-114605 -->
+<!-- build 20261020-120313 -->
