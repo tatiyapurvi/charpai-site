@@ -1407,8 +1407,8 @@ button.n-prop:hover{background:var(--soft)}
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
           <div class="hnav" id="b-hnav" hidden><div class="hn-pills" id="b-hn-pills"></div></div>
           <div class="tbl-wrap" id="b-wrap"><div class="tbl-scroll" id="b-scroll"><table class="sheet"><thead>
-            <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="3">Size</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp sep" data-pill="Order details"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp"></th></tr>
-            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th>Qty</th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="sep">Order</th><th class="sep">Remarks</th><th></th></tr>
+            <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="2">Size</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp sep" data-pill="Order details"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp"></th></tr>
+            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="sep">Order</th><th class="sep">Remarks</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span><span class="hn-arrs" id="b-hn-arrs" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></span></div>
         </div>
@@ -2813,13 +2813,18 @@ const r2 = v => Math.round(v * 100) / 100;
 function bBlank(){ return {id: uid++, room: '', sup: 'SAN', fam: '', sys: '', pid: '', shade: '', series: '', W: '', H: '', qty: 1, adds: [], motor: '', o: {}, remarks: ''}; }
 // 7 Oct (Purvi: "why is motor/remote one column … why cant i type"): a blind holds any number of extras, b.adds = [{k, q}]
 // (k = add-on key, q = typed quantity or '' = worked out). The old single add-on (b.addon, b.addonQty) moves in once.
+// 20 Oct (Purvi: "get rid of the qty column in blind form"): one row = one blind. A blind saved with Qty 2+ becomes that many rows
+// of one, so nothing is counted that the sheet no longer shows (the quotation total stays the same).
+function bSplitQty(){ if (!state.blinds.some(b => (parseInt(b.qty, 10) || 1) > 1)) return;
+  const out = []; for (const b of state.blinds) { const n = Math.min(50, Math.max(1, parseInt(b.qty, 10) || 1)); b.qty = 1; out.push(b); for (let i = 1; i < n; i++) out.push(Object.assign(clone(b), {id: uid++})); }
+  state.blinds.splice(0, state.blinds.length, ...out); }
 function bMigrate(b){ b.id = uid++; if (!b.o) b.o = {}; for (const k of ['shade', 'series', 'motor']) if (b[k] === undefined) b[k] = '';
   if (!Array.isArray(b.adds)) { b.adds = b.addon ? [{k: b.addon, q: has(b.addonQty) ? String(b.addonQty) : ''}] : []; } delete b.addon; delete b.addonQty; }
 // Which box an add-on goes in: motors, remotes and controls, everything else (brackets, chargers, side channels, Roman fabric…)
 const bAddKind = a => a.uom !== 'each' ? 'extra' : /motor/i.test(a.group) ? 'motor'
   : /remote|switch|control|hub|bridge|transmitter|receiver|connexoon|tahoma|beacon/i.test(a.group + ' ' + a.name) && !/charger|bracket|cable|adaptor/i.test(a.name) ? 'remote' : 'extra';
 const B_KIND = {motor: 'motor', remote: 'remote', extra: 'extra'};
-state.blinds.forEach(bMigrate);
+state.blinds.forEach(bMigrate); bSplitQty();
 if (state.bsel == null) state.bsel = 0;
 const bPriced = sup => BL.rows.some(r => r.sup === sup);
 // Roll width of a blind's fabric (Purvi, 7 Oct: "if a space's width is larger than the roll's width … the blind will be made in 2 or 3 or more
@@ -2882,7 +2887,6 @@ function bRowHTML(b, i){
     <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:96px" aria-label="Shade number"></td>
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
-    <td><input data-b="qty" class="n" inputmode="numeric" value="${esc(b.qty)}" style="width:52px" aria-label="How many"></td>
     <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>   <!-- 20 Oct (Purvi): Result right after Size, then Motor & extras -->
     ${adds.length ? ['motor', 'remote', 'extra'].map((k, j) => `<td${j ? '' : ' class="sep"'}>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3" class="sep"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
     <td class="sep" data-o="det"></td>
@@ -4427,7 +4431,7 @@ document.addEventListener('focusout', () => setTimeout(() => { if (draftPending 
 function applyDraft(d, remote){
   const s = clone(d.sheet || {}), sel = state.sel, bsel = state.bsel;
   state = {house: s.house || '', example: false, sel: remote ? sel : 0, bsel: remote ? bsel : 0, clientId: d.cid, savedAt: d.at, rows: s.rows || [], blinds: s.blinds || [], more: s.more, quote: s.quote || {}};
-  state.rows.forEach(migrate); state.blinds.forEach(bMigrate); if (!state.rows.length) state.rows.push(blank());
+  state.rows.forEach(migrate); state.blinds.forEach(bMigrate); bSplitQty(); if (!state.rows.length) state.rows.push(blank());
   if (state.sel >= state.rows.length) state.sel = 0;
   draftSeen = d.at; draftLast = JSON.stringify(sheetOf()); keepLocal();
   refreshSheet();
@@ -4468,7 +4472,7 @@ function fromVersion(c, x, quiet){   // the sent version becomes the live sheet 
   const s = clone(x.snap);
   state = {house: s.house || '', example: false, sel: 0, bsel: 0, clientId: c.id, rows: s.rows || [], blinds: s.blinds || [], more: s.more,
     quote: Object.assign(s.q || {}, {date: new Date().toISOString().slice(0, 10)})};
-  state.rows.forEach(migrate); state.blinds.forEach(bMigrate); if (!state.rows.length) state.rows.push(blank());
+  state.rows.forEach(migrate); state.blinds.forEach(bMigrate); bSplitQty(); if (!state.rows.length) state.rows.push(blank());
   draftLast = ''; refreshSheet(); save(); watchDraft(); go(sheetView());
   if (!quiet) toast(`Started again from v${x.n}. The next PDF will be v${(c.latest || 0) + 1}.`);
 }
@@ -7376,4 +7380,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-133711 -->
+<!-- build 20261020-134226 -->
