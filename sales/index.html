@@ -197,7 +197,7 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
 #v-blinds .sheet td{padding:5px 3px}
 #v-blinds .sheet td.sep,#v-blinds .sheet th.sep{border-left:1px solid var(--line);padding-left:6px}
 #v-blinds .sheet th.r,#v-blinds .sheet td.out{padding-left:6px;padding-right:8px}
-#v-blinds .pk{width:210px}
+#v-blinds .pk{width:170px}   /* 20 Oct: narrower so Motor → Remarks fits one view */
 #v-blinds td[data-o=det] .miss{white-space:nowrap}
 @media (min-width:1150px){
   #bside{max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior-x:contain}
@@ -2238,7 +2238,13 @@ function makeHnav(sc, wrap, nav, pills, arrs){   // 19 Oct (Purvi): section name
   };
   const onClick = e => {
     const firstW = sc.querySelector('th.first').offsetWidth, a = e.target.closest('[data-h]'), p = e.target.closest('[data-g]');
-    if (a) sc.scrollBy({left: +a.dataset.h * Math.max(200, (sc.clientWidth - firstW) * 0.8), behavior: 'smooth'});
+    // 20 Oct (Purvi: "i dont want to click on arrows … more than once"): › shows the next view whole: the first column not fully
+    // seen yet lands right after the Room column; ‹ goes back a view the same way (columns never cut in half)
+    if (a) { const ths = [...sc.querySelectorAll('thead tr:last-child th')].filter(x => !x.classList.contains('first')), L = sc.scrollLeft, view = sc.clientWidth - firstW;
+      let to;
+      if (+a.dataset.h > 0) { const t = ths.find(x => x.offsetLeft + x.offsetWidth > L + sc.clientWidth + 1); to = t ? t.offsetLeft - firstW : sc.scrollWidth; }
+      else { const want = Math.max(0, L - view), t = ths.find(x => x.offsetLeft - firstW >= want - 1); to = t ? t.offsetLeft - firstW : 0; if (to >= L) to = Math.max(0, L - view); }
+      sc.scrollTo({left: Math.max(0, to), behavior: 'smooth'}); }
     if (p) { const g = groups()[+p.dataset.g]; if (g) sc.scrollTo({left: g.th.offsetLeft - firstW, behavior: 'smooth'}); }
   };
   nav.addEventListener('click', onClick); arrs.addEventListener('click', onClick);
@@ -2890,7 +2896,7 @@ function bRowHTML(b, i){
     <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>   <!-- 20 Oct (Purvi): Result right after Size, then Motor & extras -->
     ${adds.length ? ['motor', 'remote', 'extra'].map((k, j) => `<td${j ? '' : ' class="sep"'}>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3" class="sep"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
     <td class="sep" data-o="det"></td>
-    <td class="sep"><input data-b="remarks" value="${esc(b.remarks || '')}" placeholder="Any note" style="width:180px" aria-label="Remarks"></td>   <!-- 20 Oct: on the measurement sheet too -->
+    <td class="sep"><input data-b="remarks" value="${esc(b.remarks || '')}" placeholder="Any note" style="width:150px" aria-label="Remarks"></td>   <!-- 20 Oct: on the measurement sheet too -->
     <td class="acts"><button class="ico" data-ba="dup" title="Copy this blind">⧉</button><button class="ico" data-ba="del" title="Delete this blind">✕</button></td>
   </tr>`;
 }
@@ -7380,4 +7386,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-134625 -->
+<!-- build 20261020-135223 -->
