@@ -1406,8 +1406,8 @@ button.n-prop:hover{background:var(--soft)}
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
           <div class="hnav" id="b-hnav" hidden><div class="hn-pills" id="b-hn-pills"></div></div>
           <div class="tbl-wrap" id="b-wrap"><div class="tbl-scroll" id="b-scroll"><table class="sheet"><thead>
-            <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="3">Size</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" data-pill="Order details"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp"></th></tr>
-            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th>Qty</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Order</th><th class="sep">Remarks</th><th></th></tr>
+            <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="3">Size</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp sep" data-pill="Order details"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp"></th></tr>
+            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th>Qty</th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="sep">Order</th><th class="sep">Remarks</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span><span class="hn-arrs" id="b-hn-arrs" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></span></div>
         </div>
@@ -2882,8 +2882,8 @@ function bRowHTML(b, i){
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
     <td><input data-b="qty" class="n" inputmode="numeric" value="${esc(b.qty)}" style="width:52px" aria-label="How many"></td>
+    <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>   <!-- 20 Oct (Purvi): Result right after Size, then Motor & extras -->
     ${adds.length ? ['motor', 'remote', 'extra'].map((k, j) => `<td${j ? '' : ' class="sep"'}>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3" class="sep"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
-    <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>
     <td class="sep" data-o="det"></td>
     <td class="sep"><input data-b="remarks" value="${esc(b.remarks || '')}" placeholder="Any note" style="width:180px" aria-label="Remarks"></td>   <!-- 20 Oct: on the measurement sheet too -->
     <td class="acts"><button class="ico" data-ba="dup" title="Copy this blind">⧉</button><button class="ico" data-ba="del" title="Delete this blind">✕</button></td>
@@ -7375,4 +7375,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-132456 -->
+<!-- build 20261020-133255 -->
