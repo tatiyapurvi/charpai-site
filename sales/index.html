@@ -753,12 +753,15 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .ctabs-row{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--line)}
 .ctabs{display:flex;gap:2px;overflow-x:auto;flex:1 1 auto;min-width:0;align-items:flex-end;scrollbar-width:none}
 .ctabs::-webkit-scrollbar{display:none}
-@media (max-width:640px){ .ctabs-row{flex-wrap:wrap;column-gap:8px} .ctabs-row .qgo{order:-1;flex:1 1 0;justify-content:center;margin:0 0 6px;font-size:16px} .ctabs-row .ctabs{flex:1 0 100%} }   /* phones: the two buttons on their own line above the tabs */
+@media (max-width:640px){ .ctabs-row{flex-wrap:wrap;column-gap:8px} .ctabs-row .qgos{order:-1;flex:1 0 100%;gap:6px;margin:0} .ctabs-row .qgo{flex:1 1 0;justify-content:center;margin:0 0 6px;font-size:15px;padding:7px 8px;gap:5px} .qgo .q-l{display:none} .qgo .q-s{display:inline} .ctabs-row .ctabs{flex:1 0 100%} }   /* phones: the three buttons on their own line above the tabs, short names */
 .ctab-sep{flex:none;width:1px;height:22px;background:var(--line);margin:0 8px 11px}
 .ctab .cnt{display:inline-block;margin-left:6px;min-width:20px;padding:1px 6px;border-radius:10px;background:var(--line2);color:var(--muted);font:600 12px/1.4 var(--body);text-align:center;vertical-align:2px}
 .ctab[aria-selected="true"] .cnt{background:var(--ink);color:var(--paper)}
 .qgo{flex:none;display:inline-flex;align-items:center;gap:7px;margin:0 0 7px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);border-radius:8px;padding:7px 15px 7px 12px;font:700 18px/1.1 var(--num);cursor:pointer;white-space:nowrap}
 .qgo:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.qgos{display:flex;gap:10px;margin-left:auto;flex:none}
+.qgo .q-s{display:none}
+.qgo svg{width:17px;height:17px}
 .qgo[aria-pressed="true"]{background:var(--tape);border-color:var(--tape);color:var(--tape-ink)}
 .ctab{border:0;background:none;padding:10px 16px 9px;font:700 18px/1.1 var(--num);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
 .ctab:hover{color:var(--ink)}
@@ -4778,17 +4781,18 @@ function ctabsHTML(overview){
   const cid = current === 'client' ? cpId : state.clientId, here = !shared || cid === state.clientId;
   const n = shared && cid && cid !== '__new' ? sheetN(cid) : here ? sheetN(cid) : {};
   const tab = (v, name, subs) => `<button class="ctab" role="tab" data-ct="${v}" aria-selected="${current === v || (subs || []).includes(current)}">${name}${n[v] ? `<span class="cnt">${n[v]}</span>` : ''}</button>`;
-  const inSheet = GATED.includes(current) && current !== 'quote';
-  if (inSheet && current !== 'msheet') ctLastSheet = current;   // the Measurement sheet button goes back to the product you were on
+  const inSheet = GATED.includes(current) && current !== 'quote' && current !== 'msheet';   // msheet = View measurement sheet (its own button)
+  if (inSheet) ctLastSheet = current;   // the Measurement sheet button goes back to the product you were on
   const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
   // 20 Oct (Purvi): on the Quotation the bar stays exactly as on the sheet (product tabs + Download sheet); was sheet-only (18 Oct)
-  const products = !overview || inSheet || current === 'quote' ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}
-    <button class="ctab ms-dl" role="tab" data-ct="msheet" aria-selected="${current === 'msheet'}">${EYE_ICON}View measurement sheet</button>` : '';   // 19 Oct: the sheet as a PDF / Excel; 20 Oct: renamed (Purvi), the team's room-wise layout
+  const products = !overview || inSheet || current === 'quote' || current === 'msheet' ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}` : '';
   // 19 Oct (Purvi): a new enquiry shows no Measurement sheet / Quotation buttons; Done at the bottom is its only way on
   const fresh = shared && current === 'client' && (cpId === '__new' || cpFresh === cpId);
   if (fresh) return `<div class="ctabs-row"><div class="ctabs" role="tablist">${tab('client', 'Overview')}</div></div>`;
   return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') : ''}${products}</div>
-    ${overview ? `<button class="qgo" data-ct="${inSheet ? current : ctLastSheet || first}" aria-pressed="${inSheet}">${MS_SVG}Measurement sheet</button>` : ''}<button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}Quotation</button></div>`;
+    <div class="qgos">${overview ? `<button class="qgo" data-ct="${inSheet ? current : ctLastSheet || first}" aria-pressed="${inSheet}">${MS_SVG}<span class="q-l">Measurement sheet</span><span class="q-s">Measure</span></button>` : ''}<button class="qgo" data-ct="msheet" aria-pressed="${current === 'msheet'}">${EYE_ICON}<span class="q-l">View measurement sheet</span><span class="q-s">View sheet</span></button><button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}Quotation</button></div></div>`;
+  // 20 Oct (Purvi: "maybe they all can be same types of buttons?"): Measurement sheet · View measurement sheet · Quotation, one kind
+  // of button, yellow = the page you are on; from View measurement sheet, Measurement sheet goes back to the product last open.
 }
 $('#cbar').addEventListener('click', async e => {
   const b = e.target.closest('[data-act], [data-ct]'); if (!b) return;
@@ -7317,4 +7321,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-124027 -->
+<!-- build 20261020-124443 -->
