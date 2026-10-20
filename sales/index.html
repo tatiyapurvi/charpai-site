@@ -6919,8 +6919,8 @@ function msData(){
           mrp: cf && has(cf.r) ? inr(mrpOf2(cf.r, cf.g || +G.fabric || 5)) : '', amt: a && a.total ? inr(a.total) : ''},
         u: {area: r.room || '', product: 'CURTAIN', pattern: r.layer === 'Sheer' ? 'SHEER' : 'MAIN', details: cf ? fabricName(r) : r.fabric || '', H: msNum(r.H), W: msNum(r.W),
           panel: ok ? String(res.panels) : '', part: String(String(r.parts || '').trim() || PARTS_DEFAULT), qty: ok ? cpF(res.qty) : '',
-          lining: lin ? `${linShort(r.lining)} ${cpF(lin.m)} m` : '', kit: ok && res.track && res.trackUnit !== 'ft' ? (kitSize(res.track, res.kitMin) || 'over 9') : '',
-          rft: ok && res.track && res.trackUnit === 'ft' ? cpF(res.track) : '', mzd: ok && res.track && res.trackUnit !== 'ft' ? 'MZD' : '',
+          lining: lin ? `${linShort(r.lining)} ${cpF(lin.m)} m` : '',
+          track: !ok || !res.track ? '' : res.trackUnit === 'ft' ? `${cpF(res.track)} Rft` : `${kitSize(res.track, res.kitMin) || 'over 9'} m kit`, mzd: ok && res.track && res.trackUnit !== 'ft' ? 'MZD' : '',
           fixing: r.fixing ? r.fixing.replace(' fixing', ' fix') : '', note: r.remarks || ''}}); });
     sec('curtains', 'Curtains', [['room', 'Room'], ['layer', 'M/S'], ['fabric', 'Fabric'], ['lining', 'Lining'], ['style', 'Style'], ['H', 'H″', 1], ['W', 'W″', 1], ['panels', 'Panels'], ['fabm', 'Fabric m', 1],
       ['linm', 'Lining m', 1], ['track', 'Track'], ['tlen', 'Track length'], ['fixing', 'Fixing'], ['stitched', 'Stitched'], ['remarks', 'Remarks'], ['mrp', 'Fabric MRP /m', 1], ['amt', 'Amount', 1]], R,
@@ -7030,7 +7030,7 @@ const msFileName = (n, house = state.house, d = new Date()) => quoteFileName(n, 
 // Qty · Sq ft · Black out · Track/Rod/Roman qty (m kit) · Track qty (Rft) · MZD · Fixing (+ remarks in red). Empty columns drop out.
 // Making the sheets is unchanged; each row carries its values in `u` (msData). Old saved versions (no `u`) are read from `c`.
 const MS_COLS = [['product', 'PRODUCT'], ['pattern', 'PATTERN'], ['details', 'FABRIC DETAILS'], ['H', 'HEIGHT', 1], ['W', 'WIDTH', 1], ['panel', 'PANEL', 1], ['part', 'PART', 1],
-  ['qty', 'QTY', 1], ['sqft', 'SQ.FT QTY', 1], ['lining', 'BLACK OUT'], ['kit', 'TRACK/ROD/ROMAN QTY (MTR KIT)', 1], ['rft', 'TRACK QTY (RFT)', 1], ['mzd', 'MZD'], ['fixing', 'FIXING'], ['note', 'REMARKS']];   // 20 Oct (Purvi): remarks in their own column, typed in while editing
+  ['qty', 'QTY', 1], ['sqft', 'SQ.FT QTY', 1], ['lining', 'BLACK OUT'], ['track', 'TRACK QTY', 1],   /* 20 Oct (Purvi): one narrow column, "14 Rft" manual / "3 m kit" motorised (was two) */ ['mzd', 'MZD'], ['fixing', 'FIXING'], ['note', 'REMARKS']];   // 20 Oct (Purvi): remarks in their own column, typed in while editing
 const msU = (s, r) => r.u || {area: r.c.room || '', product: String(s.name || '').toUpperCase(), pattern: r.c.layer === 'S' ? 'SHEER' : r.c.layer === 'M' ? 'MAIN' : String(r.c.type || r.c.kind || r.c.bed || '').toUpperCase(),
   details: r.c.fabric || [r.c.coll, r.c.shade].filter(Boolean).join(' ') || r.c.design || r.c.product || r.c.item || r.c.what || '', H: r.c.H || '', W: r.c.W || r.c.L || '',
   qty: r.c.fabm || r.c.rolls || r.c.qty || '', sqft: r.c.sqft || r.c.area || '', lining: [r.c.lining && linShort(r.c.lining), r.c.linm && r.c.linm + ' m'].filter(Boolean).join(' '),
@@ -7038,7 +7038,8 @@ const msU = (s, r) => r.u || {area: r.c.room || '', product: String(s.name || ''
 function msRef(){ const c = shared && state.clientId && CL.byId.get(state.clientId); if (!c) return ''; return [c.refBy, c.arch && c.arch.name ? 'Ar. ' + c.arch.name : ''].filter(Boolean).join(' · '); }
 // rooms in the order they were first measured (curtains first, then blinds…), products in that order inside each room
 function msRooms(D){
-  const flat = []; (D.S || []).forEach(s => s.rows.forEach(r => flat.push({key: r.key, sec: s.k, u: msU(s, r)})));
+  const tr = u => u.track != null || !(u.kit || u.rft) ? u : Object.assign({}, u, {track: u.rft ? u.rft + ' Rft' : u.kit + ' m kit'});   // versions saved before 20 Oct had two columns
+  const flat = []; (D.S || []).forEach(s => s.rows.forEach(r => flat.push({key: r.key, sec: s.k, u: tr(msU(s, r))})));
   const G = []; let cur = null;
   byRoom(flat, x => x.u.area).forEach(x => { const k = roomKey(x.u.area); if (!cur || cur.k !== k) G.push(cur = {k, room: x.u.area, rows: []}); cur.rows.push(x); });
   return G;
@@ -7150,7 +7151,7 @@ function msPDF(n, d = {q: state.quote || {}, house: state.house, D: msShown()}){
       else row.push(v); });
     body.push(row); }));
   const colSt = {0: {halign: 'center', cellWidth: 30}, 1: {cellWidth: 74}};
-  cols.forEach(([k, , num], i) => { colSt[i + 2] = {halign: num ? 'right' : k === 'product' || k === 'pattern' ? 'center' : 'left'}; if (k === 'details') colSt[i + 2].cellWidth = 120; if (k === 'note') colSt[i + 2].cellWidth = 90; });
+  cols.forEach(([k, , num], i) => { colSt[i + 2] = {halign: num ? 'right' : k === 'product' || k === 'pattern' ? 'center' : 'left'}; if (k === 'details') colSt[i + 2].cellWidth = 120; if (k === 'note') colSt[i + 2].cellWidth = 90; if (k === 'track') colSt[i + 2].cellWidth = 48; });
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 6, head: size ? [h1, h2] : [h1], body,
     headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center', fontSize: 7.5}, line), columnStyles: colSt}));
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 8, pageBreak: 'avoid', body: [
@@ -7164,7 +7165,7 @@ async function msXLSX(n, d = {q: state.quote || {}, house: state.house, D: msSho
   const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Measurement sheet', {views: [{showGridLines: false}],
     pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: {left: .4, right: .4, top: .5, bottom: .55, header: .25, footer: .25}}});
   ws.headerFooter.oddFooter = '&L&8Tatiya Industries · Measurement sheet&R&8Page &P of &N';
-  ws.columns = [7, 18, ...cols.map(([k, , num]) => k === 'details' ? 34 : k === 'lining' ? 16 : k === 'kit' || k === 'rft' ? 13 : k === 'fixing' ? 14 : k === 'note' ? 26 : num ? 9 : 11)].map(width => ({width}));
+  ws.columns = [7, 18, ...cols.map(([k, , num]) => k === 'details' ? 34 : k === 'lining' ? 16 : k === 'track' ? 10 : k === 'fixing' ? 14 : k === 'note' ? 26 : num ? 9 : 11)].map(width => ({width}));
   const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin}, fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: c}});
   const F = (o = {}) => Object.assign({name: 'Arial', size: 9}, o);
   let r = 0;
@@ -7293,4 +7294,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-121219 -->
+<!-- build 20261020-121701 -->
