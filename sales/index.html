@@ -870,6 +870,7 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 #v-msheet .paper.ms-tab{margin-top:14px;border-top:1px solid #333}
 #v-msheet .paper.ms-tab thead .secrow td{background:#F2F2F2;font-weight:700}
 .ms-foot p{margin:8px 0}
+.paper-foot .nofab{color:#B45309}
 /* 20 Oct: the team's room-wise sheet (their Excel): Area written once per room, MZD green, remarks red under Fixing */
 #v-msheet .paper.ms-room{margin-top:14px;border-top:1px solid #333}
 .paper.ms-room th{background:#DDEBF7;text-align:center;font-size:11.5px;line-height:1.25}
@@ -3357,7 +3358,7 @@ const QCODE = {DD: 'DD', SAN: 'SS', AP: 'AP', SAR: 'SAROM', FF: 'F&F'};   // as 
 const mrpOf2 = (rate, g) => has(rate) ? Math.round(rate * (1 + (+g || 0) / 100)) : null;
 function fabricName(row){
   const x = catRow(row);
-  if (!x) return (row.fabric || 'Fabric not named') + ' (not picked from the list)';
+  if (!x) { const typed = String(row.fabric || '').trim(); return typed ? `Fabric not selected yet (${typed})` : 'Fabric not selected yet'; }   // 20 Oct (Purvi): plain words the client understands
   const base = row.sup === 'AP' ? x.n.split(' · ').slice(0, 2).reverse().join(' ') : row.key.split('|').join(' ');
   return `${QCODE[row.sup]} ${base}`;
 }
@@ -3521,7 +3522,10 @@ function quoteTotals(S){
   // Margin: amounts carry GST, costs don't, so both are compared before GST; the discount comes off the fabric lines.
   let netSale = 0, netFab = 0; for (const [k] of SECTIONS) for (const l of S[k]) if (l.amt != null) { const n = l.amt / (1 + (+l.gst || 0) / 100); netSale += n; if (k === 'fabric') netFab += n; }
   const net1 = netSale - (sub.fabric ? netFab * disc / sub.fabric : 0), netAfter = after > 0 ? net1 * (1 - disc2 / after) : net1, rawCost = [].concat(...SECTIONS.map(([k]) => S[k])).reduce((a, l) => a + (l.camt || 0), 0);
-  return {S, sub, total, disc, discTxt, disc2, disc2Txt, final, missing, costMissing, netAfter, cost: rawCost, cols, hid};
+  // 20 Oct (Purvi): curtains measured but no fabric picked: stitching, track and the rest stay in; the fabric line says so and
+  // the client is told the fabric amount isn't in the total yet
+  const nf = (S.fabric || []).filter(l => l.fix === 'pick'), noFab = nf.length ? `Fabric not selected yet for ${nf.length} curtain${nf.length > 1 ? 's' : ''} (${[...new Set(nf.map(l => l.area || '—'))].join(', ')}). Its amount is not in the total and will be added once the fabric is chosen.` : '';
+  return {S, sub, total, disc, discTxt, disc2, disc2Txt, final, missing, noFab, costMissing, netAfter, cost: rawCost, cols, hid};
 }
 const ONES = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
 const TENS = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
@@ -3656,7 +3660,7 @@ function paperHTML(q, house, t, showC, ro, ed){
       ${sumRow('tot', 'TOTAL', '₹ ' + inr(t.total), showC ? `<td class="r cost">${inr(t.cost)}</td>` : '')}
       ${t.disc ? sumRow('tot', esc(t.discTxt || 'Discount on curtain fabric'), '− ₹ ' + inr(t.disc)) : ''}${t.disc2 ? sumRow('tot', esc(t.disc2Txt || 'Discount'), '− ₹ ' + inr(t.disc2)) : ''}${t.disc || t.disc2 ? sumRow('tot big', 'FINAL', '₹ ' + inr(t.final)) : ''}
       </tbody></table></div>
-    <div class="paper-foot">${amt ? `<p><b>INR :</b> ${words(t.final)} ONLY.</p>` : ''}
+    <div class="paper-foot">${t.noFab ? `<p class="nofab"><b>Note :</b> ${esc(t.noFab)}</p>` : ''}${amt ? `<p><b>INR :</b> ${words(t.final)} ONLY.</p>` : ''}
       <div class="pf-grid"><div><b>Bank Detail :</b>${FIRM.bank.map(([a, b]) => `<br>${a} : ${b}`).join('')}</div>
       <div><b>T&amp;C</b><ol>${TNC.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div></div>
       <div class="sign"><span>CUSTOMER SIGNATURE.</span><span>EXECUTIVE SIGN.</span><span>${FIRM.name}.</span></div></div>`;
@@ -3863,6 +3867,7 @@ async function quoteXLSX(){
   if (t.disc2) total(t.disc2Txt, t.disc2, {rs: true, minus: true});
   if (t.disc || t.disc2) total('FINAL', t.final, {rs: true, size: 11, fill: 'FFFFF6D6'});
   const side = {left: thin, right: thin};
+  if (t.noFab) merged(`Note : ${t.noFab}`, {font: {bold: true, color: {argb: 'FFB45309'}}, border: side, h: 30});
   if (amt) merged(`INR : ${words(t.final)} ONLY.`, {font: {bold: true}, border: side, h: 18});
   merged('Bank Detail :\n' + FIRM.bank.map(([a, b]) => `${a} : ${b}`).join('\n'), {font: {bold: true}, border: side, h: 70});
   merged('T&C\n' + TNC.map((x, i) => `${i + 1}. ${x}`).join('\n'), {font: {size: 8}, border: side, h: 12 * (TNC.length + 3)});
@@ -4022,6 +4027,7 @@ function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()})
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY, head: [['Sr.No.', ...cols.map(c => QCOLS.find(x => x[0] === c)[1])]], body,
     headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center'}, line), columnStyles: colSt}));
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY, pageBreak: 'avoid', body: [
+    ...(t.noFab ? [[{content: `Note : ${t.noFab}`, styles: {fontStyle: 'bold', textColor: [180, 83, 9]}}]] : []),
     ...(amt ? [[{content: `INR : ${words(t.final)} ONLY.`, styles: {fontStyle: 'bold'}}]] : []),
     [{content: 'Bank Detail :\n' + FIRM.bank.map(([a, b]) => `${a} : ${b}`).join('\n'), styles: {fontStyle: 'bold'}}],
     [{content: 'T&C\n' + TNC.map((x, i) => `${i + 1}. ${x}`).join('\n'), styles: {fontSize: 8}}],
@@ -4588,7 +4594,7 @@ async function recordVersion(v, sig, t){
   try {
     if (await Store.versionExists(cid, v)) { toast(`Someone saved v${v} of this client a moment ago. Download again to save yours as v${v + 1}.`); delete CL.vers[cid]; return; }
     await Store.addVersion(cid, v, clone({cid, n: v, sig, at, by: UID, name, no: q.no || '', exec: q.exec || '', total, hid: t.hid || '',
-      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, disc2: t.disc2 || 0, disc2Txt: t.disc2Txt || '', final: t.final, cols: t.cols || QALL, hid: t.hid || ''}, rows: state.rows, blinds: state.blinds, more: state.more}}));
+      snap: {house: name, q, t: {S, sub: t.sub, total: t.total, disc: t.disc, discTxt: t.discTxt, disc2: t.disc2 || 0, disc2Txt: t.disc2Txt || '', final: t.final, noFab: t.noFab || '', cols: t.cols || QALL, hid: t.hid || ''}, rows: state.rows, blinds: state.blinds, more: state.more}}));
     await Store.mergeClient(cid, Object.assign({name, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', latest: v, sig, at, total, dsig: sig, edited: at, cats: sheetCats(sheetOf()), changeReq: null}, q.city ? {city: q.city} : {}));
     delete CL.vers[cid]; autoAfterVersion(cid);
     toast(`Kept as v${v} in ${name || 'this client'}'s quotations`);
@@ -7458,4 +7464,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-144927 -->
+<!-- build 20261020-152005 -->
