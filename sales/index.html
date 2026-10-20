@@ -4786,8 +4786,8 @@ function ctabsHTML(overview){
   const inSheet = GATED.includes(current) && current !== 'quote' && current !== 'msheet';   // msheet = View measurement sheet (its own button)
   if (inSheet) ctLastSheet = current;   // the Measurement sheet button goes back to the product you were on
   const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
-  // 20 Oct (Purvi): on the Quotation the bar stays exactly as on the sheet (product tabs + Download sheet); was sheet-only (18 Oct)
-  const products = !overview || inSheet || current === 'quote' || current === 'msheet' ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}` : '';
+  // Product tabs only on the Measurement sheet form (20 Oct, Purvi, later the same day; they were briefly on View quotation / View sheet too)
+  const products = !overview || inSheet ? `${overview ? '<span class="ctab-sep" aria-hidden="true"></span>' : ''}${tab('c-measure', 'Curtains')}${tab('b-measure', 'Blinds')}${MP_TABS.map(([k, name, subs]) => tab(k, name || MP[k].name, subs)).join('')}` : '';
   // 19 Oct (Purvi): a new enquiry shows no Measurement sheet / Quotation buttons; Done at the bottom is its only way on
   const fresh = shared && current === 'client' && (cpId === '__new' || cpFresh === cpId);
   if (fresh) return `<div class="ctabs-row"><div class="ctabs" role="tablist">${tab('client', 'Overview')}</div></div>`;
@@ -7323,4 +7323,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-125725 -->
+<!-- build 20261020-130132 -->
