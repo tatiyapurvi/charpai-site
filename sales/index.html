@@ -2136,7 +2136,7 @@ document.addEventListener('touchstart', e => { if (ourSelect(e.target)) { e.prev
 document.addEventListener('keydown', e => {
   const t = e.target; if (!ourSelect(t)) return;
   const open = !sugg.hidden && suggFor && suggFor.input === t;
-  if (!open && !e.altKey && ['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && t.closest('#tb, #btb')) return;   // measurement sheets: rows, as in Excel (19 Oct)
+  if (!open && !e.altKey && ['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && t.closest('#tb, #btb, #ptb')) return;   // measurement sheets: rows, as in Excel (19 Oct)
   if (!open && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t); return; }
   if (open && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '') + e.key); return; }
   if (open && e.key === 'Backspace') { e.preventDefault(); e.stopImmediatePropagation(); selOpen(t, (suggFor.q || '').slice(0, -1)); return; }
@@ -2443,7 +2443,7 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), sel(), setSel(i), 
   Object.assign(S, {add, del, move, focus, dup});
   // on the yellow row when the cursor is in no box (after clicking its number, the drawing or an empty spot)
   document.addEventListener('keydown', e => {
-    if (current !== o.view || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+    if (!(typeof o.view === 'function' ? o.view() : current === o.view) || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return;
     const a = document.activeElement; if (a && a.closest && a.closest('#' + o.tbody.id)) return;
     if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || (a && a.isContentEditable) || document.querySelector('dialog[open]')) return;
     const i = Math.min(o.sel() || 0, o.list().length - 1); if (i < 0) return;
@@ -5635,7 +5635,7 @@ function uphFromOld(){
 }
 function uphRowHTML(r){
   const i = state.more.uph.indexOf(r) + 1, c = MP.uph.calc(r);
-  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx">${i}</span></td>
+  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span></td>
     <td>${r.p ? `<span class="uprod">${uphDot(r.p)}${esc(r.p)}</span>` : '<span class="chip warn">Pick what it is →</span>'}</td>
     <td class="uwhat">${c.what ? esc(c.what) : '<span class="none">—</span>'}</td>
     <td class="out">${c.ok ? `${fmt(c.qty)}<span class="u"> ${esc(c.u)}</span>` : '<span class="none">—</span>'}</td>
@@ -5753,7 +5753,7 @@ function mtCalc(r){
 const MT_HEAD = `<tr><th class="first">#</th><th>What it is</th><th>Details</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th><th></th></tr>`;
 function mtRowHTML(r){
   const i = state.more.mattress.indexOf(r) + 1, c = mtCalc(r);
-  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx">${i}</span></td>
+  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span></td>
     <td>${r.p ? `<span class="uprod">${mtDot(r.p)}${esc(r.p)}</span>` : '<span class="chip warn">Pick what it is →</span>'}</td>
     <td class="uwhat">${c.what ? esc(c.what) : '<span class="none">—</span>'}</td>
     <td class="out">${c.ok ? `${fmt(c.qty)}<span class="u"> ${esc(c.u)}</span>` : '<span class="none">—</span>'}</td>
@@ -5847,7 +5847,7 @@ function mpCellHTML(k, col, r){
   const P = MP[k], dis = col.off && col.off(r) ? ' disabled' : '', w = col.w ? ` style="width:${col.w}px"` : '';
   if (col.how) return `<td class="howc" data-o="how"></td>`;
   if (col.out) return `<td class="out" data-o="${col.k}"></td>`;
-  if (col.t === 'room') return `<td class="first"><div class="cell"><span class="idx">${state.more[k].indexOf(r) + 1}</span><input data-p="room" value="${esc(r.room)}" list="roomlist" placeholder="Room" style="width:130px"></div></td>`;
+  if (col.t === 'room') return `<td class="first"><div class="cell"><span class="idx grip" title="Drag to move this row">${state.more[k].indexOf(r) + 1}</span><input data-p="room" value="${esc(r.room)}" list="roomlist" placeholder="Room" style="width:130px"></div></td>`;
   if (col.t === 'sel') return `<td><select data-p="${col.k}"${w}${dis} aria-label="${esc(col.label)}"${col.todo && !r[col.k] ? ' class="ovr"' : ''}>${selOpts(typeof col.opts === 'function' ? col.opts(r) : col.opts, r[col.k], col.blank)}</select></td>`;
   if (col.t === 'auto') return `<td><span class="auto-wrap"><input data-p="${col.k}" class="n auto big" inputmode="decimal" style="width:76px"${dis} aria-label="${esc(col.label)}"><button class="reset" data-reset="${col.k}" title="Put back the worked-out value">↺</button></span></td>`;
   if (col.t === 'num') return `<td><input data-p="${col.k}" class="n${col.key ? ' key' : ''}" inputmode="decimal" value="${esc(r[col.k])}" placeholder="${col.key ? '0' : ''}" style="width:${col.w || 80}px"${dis} aria-label="${esc(col.label)}"></td>`;
@@ -5971,14 +5971,19 @@ ptb.addEventListener('click', e => {
   }
   renderProduct(k); save();
 });
-// "+ Add" keeps the room's company and type from the row above, like Curtains and Blinds.
+// + Add: an empty row at the end, Ctrl/⌘ Z takes it back (20 Oct: as Curtains and Blinds; it used to carry company and type)
 $('#p-add').onclick = () => {
-  const k = mpCur, rows = state.more[k], last = rows[rows.length - 1], r = MP[k].blank(); r.id = uid++;
-  if (last && !MP[k].form) for (const f of ['sup', 'kind', 'roll', 'type', 'lay', 'use', 'who', 'T', 'by']) if (f in r && has(last[f])) r[f] = last[f];   // Upholstery: a new line starts empty, "What is it?" first
-  rows.push(r); state.msel[k] = rows.length - 1; renderProduct(k); save();
+  const k = mpCur; productRows.add();
   if (MP[k].form && !matchMedia('(min-width: 1150px)').matches) $('#pside').scrollIntoView({behavior: 'smooth', block: 'start'});
-  const inp = $('#ptb').querySelector(`tr[data-id="${r.id}"] [data-p=room]`); if (inp) inp.focus();
 };
+// Wallpaper, Flooring, Upholstery, Mattress: the same shortcuts and drag as Curtains and Blinds (Purvi, 20 Oct). They share one
+// table (#ptb); mpCur says which sheet is open. Upholstery and Mattress are typed in the side panel, so only add / copy / delete /
+// move / undo apply there.
+const productRows = sheetRows({view: () => !!MP[current] && current === mpCur, tbody: ptb, list: () => state.more[mpCur],
+  blank: () => { const r = MP[mpCur].blank(); r.id = uid++; return r; },
+  sel: () => state.msel[mpCur] || 0, setSel: i => { state.msel[mpCur] = i; }, select: tr => mpSelect(mpCur, tr), after: () => { renderProduct(mpCur); save(); },
+  fieldOf: t => t.dataset.p, box: (tr, f) => tr.querySelector(`[data-p="${f}"]`), first: 'room',
+  suggestOnly: new Set(['room', 'wall']), label: r => r.room || r.p || ''});
 
 // ================= tabs, copy, start
 const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote', 'msheet': 'msheet',
@@ -7323,4 +7328,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-130132 -->
+<!-- build 20261020-130522 -->
