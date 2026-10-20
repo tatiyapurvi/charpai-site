@@ -450,6 +450,16 @@ svg text{font-family:var(--num);fill:var(--ink)}
 .f-sheer{fill:var(--sheer);stroke:var(--sheer-fold);fill-opacity:.72}
 .f-lining{fill:var(--line2);stroke:var(--faint)}
 .f-dark{fill:#3B3F45;stroke:#25282C}
+/* 20 Oct (Purvi): the blind's order details two to a row, tight, so the form and the drawing fit on one screen */
+#bside .bsec{padding:4px 16px 0}
+#bside .bsec h2{font-size:17px;margin:0}
+#bside .bform{grid-template-columns:1fr 1fr;gap:6px 10px;padding:6px 16px 4px}
+#bside .bform .fld label{font-size:12px;margin-bottom:2px}
+#bside .bform select,#bside .bform input{padding:6px 8px;font-size:14px;min-height:0;height:34px}
+#bside #bwarn .chips{padding:2px 16px 0}
+#bside .fig h4{margin:8px 6px 4px}
+#bside .fig svg{max-height:max(260px,calc(100dvh - 520px))}   /* the drawing fills what is left of the screen under the form */
+#bside .bnotes{margin:6px 16px 14px}
 .f-wood{fill:#B98A5B;stroke:#7A5532}
 .fold-main{stroke:var(--main-fold)}
 .fold-sheer{stroke:var(--sheer-fold)}
@@ -3285,19 +3295,14 @@ function renderBSide(){
       : `<input id="bo-${f.k}" data-bo="${f.k}" value="${esc(v)}" placeholder="${esc(f.text || '')}">`}</div>`;
   };
   el.innerHTML = head + `
-    <div class="kpis">
-      <div class="kpi"><small>Size for the order</small><b class="num">${c.ok ? `${c.mmH} × ${c.mmW}` : '—'}</b><small>mm, height × width</small></div>
-      <div class="kpi"><small>Charged</small><b class="num">${c.ok ? cpF(c.charge * c.q) : '—'}</b><small>sq ft${c.q > 1 ? ` (${c.q} blinds)` : ''}</small></div>
-      ${c.parts > 1 ? `<div class="kpi" style="border-color:var(--warn)"><small>Made in</small><b class="num" style="color:var(--warn)">${c.parts} parts</b><small>${c.partMm} mm each · roll ${fmt(c.rollMm / 1000)} m</small></div>` : ''}
-      <div class="kpi m"${c.lim && c.lim.bad ? ' style="background:#fdecea;border-color:#c62828;color:#8e1b1b"' : ''}><small>Amount incl. GST</small><b class="num">${c.lim && c.lim.bad ? 'Size not possible' : c.ok && c.p ? rs(c.amt + (c.addonAmt || 0)) : '—'}</b></div>
-    ${c.lim && c.lim.bad ? `<div class="blim-ban" style="margin:0;grid-column:1/-1">${esc(c.lim.bad)} Change the size, or ask D'Decor's CC team before quoting.</div>` : ''}
-    </div>
-    <div class="sec-h" style="padding:6px 14px 0"><h2 style="font-size:19px">Order details for ${esc(BSUPS[b.sup])}</h2><p>${c.done}/${c.need} filled</p></div>
+    ${c.lim && c.lim.bad ? `<div class="blim-ban" style="margin:6px 14px 0">${esc(c.lim.bad)} Change the size, or ask D'Decor's CC team before quoting.</div>` : ''}   <!-- 20 Oct (Purvi): size / charged / amount cards removed: the table shows them -->
+    <div class="sec-h bsec"><h2>Order details for ${esc(BSUPS[b.sup])}</h2><p>${c.done}/${c.need} filled</p></div>
     <div class="bform">${t.fields.map(fld).join('')}</div>
     <div id="bwarn">${bWarnHTML(c, t)}</div>
-    <div id="bfig" class="fig">${c.ok ? `<h4>Front view <span>as the company will make it</span></h4>${blindSVG(b, c)}` : '<div class="empty">Type the height and the width in inches to see the drawing.</div>'}</div>`;   // 20 Oct (Purvi): for blinds the order details come first, the drawing below
+    <div id="bfig" class="fig">${c.ok ? `<h4>Front view <span>as the company will make it</span></h4>${blindSVG(b, c)}` : '<div class="empty">Type the height and the width in inches to see the drawing.</div>'}</div>
+    ${t.notes ? `<div class="how bnotes"><b>From the company's order form</b>${esc(t.notes)}</div>` : ''}`;   // 20 Oct (Purvi): for blinds the order details come first, the drawing below
 }
-function bWarnHTML(c, t){ return `<div class="chips">${(c.warn || []).map(w => `<span class="chip warn">${esc(w)}</span>`).join('')}${c.done < c.need ? `<span class="chip warn">${c.need - c.done} detail${c.need - c.done > 1 ? 's' : ''} still empty</span>` : '<span class="chip good">Ready for the order form</span>'}</div>${t.notes ? `<div class="how"><b>From the company's order form</b>${esc(t.notes)}</div>` : ''}`; }
+function bWarnHTML(c, t){ return `<div class="chips">${(c.warn || []).map(w => `<span class="chip warn">${esc(w)}</span>`).join('')}${c.done < c.need ? `<span class="chip warn">${c.need - c.done} detail${c.need - c.done > 1 ? 's' : ''} still empty</span>` : '<span class="chip good">Ready for the order form</span>'}</div>`; }   // the company's own notes now sit under the drawing (20 Oct)
 $('#bside').addEventListener('input', e => {
   const k = e.target.dataset.bo; if (!k) return;
   const b = state.blinds[state.bsel]; b.o[k] = e.target.value.trim ? e.target.value : e.target.value;
@@ -7537,4 +7542,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-171051 -->
+<!-- build 20261020-171855 -->
