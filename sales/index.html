@@ -181,6 +181,10 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
   body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) .cbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--tabs-h));z-index:15;background:var(--bg);margin-top:-18px;padding-top:14px}
   body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) :is(.side,.q-sum){top:calc(env(safe-area-inset-top,0px) + var(--tabs-h) + var(--cbar-h) + 4px)}
   body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) :is(#side,#bside){max-height:calc(100dvh - var(--tabs-h) - var(--cbar-h) - 20px)}
+  /* 20 Oct (Purvi: the table's heading rows "should be fixed even if we are scrolling down"): the sheets scroll with the page only
+     (no box inside the page to scroll), and a copy of the heading rows (.fhead, floatHeads) stays under the fixed bar, as Excel's
+     frozen top row. */
+  body:has(:is(#v-measure,#v-blinds,#v-product):not([hidden])) .tbl-scroll{max-height:none;overflow-y:visible}
 }
 @media (min-width:1150px){ :is(#v-measure,#v-blinds) .wrap{grid-template-columns:minmax(0,1fr) 420px} }
 /* Blinds sheet, 19 Oct (Purvi: "apply same right left panel and margin settings to the blinds page"): the same margins and 420px
@@ -228,6 +232,10 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
 .hnav[hidden]{display:none}
 .hn-arrs{margin-left:auto;display:flex;gap:8px}   /* 19 Oct (Purvi): ‹ › together at the bottom right, next to the last row people type in */
 .hn-arrs[hidden]{display:none}
+.fhead{position:fixed;z-index:14;overflow:hidden;pointer-events:none;box-shadow:0 6px 10px -8px rgba(0,0,0,.35)}
+.fhead[hidden]{display:none}
+.fhead table{margin:0}
+.fhead th{box-sizing:border-box}
 @media (max-width:760px){ .hn-arrs{display:none} }
 .hn-arr{flex:none;width:40px;height:36px;border:0;border-radius:10px;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);font:600 22px/1 var(--body);cursor:pointer}
 .hn-arr:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 13%,transparent)}
@@ -4776,6 +4784,32 @@ const MS_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width:17p
 const QT_SVG = '<svg viewBox="0 0 20 20" width="17" height="17" style="width:17px;height:17px" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5 M8 10h5 M8 13h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 var ctLastSheet = '';
 const EYE_ICON = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M1.8 10S5 4.5 10 4.5 18.2 10 18.2 10 15 15.5 10 15.5 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+// ---- the frozen heading (20 Oct): for each sheet table, a copy of its <thead> fixed under the bar(s) while the real one is above
+// them; same column widths, follows the table sideways; the Room column stays put as in the table. Laptops/tablets only.
+function floatHeads(){
+  const big = matchMedia('(min-width: 761px)').matches;
+  document.querySelectorAll('#v-measure .tbl-scroll, #v-blinds .tbl-scroll, #v-product .tbl-scroll').forEach(sc => {
+    let f = sc._fh; const th = sc.querySelector('thead'), on = big && th && sc.offsetParent !== null;
+    if (!on) { if (f) f.hidden = true; return; }
+    const top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabs-h')) || 0) + ($('#cbar') && !$('#cbar').hidden ? $('#cbar').offsetHeight : 0);
+    const r = sc.getBoundingClientRect(), h = th.getBoundingClientRect();
+    const show = h.top < top && r.bottom > top + h.height + 30;
+    if (!f) { f = sc._fh = document.createElement('div'); f.className = 'fhead'; f.hidden = true; document.body.appendChild(f); }
+    if (!show) { f.hidden = true; return; }
+    const sig = th.innerHTML.length + '|' + sc.scrollWidth;
+    if (f._sig !== sig || !f.firstChild) {
+      const t = sc.querySelector('table'), c = document.createElement('table'); c.className = t.className; c.style.width = t.offsetWidth + 'px'; c.style.minWidth = '0';
+      const h2 = th.cloneNode(true); h2.querySelectorAll('[id]').forEach(x => x.removeAttribute('id')); c.appendChild(h2);
+      const src = th.querySelectorAll('th'), dst = h2.querySelectorAll('th'); src.forEach((x, i) => { const w = x.getBoundingClientRect().width + 'px'; dst[i].style.width = dst[i].style.minWidth = dst[i].style.maxWidth = w; });
+      f.innerHTML = ''; f.appendChild(c); f._sig = sig;
+    }
+    f.hidden = false; Object.assign(f.style, {top: top + 'px', left: r.left + 'px', width: sc.clientWidth + 'px'});
+    const c = f.firstChild; c.style.transform = `translateX(${-sc.scrollLeft}px)`;
+    c.querySelectorAll('th.first').forEach(x => { x.style.position = 'relative'; x.style.zIndex = 2; x.style.transform = `translateX(${sc.scrollLeft}px)`; });
+  });
+}
+let fhRaf = 0; const fhSoon = () => { if (!fhRaf) fhRaf = requestAnimationFrame(() => { fhRaf = 0; floatHeads(); }); };
+addEventListener('scroll', fhSoon, {passive: true, capture: true}); addEventListener('resize', fhSoon);
 function fitTopBars(){ const t = document.querySelector('.tabs'), c = $('#cbar'), R = document.documentElement.style;
   if (t) R.setProperty('--tabs-h', t.offsetHeight + 'px'); if (c && !c.hidden) R.setProperty('--cbar-h', c.offsetHeight + 'px'); }
 if (window.ResizeObserver) { const ro = new ResizeObserver(fitTopBars); document.querySelectorAll('.tabs, #cbar').forEach(x => ro.observe(x)); }
@@ -6027,6 +6061,7 @@ function go(v){
   if (MP[v]) renderProduct(v);
   try { localStorage.setItem(TKEY, v); } catch(_){}
   window.scrollTo({top: 0});
+  fhSoon();   // the frozen table heading follows the page that is now open
 }
 $('#tab-h').onclick = () => go('clients');
 $('#tab-d').onclick = () => go('dash');
@@ -7328,4 +7363,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-130522 -->
+<!-- build 20261020-131136 -->
