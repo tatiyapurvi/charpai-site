@@ -4343,7 +4343,10 @@ const LISTDB = {
   async get(k){ const d = await this.open(); return new Promise((ok, no) => { const r = d.transaction('c').objectStore('c').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
   async put(k, v){ const d = await this.open(); return new Promise((ok, no) => { const t = d.transaction('c', 'readwrite'); t.objectStore('c').put(v, k); t.oncomplete = () => ok(); t.onerror = () => no(t.error); }); }
 };
-async function listVer(){ try { const ix = await db.doc('catalog/index').get(); return ix.exists && (ix.data() || {}).ver || null; } catch (_) { return null; } }
+// 20 Oct: ask the server first. A plain get() can answer from the browser's saved copy of Firebase on page load, so a device kept
+// the old supplier lists after an update (seen with the Sansaar refresh). Offline: the saved copy, then no version (= download).
+async function listVer(){ const v = ix => ix && ix.exists && (ix.data() || {}).ver || null;
+  try { return v(await db.doc('catalog/index').get({source: 'server'})); } catch (_) { try { return v(await db.doc('catalog/index').get()); } catch (__) { return null; } } }
 async function cachedDocs(name, ver){
   if (ver) try { const c = await LISTDB.get(name); if (c && c.ver === ver && Array.isArray(c.docs) && c.docs.length) return c.docs.map(x => ({id: x.id, data: () => x.d})); } catch (_) {}
   const snap = await db.collection(name).get();
@@ -7468,4 +7471,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-153042 -->
+<!-- build 20261020-161517 -->
