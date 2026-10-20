@@ -2351,11 +2351,9 @@ function changed(r){
   updateRow(r); renderTotals(); if (r.id === selId()) renderSide(); save();
 }
 function afterStructure(){ renderTable(); renderTotals(); renderSide(); save(); }
-// a new row carries the fabric, lining, style and fixing of the row it follows (+ Add and Ctrl/⌘ +)
-const carry = (r, from) => { if (from) Object.assign(r, {layer:from.layer, fabric:from.fabric, lining:from.lining, roll:from.roll, rollOwn:from.rollOwn || '', repeat:from.repeat, turn:from.turn, style:from.style, fixing:from.fixing || ''}); return r; };
+// + Add: a fresh, empty row (20 Oct, Purvi: it copied the last row's fabric as text only, in a red dotted box, never really picked)
 $('#add').onclick = () => {
-  const last = state.rows[state.rows.length - 1];
-  const r = carry(blank(), last);   // track, parts and remarks are not copied: the salesperson picks it for each opening
+  const r = blank();
   state.rows.push(r); state.sel = state.rows.length - 1; afterStructure();
   document.getElementById(`r${r.id}-room`).focus();
 };
@@ -7231,4 +7229,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261019-201937 -->
+<!-- build 20261020-113540 -->
