@@ -237,6 +237,7 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
 .fhead table{margin:0}
 .fhead th{box-sizing:border-box}
 @media (max-width:760px){ .hn-arrs{display:none} }
+#v-blinds .addbar #bnote{order:1;flex-basis:100%}   /* 20 Oct (Purvi): the price-list line goes under, so ‹ › sit level with + Add blind */
 .hn-arr{flex:none;width:40px;height:36px;border:0;border-radius:10px;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);font:600 22px/1 var(--body);cursor:pointer}
 .hn-arr:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 13%,transparent)}
 .hn-arr:disabled{opacity:.3;cursor:default}
@@ -7375,4 +7376,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-133255 -->
+<!-- build 20261020-133711 -->
