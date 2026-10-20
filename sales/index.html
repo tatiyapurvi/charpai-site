@@ -2164,6 +2164,8 @@ document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dat
   else if (flProductInput(e.target)) flOpenSugg(e.target);
   else if (e.target.dataset && e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.bcoll) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bCollSugg(e.target, b); }
+  else if (e.target.dataset && e.target.dataset.bshade2) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bDNSugg(e.target, b, 'bottom'); }
+  else if (e.target.dataset && e.target.dataset.b === 'shade' && !e.target.dataset.quiet && (() => { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); return b && bDN(b) && dnPairs(b).length; })()) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); bDNSugg(e.target, b, 'top'); }
   else if (e.target.dataset && e.target.dataset.b === 'shade' && !e.target.dataset.quiet) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bShadeSugg(e.target, b); }
   else if (e.target.tagName === 'INPUT' && (e.target.getAttribute('list') || e.target.dataset.dl)) dlOpen(e.target);
   else if (e.target.dataset && e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); }
@@ -3044,13 +3046,14 @@ function bCollSugg(input, b){
 function bShadesOf(r){ const d = String(r.design || '').replace(/\s+/g, ''), rg = shadeRange(d);
   if (rg && rg[1] - rg[0] <= 300) return Array.from({length: rg[1] - rg[0] + 1}, (_, i) => String(rg[0] + i));
   return /^\d{3,}$/.test(d) ? [d] : []; }
-function bCollShades(input, b, coll){
+function bCollShades(input, b, coll, bottom){
   const R = BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam && r.sys === b.sys && (r.coll || r.design) === coll);
   let L = R.flatMap(r => { const sh = bShadesOf(r); return sh.length ? sh.map(c => ({c, r})) : [{c: '', r}]; })
     .sort((x, y) => bRate(x.r) - bRate(y.r) || (+x.c || 0) - (+y.c || 0) || String(x.r.design).localeCompare(String(y.r.design)));
   const q = input.value.trim().toLowerCase(), cur = q && L.some(x => x.c === input.value.trim() && x.r.id === b.pid);
   if (q && !cur) L = L.filter(x => (x.c || x.r.design + ' ' + x.r.extra).toLowerCase().includes(q)).sort((x, y) => !x.c.toLowerCase().startsWith(q) - !y.c.toLowerCase().startsWith(q) || (+x.c || 0) - (+y.c || 0));
-  suggFor = {input, row: b, restore: () => { input.value = b.shade; }, pick: x => {
+  suggFor = {input, row: b, restore: () => { input.value = bottom ? (b.o || {}).shade2 || '' : b.shade; }, pick: x => {
+    if (bottom) { (b.o || (b.o = {})).shade2 = x.c || x.r.design; input.value = b.o.shade2; bUpdateRow(b); if (b === state.blinds[state.bsel]) renderBSide(); save(); return; }   // Day & Night bottom: only its shade
     b.shade = x.c || x.r.design; input.value = b.shade; b.pid = x.r.id; b.pidAuto = false; b.coll = coll;   // a named design (Sansaar: Bliss, Damara…) goes in as it is
     bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); }};
   suggItems = L.slice(0, 400); suggOn = Math.max(0, suggItems.findIndex(x => x.r.id === b.pid && (!x.c || x.c === b.shade)));
@@ -3061,12 +3064,52 @@ function bCollShades(input, b, coll){
   placeSugg(input);
   const on = sugg.querySelector('.it.on'); if (on) on.scrollIntoView({block: 'nearest'});
 }
+// ---- Day & Night: Top and Bottom lists (20 Oct, Purvi: "add the shade list to the bottom box too and when the top is selected show
+// all available options in bottom, dont show options that are not available with the top choice"). D'Decor prices Day & Night by
+// pair ("Esplanade + Belize"), so Top lists the light fabrics that start a pair, Bottom lists only that top's partners, and picking
+// both chooses that pair's price row. A company without pairs (Marvel…): both boxes get the type's own shade list.
+const dnKey = n => String(n || '').trim().toLowerCase().replace(/^esplande\b/, 'esplanade');   // the Folio list spells it both ways
+function dnPairs(b){
+  const coll = bCollOf(b);
+  return BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam && r.sys === b.sys && / \+ /.test(r.design || '') && (!coll || r.coll === coll))
+    .map(r => { const [top, bot] = String(r.design).split(/\s*\+\s*/); return {r, top, bot}; });
+}
+function bDNSugg(input, b, which){
+  const P = dnPairs(b);
+  if (!P.length) { if (which === 'top') return bShadeSugg(input, b, true); return bShadeSugg(input, b, true, true); }
+  const o = b.o || (b.o = {}), title = s => s.charAt(0).toUpperCase() + s.slice(1), v = input.value.trim();
+  const q = dnKey(v) === dnKey(which === 'top' ? b.shade : o.shade2) && !input._typed ? '' : v.toLowerCase();   // a click shows the whole list; typing narrows it
+  let L;
+  if (which === 'top') {
+    const m = new Map(); for (const x of P) { const k = dnKey(x.top); if (!m.has(k)) m.set(k, {name: title(k), n: 0, lo: Infinity}); const e = m.get(k); e.n++; e.lo = Math.min(e.lo, bRate(x.r)); }
+    L = [...m.values()].filter(e => !q || e.name.toLowerCase().includes(q) || dnKey(b.shade) === dnKey(e.name));
+    suggFor = {input, row: b, restore: () => { input.value = b.shade; }, pick: e => {
+      b.shade = e.name; input.value = e.name;
+      const keep = P.find(x => dnKey(x.top) === dnKey(e.name) && dnKey(x.bot) === dnKey(o.shade2));   // the bottom still goes with it?
+      if (keep) { b.pid = keep.r.id; b.coll = keep.r.coll; } else { o.shade2 = ''; b.pid = ''; }
+      bRedraw(b); const nx = $('#btb').querySelector(`tr[data-id="${b.id}"] [data-bshade2]`); if (nx && !keep) setTimeout(() => nx.focus(), 0); }};
+    suggItems = L; suggOn = Math.max(0, L.findIndex(e => dnKey(e.name) === dnKey(b.shade)));
+    sugg.innerHTML = L.length ? `<div class="msg" style="padding:6px 12px">Top (light) fabric · then pick the bottom</div>` + L.map((e, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(e.name)}</b><br><small>${e.n} bottom fabric${e.n > 1 ? 's' : ''} go with it</small></span><span class="pr">from ₹${e.lo}</span></div>`).join('')
+      : `<div class="msg">No top fabric “${esc(input.value.trim())}”.</div>`;
+  } else {
+    if (!b.shade) { suggFor = {input, row: b}; suggItems = []; sugg.innerHTML = '<div class="msg">Pick the top (light) fabric first: the bottom list depends on it.</div>'; placeSugg(input); return; }
+    const mine = P.filter(x => dnKey(x.top) === dnKey(b.shade));
+    L = mine.filter(x => !q || x.bot.toLowerCase().includes(q) || dnKey(x.bot) === dnKey(o.shade2)).sort((x, y) => bRate(x.r) - bRate(y.r));
+    suggFor = {input, row: b, restore: () => { input.value = o.shade2 || ''; }, pick: x => {
+      o.shade2 = title(dnKey(x.bot)); input.value = o.shade2; b.pid = x.r.id; b.pidAuto = false; b.coll = x.r.coll; bRedraw(b); }};
+    suggItems = L; suggOn = Math.max(0, L.findIndex(x => dnKey(x.bot) === dnKey(o.shade2)));
+    sugg.innerHTML = L.length ? `<div class="msg" style="padding:6px 12px">${mine.length} bottom fabric${mine.length > 1 ? 's' : ''} with ${esc(b.shade)}</div>` + L.map((x, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(title(dnKey(x.bot)))}</b><br><small>${esc(x.r.extra || '')}</small></span><span class="pr">₹${bRate(x.r)}</span></div>`).join('')
+      : mine.length ? `<div class="msg">No bottom “${esc(input.value.trim())}” with ${esc(b.shade)}.</div>` : `<div class="msg">${esc(b.shade)} isn't a top fabric in D'Decor's Day & Night list: pick the top from its list.</div>`;
+  }
+  placeSugg(input); const on = sugg.querySelector('.it.on'); if (on) on.scrollIntoView({block: 'nearest'});
+}
 // Shade numbers in the curtain-fabric style box (7 Oct): the company's shade list for this type, matching what is typed.
-function bShadeSugg(input, b){
+// dn / bottom (20 Oct): a Day & Night box with no pair list: the same list; the bottom box fills the bottom shade only.
+function bShadeSugg(input, b, dn, bottom){
   const t = blindType(b.sup, b.fam), coll = bCollOf(b);
   let l = t && t.shades && (BL.shades[b.sup] || {})[t.shades];
   if (coll && l) { const k = l.filter(([c, n]) => sameName(String(n).split(' - ')[0].replace(/\s+\d+%$/, ''), coll)); if (k.length) l = k; }   // Marvel: that series' shades
-  else if (coll) return bCollShades(input, b, coll);
+  else if (coll) return bCollShades(input, b, coll, bottom);
   if (!l) { closeSugg(); return; }
   const q = input.value.trim().toLowerCase(), L = (q ? l.filter(([c, n]) => String(c).toLowerCase().startsWith(q)).concat(l.filter(([c, n]) => !String(c).toLowerCase().startsWith(q) && (c + ' ' + n).toLowerCase().includes(q))) : l).slice(0, 40);
   suggFor = {input, row: b, mp: true, val: x => x[0]}; suggItems = L; suggOn = 0;
@@ -3138,7 +3181,10 @@ function shadePick(b){
 }
 const btb = $('#btb');
 btb.addEventListener('input', e => {
-  if (e.target.dataset.bshade2) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return; (b.o || (b.o = {})).shade2 = e.target.value.trim();
+  if (e.target.dataset.bshade2) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return;
+    if (e.isTrusted && document.activeElement === e.target) { e.target._typed = true; bDNSugg(e.target, b, 'bottom'); }
+    if (dnPairs(b).length) return;   // a pair is chosen from the list (it sets the price row)
+    (b.o || (b.o = {})).shade2 = e.target.value.trim();
     bUpdateRow(b); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); return; }
   if (e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); return; }
   if (e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); return; }
@@ -3148,7 +3194,7 @@ btb.addEventListener('input', e => {
   if (e.target.dataset.bq) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return; b.adds[+e.target.dataset.bq].q = e.target.value.trim(); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); return; }
   const f = e.target.dataset.b; if (!f) return;
   const tr = e.target.closest('tr'), b = state.blinds.find(x => x.id === +tr.dataset.id);
-  if (f === 'shade' && e.isTrusted && document.activeElement === e.target) bShadeSugg(e.target, b);
+  if (f === 'shade' && e.isTrusted && document.activeElement === e.target) { if (bDN(b) && dnPairs(b).length) { e.target._typed = true; b.shade = e.target.value; save(); bDNSugg(e.target, b, 'top'); return; } bShadeSugg(e.target, b); }
   b[f] = e.target.value;
   if (f === 'sup') { b.fam = b.sys = b.pid = b.coll = ''; b.adds = []; }   // another company's motors and extras don't fit
   if (f === 'fam') { b.sys = b.pid = b.coll = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; }
@@ -7549,4 +7595,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-181550 -->
+<!-- build 20261020-182248 -->
