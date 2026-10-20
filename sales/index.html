@@ -2875,18 +2875,18 @@ function bRowHTML(b, i){
   const adds = BL.addons.filter(a => a.sup === b.sup);
   const list = shadeListId(b, t);
   return `<tr class="row" data-id="${b.id}">
-    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this blind" aria-label="Blind ${i + 1}, drag to move">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:110px"></div></td>
-    <td><select data-b="sup" style="width:96px" title="${esc(BSUPS[b.sup] || '')}">${Object.entries(BSUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${k === b.sup ? ' selected' : ''}${BL.state === 'ready' && !bPriced(k) && b.sup !== k ? ' disabled' : ''}>${esc(BSHORT[k] || n)}</option>`).join('')}</select></td>
-    <td><input data-bfam="1" value="${esc(b.fam)}" autocomplete="off" placeholder="Pick a type" style="width:140px" aria-label="Blind type"></td>
+    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this blind" aria-label="Blind ${i + 1}, drag to move">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:100px"></div></td>
+    <td><select data-b="sup" style="width:84px" title="${esc(BSUPS[b.sup] || '')}">${Object.entries(BSUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${k === b.sup ? ' selected' : ''}${BL.state === 'ready' && !bPriced(k) && b.sup !== k ? ' disabled' : ''}>${esc(BSHORT[k] || n)}</option>`).join('')}</select></td>
+    <td><input data-bfam="1" value="${esc(b.fam)}" autocomplete="off" placeholder="Pick a type" style="width:100px" aria-label="Blind type"></td>
     ${loading ? `<td class="hint">${esc(loading)}</td>` : priced ? `
-    <td><select data-b="sys" style="width:130px"${b.fam ? '' : ' disabled'}>${bOpts(syss.map(x => [x, x]), b.sys, 'Pick a system')}</select></td>` : `
+    <td><select data-b="sys" style="width:124px"${b.fam ? '' : ' disabled'}>${bOpts(syss.map(x => [x, x]), b.sys, 'Pick a system')}</select></td>` : `
     <td class="hint" style="font-size:12.5px">price list not added yet</td>`}
     ${loading ? '<td></td>' : priced ? `
-    <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick' : 'System first'}" style="width:160px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
-    <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:160px" aria-label="Series"></td>`}
-    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:96px" aria-label="Shade number"></td>
-    <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:74px" aria-label="Height in inches"></td>
-    <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:74px" aria-label="Width in inches"></td>
+    <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick' : 'System first'}" style="width:128px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
+    <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:128px" aria-label="Series"></td>`}
+    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:70px" aria-label="Shade number"></td>
+    <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:64px" aria-label="Height in inches"></td>
+    <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:64px" aria-label="Width in inches"></td>
     <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>   <!-- 20 Oct (Purvi): Result right after Size, then Motor & extras -->
     ${adds.length ? ['motor', 'remote', 'extra'].map((k, j) => `<td${j ? '' : ' class="sep"'}>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3" class="sep"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
     <td class="sep" data-o="det"></td>
@@ -7380,4 +7380,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-134226 -->
+<!-- build 20261020-134625 -->
