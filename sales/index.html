@@ -3576,7 +3576,6 @@ function renderQuoteSum(t = quoteTotals()){
       <div class="srow"><label for="q-disc">Discount on curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
       <div class="srow"><label for="q-discAmt">or discount ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
       ${t.disc ? `<div class="srow"><span>Discount on curtain fabric</span><b>− ${rs(t.disc)}</b></div>` : ''}
-      ${t.S.fabric.length ? '<div class="hint">Only the curtain fabric amount gets a discount.</div>' : ''}
       <div class="srow"><label for="q-odisc">Discount on the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${q.odiscAmt ? ' disabled' : ''}></div>
       <div class="srow"><label for="q-odiscAmt">or discount ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>
       ${t.disc2 ? `<div class="srow"><span>${esc(t.disc2Txt)}</span><b>− ${rs(t.disc2)}</b></div>` : ''}
@@ -3654,7 +3653,6 @@ function renderQuoteSumM(t){
       ${SECTIONS.filter(([k]) => (t.S[k] || []).length).map(([k, n]) => `<div class="qm-li"><span>${n}</span><b>${rs(t.sub[k])}</b></div>`).join('')}
       ${row('disc', 'Discount', t.disc || t.disc2 ? '− ' + rs((t.disc || 0) + (t.disc2 || 0)) : 'None', `<div class="srow"><label for="q-disc">On curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
         <div class="srow"><label for="q-discAmt">or ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
-        <div class="hint">Only the curtain fabric amount gets a discount.</div>
         <div class="srow"><label for="q-odisc">On the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${q.odiscAmt ? ' disabled' : ''}></div>
         <div class="srow"><label for="q-odiscAmt">or ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>`)}
       ${row('inst', 'Installation', q.noInstall ? 'Not added' : 'Added', `<label class="switch" style="padding:0"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>`)}
@@ -7307,4 +7305,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-123020 -->
+<!-- build 20261020-123251 -->
