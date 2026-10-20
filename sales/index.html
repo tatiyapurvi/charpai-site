@@ -848,7 +848,9 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .paper.ms-room td.r{text-align:right;font-variant-numeric:tabular-nums}
 .paper.ms-room .ms-area{font-weight:700;text-align:center;background:#fff}
 .paper.ms-room .ms-mzd{background:#C6EFCE;color:#006100;font-weight:700}
-.paper.ms-room .ms-note{display:block;color:#C00000;font-weight:600;font-size:11.5px}
+.paper.ms-room .ms-remc{color:#C00000;font-weight:600;min-width:110px}
+.paper.ms-room input.ms-rem{width:100%;min-width:110px;border:1px solid #9bb7d4;border-radius:4px;padding:5px 6px;font:600 12.5px var(--body);color:#C00000;background:#fffdf3}
+.paper.ms-room input.ms-rem:focus{outline:2px solid var(--tape);border-color:var(--tape-ink)}
 .paper-top.ms-top td{font-size:12.5px}
 @media (max-width:999px){ #v-msheet .q-sum{order:-1} }
 .qe-open .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:10px;padding:10px;font-size:15px}
@@ -1377,8 +1379,8 @@ button.n-prop:hover{background:var(--soft)}
           <div class="bar"><span>Height and width in inches, as measured. The order forms get millimetres. Tap a row for its drawing and order details.</span><span class="acts2"><b id="btotal"></b></span></div>
           <div class="hnav" id="b-hnav" hidden><div class="hn-pills" id="b-hn-pills"></div></div>
           <div class="tbl-wrap" id="b-wrap"><div class="tbl-scroll" id="b-scroll"><table class="sheet"><thead>
-            <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="3">Size</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" data-pill="Order details"></th><th class="grp"></th></tr>
-            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th>Qty</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Order</th><th></th></tr>
+            <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="3">Size</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" data-pill="Order details"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp"></th></tr>
+            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th>Qty</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Order</th><th class="sep">Remarks</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span><span class="hn-arrs" id="b-hn-arrs" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></span></div>
         </div>
@@ -2780,7 +2782,7 @@ const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti']);   // sq ft
 const uniq = a => [...new Set(a)];
 const mmOf = inch => Math.round(inch * 25.4);
 const r2 = v => Math.round(v * 100) / 100;
-function bBlank(){ return {id: uid++, room: '', sup: 'SAN', fam: '', sys: '', pid: '', shade: '', series: '', W: '', H: '', qty: 1, adds: [], motor: '', o: {}}; }
+function bBlank(){ return {id: uid++, room: '', sup: 'SAN', fam: '', sys: '', pid: '', shade: '', series: '', W: '', H: '', qty: 1, adds: [], motor: '', o: {}, remarks: ''}; }
 // 7 Oct (Purvi: "why is motor/remote one column … why cant i type"): a blind holds any number of extras, b.adds = [{k, q}]
 // (k = add-on key, q = typed quantity or '' = worked out). The old single add-on (b.addon, b.addonQty) moves in once.
 function bMigrate(b){ b.id = uid++; if (!b.o) b.o = {}; for (const k of ['shade', 'series', 'motor']) if (b[k] === undefined) b[k] = '';
@@ -2856,6 +2858,7 @@ function bRowHTML(b, i){
     ${adds.length ? ['motor', 'remote', 'extra'].map((k, j) => `<td${j ? '' : ' class="sep"'}>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3" class="sep"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
     <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>
     <td class="sep" data-o="det"></td>
+    <td class="sep"><input data-b="remarks" value="${esc(b.remarks || '')}" placeholder="Any note" style="width:180px" aria-label="Remarks"></td>   <!-- 20 Oct: on the measurement sheet too -->
     <td class="acts"><button class="ico" data-ba="dup" title="Copy this blind">⧉</button><button class="ico" data-ba="del" title="Delete this blind">✕</button></td>
   </tr>`;
 }
@@ -7027,7 +7030,7 @@ const msFileName = (n, house = state.house, d = new Date()) => quoteFileName(n, 
 // Qty · Sq ft · Black out · Track/Rod/Roman qty (m kit) · Track qty (Rft) · MZD · Fixing (+ remarks in red). Empty columns drop out.
 // Making the sheets is unchanged; each row carries its values in `u` (msData). Old saved versions (no `u`) are read from `c`.
 const MS_COLS = [['product', 'PRODUCT'], ['pattern', 'PATTERN'], ['details', 'FABRIC DETAILS'], ['H', 'HEIGHT', 1], ['W', 'WIDTH', 1], ['panel', 'PANEL', 1], ['part', 'PART', 1],
-  ['qty', 'QTY', 1], ['sqft', 'SQ.FT QTY', 1], ['lining', 'BLACK OUT'], ['kit', 'TRACK/ROD/ROMAN QTY (MTR KIT)', 1], ['rft', 'TRACK QTY (RFT)', 1], ['mzd', 'MZD'], ['fixing', 'FIXING']];
+  ['qty', 'QTY', 1], ['sqft', 'SQ.FT QTY', 1], ['lining', 'BLACK OUT'], ['kit', 'TRACK/ROD/ROMAN QTY (MTR KIT)', 1], ['rft', 'TRACK QTY (RFT)', 1], ['mzd', 'MZD'], ['fixing', 'FIXING'], ['note', 'REMARKS']];   // 20 Oct (Purvi): remarks in their own column, typed in while editing
 const msU = (s, r) => r.u || {area: r.c.room || '', product: String(s.name || '').toUpperCase(), pattern: r.c.layer === 'S' ? 'SHEER' : r.c.layer === 'M' ? 'MAIN' : String(r.c.type || r.c.kind || r.c.bed || '').toUpperCase(),
   details: r.c.fabric || [r.c.coll, r.c.shade].filter(Boolean).join(' ') || r.c.design || r.c.product || r.c.item || r.c.what || '', H: r.c.H || '', W: r.c.W || r.c.L || '',
   qty: r.c.fabm || r.c.rolls || r.c.qty || '', sqft: r.c.sqft || r.c.area || '', lining: [r.c.lining && linShort(r.c.lining), r.c.linm && r.c.linm + ' m'].filter(Boolean).join(' '),
@@ -7040,8 +7043,11 @@ function msRooms(D){
   byRoom(flat, x => x.u.area).forEach(x => { const k = roomKey(x.u.area); if (!cur || cur.k !== k) G.push(cur = {k, room: x.u.area, rows: []}); cur.rows.push(x); });
   return G;
 }
-const msFilled = (x, k) => String(x.u[k] || '').trim() || (k === 'fixing' && String(x.u.note || '').trim());
-function msCols(G, ed){ const h = msHide(); return MS_COLS.filter(([k]) => G.some(g => g.rows.some(x => msFilled(x, k)))).filter(([k]) => ed || !h.col.includes('u.' + k)); }
+const msFilled = (x, k) => String(x.u[k] || '').trim();
+function msCols(G, ed){ const h = msHide(); return MS_COLS.filter(([k]) => (ed && k === 'note') || G.some(g => g.rows.some(x => msFilled(x, k)))).filter(([k]) => ed || !h.col.includes('u.' + k)); }
+// the row a sheet line comes from, so a remark typed on the measurement sheet is that row's own Remarks (one place, both views)
+function msSrc(key){ const [k, id] = String(key).split('|');
+  return k === 'curtains' ? state.rows.find(r => r.id === +id) : k === 'blinds' ? state.blinds.find(b => b.id === +id) : (state.more[k] || [])[+id]; }
 const msDateTxt = q => q.date ? q.date.split('-').reverse().join('-') : '';
 const msMeasurer = q => q.exec ? String(q.exec).split(' - ')[0] : '';
 
@@ -7058,7 +7064,7 @@ function msPaperHTML(q, house, D, n, ed){
   let sr = 0;
   const cell = (x, [k, , num]) => { const v = x.u[k] || '', off = colOn(k) ? '' : ' data-off';
     if (k === 'mzd') return `<td class="c${v ? ' ms-mzd' : ''}"${off}>${esc(v)}</td>`;
-    if (k === 'fixing') return `<td${off}>${esc(v)}${x.u.note ? `<span class="ms-note">${esc(x.u.note)}</span>` : ''}</td>`;
+    if (k === 'note') return ed && msSrc(x.key) ? `<td class="ms-remc"${off}><input class="ms-rem" data-msrem="${esc(x.key)}" value="${esc(v)}" placeholder="Remarks" aria-label="Remarks"></td>` : `<td class="ms-remc"${off}>${esc(v)}</td>`;
     return `<td class="${num ? 'r' : k === 'product' || k === 'pattern' ? 'c' : ''}"${off}>${esc(v)}</td>`; };
   const body = G.map(g => g.rows.map((x, i) => { const yes = !ed || on.has(x.key);
     return `<tr${yes ? '' : ' data-off'}><td class="c">${yes ? ++sr : '—'}</td>${i ? '' : `<td class="ms-area" rowspan="${g.rows.length}">${esc(String(g.room || '—').toUpperCase())}</td>`}${cols.map(c => cell(x, c)).join('')}${ed ? `<td class="qe">${btn('row', x.key, yes, 'Hide', 'Show')}</td>` : ''}</tr>`; }).join('')).join('');
@@ -7114,6 +7120,8 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-msall]')) { msShowAll(); return; }
   const b = e.target.closest('button[data-msh]'); if (b) msToggle(b.dataset.msh, b.dataset.k);
 });
+document.addEventListener('input', e => { const t = e.target; if (!t.dataset || t.dataset.msrem == null) return; const r = msSrc(t.dataset.msrem); if (!r) return; r.remarks = t.value; save();
+  const box = String(t.dataset.msrem).startsWith('curtains|') && document.getElementById(`r${r.id}-remarks`); if (box) box.value = t.value; });   // the curtain sheet isn't redrawn on opening; blinds and the rest are
 document.addEventListener('change', e => { const x = e.target.closest('input[data-msh]'); if (x) msToggle(x.dataset.msh, x.dataset.k); });
 
 // ---- PDF (A4 landscape) and Excel in the team's layout: one table, rooms first, Area written once per room, Size (inch.) over
@@ -7138,11 +7146,11 @@ function msPDF(n, d = {q: state.quote || {}, house: state.house, D: msShown()}){
     const row = [++sr]; if (!i) row.push({content: pdfTxt(String(g.room || '-').toUpperCase()), rowSpan: g.rows.length, styles: {fontStyle: 'bold', halign: 'center'}});
     cols.forEach(([k]) => { const v = pdfTxt(x.u[k]);
       if (k === 'mzd') row.push({content: v, styles: v ? {fillColor: [198, 239, 206], textColor: [0, 97, 0], fontStyle: 'bold', halign: 'center'} : {}});
-      else if (k === 'fixing') row.push({content: [v, pdfTxt(x.u.note)].filter(Boolean).join('\n'), styles: x.u.note ? {textColor: [192, 0, 0]} : {}});
+      else if (k === 'note') row.push({content: v, styles: {textColor: [192, 0, 0]}});
       else row.push(v); });
     body.push(row); }));
   const colSt = {0: {halign: 'center', cellWidth: 30}, 1: {cellWidth: 74}};
-  cols.forEach(([k, , num], i) => { colSt[i + 2] = {halign: num ? 'right' : k === 'product' || k === 'pattern' ? 'center' : 'left'}; if (k === 'details') colSt[i + 2].cellWidth = 120; });
+  cols.forEach(([k, , num], i) => { colSt[i + 2] = {halign: num ? 'right' : k === 'product' || k === 'pattern' ? 'center' : 'left'}; if (k === 'details') colSt[i + 2].cellWidth = 120; if (k === 'note') colSt[i + 2].cellWidth = 90; });
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 6, head: size ? [h1, h2] : [h1], body,
     headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center', fontSize: 7.5}, line), columnStyles: colSt}));
   doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 8, pageBreak: 'avoid', body: [
@@ -7156,7 +7164,7 @@ async function msXLSX(n, d = {q: state.quote || {}, house: state.house, D: msSho
   const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Measurement sheet', {views: [{showGridLines: false}],
     pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: {left: .4, right: .4, top: .5, bottom: .55, header: .25, footer: .25}}});
   ws.headerFooter.oddFooter = '&L&8Tatiya Industries · Measurement sheet&R&8Page &P of &N';
-  ws.columns = [7, 18, ...cols.map(([k, , num]) => k === 'details' ? 34 : k === 'lining' ? 16 : k === 'kit' || k === 'rft' ? 13 : k === 'fixing' ? 20 : num ? 9 : 11)].map(width => ({width}));
+  ws.columns = [7, 18, ...cols.map(([k, , num]) => k === 'details' ? 34 : k === 'lining' ? 16 : k === 'kit' || k === 'rft' ? 13 : k === 'fixing' ? 14 : k === 'note' ? 26 : num ? 9 : 11)].map(width => ({width}));
   const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin}, fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: c}});
   const F = (o = {}) => Object.assign({name: 'Arial', size: 9}, o);
   let r = 0;
@@ -7179,9 +7187,8 @@ async function msXLSX(n, d = {q: state.quote || {}, house: state.house, D: msSho
   G.forEach(g => { const top = r + 1;
     g.rows.forEach(x => { r++; ws.getCell(r, 1).value = ++sr;
       cols.forEach(([k, , num], i) => { const c = ws.getCell(r, i + 3), v = x.u[k] || '';
-        if (k === 'fixing' && x.u.note) c.value = {richText: [...(v ? [{text: v + '\n', font: F()}] : []), {text: x.u.note, font: F({color: {argb: 'FFC00000'}, bold: true})}]};
-        else c.value = num && v !== '' && !isNaN(+v) ? +v : v;
-        if (k === 'mzd' && v) { c.fill = fill('FFC6EFCE'); c.font = F({bold: true, color: {argb: 'FF006100'}}); } else if (!(k === 'fixing' && x.u.note)) c.font = F();
+        c.value = num && v !== '' && !isNaN(+v) ? +v : v;
+        if (k === 'mzd' && v) { c.fill = fill('FFC6EFCE'); c.font = F({bold: true, color: {argb: 'FF006100'}}); } else c.font = k === 'note' ? F({bold: true, color: {argb: 'FFC00000'}}) : F();
         c.alignment = {vertical: 'middle', wrapText: true, horizontal: num ? 'right' : k === 'product' || k === 'pattern' || k === 'mzd' ? 'center' : 'left'}; });
       ws.getCell(r, 1).alignment = {horizontal: 'center', vertical: 'middle'}; ws.getCell(r, 1).font = F();
       for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; });
@@ -7286,4 +7293,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-120313 -->
+<!-- build 20261020-121219 -->
