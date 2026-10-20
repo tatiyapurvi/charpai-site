@@ -3052,7 +3052,8 @@ btb.addEventListener('click', e => {
   }
   renderBlinds(); save();
 });
-$('#badd').onclick = () => { const last = state.blinds[state.blinds.length - 1], b = bBlank(); if (last) Object.assign(b, {sup: last.sup, fam: last.fam, sys: last.sys, o: clone(last.o || {})}); state.blinds.push(b); state.bsel = state.blinds.length - 1; renderBlinds(); save(); };
+$('#badd').onclick = () => { const b = bBlank(); state.blinds.push(b);   // 20 Oct (Purvi): an empty blind, nothing carried from the last one
+  state.bsel = state.blinds.length - 1; renderBlinds(); save(); };
 // Blinds: the same shortcuts and drag as Curtains (Purvi, 19 Oct).
 const blindRows = sheetRows({view: 'b-measure', tbody: btb, list: () => state.blinds, blank: bBlank,
   sel: () => state.bsel, setSel: i => { state.bsel = i; }, select: tr => { bSelect(tr); }, after: () => { renderBlinds(); save(); },
@@ -7229,4 +7230,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-113540 -->
+<!-- build 20261020-113821 -->
