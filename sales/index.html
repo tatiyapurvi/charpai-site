@@ -232,6 +232,12 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
 .hnav[hidden]{display:none}
 .hn-arrs{margin-left:auto;display:flex;gap:8px}   /* 19 Oct (Purvi): ‹ › together at the bottom right, next to the last row people type in */
 .hn-arrs[hidden]{display:none}
+.sheet input.bad{border-color:#c62828!important;background:#fdecea;color:#8e1b1b}
+.bad-t{color:#c62828;font-weight:700}
+.tag.bad-t,.sheet td.out .tag.bad-t{display:block;font-size:11.5px;color:#c62828!important}
+.blim-ban{margin:14px 14px 0;padding:12px 14px;border-radius:10px;background:#fdecea;color:#5c1212;font-size:13.5px;line-height:1.4}
+.blim-ban ul{margin:6px 0 10px;padding-left:18px}
+.blim-ban li{margin:3px 0}
 .fhead{position:fixed;z-index:14;overflow:hidden;pointer-events:none;box-shadow:0 6px 10px -8px rgba(0,0,0,.35)}
 .fhead[hidden]{display:none}
 .fhead table{margin:0}
@@ -2851,6 +2857,50 @@ function bRollMm(p){
   return p.sup === 'AP' ? BLIND_ROLL_AP[bNorm(p.coll)] || 0 : 0;
 }
 function bFams(sup){ return bPriced(sup) ? uniq(BL.rows.filter(r => r.sup === sup).map(r => r.fam)) : (BLIND_NAMES[sup] || []).map(n => n[0]); }
+// ---- D'Decor size limits (Purvi, 20 Oct 2026: "it also has tables about min and max sizes … we are not using that as a reason to stop
+// the exec from making the size which the company says is not possible"). From the SIZE LIMITATION CHART (mm) pages of the Folio
+// (Sansaar) 2025-26 list, pp. 5–7, 9, 24, and the Express list, pp. 6–8 (same charts; Express adds Duplex). Width × drop, in mm.
+// Each system has its manual rows (control sizes) and motorised rows (motor types); a size is possible if one row fits.
+const BLIM = (() => {
+  const R = (minW, minH, maxW, maxH, m) => ({minW, minH, maxW, maxH, m});
+  const roller = {Classic: {man: [R(350, 1000, 1800, 2500, '32mm control'), R(350, 1000, 2500, 3500, '38mm control'), R(350, 1000, 3000, 5000, '45mm control')],
+                            mot: [R(540, 1500, 2000, 2500, '30 type motor'), R(630, 2000, 2500, 3000, '40 type motor'), R(1000, 2500, 3000, 5000, '50 type motor')]},
+                  EVO: {man: [R(350, 1000, 1800, 2500, 'EVO 32'), R(350, 1000, 3000, 5000, 'EVO 45')],
+                        mot: [R(550, 1500, 2000, 3000, 'EVO 32, 30 type motor'), R(650, 1500, 2500, 3000, 'EVO 45, 40 type motor'), R(1000, 2500, 4000, 5000, 'EVO 45, 50 type motor')]}};
+  const romex = {EVO: {man: [R(350, 1000, 2800, 3500, 'EVO')],
+                       mot: [R(550, 1500, 1800, 2000, 'EVO 32, 30 type motor'), R(650, 2000, 2500, 3000, 'EVO 32, 40 type motor'), R(1000, 2500, 3000, 3500, 'EVO 45, 50 type motor')]}};
+  const panel = {Classic: {man: [R(500, 1000, 6000, 3500, 'Classic')], mot: [R(500, 1000, 6000, 3500, 'Classic')]},
+                 EVO: {man: [R(500, 1000, 3100, 3500, 'EVO 32'), R(500, 1000, 4000, 3500, 'EVO 45')], mot: [R(500, 1500, 1800, 2500, 'EVO 32'), R(500, 1500, 6000, 3500, 'EVO 45')]}};
+  const vertical = {Classic: {man: [R(500, 1000, 4000, 3000, 'Classic')], mot: []}, EVO: {man: [R(500, 1000, 4000, 3000, 'EVO')], mot: []}};
+  const sheer = big => ({EVO: {man: [R(350, 1000, 1800, 2500, 'EVO 32'), R(350, 1000, 2800, 3500, 'EVO 45')],
+                               mot: [R(540, 1500, 1800, 2000, 'EVO 32, 30 type motor'), R(630, 2000, 2800, 3000, 'EVO 45, 40 type motor'), R(1000, 2500, 2800, big, 'EVO 45, 50 type motor')]},
+                         Hybrid: {man: [R(350, 1000, 2500, 2500, 'Hybrid')], mot: [R(630, 2000, 2500, 2500, 'Hybrid, 40 type motor')]}});
+  const wood = {man: [R(400, 400, 2400, 2500, '50mm')], mot: [R(650, 500, 2740, 3500, '50mm')]};
+  const honey = {'EVOQUE Free Hanging': {man: [R(400, 400, 2300, 2500, 'Free hanging')], mot: [R(850, 500, 2300, 2500, 'Free hanging')]},
+                 'EVOQUE Top-Down Bottom-Up': {man: [R(650, 500, 2300, 2500, 'TDBU')], mot: [R(850, 500, 2000, 2000, 'TDBU, double motor')]},
+                 'EVOQUE Day & Night': {man: [R(650, 500, 2300, 2500, 'Day & Night')], mot: [R(850, 500, 2000, 2000, 'single motor'), R(1000, 500, 2300, 2500, 'double motor')]}};
+  const common = {Roller: roller, Romex: romex, Panel: panel, Vertical: vertical, Wooden: {Cord: wood, 'Ball Chain': wood}};
+  return {SAN: Object.assign({}, common, {'Sheer Horizon': sheer(4500), Honeycomb: honey,
+            'Honeycomb Skylight': {Manual: {man: [R(0, 0, 2000, 3000, 'Skylight')], mot: []}, Motorized: {man: [], mot: [R(0, 0, 2000, 3000, 'Skylight')]}}}),
+          EXP: Object.assign({}, common, {Duplex: sheer(5000)})};
+})();
+function bLimit(b, c){
+  const L = ((BLIM[b.sup] || {})[b.fam] || {})[b.sys]; if (!L || !c.ok) return null;
+  const o = b.o || {}, p = c.p || {};
+  const motor = b.sys === 'Motorized' || /motori[sz]/i.test(o.op || '') || (c.adds || []).some(x => bAddKind(x.a) === 'motor') || !!String(b.motor || '').trim();
+  const manual = b.sys === 'Manual' || (!!o.op && !motor);
+  let man = L.man; const mot = L.mot;
+  if (b.fam === 'Wooden' && /ps\s*wood/i.test(`${p.coll || ''} ${p.design || ''} ${b.shade || ''} ${b.series || ''}`)) man = [{minW: 400, minH: 400, maxW: 2000, maxH: 2000, m: 'PS Wood'}];   // "*PS Wood manual blinds size limitation: 2 mtr. x 2 mtr."
+  const W = c.parts > 1 ? c.partMm : c.mmW, H = c.mmH, fits = r => W >= r.minW && W <= r.maxW && H >= r.minH && H <= r.maxH;
+  const okMan = man.filter(fits), okMot = mot.filter(fits), what = `${b.fam} ${b.sys}`, size = `${W} × ${H} mm (width × drop${c.parts > 1 ? ', each part' : ''})`;
+  const range = (rs, k) => rs.length ? `${k}: width ${Math.min(...rs.map(r => r.minW))}–${Math.max(...rs.map(r => r.maxW))} mm, drop ${Math.min(...rs.map(r => r.minH))}–${Math.max(...rs.map(r => r.maxH))} mm` : `${k}: not made`;
+  const needs = (ok, all) => ok.length < all.length ? `Order with: ${ok.map(r => r.m).join(' or ')}.` : '';
+  if (motor) return okMot.length ? {note: needs(okMot, mot)} : {bad: `${BSUPS[b.sup]} ${what} can't be made motorised at ${size}. ${range(mot, 'Motorised')}.`};
+  if (manual) return okMan.length ? {note: needs(okMan, man)} : {bad: `${BSUPS[b.sup]} ${what} can't be made manual at ${size}. ${range(man, 'Manual')}.${okMot.length ? ' It is possible motorised.' : ''}`};
+  if (okMan.length || okMot.length) return {note: okMan.length ? needs(okMan, man) : 'Possible only motorised: pick Motorized in the order details.'};
+  return {bad: `${BSUPS[b.sup]} ${what} can't be made at ${size}. ${range(man, 'Manual')}; ${range(mot, 'Motorised')}.`};
+}
+const blindsBad = () => state.blinds.map((b, i) => ({b, i, c: bCalc(b)})).filter(x => x.c.lim && x.c.lim.bad);
 function bCalc(b){
   const p = BL.byId.get(b.pid), W = parseFloat(b.W) || 0, H = parseFloat(b.H) || 0, q = Math.max(1, parseInt(b.qty, 10) || 1);
   const t = blindType(b.sup, b.fam), o = b.o || {};
@@ -2875,6 +2925,9 @@ function bCalc(b){
   c.rollMm = bRollMm(p);
   if (c.rollMm && c.mmW > c.rollMm) { c.parts = Math.ceil(c.mmW / c.rollMm - 1e-9); c.partMm = Math.round(c.mmW / c.parts);
     c.warn.push(`Wider than the ${fmt(c.rollMm / 1000)} m roll: made in ${c.parts} equal parts of ${c.partMm} mm (${fmt(Math.round(c.partMm / 25.4 * 10) / 10)}″) each. Tell the client.`); }
+  c.lim = bLimit(b, c);   // D'Decor's size chart (20 Oct)
+  if (c.lim && c.lim.bad) c.warn.unshift('Size not possible. ' + c.lim.bad + ' Change the size, or ask D\'Decor\'s CC team before quoting.');
+  else if (c.lim && c.lim.note) c.warn.push(c.lim.note);
   return c;
 }
 const bOpts = (list, val, blank) => (blank ? `<option value="">${blank}</option>` : '') + list.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(t)}</option>`).join('');
@@ -3011,10 +3064,11 @@ function bRedraw(b, focusKind){
 function bUpdateRow(b){
   const tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (!tr) return;
   const c = bCalc(b), o = k => tr.querySelector(`[data-o=${k}]`);
-  o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>${c.parts > 1 ? `<span class="tag" style="color:var(--warn)">${c.parts} parts of ${c.partMm}</span>` : ''}` : '';
+  const bad = !!(c.lim && c.lim.bad); tr.querySelectorAll('[data-b=H], [data-b=W]').forEach(x => { x.classList.toggle('bad', bad); x.title = bad ? c.lim.bad : ''; });
+  o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>${bad ? '<span class="tag bad-t">Size not possible</span>' : ''}${c.parts > 1 ? `<span class="tag" style="color:var(--warn)">${c.parts} parts of ${c.partMm}</span>` : ''}` : '';
   o('area').innerHTML = c.ok ? `${cpF(c.charge * c.q)}<span class="u"> sq ft</span>${c.minApplied ? `<span class="tag" style="color:var(--warn)">minimum ${cpF(r2(c.p.min * SQFT))} sq ft</span>` : c.q > 1 ? `<span class="tag" style="color:var(--muted)">${c.q} × ${cpF(c.charge)}</span>` : ''}` : '';
   o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.p.gst}% GST</span>${c.p.extra === 'to confirm' ? '<span class="tag" style="color:var(--warn)">price to confirm</span>' : ''}` : '';
-  o('amt').innerHTML = c.ok && c.p ? `<span class="v">${rs(c.amt + (c.addonAmt || 0))}</span>${c.addonAmt ? `<span class="tag" style="color:var(--muted)">incl. extras ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
+  o('amt').innerHTML = bad ? '<span class="bad-t" title="D\'Decor can\'t make this size">Not possible</span>' : c.ok && c.p ? `<span class="v">${rs(c.amt + (c.addonAmt || 0))}</span>${c.addonAmt ? `<span class="tag" style="color:var(--muted)">incl. extras ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
   o('det').innerHTML = c.t ? `<button class="miss${c.done === c.need && !c.warn?.length ? ' ok' : ''}" data-ba="det">${c.done === c.need ? 'Order details ✓' : `Order details ${c.done}/${c.need}`}${c.warn && c.warn.length ? ' · check' : ''}</button>` : '';
 }
 function renderBlinds(){
@@ -3029,7 +3083,7 @@ function renderBlinds(){
   $('#bnote').textContent = [ix && `D'Decor Sansaar: ${nn(ix.count)} prices`, BL.info.EXP && `D'Decor Express: ${nn(BL.info.EXP.count)} prices`, BL.info.FC && `D'Decor FabriCare: ${nn(BL.info.FC.count)} prices`, BL.info.AP && BL.info.AP.count && `Asian Paints: ${nn(BL.info.AP.count)} prices`,
     mv && (mv.count ? `Marvel: ${nn(mv.count)} prices and ${nn(mv.shades)} shades` : `Marvel: ${nn(mv.shades)} shades, no prices`)].filter(Boolean).join(' · ') + '. Rates are MRP per sq ft, GST included. Type a shade number and the collection fills in.';
 }
-function bTotal(){ const t = state.blinds.reduce((a, b) => { const c = bCalc(b); return a + (c.ok && c.p ? c.amt + (c.addonAmt || 0) : 0); }, 0); $('#btotal').textContent = t ? 'Blinds total ' + rs(t) + ' incl. GST' : ''; }
+function bTotal(){ const t = state.blinds.reduce((a, b) => { const c = bCalc(b); return a + (c.ok && c.p && !(c.lim && c.lim.bad) ? c.amt + (c.addonAmt || 0) : 0); }, 0); $('#btotal').textContent = t ? 'Blinds total ' + rs(t) + ' incl. GST' : ''; }
 function bMarkSel(){ const b = state.blinds[state.bsel]; $('#btb').querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('sel', !!b && +tr.dataset.id === b.id)); }
 function bSelect(tr){ const i = state.blinds.findIndex(x => x.id === +tr.dataset.id); if (i < 0 || i === state.bsel) return; state.bsel = i; bMarkSel(); renderBSide(); save(); }
 // Typing a shade number picks the collection (Purvi, 6 Oct). It needs the company and type (and system) chosen first.
@@ -3168,7 +3222,8 @@ function renderBSide(){
       <div class="kpi"><small>Size for the order</small><b class="num">${c.ok ? `${c.mmH} × ${c.mmW}` : '—'}</b><small>mm, height × width</small></div>
       <div class="kpi"><small>Charged</small><b class="num">${c.ok ? cpF(c.charge * c.q) : '—'}</b><small>sq ft${c.q > 1 ? ` (${c.q} blinds)` : ''}</small></div>
       ${c.parts > 1 ? `<div class="kpi" style="border-color:var(--warn)"><small>Made in</small><b class="num" style="color:var(--warn)">${c.parts} parts</b><small>${c.partMm} mm each · roll ${fmt(c.rollMm / 1000)} m</small></div>` : ''}
-      <div class="kpi m"><small>Amount incl. GST</small><b class="num">${c.ok && c.p ? rs(c.amt + (c.addonAmt || 0)) : '—'}</b></div>
+      <div class="kpi m"${c.lim && c.lim.bad ? ' style="background:#fdecea;border-color:#c62828;color:#8e1b1b"' : ''}><small>Amount incl. GST</small><b class="num">${c.lim && c.lim.bad ? 'Size not possible' : c.ok && c.p ? rs(c.amt + (c.addonAmt || 0)) : '—'}</b></div>
+    ${c.lim && c.lim.bad ? `<div class="blim-ban" style="margin:0;grid-column:1/-1">${esc(c.lim.bad)} Change the size, or ask D'Decor's CC team before quoting.</div>` : ''}
     </div>
     <div id="bfig" class="fig">${c.ok ? `<h4>Front view <span>as the company will make it</span></h4>${blindSVG(b, c)}` : '<div class="empty">Type the height and the width in inches to see the drawing.</div>'}</div>
     <div class="sec-h" style="padding:6px 14px 0"><h2 style="font-size:19px">Order details for ${esc(BSUPS[b.sup])}</h2><p>${c.done}/${c.need} filled</p></div>
@@ -3606,10 +3661,22 @@ function paperHTML(q, house, t, showC, ro, ed){
       <div><b>T&amp;C</b><ol>${TNC.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div></div>
       <div class="sign"><span>CUSTOMER SIGNATURE.</span><span>EXECUTIVE SIGN.</span><span>${FIRM.name}.</span></div></div>`;
 }
+// 20 Oct: a blind D'Decor can't make stops the quotation going out (PDF, Excel, Print, WhatsApp) until its size is fixed
+function blindBanHTML(){ const B = blindsBad(); if (!B.length) return '';
+  return `<div class="blim-ban"><b>${B.length === 1 ? '1 blind is' : B.length + ' blinds are'} a size D'Decor can't make.</b> Fix ${B.length === 1 ? 'it' : 'them'} on the Blinds sheet before sending:
+    <ul>${B.map(x => `<li>${esc(x.b.room || 'Blind ' + (x.i + 1))}: ${esc(x.c.lim.bad)}</li>`).join('')}</ul><button class="btn" data-ct="b-measure">Open the Blinds sheet</button></div>`; }
+document.addEventListener('click', e => {
+  const btn = e.target.closest('#q-pdf, #q-xlsx, #q-wa, #q-print'); if (!btn) return;
+  const B = blindsBad(); if (!B.length) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  toast(`Not sent: ${B.length === 1 ? 'a blind is' : B.length + ' blinds are'} a size D'Decor can't make. Fix ${B.length === 1 ? 'it' : 'them'} on the Blinds sheet first.`);
+}, true);
+document.addEventListener('click', e => { const b = e.target.closest('.blim-ban [data-ct]'); if (b) go(b.dataset.ct); });
 function renderQuoteSum(t = quoteTotals()){
-  if (qmOn()) return renderQuoteSumM(t);
+  if (qmOn()) { renderQuoteSumM(t); const h = blindBanHTML(); if (h) $('#q-sum').insertAdjacentHTML('afterbegin', h); return; }   // phones: the same red note on top
   const q = state.quote, marginNet = t.netAfter - t.cost;
   $('#q-sum').innerHTML = `
+    ${blindBanHTML()}
     <!-- 20 Oct (Purvi): final amount and the download buttons first, so nobody scrolls down to download -->
     <div class="grand"><small>Final, GST included</small><b>${rs(t.final)}</b></div>
     <div class="q-acts"><button class="btn solid dl" id="q-pdf" title="Download the quotation as a PDF (saved as the next version)">${DL_ICON}PDF</button><button class="btn solid dl" id="q-xlsx" title="Download the quotation as an Excel file">${DL_ICON}Excel</button>
@@ -7391,4 +7458,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-135833 -->
+<!-- build 20261020-144927 -->
