@@ -1418,7 +1418,7 @@ button.n-prop:hover{background:var(--soft)}
           <div class="hnav" id="b-hnav" hidden><div class="hn-pills" id="b-hn-pills"></div></div>
           <div class="tbl-wrap" id="b-wrap"><div class="tbl-scroll" id="b-scroll"><table class="sheet"><thead>
             <tr><th class="grp first">Where</th><th class="grp" colspan="5">Blind</th><th class="grp" colspan="2">Size</th><th class="grp res sep" colspan="4">Result</th><th class="grp sep" colspan="3">Motor &amp; extras</th><th class="grp sep" data-pill="Order details"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp"></th></tr>
-            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>H <small>″</small></th><th>W <small>″</small></th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="sep">Order</th><th class="sep">Remarks</th><th></th></tr>
+            <tr><th class="first">Room</th><th title="Company">Co.</th><th title="Blind type: the company's own name">Type</th><th>System</th><th>Collection</th><th>Shade</th><th>W <small>″</small></th><th>H <small>″</small></th><th class="r sep">Size <small>mm</small></th><th class="r">Area</th><th class="r">MRP/sq ft</th><th class="r">Amount</th><th class="sep">Motor</th><th>Remote</th><th title="Brackets, chargers…">Extras</th><th class="sep">Order</th><th class="sep">Remarks</th><th></th></tr>
           </thead><tbody id="btb"></tbody></table></div></div>
           <div class="addbar"><button class="btn solid" id="badd">+ Add blind</button><button class="btn" id="bord">Order forms for the companies</button><span class="hint" id="bnote"></span><span class="hn-arrs" id="b-hn-arrs" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></span></div>
         </div>
@@ -2950,8 +2950,8 @@ function bRowHTML(b, i){
     <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick' : 'System first'}" style="width:128px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
     <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:128px" aria-label="Series"></td>`}
     <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:70px" aria-label="Shade number"></td>
-    <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:64px" aria-label="Height in inches"></td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:64px" aria-label="Width in inches"></td>
+    <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:64px" aria-label="Height in inches"></td>
     <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>   <!-- 20 Oct (Purvi): Result right after Size, then Motor & extras -->
     ${adds.length ? ['motor', 'remote', 'extra'].map((k, j) => `<td${j ? '' : ' class="sep"'}>${bPickHTML(b, k)}</td>`).join('') : `<td colspan="3" class="sep"><input data-b="motor" value="${esc(b.motor)}" placeholder="Motor, remote, extras (no list for this company yet)" style="width:300px" aria-label="Motor, remote or accessories"></td>`}
     <td class="sep" data-o="det"></td>
@@ -3411,7 +3411,8 @@ function qSections(){
   byRoom(state.blinds).forEach(b => {
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
-    add('blinds', {area: b.room, product: b.fam + ' blind', what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : (b.series + ' ' + b.shade).trim() || b.fam}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
+    const typed = `${b.series || ''} ${b.shade || ''}`.trim();   // 20 Oct (Purvi): no collection picked → said plainly, as curtain fabric
+    add('blinds', {area: b.room, product: b.fam + ' blind', nocoll: !p, what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
       hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
     (c.adds || []).forEach(({a, units}) => { const k = bAddKind(a); hw(b.room, {grp: k !== 'extra' || isMotorAddon(a.group) ? 'mot' : 'man', product: k === 'remote' ? 'Blind motor remote' : k === 'motor' && !/motor/i.test(addonProduct(a.group)) ? 'Blind motor' : addonProduct(a.group), what: a.name, hsn: H.blindAddons || '', qty: units, unit: a.uom === 'each' ? 'PCS' : a.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: a.rrp, gst: a.gst, cost: BL.cost.has(a.key) ? BL.cost.get(a.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'}); });
     if (!(c.adds || []).length && String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
@@ -3524,7 +3525,9 @@ function quoteTotals(S){
   const net1 = netSale - (sub.fabric ? netFab * disc / sub.fabric : 0), netAfter = after > 0 ? net1 * (1 - disc2 / after) : net1, rawCost = [].concat(...SECTIONS.map(([k]) => S[k])).reduce((a, l) => a + (l.camt || 0), 0);
   // 20 Oct (Purvi): curtains measured but no fabric picked: stitching, track and the rest stay in; the fabric line says so and
   // the client is told the fabric amount isn't in the total yet
-  const nf = (S.fabric || []).filter(l => l.fix === 'pick'), noFab = nf.length ? `Fabric not selected yet for ${nf.length} curtain${nf.length > 1 ? 's' : ''} (${[...new Set(nf.map(l => l.area || '—'))].join(', ')}). Its amount is not in the total and will be added once the fabric is chosen.` : '';
+  const nf = (S.fabric || []).filter(l => l.fix === 'pick'), nb = (S.blinds || []).filter(l => l.nocoll), rooms = L => [...new Set(L.map(l => l.area || '—'))].join(', ');
+  const parts = [nf.length && `Fabric not selected yet for ${nf.length} curtain${nf.length > 1 ? 's' : ''} (${rooms(nf)})`, nb.length && `Collection not selected yet for ${nb.length} blind${nb.length > 1 ? 's' : ''} (${rooms(nb)})`].filter(Boolean);
+  const noFab = parts.length ? `${parts.join('. ')}. ${nf.length + nb.length > 1 ? 'These amounts are' : 'Its amount is'} not in the total and will be added once ${nf.length && nb.length ? 'they are' : nf.length ? 'the fabric is' : 'the collection is'} chosen.` : '';
   return {S, sub, total, disc, discTxt, disc2, disc2Txt, final, missing, noFab, costMissing, netAfter, cost: rawCost, cols, hid};
 }
 const ONES = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
@@ -7464,4 +7467,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-152005 -->
+<!-- build 20261020-152431 -->
