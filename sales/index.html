@@ -450,6 +450,7 @@ svg text{font-family:var(--num);fill:var(--ink)}
 .f-sheer{fill:var(--sheer);stroke:var(--sheer-fold);fill-opacity:.72}
 .f-lining{fill:var(--line2);stroke:var(--faint)}
 .f-dark{fill:#3B3F45;stroke:#25282C}
+#btb .dnsh{display:flex;flex-direction:column;gap:4px}   /* Day & Night: top and bottom shade, one under the other */
 /* 20 Oct (Purvi): the blind's order details two to a row, tight, so the form and the drawing fit on one screen */
 #bside .bsec{padding:4px 16px 0}
 #bside .bsec h2{font-size:17px;margin:0}
@@ -1699,7 +1700,7 @@ const BLIND_TYPES = {
   honeycomb: {name: 'Honeycomb', fields: [
     {k: 'pleat', label: 'Pleat size', opts: ['26mm', '38mm']},
     {k: 'kind', label: 'Blind type', opts: ['Basic', 'TDBU', 'Day & Night']},
-    {k: 'shade2', label: 'Bottom fabric shade (Day & Night only)', text: 'Shade no.', when: o => o.kind === 'Day & Night'},
+    {k: 'shade2', label: 'Bottom fabric shade (Day & Night only)', text: 'Shade no.', when: () => false},   // 20 Oct: typed in the row (Shade → Top / Bottom)
     {k: 'op', label: 'Operation', opts: ['0.9mm Regular Cord', '3.6mm Thick Cord (2 in 1)', 'Clutch', 'Ball Chain', 'Motorized', 'Easyrise Cordless']},
     B_CONTROL, B_BRACKET],
     rules: [(b, o) => o.op === 'Clutch' && o.kind && o.kind !== 'Basic' ? 'Clutch works only on a single-fabric (Basic) blind.' : '',
@@ -2914,6 +2915,9 @@ function bLimit(b, c){
   return {bad: `${BSUPS[b.sup]} ${what} can't be made at ${size}. ${range(man, 'Manual')}; ${range(mot, 'Motorised')}.`};
 }
 const blindsBad = () => state.blinds.map((b, i) => ({b, i, c: bCalc(b)})).filter(x => x.c.lim && x.c.lim.bad);
+// Day & Night honeycomb: two fabrics, so two shades (20 Oct, Purvi: the Shade box becomes Top and Bottom, as motor → remote in Curtains)
+const bDN = b => { const t = blindType(b.sup, b.fam); return !!t && t.key === 'honeycomb' && ((b.o || {}).kind === 'Day & Night' || /Day & Night/.test(b.sys || '')); };
+const bShadeTxt = (b, base) => bDN(b) ? `top ${base || '?'} · bottom ${(b.o || {}).shade2 || '?'}` : base;
 function bCalc(b){
   const p = BL.byId.get(b.pid), W = parseFloat(b.W) || 0, H = parseFloat(b.H) || 0, q = Math.max(1, parseInt(b.qty, 10) || 1);
   const t = blindType(b.sup, b.fam), o = b.o || {};
@@ -2961,7 +2965,7 @@ function bRowHTML(b, i){
     ${loading ? '<td></td>' : priced ? `
     <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick' : 'System first'}" style="width:128px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
     <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:128px" aria-label="Series"></td>`}
-    <td><input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bCollOf(b) ? 'Pick' : 'Shade no.'}" title="Pick the collection to see its shades, or type the shade number: the collection fills in" style="width:70px" aria-label="Shade number"></td>
+    <td>${bDN(b) ? '<div class="dnsh">' : ''}<input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bDN(b) ? 'Top' : bCollOf(b) ? 'Pick' : 'Shade no.'}" title="${bDN(b) ? 'Top fabric (light)' : 'Pick the collection to see its shades, or type the shade number: the collection fills in'}" style="width:70px" aria-label="${bDN(b) ? 'Top (light) shade' : 'Shade number'}">${bDN(b) ? `<input data-bshade2="1" value="${esc((b.o || {}).shade2 || '')}" autocomplete="off" placeholder="Bottom" title="Bottom fabric (dark)" style="width:70px" aria-label="Bottom (dark) shade"></div>` : ''}</td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:64px" aria-label="Width in inches"></td>
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:64px" aria-label="Height in inches"></td>
     <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>   <!-- 20 Oct (Purvi): Result right after Size, then Motor & extras -->
@@ -3134,6 +3138,8 @@ function shadePick(b){
 }
 const btb = $('#btb');
 btb.addEventListener('input', e => {
+  if (e.target.dataset.bshade2) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return; (b.o || (b.o = {})).shade2 = e.target.value.trim();
+    bUpdateRow(b); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save(); return; }
   if (e.target.dataset.bpick) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bOpenSugg(e.target, b, e.target.dataset.bpick); return; }
   if (e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); return; }
   if (e.target.dataset.bcoll) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (!b) return;
@@ -3175,8 +3181,8 @@ $('#badd').onclick = () => blindRows.add();   // 20 Oct (Purvi): an empty blind,
 // Blinds: the same shortcuts and drag as Curtains (Purvi, 19 Oct).
 const blindRows = sheetRows({view: 'b-measure', tbody: btb, list: () => state.blinds, blank: bBlank,
   sel: () => state.bsel, setSel: i => { state.bsel = i; }, select: tr => { bSelect(tr); }, after: () => { renderBlinds(); save(); },
-  fieldOf: t => t.dataset.b || (t.dataset.bfam ? 'fam' : t.dataset.bcoll ? 'coll' : t.dataset.bpick ? 'pick-' + t.dataset.bpick : t.dataset.bq != null ? 'pick-q' : ''),
-  box: (tr, f) => tr.querySelector(f === 'fam' ? '[data-bfam]' : f === 'coll' ? '[data-bcoll]' : /^pick-/.test(f) ? `[data-bpick="${f.slice(5)}"]` : `[data-b="${f}"]`),
+  fieldOf: t => t.dataset.b || (t.dataset.bshade2 ? 'shade2' : t.dataset.bfam ? 'fam' : t.dataset.bcoll ? 'coll' : t.dataset.bpick ? 'pick-' + t.dataset.bpick : t.dataset.bq != null ? 'pick-q' : ''),
+  box: (tr, f) => tr.querySelector(f === 'shade2' ? '[data-bshade2]' : f === 'fam' ? '[data-bfam]' : f === 'coll' ? '[data-bcoll]' : /^pick-/.test(f) ? `[data-bpick="${f.slice(5)}"]` : `[data-b="${f}"]`),
   first: 'room', suggestOnly: new Set(['room']), label: b => b.room});
 $('#bord').onclick = () => { const p = $('#b-orders'); p.hidden = !p.hidden; $('#bord').textContent = p.hidden ? 'Order forms for the companies' : 'Hide order forms'; if (!p.hidden) { renderOrders(); p.scrollIntoView({block: 'start'}); } };
 
@@ -3192,7 +3198,7 @@ function blindSVG(b, c){
   let g = `<rect class="s-glass" x="${x0 + w * .06}" y="${y0 + h * .06}" width="${w * .88}" height="${h * .88}"/>`;
   const k = t.key, F = 'f-main', FL = 'fold-main', op = String(o.op || ''), motor = /motori[sz]/i.test(op);
   const lines = (step, fn) => { let p = ''; for (let v = step; v < 1 - 1e-6; v += step) p += fn(v); return p; };
-  const tdbu = k === 'honeycomb' && o.kind === 'TDBU', dn = k === 'honeycomb' && o.kind === 'Day & Night';
+  const tdbu = k === 'honeycomb' && o.kind === 'TDBU', dn = k === 'honeycomb' && (o.kind === 'Day & Night' || /Day & Night/.test(b.sys || ''));
   const roomR = VW - (x0 + w) > 125;   // room for a label right of the blind; a wide blind gets its labels inside / above instead
   // ---- the fabric
   if (k === 'vertical' || k === 'sierra') { const n = Math.max(4, Math.round(w / 14)); for (let i = 0; i < n; i++) g += `<rect class="${F}" x="${x0 + i * w / n + 1}" y="${y0}" width="${w / n - 3}" height="${h}" ${k === 'sierra' ? 'rx="3"' : ''}/>`; }
@@ -3310,6 +3316,7 @@ $('#bside').addEventListener('input', e => {
   const c = bCalc(b);
   if (e.target.tagName === 'SELECT') { const pos = document.activeElement && document.activeElement.id; renderBSide(); if (pos) { const x = document.getElementById(pos); if (x) x.focus(); } }
   else { $('#bwarn').innerHTML = bWarnHTML(c, c.t); }
+  if (k === 'kind') { const tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (tr) { tr.outerHTML = bRowHTML(b, state.blinds.indexOf(b)); bMarkSel(); } }   // Day & Night: Shade → Top / Bottom
   bUpdateRow(b); if (!$('#b-orders').hidden) renderOrders(); save();
 });
 
@@ -3484,7 +3491,7 @@ function qSections(){
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
     const typed = `${b.series || ''} ${b.shade || ''}`.trim();   // 20 Oct (Purvi): no collection picked → said plainly, as curtain fabric
-    add('blinds', {area: b.room, product: b.fam + ' blind', nocoll: !p, what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + (b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
+    add('blinds', {area: b.room, product: b.fam + ' blind', nocoll: !p, what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + bShadeTxt(b, b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
       hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
     (c.adds || []).forEach(({a, units}) => { const k = bAddKind(a); hw(b.room, {grp: k !== 'extra' || isMotorAddon(a.group) ? 'mot' : 'man', product: k === 'remote' ? 'Blind motor remote' : k === 'motor' && !/motor/i.test(addonProduct(a.group)) ? 'Blind motor' : addonProduct(a.group), what: a.name, hsn: H.blindAddons || '', qty: units, unit: a.uom === 'each' ? 'PCS' : a.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: a.rrp, gst: a.gst, cost: BL.cost.has(a.key) ? BL.cost.get(a.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'}); });
     if (!(c.adds || []).length && String(b.motor || '').trim()) hw(b.room, {grp: 'mot', product: 'Blind motor / remote', what: b.motor.trim(), hsn: H.blindAddons || '', qty: 1, unit: 'PCS', rate: null, gst: 18, cost: null, fix: 'marvel'});
@@ -7179,7 +7186,7 @@ function msData(){
       R.push({key: 'blinds|' + b.id, amt, n: {q: c.q, sq: c.ok ? c.charge * c.q : 0},
         c: {room: b.room || '', type: b.fam || '', sys: (p && p.sys) || b.sys || '', coll: bCollOf(b) || b.series || '', shade: b.shade || (p ? p.design || '' : ''), H: msNum(b.H), W: msNum(b.W), qty: String(c.q),
           sqft: c.ok ? cpF(c.charge * c.q) : '', works: motor ? 'Motorised' : 'Manual', remarks: b.remarks || '', mrp: c.mrp ? inr(c.mrp) : '', amt: amt ? inr(amt) : ''},
-        u: {area: b.room || '', product: 'BLIND', pattern: String(b.fam || '').toUpperCase(), details: [BCODE[b.sup], bCollOf(b) || b.series || '', b.shade || (p ? p.design || '' : '')].filter(Boolean).join(' '),
+        u: {area: b.room || '', product: 'BLIND', pattern: String(b.fam || '').toUpperCase(), details: [BCODE[b.sup], bCollOf(b) || b.series || '', bShadeTxt(b, b.shade || (p ? p.design || '' : ''))].filter(Boolean).join(' '),
           H: msNum(b.H), W: msNum(b.W), qty: c.q > 1 ? `${c.q} pcs` : '', sqft: c.ok ? cpF(c.charge * c.q) : '', mzd: motor ? 'MZD' : '', fixing: (b.o || {}).fixing || '', note: b.remarks || ''}}); });
     sec('blinds', 'Blinds', [['room', 'Room'], ['type', 'Type'], ['sys', 'System'], ['coll', 'Collection'], ['shade', 'Shade'], ['H', 'H″', 1], ['W', 'W″', 1], ['qty', 'Qty', 1], ['sqft', 'Sq ft', 1],
       ['works', 'Works'], ['remarks', 'Remarks'], ['mrp', 'MRP /sq ft', 1], ['amt', 'Amount', 1]], R,
@@ -7542,4 +7549,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-171855 -->
+<!-- build 20261020-181550 -->
