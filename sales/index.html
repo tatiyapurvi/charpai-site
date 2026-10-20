@@ -2352,11 +2352,7 @@ function changed(r){
 }
 function afterStructure(){ renderTable(); renderTotals(); renderSide(); save(); }
 // + Add: a fresh, empty row (20 Oct, Purvi: it copied the last row's fabric as text only, in a red dotted box, never really picked)
-$('#add').onclick = () => {
-  const r = blank();
-  state.rows.push(r); state.sel = state.rows.length - 1; afterStructure();
-  document.getElementById(`r${r.id}-room`).focus();
-};
+$('#add').onclick = () => curtainRows.add();   // an empty row at the end, cursor in Room; Ctrl/⌘ Z takes it back (20 Oct)
 // ---- Excel shortcuts and drag to move, for every measurement sheet (Purvi, 19 Oct: "the measurement sheet short cuts need to
 // match excel short cuts to match the mental model of my team"). Curtains first, then Blinds; one helper so the other sheets
 // can follow. In a row (or on the yellow selected row when the cursor isn't in any box):
@@ -2396,8 +2392,8 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), sel(), setSel(i), 
     const x = (f && o.box(tr, f)) || o.box(tr, o.first); if (!x) return;
     o.select(tr); x.focus(); showBox(x); if (x.tagName === 'INPUT') { try { x.select(); } catch (_) {} }
   };
-  const add = (i, f) => {
-    const L = o.list(), r = o.blank(); L.splice(i + 1, 0, r); o.setSel(i + 1);
+  const add = (i, f) => {   // i = -1 … length-1; the + Add buttons add at the end (20 Oct: so Ctrl/⌘ Z takes those back too)
+    const L = o.list(), r = o.blank(), at = i == null ? L.length : i + 1; L.splice(at, 0, r); o.setSel(at);
     did('Add row', () => { const L = o.list(), k = idx(r.id); if (k >= 0) L.splice(k, 1); if (!L.length) L.push(o.blank()); o.setSel(Math.min(o.sel(), L.length - 1)); });
     o.after(); focus(r, o.first);
   };
@@ -3052,8 +3048,7 @@ btb.addEventListener('click', e => {
   }
   renderBlinds(); save();
 });
-$('#badd').onclick = () => { const b = bBlank(); state.blinds.push(b);   // 20 Oct (Purvi): an empty blind, nothing carried from the last one
-  state.bsel = state.blinds.length - 1; renderBlinds(); save(); };
+$('#badd').onclick = () => blindRows.add();   // 20 Oct (Purvi): an empty blind, nothing carried; Ctrl/⌘ Z takes it back
 // Blinds: the same shortcuts and drag as Curtains (Purvi, 19 Oct).
 const blindRows = sheetRows({view: 'b-measure', tbody: btb, list: () => state.blinds, blank: bBlank,
   sel: () => state.bsel, setSel: i => { state.bsel = i; }, select: tr => { bSelect(tr); }, after: () => { renderBlinds(); save(); },
@@ -7230,4 +7225,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-113821 -->
+<!-- build 20261020-114014 -->
