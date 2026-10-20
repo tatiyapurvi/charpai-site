@@ -3579,6 +3579,11 @@ function renderQuoteSum(t = quoteTotals()){
   if (qmOn()) return renderQuoteSumM(t);
   const q = state.quote, marginNet = t.netAfter - t.cost;
   $('#q-sum').innerHTML = `
+    <!-- 20 Oct (Purvi): final amount and the download buttons first, so nobody scrolls down to download -->
+    <div class="grand"><small>Final, GST included</small><b>${rs(t.final)}</b></div>
+    <div class="q-acts"><button class="btn solid dl" id="q-pdf" title="Download the quotation as a PDF (saved as the next version)">${DL_ICON}PDF</button><button class="btn solid dl" id="q-xlsx" title="Download the quotation as an Excel file">${DL_ICON}Excel</button>
+      <button class="btn dl" id="q-print" title="Print on A4">${PRINT_ICON}Print</button><button class="btn dl" id="q-wa" title="Send the quotation PDF on WhatsApp (saved as the next version)">${WA_ICON}Send on WhatsApp</button>
+      <span class="hint" style="flex-basis:100%">${(() => { const P = lastSaved(), v = nextVersion(t); return waHint && waHint.v === P.n && v === P.n ? `<b>v${P.n}</b> is open in WhatsApp Web. The PDF is in your Downloads: drag it into the chat, then press Send. Asked to log in? Scan the code with your phone, then tap Send on WhatsApp again.` : !P.n ? 'The first PDF will be <b>v1</b>.' : v === P.n ? `Last saved as <b>v${P.n}</b>. Nothing has changed since.` : `Changed since <b>v${P.n}</b>, so the next PDF will be <b>v${v}</b>.`; })()}</span></div>
     ${qeTopHTML(t)}
     ${t.missing ? `<div style="padding:14px 14px 0"><div class="banner warn"><b>${t.missing} line${t.missing > 1 ? 's have' : ' has'} no price,</b> so the total leaves ${t.missing > 1 ? 'them' : 'it'} out. Tap the orange buttons in the quotation.</div></div>` : ''}
     ${prices.dummy ? `<div style="padding:14px 14px 0"><div class="banner info"><b>Dummy prices for now.</b> Real rates go in the Prices pages.</div></div>` : ''}
@@ -3592,13 +3597,10 @@ function renderQuoteSum(t = quoteTotals()){
       <div class="srow"><label for="q-odiscAmt">or discount ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>
       ${t.disc2 ? `<div class="srow"><span>${esc(t.disc2Txt)}</span><b>− ${rs(t.disc2)}</b></div>` : ''}
     </div>
-    <div class="grand"><small>Final, GST included</small><b>${rs(t.final)}</b></div>
     <label class="switch"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>
     ${canSeeCost ? `<label class="switch"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
       ${showCost ? `<div class="margin"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}${t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : ''}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price (blinds have no dealer price yet).</div>` : ''}</div>` : ''}` : ''}
-    <div class="q-acts"><button class="btn solid dl" id="q-pdf" title="Download the quotation as a PDF (saved as the next version)">${DL_ICON}PDF</button><button class="btn solid dl" id="q-xlsx" title="Download the quotation as an Excel file">${DL_ICON}Excel</button>
-      <button class="btn dl" id="q-print" title="Print on A4">${PRINT_ICON}Print</button><button class="btn dl" id="q-wa" title="Send the quotation PDF on WhatsApp (saved as the next version)">${WA_ICON}Send on WhatsApp</button>
-      <span class="hint" style="flex-basis:100%">${(() => { const P = lastSaved(), v = nextVersion(t); return waHint && waHint.v === P.n && v === P.n ? `<b>v${P.n}</b> is open in WhatsApp Web. The PDF is in your Downloads: drag it into the chat, then press Send. Asked to log in? Scan the code with your phone, then tap Send on WhatsApp again.` : !P.n ? 'The first PDF will be <b>v1</b>.' : v === P.n ? `Last saved as <b>v${P.n}</b>. Nothing has changed since.` : `Changed since <b>v${P.n}</b>, so the next PDF will be <b>v${v}</b>.`; })()}</span></div>`;
+`;
 }
 function renderQuote(){ renderQuoteHead(); renderPaper(); }
 // Top of the quotation's side panel: Edit quotation; while editing, what to do + Done; when something is hidden, a yellow line saying what.
@@ -7321,4 +7323,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-124728 -->
+<!-- build 20261020-125138 -->
