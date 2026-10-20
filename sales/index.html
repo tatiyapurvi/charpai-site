@@ -4762,7 +4762,7 @@ function renderCbar(){
   const saveTxt = !here || current === 'client' ? '' : draftErr === 'perm' ? `<span class="cbar-save err">Not saved for the team: ${PF ? 'ask Purvi to check your access' : 'ask Purvi to make you a Contributor'}</span>`
     : draftErr ? '<span class="cbar-save err">Not saved yet (no internet?). Kept on this device.</span>'
     : draftBusy || draftTimer ? '<span class="cbar-save">Saving…</span>' : '<span class="cbar-save">Saved ✓</span>';
-  const nm = esc((here ? state.house : '') || c.name || 'No name'), page = current === 'quote' ? 'Quotation' : current === 'client' ? '' : 'Measurement sheet';
+  const nm = esc((here ? state.house : '') || c.name || 'No name'), page = current === 'quote' ? 'View quotation' : current === 'client' ? '' : current === 'msheet' ? 'View measurement sheet' : 'Measurement sheet form';   // names as on the buttons (20 Oct)
   bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span>${page ? `<button class="crumb" data-ct="client">${nm}</button><span class="sep">/</span><span class="cbar-name">${page}</span>` : `<span class="cbar-name">${nm}</span>`}${c.id && current !== 'client' ? pillHTML(c) : ''}${saveTxt}</div>
     ${ctabsHTML(true)}`;
 }
@@ -4790,8 +4790,8 @@ function ctabsHTML(overview){
   const fresh = shared && current === 'client' && (cpId === '__new' || cpFresh === cpId);
   if (fresh) return `<div class="ctabs-row"><div class="ctabs" role="tablist">${tab('client', 'Overview')}</div></div>`;
   return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') : ''}${products}</div>
-    <div class="qgos">${overview ? `<button class="qgo" data-ct="${inSheet ? current : ctLastSheet || first}" aria-pressed="${inSheet}">${MS_SVG}<span class="q-l">Measurement sheet</span><span class="q-s">Measure</span></button>` : ''}<button class="qgo" data-ct="msheet" aria-pressed="${current === 'msheet'}">${EYE_ICON}<span class="q-l">View measurement sheet</span><span class="q-s">View sheet</span></button><button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}Quotation</button></div></div>`;
-  // 20 Oct (Purvi: "maybe they all can be same types of buttons?"): Measurement sheet · View measurement sheet · Quotation, one kind
+    <div class="qgos">${overview ? `<button class="qgo" data-ct="${inSheet ? current : ctLastSheet || first}" aria-pressed="${inSheet}">${MS_SVG}<span class="q-l">Measurement sheet form</span><span class="q-s">Form</span></button>` : ''}<button class="qgo" data-ct="msheet" aria-pressed="${current === 'msheet'}">${EYE_ICON}<span class="q-l">View measurement sheet</span><span class="q-s">View sheet</span></button><button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}<span class="q-l">View quotation</span><span class="q-s">Quotation</span></button></div></div>`;
+  // 20 Oct (Purvi: "maybe they all can be same types of buttons?"; then names: "measurement sheet form, view measurement sheet, view qtn"), one kind
   // of button, yellow = the page you are on; from View measurement sheet, Measurement sheet goes back to the product last open.
 }
 $('#cbar').addEventListener('click', async e => {
@@ -7321,4 +7321,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-124443 -->
+<!-- build 20261020-124728 -->
