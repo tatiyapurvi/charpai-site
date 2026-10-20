@@ -921,8 +921,15 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 @page{size:A4 portrait;margin:12mm 11mm 14mm;
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,sans-serif;color:#555}
   @bottom-left{content:"Tatiya Industries · Performa invoice";font:8pt Arial,sans-serif;color:#555}}
+@page ms{size:A4 landscape;margin:10mm 9mm 12mm;
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Arial,sans-serif;color:#555}
+  @bottom-left{content:"Tatiya Industries · Measurement sheet";font:8pt Arial,sans-serif;color:#555}}
 @media print{
   html,body{background:#fff!important;margin:0;padding:0}
+  #print-root.ms{page:ms}
+  #print-root.ms .paper{table-layout:auto}
+  #print-root.ms .paper td,#print-root.ms .paper th{font-size:8pt;padding:2.5pt 3pt}
+  #print-root.ms .ms-mzd{background:#C6EFCE!important}
   body.printing>*:not(#print-root){display:none!important}
   body.printing #print-root{display:block;color:#000;font:9pt/1.35 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #print-root .q-scroll{overflow:visible}
@@ -3704,15 +3711,17 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-qv]'
 // Print (Purvi, 2 Oct): the Print button, or Cmd/Ctrl+P on the Quotation tab, prints just the quotation on A4.
 // A fresh customer copy (no cost column, no orange buttons) goes into #print-root; everything else is hidden by @media print.
 function fillPrint(){
-  if (current !== 'quote') return;
+  if (current !== 'quote' && current !== 'msheet') return;
   let root = document.getElementById('print-root');
   if (!root) { root = document.createElement('div'); root.id = 'print-root'; document.body.appendChild(root); }
-  root.innerHTML = paperHTML(state.quote, state.house, quoteTotals(), false, true);
+  root.className = current === 'msheet' ? 'ms' : '';   // 20 Oct: the measurement sheet prints too, A4 landscape (its own page style)
+  if (current === 'msheet') { const D = msShown(); root.innerHTML = msPaperHTML(state.quote || {}, state.house, D, msNext(D)); }
+  else root.innerHTML = paperHTML(state.quote, state.house, quoteTotals(), false, true);
   document.body.classList.add('printing');
 }
 addEventListener('beforeprint', fillPrint);
 addEventListener('afterprint', () => document.body.classList.remove('printing'));
-document.addEventListener('click', e => { if (e.target.closest('#q-print')) { fillPrint(); print(); } });
+document.addEventListener('click', e => { if (e.target.closest('#q-print, #ms-print')) { fillPrint(); print(); } });
 // Excel copy of the quotation (Purvi, 2 Oct): same layout as the PDF, set up to print on A4 (fit to width, header row
 // repeated). Numbers stay numbers. Customer copy only: no cost column. Does not count as a new version.
 async function quoteXLSX(){
@@ -7156,14 +7165,15 @@ function renderMsheet(){
   $('#ms-paper').innerHTML = msPaperHTML(q, state.house, D, n, msEdit && !phone);
   const ver = !P.n ? 'The first download will be <b>M1</b>.' : n === P.n ? `Last saved as <b>M${P.n}</b>. Nothing has changed since.` : `Changed since <b>M${P.n}</b>, so the next download will be <b>M${n}</b>.`;
   const ban = D.hid ? `<div class="qe-ban"><b>Part sheet.</b> ${esc(D.hid)}<div class="qe-acts"><button class="btn" data-msall="1">Show everything</button></div></div>` : '';
-  $('#ms-sum').innerHTML = (msEdit && !phone ? `<div class="qe-card"><h3>Editing the measurement sheet</h3><p>Press <b>Hide</b> on a column, a row or a product. Hidden things are left out of the PDF, Excel and WhatsApp.</p>
+  // 20 Oct (Purvi): the same four buttons as View quotation (PDF · Excel · Print · Send on WhatsApp), at the top of the panel
+  const acts = `<div class="q-acts"><button class="btn solid dl" id="ms-pdf">${DL_ICON}PDF</button><button class="btn solid dl" id="ms-xlsx">${DL_ICON}Excel</button>
+      <button class="btn dl" id="ms-print" title="Print on A4 (landscape)">${PRINT_ICON}Print</button><button class="btn dl" id="ms-wa">${WA_ICON}Send on WhatsApp</button><span class="hint">${ver} Each download or send is kept on the client's page.</span></div>`;
+  $('#ms-sum').innerHTML = acts + (msEdit && !phone ? `<div class="qe-card"><h3>Editing the measurement sheet</h3><p>Press <b>Hide</b> on a column, a row or a product. Hidden things are left out of the PDF, Excel and WhatsApp.</p>
       ${D.hid ? `<p class="qe-now"><b>The client gets:</b> ${esc(D.hid)}</p>` : '<p class="qe-now">Nothing hidden yet.</p>'}
       <div class="rows">${msData().map(s => { const yes = !msHide().sec.includes(s.k); return `<div class="srow"><span>${esc(s.name)}</span><button class="qh${yes ? '' : ' show'}" data-msh="sec" data-k="${esc(s.k)}">${yes ? 'Hide' : 'Show'}</button></div>`; }).join('')}</div>
       <div class="qe-acts">${D.hid ? '<button class="btn" data-msall="1">Show everything</button>' : ''}<button class="btn solid" data-msedit="0">Done</button></div></div>`
     : ban + `<div class="qe-open"><button class="btn" data-msedit="1">${EDIT_ICON}Edit measurement sheet</button><span class="hint">Hide a product, a row or a column before sending.</span></div>`)
-    + `<div class="rows">${D.S.map(s => `<div class="srow"><span>${esc(s.name)}</span><b>${esc(s.sum[0] || '')}</b></div>`).join('')}</div>
-    <div class="q-acts"><button class="btn solid dl" id="ms-pdf">${DL_ICON}PDF</button><button class="btn solid dl" id="ms-xlsx">${DL_ICON}Excel</button>
-      <button class="btn dl" id="ms-wa" style="grid-column:1/-1">${WA_ICON}Send on WhatsApp</button><span class="hint">${ver} Each download or send is kept on the client's page.</span></div>`;
+    + `<div class="rows">${D.S.map(s => `<div class="srow"><span>${esc(s.name)}</span><b>${esc(s.sum[0] || '')}</b></div>`).join('')}</div>`;
   if (dlg.open && dlg.querySelector('#mse-list')) msDlgFill();
 }
 // phones: one screen with a switch for every section, row and column
@@ -7363,4 +7373,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-131136 -->
+<!-- build 20261020-131920 -->
