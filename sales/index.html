@@ -271,7 +271,10 @@ table.sheet{border-collapse:separate;border-spacing:0;width:100%;min-width:2300p
 .sheet th.r{padding-right:18px;padding-left:16px}
 .sheet td.howc,.sheet th.howh{padding-left:24px;padding-right:16px;border-left:1px solid var(--line)}
 .sheet td.howc b{color:var(--ink);font-weight:700}
-.sheet td.howc{min-width:400px;max-width:460px;white-space:normal;font-size:12.5px;line-height:1.35;color:var(--muted)}
+.sheet td.howc{min-width:560px;max-width:620px;white-space:normal;font-size:12.5px;line-height:1.35;color:var(--muted)}
+.sheet td.howc .howt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;cursor:help}
+/* 20 Oct (Purvi): one row height on every measurement sheet form, the Blinds one (57px); a curtain with motor + remote may be taller */
+:is(#tb, #btb, #ptb) > tr.row > td{height:57px}
 .sheet th{font-weight:600;font-size:12.5px;color:var(--muted);text-align:left;padding:6px 6px;white-space:nowrap;background:var(--paper);border-bottom:1px solid var(--line)}
 .sheet th.grp{font-size:13px;color:var(--ink);border-bottom:2px solid var(--line);padding-top:10px}
 .sheet th.grp.soft{color:var(--faint)}
@@ -2260,6 +2263,8 @@ function bHnavSync(){ if (bHnavFn) bHnavFn(); }
 const TRACK_MAX_FT = 15;
 const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' + (res.trackPieces ? ` (${res.trackPieces} × ${cpF(res.trackPieceFt)} ft)` : '') : (kitSize(res.track, res.kitMin) ? kitSize(res.track, res.kitMin) + ' m kit' : 'over 9 m: ask ' + res.kitBy);
 // Numbers (with their unit) in bold, so the How column can be read at a glance.
+// 20 Oct (Purvi: every form's rows the same height as Blinds'): "How it was worked out" shows 2 lines; the whole text on hover
+const howBox = h => { const d = document.createElement('div'); d.innerHTML = h; return `<div class="howt" title="${esc(d.textContent.replace(/\s+/g, ' ').trim())}">${h}</div>`; };
 const boldNums = t => esc(t).replace(/\d+(?:\.\d+)?(?:–\d+(?:\.\d+)?)?(?:″| cm\b| m\b| ft\b)?/g, '<b class="n">$&</b>');
 const linHowOf = lin => lin ? ` Lining (${lin.name}): ${lin.drops} × ${cpF(lin.cut)}″ = ${f2(lin.raw)} m, rounded up to ${cpF(lin.m)} m.` : '';
 function updateRow(r){
@@ -2268,7 +2273,7 @@ function updateRow(r){
   const q = tr.querySelector('[data-o=qty]');
   q.innerHTML = ok ? `<span class="v">${cpF(res.qty)}<span class="u" style="color:inherit"> m</span></span>${(c.d.wide ? res.rotated : res.turned) ? '<span class="tag">turned</span>' : ''}` : '<span class="none">—</span>';
   q.title = res.how;
-  tr.querySelector('[data-o=how]').innerHTML = ok ? boldNums(res.how + linHowOf(lin)) : '';
+  tr.querySelector('[data-o=how]').innerHTML = ok ? howBox(boldNums(res.how + linHowOf(lin))) : '';
   const lo = tr.querySelector('[data-o=lin]'); if (lo) lo.innerHTML = ok ? (lin ? `${cpF(lin.m)}<span class="u"> m</span>` : '<span class="none">none</span>') : '';
   const to = tr.querySelector('[data-o=track]'); if (to) to.innerHTML = ok && res.track ? `<span class="v">${cpF(res.track)}<span class="u" style="color:inherit"> ${res.trackUnit === 'ft' ? 'ft' : 'm kit'}</span></span>` : '';
   for (const f of Object.keys(AUTO)) {
@@ -5918,7 +5923,7 @@ function mpUpdateRow(k, r){
   const tr = $('#ptb').querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
   const c = MP[k].calc(r);
   for (const col of MP[k].cols) {
-    if (col.how) { tr.querySelector('[data-o=how]').innerHTML = c.how || ''; continue; }
+    if (col.how) { tr.querySelector('[data-o=how]').innerHTML = c.how ? howBox(c.how) : ''; continue; }
     if (col.out) { tr.querySelector(`[data-o=${col.k}]`).innerHTML = col.out(c, r) || '<span class="none">—</span>'; continue; }
     if (col.t === 'auto') {
       const inp = tr.querySelector(`[data-p=${col.k}]`), own = has(r[col.k]), d = col.def(c, r);
@@ -7386,4 +7391,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261020-135223 -->
+<!-- build 20261020-135833 -->
