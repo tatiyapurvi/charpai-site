@@ -5517,13 +5517,23 @@ function wpFig(r, c){
 // Wall-to-wall carpet has no % wastage since 7 Oct: it is ordered as pieces cut off the roll (flCut), like carpet makers do.
 const FL_WASTE = {'Laminate': 10, 'Engineered wood': 10, 'Solid wood': 10, 'Vinyl (SPC / LVT)': 8, 'Wall-to-wall carpet': 0, 'Carpet tiles': 5};
 const FL_WW = 'Wall-to-wall carpet', FL_TRIM = 3;   // 3″ extra at each end of every piece, for trimming at the wall
-// Carpet off the roll (Purvi, 7 Oct: "follow standards"): pieces at the roll's width, all laid the same way (pile in one direction),
-// off-cuts not pieced in. Fewer joints wins (fitters avoid joints) unless it needs over 15% more carpet; else the way that uses less.
-function flCut(L, W, rollm){
-  const rw = rollm * 39.37, a = {run: 'L', n: Math.ceil(W / rw - 1e-9), len: L + 2 * FL_TRIM}, b = {run: 'W', n: Math.ceil(L / rw - 1e-9), len: W + 2 * FL_TRIM};
-  const la = a.n * a.len, lb = b.n * b.len, [f, m] = a.n <= b.n ? [a, b] : [b, a];
-  const p = f.n < m.n ? (f.n * f.len <= m.n * m.len * 1.15 ? f : m) : la <= lb ? a : b;
-  return Object.assign(p, {rollm, rw, side: p.run === 'L' ? W : L, total: p.n * p.len, sqft: Math.ceil(p.n * p.len * rw / 144 - 1e-9)});
+// Carpet off the roll (Purvi, 7 Oct: "follow standards"): pieces at the roll's width, each = the room + 3″ at each end.
+// 21 Oct (Purvi): "for wall to wall carpet, joint from any angle is possible". So when the room is a little wider than whole pieces,
+// the strip left over is filled with short pieces cut ACROSS the roll (each = the strip's width + 3″ each side, as long as the roll
+// is wide) and joined end to end, instead of a whole extra full-length piece. Both directions, plain or filled, are tried: the least
+// carpet wins, unless a way with fewer joints needs at most 15% more carpet (fitters avoid joints).
+function flCut(L, W, rollm, anyWay = true){   // anyWay: the row's "Join any way" (Yes by default); No = every piece runs the same way
+  const rw = rollm * 39.37, ways = [];
+  for (const [run, along, side] of [['L', L, W], ['W', W, L]]) {
+    const len = along + 2 * FL_TRIM, n = Math.ceil(side / rw - 1e-9);
+    ways.push({run, n, len, side, fill: null, total: n * len, joints: n - 1});
+    const nf = Math.floor(side / rw + 1e-9), rest = side - nf * rw;
+    if (anyWay && nf >= 1 && rest > 0.5) { const k = Math.ceil(len / rw - 1e-9), plen = rest + 2 * FL_TRIM;
+      ways.push({run, n: nf, len, side, fill: {k, plen, w: rest}, total: nf * len + k * plen, joints: nf - 1 + 1 + (k - 1)}); }
+  }
+  const least = Math.min(...ways.map(x => x.total));
+  const p = ways.filter(x => x.total <= least * 1.15 + 1e-9).sort((a, b) => a.joints - b.joints || a.total - b.total)[0];
+  return Object.assign(p, {rollm, rw, pieces: p.n + (p.fill ? p.fill.k : 0), sqft: Math.ceil(p.total * rw / 144 - 1e-9)});
 }
 // Tile size from the list ("50x50 cm"), else 50 × 50 cm, the usual size
 function flTile(it){ const m = /([\d.]+)\s*x\s*([\d.]+)/i.exec(it && it.tile || ''); return m ? {tw: +m[1] / 2.54, th: +m[2] / 2.54, txt: it.tile.replace(/x/i, ' × ')} : {tw: 50 / 2.54, th: 50 / 2.54, txt: '50 × 50 cm'}; }
@@ -5537,6 +5547,13 @@ function flPlanSVG(r, c){
   let lay = '', g = '';
   if (c.cut) {
     const p = c.cut, sw = p.rw * s;
+    if (p.fill) {   // 21 Oct: the strip left over, made of short pieces cut across the roll, joined end to end
+      const o = p.n * sw, fw = p.fill.w * s, J = 'stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="8 5"';
+      for (let j = 0; j < p.fill.k; j++) { const q = j * sw, fo = j % 2 ? ' fill-opacity=".45"' : ' fill-opacity=".7"';
+        if (p.run === 'L') lay += `<rect class="f-main" x="${x0 + q}" y="${y0 + o}" width="${sw}" height="${fw}"${fo}/>` + (j ? `<path ${J} d="M${x0 + q},${y0 + o}v${fw}"/>` : '');
+        else lay += `<rect class="f-main" x="${x0 + o}" y="${y0 + q}" width="${fw}" height="${sw}"${fo}/>` + (j ? `<path ${J} d="M${x0 + o},${y0 + q}h${fw}"/>` : ''); }
+      lay += p.run === 'L' ? `<path ${J} d="M${x0},${y0 + o}h${w}"/>` : `<path ${J} d="M${x0 + o},${y0}v${h}"/>`;
+    }
     for (let i = 0; i < p.n; i++) {
       const o = i * sw, vis = Math.min(sw, (p.run === 'L' ? h : w) - o), fo = i % 2 ? ' fill-opacity=".6"' : '';
       if (p.run === 'L') lay += `<rect class="f-main" x="${x0}" y="${y0 + o}" width="${w}" height="${vis}"${fo}/>` + (vis > 18 ? `<text x="${x0 + w / 2}" y="${y0 + o + vis / 2 + 6}" text-anchor="middle" class="t-dim">${i + 1} →</text>` : '') + (i ? `<path stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="8 5" d="M${x0},${y0 + o}h${w}"/>` : '');
@@ -5572,7 +5589,7 @@ function flPlanSVG(r, c){
   const wy = yb + 26;
   g += arrow(x0, wy, x0 + w, wy) + `<text x="${x0 + w / 2}" y="${wy + 22}" text-anchor="middle" class="t-dimb">${fmt(L)}″ long</text>`;
   g += arrow(x0 - 24, y0, x0 - 24, yb) + `<text transform="translate(${x0 - 34},${(y0 + yb) / 2}) rotate(-90)" text-anchor="middle" class="t-dimb">${fmt(W)}″ wide</text>`;
-  const key = [c.cut && c.cut.n > 1 ? `<tspan style="fill:var(--warn)">- - -</tspan> joint` : '', c.tile ? 'pale = cut tile' : '', r.edge && r.edge !== 'None' ? `<tspan style="fill:var(--tape)">▬</tspan> ${r.edge === 'Both' ? 'skirting + beading' : r.edge.toLowerCase()}` : ''].filter(Boolean).join('   ');
+  const key = [c.cut && c.cut.joints > 0 ? `<tspan style="fill:var(--warn)">- - -</tspan> joint${c.cut.fill ? ' · pale = pieces cut across the roll' : ''}` : '', c.tile ? 'pale = cut tile' : '', r.edge && r.edge !== 'None' ? `<tspan style="fill:var(--tape)">▬</tspan> ${r.edge === 'Both' ? 'skirting + beading' : r.edge.toLowerCase()}` : ''].filter(Boolean).join('   ');
   if (key) g += `<text x="${x0}" y="${y0 - 10}" class="t-mut">${key}</text>`;
   return `<svg viewBox="0 0 ${VW} ${wy + 34}" role="img" aria-label="Floor seen from above, ${fmt(L)} by ${fmt(W)} inches">${g}</svg>`;
 }
@@ -5580,7 +5597,10 @@ function flBuySVG(r, c){
   const VW = 640, x0 = 20, aw = VW - 40;
   if (c.cut) {
     const p = c.cut, y0 = 34, rh = 70, sx = aw / p.total; let g = '';
-    for (let i = 0; i < p.n; i++) { const x = x0 + i * p.len * sx, pw = p.len * sx - 2, used = Math.min(p.rw, p.side - i * p.rw), uh = rh * used / p.rw;
+    if (p.fill) for (let j = 0; j < p.fill.k; j++) { const x = x0 + (p.n * p.len + j * p.fill.plen) * sx, pw = p.fill.plen * sx - 2;   // the short pieces cut across
+      g += `<rect class="f-main" x="${x}" y="${y0}" width="${pw}" height="${rh}" fill-opacity=".55"/>`;
+      if (pw > 34) g += `<text x="${x + pw / 2}" y="${y0 + rh / 2 + 6}" text-anchor="middle" class="t-dim">${fmt(Math.round(p.fill.plen))}″</text>`; }
+    for (let i = 0; i < p.n; i++) { const x = x0 + i * p.len * sx, pw = p.len * sx - 2, used = p.fill ? p.rw : Math.min(p.rw, p.side - i * p.rw), uh = rh * used / p.rw;
       g += `<rect class="roll" x="${x}" y="${y0}" width="${pw}" height="${rh}"/><rect class="f-main" x="${x}" y="${y0}" width="${pw}" height="${uh}"/>`;
       if (pw > 60) g += `<text x="${x + pw / 2}" y="${y0 + uh / 2 + 6}" text-anchor="middle" class="t-dim">${i + 1} · ${fmt(p.len)}″</text>`;
       if (used < p.rw - .5) { g += `<rect class="spare" fill="none" x="${x}" y="${y0 + uh}" width="${pw}" height="${rh - uh}"/>`;
@@ -5746,13 +5766,14 @@ const MP = {
   flooring: {name: 'Flooring', one: 'area', many: 'areas', add: '+ Add area', fig: flFig,
     note: 'One row per room or area. Length and width in inches, as measured.',
     hint: 'Wastage fills itself from the floor type and laying; type over it if needed (orange), ↺ puts it back.',
-    blank: () => ({room: '', type: '', sup: '', product: '', rollw: '', L: '', W: '', lay: 'Straight', waste: '', pack: '', edge: '', doors: '', sub: '', under: '', remarks: ''}),
+    blank: () => ({room: '', type: '', sup: '', product: '', rollw: '', xjoin: 'Yes', L: '', W: '', lay: 'Straight', waste: '', pack: '', edge: '', doors: '', sub: '', under: '', remarks: ''}),
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
       {g: 'Floor', k: 'type', label: 'Type', t: 'sel', opts: Object.keys(FL_WASTE), blank: 'Pick', w: 180},
       {g: 'Floor', k: 'sup', label: 'Company', t: 'text', ph: 'Company', list: () => 'flsups', w: 140},
       {g: 'Floor', k: 'product', label: 'Product', sub: 'collection, design', t: 'text', ph: r => FLL[r.sup] ? 'Type a carpet name' : 'Collection · design', list: flListId, w: 220},
       {g: 'Floor', k: 'rollw', label: 'Roll width', sub: 'm', t: 'auto', def: c => c.rollDef, off: r => r.type !== FL_WW},
+      {g: 'Floor', k: 'xjoin', label: 'Join any way', sub: 'joint ok?', t: 'sel', opts: ['Yes', 'No'], w: 100, off: r => r.type !== FL_WW},   // 21 Oct (Purvi): "keep it as a button, by default keep it on yes"
       {g: 'Size', k: 'L', label: 'Length', sub: '″', t: 'num', key: 1},
       {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
       {g: 'Laying', k: 'lay', label: 'Pattern', t: 'sel', opts: Object.keys(FL_LAY), w: 180, off: r => r.type === FL_WW},
@@ -5781,27 +5802,29 @@ const MP = {
       if (!c.ok) return c;
       const w = has(r.waste) && r.waste !== '' ? nv(r.waste) : (+c.wasteDef || 0), pack = nv(r.pack);
       c.area = r2(L * W / 144); c.order = Math.ceil(c.area * (1 + w / 100) - 1e-9);
-      if (ww) { c.cut = flCut(L, W, nv(r.rollw) > 0 ? nv(r.rollw) : c.rollDef); c.order = Math.ceil(c.cut.sqft * (1 + w / 100) - 1e-9); }
+      if (ww) { c.cut = flCut(L, W, nv(r.rollw) > 0 ? nv(r.rollw) : c.rollDef, r.xjoin !== 'No'); c.order = Math.ceil(c.cut.sqft * (1 + w / 100) - 1e-9); }   // rows from before 21 Oct have no xjoin: Yes
       if (r.type === 'Carpet tiles') { c.tile = flTile(it); c.tiles = Math.ceil(c.order * 144 / (c.tile.tw * c.tile.th) - 1e-9); }
       if (pack > 0 && !(/carpet$/i.test(r.type) && r.type !== 'Carpet tiles')) c.boxes = Math.ceil(c.order / pack - 1e-9);
       const doors = Math.max(0, parseInt(r.doors, 10) || 0);
       if (r.edge && r.edge !== 'None') c.rft = Math.max(0, Math.ceil(2 * (L + W) / 12 - doors * 3 - 1e-9));
-      c.how = ww ? `<b>${fmt(L)}″ × ${fmt(W)}″</b> = <b>${cpF(c.area)} sq ft</b> of floor. Carpet is cut off the <b>${fmt(c.cut.rollm)} m</b> (${fmt(Math.round(c.cut.rw))}″) roll: <b>${c.cut.n} piece${c.cut.n > 1 ? 's' : ''} × ${fmt(c.cut.len)}″</b> (the room's ${c.cut.run === 'L' ? 'length' : 'width'} + ${FL_TRIM}″ at each end) = ${fmt(c.cut.total)}″ × ${fmt(Math.round(c.cut.rw))}″ ÷ 144 = <b>${c.cut.sqft} sq ft</b>${w ? `, plus ${w}% = <b>${c.order} sq ft</b>` : ''}.`
+      c.how = ww ? `<b>${fmt(L)}″ × ${fmt(W)}″</b> = <b>${cpF(c.area)} sq ft</b> of floor. Carpet is cut off the <b>${fmt(c.cut.rollm)} m</b> (${fmt(Math.round(c.cut.rw))}″) roll: <b>${c.cut.n} piece${c.cut.n > 1 ? 's' : ''} × ${fmt(c.cut.len)}″</b> (the room's ${c.cut.run === 'L' ? 'length' : 'width'} + ${FL_TRIM}″ at each end)`
+          + (c.cut.fill ? `, and the ${fmt(Math.round(c.cut.fill.w))}″ strip left over is made of <b>${c.cut.fill.k} piece${c.cut.fill.k > 1 ? 's' : ''} × ${fmt(Math.round(c.cut.fill.plen))}″ cut across the roll</b> (${fmt(Math.round(c.cut.fill.w))}″ + ${FL_TRIM}″ each side), joined end to end` : '')
+          + ` = ${fmt(Math.round(c.cut.total))}″ × ${fmt(Math.round(c.cut.rw))}″ ÷ 144 = <b>${c.cut.sqft} sq ft</b>${w ? `, plus ${w}% = <b>${c.order} sq ft</b>` : ''}.`
         : `<b>${fmt(L)}″ × ${fmt(W)}″</b> ÷ 144 = <b>${cpF(c.area)} sq ft</b>. Plus ${w}% wastage = <b>${c.order} sq ft</b>${c.tiles ? ` = <b>${c.tiles} tiles</b> of ${c.tile.txt}` : ''}${c.boxes ? ` ÷ ${fmt(pack)} sq ft a box = <b>${c.boxes} boxes</b>` : ''}.${c.rft ? ` ${r.edge}: room edge ${fmt(r2(2 * (L + W) / 12))} ft${doors ? ` less ${doors} door${doors > 1 ? 's' : ''} × 3 ft` : ''} = <b>${c.rft} rft</b>.` : ''}`;
-      c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: 'To order', v: c.order, u: ww ? `sq ft · ${c.cut.n} piece${c.cut.n > 1 ? 's' : ''} off the roll` : `sq ft, ${w}% wastage`, m: 1}];
-      if (ww) c.kpis.push({l: 'Joints', v: c.cut.n - 1, u: c.cut.n > 1 ? 'where pieces meet' : 'one piece'});
+      c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: 'To order', v: c.order, u: ww ? `sq ft · ${c.cut.pieces} piece${c.cut.pieces > 1 ? 's' : ''} off the roll` : `sq ft, ${w}% wastage`, m: 1}];
+      if (ww) c.kpis.push({l: 'Joints', v: c.cut.joints, u: c.cut.joints ? 'where pieces meet' : 'one piece'});
       if (c.tiles) c.kpis.push({l: 'Tiles', v: c.tiles, u: c.tile.txt});
       if (c.boxes) c.kpis.push({l: 'Boxes', v: c.boxes, u: `${fmt(pack)} sq ft each`});
       if (c.rft) c.kpis.push({l: r.edge === 'Both' ? 'Skirting + beading' : r.edge, v: c.rft, u: 'running ft'});
       if (it) { const mrp = Math.round(it.rrp * (1 + it.gst / 100)), dp = FLC.get(r.sup + '|' + it.code.toUpperCase());
         c.mrp = mrp * c.order; c.kpis.push({l: 'MRP per sq ft', v: rs(mrp), u: `incl. ${it.gst}% GST`}, {l: 'MRP total', v: rs(c.mrp), u: `${c.order} sq ft × ${rs(mrp)}`, m: 1});
         if (canSeeCost && dp != null) c.kpis.push({l: 'We pay per sq ft', v: rs(dp), u: 'before GST · only you see this'});
-        if (ww && c.cut.n > 1) c.warn.push(`${c.cut.n - 1} joint${c.cut.n > 2 ? 's' : ''}: show the client where`); }
+        if (ww && c.cut.joints) c.warn.push(`${c.cut.joints} joint${c.cut.joints > 1 ? 's' : ''}: show the client where`); }
       else if (FLL[r.sup] && r.product) c.warn.push(`Not found in ${r.sup}'s list: pick it from the list to get its price`);
       return c;
     },
     sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.order || 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0); return n ? `${n.toLocaleString('en-IN')} sq ft to order${m ? ` · MRP ${rs(m)}` : ''}` : ''; },
-    rules: ['Area = length × width ÷ 144 (inches to sq ft).', 'Wall-to-wall carpet is cut off the roll in pieces as wide as the roll: each piece = the room + 3″ at each end. All pieces are laid the same way, so leftovers are not pieced in. The app picks the way with fewer joints, unless that needs over 15% more carpet. To order = the pieces\' length × the roll width.',
+    rules: ['Area = length × width ÷ 144 (inches to sq ft).', 'Wall-to-wall carpet is cut off the roll in pieces as wide as the roll: each piece = the room + 3″ at each end. With Join any way: Yes (the default), joints may run any way, so a strip left over beside the full pieces is made of short pieces cut across the roll (strip width + 3″ each side) joined end to end, instead of a whole extra piece; No = every piece runs the same way. The app takes the way that uses least carpet, unless a way with fewer joints needs at most 15% more. To order = the pieces\' length × the roll width.',
       'Wastage: laminate and wood 10%, vinyl 8%, carpet tiles 5%; diagonal adds 5%, herringbone or chevron 10%. Type over it if the company says otherwise.',
       'To order = area + wastage, rounded up to a whole sq ft. Boxes = that ÷ what one box covers, rounded up.', 'Skirting / beading = the room\'s edge (2 × (length + width)) less 3 ft for every door.',
       'Always ask skirting or beading, and check the floor is level and dry, before quoting.',
@@ -7869,4 +7892,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-163649 -->
+<!-- build 20261021-165853 -->
