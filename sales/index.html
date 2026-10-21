@@ -820,6 +820,9 @@ body.shared .house{display:none}
 .theme-sw button{border:0;background:none;color:var(--tape-ink);font:600 13px var(--body);padding:4px 11px;border-radius:999px;cursor:pointer}
 .theme-sw button[aria-pressed="true"]{background:var(--tape-ink);color:var(--tape)}
 .theme-sw + .acct{margin-left:0}
+.theme-sw + .lang-sw,.lang-sw + .acct{margin-left:0}   /* 21 Oct: English | हिंदी sits right after Light | Dark */
+.lang-sw .ls{display:none}
+@media (max-width:520px){ .lang-sw .lf{display:none} .lang-sw .ls{display:inline} }
 @media print{.theme-sw{display:none}}
 .acct span{display:flex;flex-direction:column;line-height:1.15;text-align:right}
 .acct small{font-size:12px;opacity:.75}
@@ -7971,6 +7974,144 @@ document.addEventListener('click', e => {
   if (b.dataset.msv === 'view') msShowVersion(c, x); else msDownloadVersion(x, b);
 });
 
+// ================= हिंदी (Purvi, 21 Oct 2026): "one more toggle button for english hindi", for the sales team and the people who
+// measure, install and deliver. Spoken Hindi, common English words kept (क्लाइंट, कोटेशन, पर्दे). The quotation PDF, Settings,
+// Prices and People stay English. How: the app keeps drawing its screens in English; when हिंदी is on, a watcher swaps every text,
+// placeholder, title and aria-label it knows for its Hindi, as soon as it appears. Words it doesn't know stay English, nothing typed
+// or saved is touched (names, fabrics, numbers), and switching back puts the English back. Step 1 (21 Oct): top bar, Home,
+// My Clients, client page, new enquiry, To Do, the to-do window, the page bar. Step 2 (sheets) comes later.
+const HI = {
+  // top bar, menu, page bar
+  'Charpai': 'Charpai', 'Home': 'होम', 'your day': 'आज का काम', 'the whole team': 'पूरी टीम', 'Dashboard': 'डैशबोर्ड',
+  'Clients': 'क्लाइंट', 'My Clients': 'मेरे क्लाइंट', 'enquiries to won': 'इन्क्वायरी से ऑर्डर तक', 'To Do': 'काम', 'To do': 'करना है',
+  'visits, calls, quotations': 'विज़िट, कॉल, कोटेशन', 'Settings': 'सेटिंग्स', 'your account': 'आपका अकाउंट', 'prices, people': 'रेट, टीम',
+  'Sign out': 'साइन आउट', 'Admin': 'एडमिन', 'Sales': 'सेल्स', '☀ Light': '☀ लाइट', '☾ Dark': '☾ डार्क', 'Overview': 'जानकारी',
+  'Measurement sheet form': 'नाप का फ़ॉर्म', 'View measurement sheet': 'नाप शीट देखें', 'View quotation': 'कोटेशन देखें',
+  'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
+  'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
+  // clients board / list / filters
+  'Board': 'बोर्ड', 'List': 'लिस्ट', 'Filters': 'फ़िल्टर', '+ New enquiry': '+ नई इन्क्वायरी', 'New enquiry': 'नई इन्क्वायरी', 'New Enquiry': 'नई इन्क्वायरी',
+  'Quotation Given': 'कोटेशन दिया', 'Quotation given': 'कोटेशन दिया', 'Won': 'ऑर्डर मिला', 'Lost': 'नहीं मिला', 'Quoted': 'कोटेशन गया',
+  'No new enquiries.': 'कोई नई इन्क्वायरी नहीं।', 'No clients yet.': 'अभी कोई क्लाइंट नहीं।',
+  'Cards come here by themselves when a quotation PDF is downloaded.': 'कोटेशन की PDF डाउनलोड होते ही कार्ड यहाँ अपने आप आ जाते हैं।',
+  'Mark a client as won from their page, or drag a card here from Quotation Given.': 'क्लाइंट के पेज पर "ऑर्डर मिला" दबाएँ, या "कोटेशन दिया" से कार्ड यहाँ खींचें।',
+  'Search name, phone, area, city, quotation no.': 'नाम, फ़ोन, एरिया, शहर, कोटेशन नंबर से ढूँढें',
+  'Search clients': 'क्लाइंट ढूँढें', 'Tap + New client, type their name, and start measuring.': '+ नई इन्क्वायरी दबाएँ, नाम लिखें और नाप शुरू करें।',
+  'Show': 'दिखाएँ', 'Show as': 'ऐसे दिखाएँ', 'Sort': 'क्रम', 'Period': 'समय', 'All': 'सब', 'All time': 'पूरा समय', 'Today': 'आज', 'Tomorrow': 'कल',
+  'This month': 'इस महीने', 'Last month': 'पिछले महीने', 'This year': 'इस साल', 'last 7 days': 'पिछले 7 दिन', 'Next 7 days': 'अगले 7 दिन',
+  'Open': 'चालू', 'Open or lost': 'चालू या नहीं मिला', 'Open clients': 'चालू क्लाइंट', 'Lost clients': 'जो नहीं मिले', 'New clients': 'नए क्लाइंट',
+  'Open, waiting for an answer': 'चालू, जवाब का इंतज़ार', 'Needs follow-up': 'फ़ॉलो-अप करना है', 'Follow up': 'फ़ॉलो-अप',
+  'Quoted, nothing changed for 7+ days': 'कोटेशन गया, 7+ दिन से कुछ नहीं हुआ', 'quoted, no change for 7+ days': 'कोटेशन गया, 7+ दिन से कोई बदलाव नहीं',
+  'Value': 'रकम', 'Value from': 'रकम से', 'Value up to': 'रकम तक', 'From ₹': 'कम से कम ₹', 'Up to ₹': 'ज़्यादा से ज़्यादा ₹', 'to': 'से',
+  'Under ₹50k': '₹50 हज़ार से कम', '₹50k – 2L': '₹50 हज़ार – 2 लाख', '₹2L – 5L': '₹2 – 5 लाख', '₹5L and up': '₹5 लाख से ज़्यादा',
+  'latest quotation, or the won amount': 'आख़िरी कोटेशन, या ऑर्डर की रकम', 'Has in the sheet': 'शीट में है', 'Why we lost': 'क्यों नहीं मिला',
+  'By executive': 'सेल्समैन के हिसाब से', 'Executive': 'सेल्समैन', 'Sales executive': 'सेल्समैन', 'Person': 'व्यक्ति', 'Last active': 'आख़िरी बार',
+  'Win rate': 'ऑर्डर मिलने का %', 'Nothing lost in this period.': 'इस समय में कोई क्लाइंट नहीं गया।',
+  'Tap an executive to see their clients. Quoted counts clients whose latest quotation went out in this period.': 'सेल्समैन पर टैप करें, उनके क्लाइंट दिखेंगे। "कोटेशन गया" = जिनका आख़िरी कोटेशन इस समय में गया।',
+  'Nobody waiting. Good.': 'कोई इंतज़ार में नहीं। बढ़िया।', 'Hello': 'नमस्ते',
+  // client page
+  'Edit client': 'क्लाइंट बदलें', 'Change the name': 'नाम बदलें', 'Delete': 'हटाएँ', 'Delete client': 'क्लाइंट हटाएँ', 'To-do': 'काम',
+  'Next step': 'अगला काम', 'Mark done': 'हो गया', 'Not interested any more?': 'अब नहीं लेना?', 'Activity': 'हिस्ट्री', 'Post': 'लिखें',
+  'Everyone handling this client sees it.': 'इस क्लाइंट पर काम करने वाले सब देखेंगे।', 'Enquiry added': 'इन्क्वायरी जुड़ी',
+  'Each quotation PDF you download is kept here as v1, v2 and so on, with what changed.': 'हर कोटेशन PDF यहाँ v1, v2… के नाम से रहती है, क्या बदला वो भी।',
+  'Quotations sent': 'भेजे गए कोटेशन', 'Details': 'जानकारी', 'Handled by': 'कौन देख रहा है', 'On the quotation': 'कोटेशन पर', 'Saved': 'सेव हुआ', 'Saved ✓': 'सेव हुआ ✓',
+  'Found us through': 'हमें कैसे जाना', 'Referred by': 'किसने भेजा', 'Architect': 'आर्किटेक्ट',
+  // new enquiry form
+  'Nothing here is compulsory. Fill in what you know, add the rest later.': 'कुछ भी ज़रूरी नहीं। जो पता है भरें, बाकी बाद में।',
+  'Name': 'नाम', 'Mobile': 'मोबाइल', 'Email': 'ईमेल', 'Address': 'पता', 'City': 'शहर', 'Flat / house no.': 'फ़्लैट / मकान नंबर',
+  'Building, society or area': 'बिल्डिंग, सोसाइटी या एरिया', 'Landmark': 'पास में क्या है', '(optional)': '(ज़रूरी नहीं)', '(name)': '(नाम)',
+  'e.g. Kavita Sharma': 'जैसे कविता शर्मा', 'e.g. Jodhpur': 'जैसे जोधपुर', 'e.g. E-83, 2nd floor': 'जैसे E-83, दूसरी मंज़िल',
+  'e.g. Umaid Heritage, or type the area': 'जैसे उम्मेद हेरिटेज, या एरिया लिखें', 'e.g. near Ganesh temple': 'जैसे गणेश मंदिर के पास',
+  'Did they send their location on WhatsApp? Paste it here.': 'WhatsApp पर लोकेशन भेजी है? यहाँ पेस्ट करें।',
+  'Paste location link': 'लोकेशन लिंक पेस्ट करें', 'Set pin': 'पिन लगाएँ', 'Move pin': 'पिन हिलाएँ', 'Remove pin': 'पिन हटाएँ', 'Remove': 'हटाएँ',
+  'Location they sent': 'उनकी भेजी लोकेशन', 'Open ↗': 'खोलें ↗', 'Map': 'मैप', 'Call': 'कॉल', 'WhatsApp': 'WhatsApp',
+  'Interested in': 'क्या चाहिए', 'Project type': 'कैसी जगह', 'How they found us': 'हमें कैसे जाना',
+  'Bed & bath': 'बेड और बाथ', 'Flooring / carpet': 'फ़्लोरिंग / कारपेट', 'Foam': 'फ़ोम', 'Motorised': 'मोटर वाला',
+  'Home (flat / house)': 'घर (फ़्लैट / मकान)', 'Bungalow / villa / farmhouse': 'बंगला / विला / फ़ार्महाउस', 'Hotel / resort / haveli': 'होटल / रिज़ॉर्ट / हवेली',
+  'Office / company': 'ऑफ़िस / कंपनी', 'Shop / showroom': 'दुकान / शोरूम', 'Hospital / clinic': 'हॉस्पिटल / क्लिनिक', 'School / college / coaching': 'स्कूल / कॉलेज / कोचिंग',
+  'Restaurant / café / banquet': 'रेस्टोरेंट / कैफ़े / बैंक्वेट', 'Builder project': 'बिल्डर प्रोजेक्ट', 'Government / defence': 'सरकारी / डिफ़ेंस',
+  'Community hall / trust / temple': 'सामुदायिक भवन / ट्रस्ट / मंदिर', 'Other': 'और कुछ',
+  'Walk-in': 'दुकान पर आए', 'Old customer': 'पुराने ग्राहक', 'Friend / family': 'दोस्त / परिवार', 'Architect / designer': 'आर्किटेक्ट / डिज़ाइनर',
+  'Instagram / Facebook': 'Instagram / Facebook', 'Google': 'Google',
+  'Reference': 'रेफ़रेंस', 'Reference mobile': 'रेफ़रेंस का मोबाइल', 'Architect / interior designer': 'आर्किटेक्ट / इंटीरियर डिज़ाइनर', 'Architect mobile': 'आर्किटेक्ट का मोबाइल',
+  'e.g. Kamod Tatiya': 'जैसे कमोद टाटिया', 'Remarks': 'नोट', 'Done': 'हो गया', 'Type anything to save': 'कुछ भी लिखें, सेव हो जाएगा',
+  'Saved as you type. It is on the board under New Enquiry once you type something.': 'लिखते ही सेव होता है। कुछ लिखते ही बोर्ड पर "नई इन्क्वायरी" में दिखेगा।',
+  'Saved as you type. Done takes you back to their page.': 'लिखते ही सेव होता है। "हो गया" दबाकर उनके पेज पर वापस जाएँ।',
+  'Change': 'बदलें', 'Cancel': 'रहने दें',
+  // To Do + the to-do window
+  'New to-do': 'नया काम', '+ New to-do': '+ नया काम', 'Change the to-do': 'काम बदलें', 'Add to-do': 'काम जोड़ें', 'Add a to-do': 'काम जोड़ें', 'Save': 'सेव करें',
+  'Site / measurement visit': 'साइट / नाप विज़िट', 'Make quotation': 'कोटेशन बनाना', 'Revise quotation': 'कोटेशन बदलना', 'Follow-up call': 'फ़ॉलो-अप कॉल',
+  'Client': 'क्लाइंट', 'Type a name, or leave empty': 'नाम लिखें, या ख़ाली छोड़ें', 'Date': 'तारीख़', 'Time': 'समय', 'No time': 'समय नहीं',
+  'In 2 days': '2 दिन बाद', 'Next week': 'अगले हफ़्ते', '+ Till another day': '+ किसी और दिन तक', '+ Till a time': '+ किसी समय तक',
+  'From': 'से', 'Till': 'तक', 'pick a day': 'दिन चुनें', 'pick a time': 'समय चुनें', 'Morning': 'सुबह', 'Afternoon': 'दोपहर', 'Evening': 'शाम', 'Minutes': 'मिनट',
+  'Add the time you told the customer.': 'ग्राहक को जो समय बताया, वो डालें।', 'Time is optional.': 'समय ज़रूरी नहीं।', 'Who does it': 'कौन करेगा', 'Note': 'नोट',
+  'Next month': 'अगला महीना', 'Previous month': 'पिछला महीना', 'What': 'क्या', 'When': 'कब',
+  'In progress': 'चल रहा है', 'Start': 'शुरू करें', 'Overdue': 'देर हो गई', 'Open client': 'क्लाइंट खोलें', 'Open To Do': 'काम खोलें',
+  'Measure and send the quotation': 'नाप लें और कोटेशन भेजें', 'Ask how they liked the quotation': 'पूछें कोटेशन कैसा लगा',
+  'Drag a card here, or tap it and press Start.': 'कार्ड यहाँ खींचें, या टैप करके "शुरू करें" दबाएँ।', 'Finished to-dos stay here for 7 days.': 'पूरे हुए काम यहाँ 7 दिन रहते हैं।',
+  'Nothing due today. Plan your next visits and calls from My Clients.': 'आज कुछ बाकी नहीं। "मेरे क्लाइंट" से अगली विज़िट और कॉल प्लान करें।',
+  'Nothing to do here. Good.': 'यहाँ कोई काम नहीं। बढ़िया।', 'Priority': 'ज़रूरी', 'Sections': 'हिस्से', 'Type': 'किस तरह का', 'Added': 'जोड़ा',
+  'Back to To do': 'वापस "करना है" में', 'Quotation': 'कोटेशन', 'Visit': 'विज़िट', 'Revise': 'कोटेशन बदलना', 'Follow-up': 'फ़ॉलो-अप', 'Not done yet': 'अभी नहीं हुआ', 'Measurement sheet': 'नाप शीट',
+  'just now': 'अभी', 'Light or dark screen': 'लाइट या डार्क स्क्रीन', 'Yesterday': 'कल (बीता)', 'No date': 'तारीख़ नहीं',
+};
+// a few lines with a number or a name inside
+const HI_RE = [
+  [/^(\d+) clients?$/, (m, n) => `${n} क्लाइंट`], [/^(\d+) clients? · any date$/, (m, n) => `${n} क्लाइंट · कोई भी तारीख़`],
+  [/^(\d+) won · (\d+) lost$/, (m, a, b) => `${a} मिले · ${b} नहीं मिले`],
+  [/^Added just now by (.+) \(automatically\)\.$/, (m, w) => `अभी ${w} ने जोड़ा (अपने आप)।`],
+  [/^Removes (.+), their measurements and every quotation sent\. Only you see this\.$/, (m, w) => `${w}, उनके नाप और भेजे गए सारे कोटेशन हट जाएँगे। यह सिर्फ़ आपको दिखता है।`],
+  [/^(\d{1,2}(?::\d\d)?) (am|pm)$/, (m, t, p) => hiTime(t, p)],
+  [/^Delete (.+)$/, (m, w) => `${w} हटाएँ`],
+];
+// "10 am" → "सुबह 10", "12 pm" → "दोपहर 12", "5:30 pm" → "शाम 5:30" (said the way people say it)
+function hiTime(t, p){ const h = +t.split(':')[0]; return `${p === 'am' ? 'सुबह' : h === 12 || h < 5 ? 'दोपहर' : 'शाम'} ${t}`; }
+// "Tomorrow · 10:30 am – 12 pm", "Wed, 22 Oct – Fri, 24 Oct · 5 pm": the day words and the times inside the when-line
+const hiWhen = s => s.replace(/\b(Today|Tomorrow|Yesterday)\b/g, w => HI[w]).replace(/(\d{1,2}(?::\d\d)?) (am|pm)\b/g, (m, t, p) => hiTime(t, p));
+HI_RE.push([/^(?:(?:Today|Tomorrow|Yesterday|\w{3}, \d{1,2} \w{3})(?: – (?:Today|Tomorrow|\w{3}, \d{1,2} \w{3}))?)(?: · .+)?$/, m => hiWhen(m)],
+  [/^Next step: (.+)$/, (m, d) => `अगला काम: ${hiWhen(d)}`]);
+// the days of the week in the calendar: Hindi initials (सो मं बु गु शु श र) by position, not by letter
+const HI_WEEK = ['सो', 'मं', 'बु', 'गु', 'शु', 'श', 'र'];
+const HI_SKIP = '#v-measure, #v-blinds, #v-product, #v-quote, #q-paper, #ms-paper, #v-settings, #v-people, #v-c-prices, #v-b-prices, #v-p-prices, [id$="-prices"], .leaflet-container, script, style, [data-hi-skip]';   // text boxes: only their placeholder / title, never what is typed
+let HI_ON = false; const HI_ORIG = new WeakMap(), HI_OUT = new Set(Object.values(HI));
+function hiText(t){
+  const k = t.replace(/\s+/g, ' ').trim(); if (!k || HI_OUT.has(k)) return null;
+  if (Object.prototype.hasOwnProperty.call(HI, k)) return t.replace(k, HI[k]);
+  for (const [re, f] of HI_RE) { const m = k.match(re); if (m) return t.replace(k, f(...m)); }
+  // "Quotation · Fri, 23 Oct", "Site visit · Today · 5 pm": translate each part that is known, leave the rest (names, dates) as they are
+  if (k.includes(' · ')) { const parts = k.split(' · '), tr = parts.map(x => Object.prototype.hasOwnProperty.call(HI, x) ? HI[x] : hiWhen(x));
+    if (tr.some((x, i) => x !== parts[i])) return t.replace(k, tr.join(' · ')); }
+  return null;
+}
+function hiNode(n){
+  if (n.nodeType === 3) { const p = n.parentElement; if (!p || p.closest(HI_SKIP) || p.closest('textarea')) return;
+    if (p.matches('.wgrid > i')) { const i = [...p.parentElement.children].indexOf(p); if (i >= 0 && i < 7 && n.nodeValue !== HI_WEEK[i]) { if (!HI_ORIG.has(n)) HI_ORIG.set(n, n.nodeValue); n.nodeValue = HI_WEEK[i]; } return; }   // set only when different: setting fires the watcher again
+    const h = hiText(n.nodeValue); if (h != null && h !== n.nodeValue) { if (!HI_ORIG.has(n)) HI_ORIG.set(n, n.nodeValue); n.nodeValue = h; } return; }
+  if (n.nodeType !== 1 || n.closest(HI_SKIP)) return;
+  for (const a of ['placeholder', 'title', 'aria-label']) { const v = n.getAttribute(a); if (!v) continue; const h = hiText(v);
+    if (h != null && h !== v) { if (!n.hasAttribute('data-en-' + a)) n.setAttribute('data-en-' + a, v); n.setAttribute(a, h); } }
+  if (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA') return;
+  const w = document.createTreeWalker(n, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT); let x; while ((x = w.nextNode())) { if (x.nodeType === 3) hiNode(x); else if (x !== n) for (const a of ['placeholder', 'title', 'aria-label']) { const v = x.getAttribute(a); if (!v || x.closest(HI_SKIP)) continue; const h = hiText(v); if (h != null && h !== v) { if (!x.hasAttribute('data-en-' + a)) x.setAttribute('data-en-' + a, v); x.setAttribute(a, h); } } }
+}
+const hiObs = new MutationObserver(ms => { if (!HI_ON) return; for (const m of ms) { if (m.type === 'characterData') hiNode(m.target); else m.addedNodes.forEach(hiNode); if (m.type === 'attributes') hiNode(m.target); } });
+function hiSet(on){
+  HI_ON = on; document.documentElement.lang = on ? 'hi' : 'en'; document.documentElement.classList.toggle('hi', on);
+  try { localStorage.setItem('charpai-lang', on ? 'hi' : 'en'); } catch(_){}
+  if (on) { hiNode(document.body); hiObs.observe(document.body, {childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label']}); return; }
+  hiObs.disconnect();   // back to English: put back every text and attribute that was swapped
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let x; while ((x = w.nextNode())) if (HI_ORIG.has(x)) { x.nodeValue = HI_ORIG.get(x); HI_ORIG.delete(x); }
+  for (const a of ['placeholder', 'title', 'aria-label']) document.querySelectorAll(`[data-en-${a}]`).forEach(e => { e.setAttribute(a, e.getAttribute('data-en-' + a)); e.removeAttribute('data-en-' + a); });
+}
+// English | हिंदी, next to Light | Dark (remembered on this phone or laptop, like the theme)
+function langSwitch(){
+  const w = document.createElement('div'); w.className = 'theme-sw lang-sw'; w.setAttribute('role', 'group'); w.setAttribute('aria-label', 'Language'); w.dataset.hiSkip = '1';
+  w.innerHTML = '<button data-l="en"><span class="lf">English</span><span class="ls">EN</span></button><button data-l="hi"><span class="lf">हिंदी</span><span class="ls">हिं</span></button>';   // short on phones
+  const paint = () => w.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.l === 'hi') === HI_ON)));
+  w.onclick = e => { const b = e.target.closest('button'); if (!b) return; hiSet(b.dataset.l === 'hi'); paint(); };
+  const tape = document.querySelector('.tape-in'), sw = tape.querySelector('.theme-sw'); tape.insertBefore(w, sw ? sw.nextSibling : tape.querySelector('.acct'));
+  let on = false; try { on = localStorage.getItem('charpai-lang') === 'hi'; } catch(_){}
+  if (on) hiSet(true); paint();
+}
+
 function toast(m){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 
 // Light / dark switch in the yellow bar (Purvi, 2 Oct). Starts from the phone or laptop's own setting; a tap is remembered on this device.
@@ -7984,7 +8125,7 @@ function themeSwitch(){
   const tape = document.querySelector('.tape-in'), acct = tape.querySelector('.acct');
   tape.insertBefore(w, acct); paint();
 }
-themeSwitch();
+themeSwitch(); langSwitch();   // 21 Oct: English | हिंदी
 fillLists(); renderNote(); renderTable(); renderTotals(); renderSide();
 let startTab = 'clients';
 try { const [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); if (h === 'clients') cfFromQuery(qs); if (/^client\/./.test(h)) { cpId = h.slice(7); startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'clients'; } catch(_){}
@@ -7995,4 +8136,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-213859 -->
+<!-- build 20261021-215850 -->
