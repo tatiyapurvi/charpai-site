@@ -1071,7 +1071,7 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .adr-line{margin:8px 0 0;font-size:13.5px}.adr-line b{color:var(--ink);font-weight:600}
 .adr-nopin{display:flex;gap:10px;align-items:center;border:1.5px dashed var(--line);border-radius:10px;padding:9px 12px;margin-top:10px;font-size:13.5px;color:var(--muted)}.adr-nopin span{flex:1}
 .adr-nopin svg{width:16px;height:16px;flex:none}
-.adr-nopin{flex-wrap:wrap}.adr-nopin a.btn{text-decoration:none;color:inherit}
+.adr-nopin{flex-wrap:wrap}.adr-nopin a.btn,.adr-pr a.btn{text-decoration:none;color:inherit}
 .adr-paste{border:1.5px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;display:grid;gap:8px;justify-items:start}.adr-paste .cpf{width:100%}.adr-paste .hint{margin:0;font-size:13px}.adr-cpin svg{width:34px;height:44px}
 .adr-pin{display:flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px;background:var(--paper)}
 .adr-mini{width:240px;min-height:100px;position:relative;z-index:0;cursor:pointer;background:var(--line2);flex:none}
@@ -6686,7 +6686,9 @@ function adrPinHTML(){
   const A = ADR || {}, paste = `<button type="button" class="btn" data-adrpaste>Paste location link</button>`;
   if (A.pasting) return `<div class="adr-paste"><label class="cpf"><span>Location link from WhatsApp or Google Maps</span><input id="adr-link" autocomplete="off" placeholder="Paste the link here (long-press → Paste)"></label>
     <p class="hint" id="adr-linkmsg">On WhatsApp: tap the location → it opens in Maps → Share → Copy link. Then paste here.</p><button type="button" class="btn" data-adrpastex>Cancel</button></div>`;
-  if (A.lat == null && A.link) return `<div class="adr-nopin">${ADR_ICON}<span>Location link saved. The Map button opens it. <small>Not printed.</small></span><a class="btn" href="${esc(A.link)}" target="_blank" rel="noopener">Open ↗</a><button type="button" class="btn" data-adrpin>Set pin</button><button type="button" class="btn" data-adrnopin>Remove</button></div>`;
+  // 21 Oct (Purvi): a pasted link wins over everything; no search of the typed address, no Set / Move pin ("it is confusing me a lot")
+  if (A.link) return `<div class="adr-pin">${A.lat != null ? `<div class="adr-mini" id="adr-mini"><div class="adr-cpin">${ADR_PIN}</div></div>` : ''}
+    <div class="adr-pr"><span><b>Location they sent</b><small>The Map button opens this link. Not printed.</small></span><a class="btn" href="${esc(A.link)}" target="_blank" rel="noopener">Open ↗</a><button type="button" class="btn" data-adrnopin>Remove</button></div></div>`;
   if (A.lat != null) return `<div class="adr-pin"><div class="adr-mini" id="adr-mini" data-adrpin title="Move pin"><div class="adr-cpin">${ADR_PIN}</div></div>
     <div class="adr-pr"><span>Map pin${A.at ? ` near <b>${esc(A.at)}</b>` : ''}<small>Only for the Map button. Not printed.</small></span><button type="button" class="btn" data-adrpin>Move pin</button><button type="button" class="btn" data-adrnopin>Remove pin</button></div></div>`;
   return `<div class="adr-nopin">${ADR_ICON}<span>${(A.place || '').trim() ? 'Not on the map yet. Set a pin, or paste the location they sent, so the Map button goes to the right gate?' : 'Did they send their location on WhatsApp? Paste it here.'} <small>(optional)</small></span>${paste}<button type="button" class="btn" data-adrpin>Set pin</button></div>`;
@@ -6762,16 +6764,10 @@ function adrLinkRead(text){
   if (u) { try { const h = new URL(u); if (h.protocol === 'https:' && ADR_LINK_HOSTS.test(h.hostname) && h.pathname.length > 5) return {link: u}; } catch(_){} }
   return null;
 }
-function adrPasteOpen(){
-  ADR.pasting = true; adrPinBox(); const box = $('#adr-link'); if (box) box.focus();
-  if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(t => { const r = adrLinkRead(t); if (r && ADR && ADR.pasting) adrLinkUse(r); }).catch(() => {});   // allowed: done in one tap; else they paste into the box
-}
+function adrPasteOpen(){ ADR.pasting = true; adrPinBox(); const box = $('#adr-link'); if (box) { box.value = ''; box.focus(); } }   // always empty: the clipboard may still hold the link just removed
 function adrLinkUse(r){
-  Object.assign(ADR, {pasting: false, link: r.link || '', lat: r.lat ?? null, lng: r.lng ?? null, at: ''}); adrSave(); adrPinBox();
-  toast(r.lat != null ? 'Location added to the map ✓' : 'Location link saved ✓');
-  if (r.lat != null) adrFetch(OLA + 'reverse-geocode?' + new URLSearchParams({latlng: r.lat + ',' + r.lng, api_key: OLA_KEY})).then(d => {   // name it, like a pin set on the map
-    const x = (d.results || [])[0]; if (!x || !ADR || ADR.lat !== r.lat) return;
-    ADR.at = x.formatted_address.replace(/, India$/, '').split(', ').find(v => !/\d/.test(v) && !/Tehsil/.test(v)) || ''; adrSave(); adrPinBox(); }).catch(() => {});
+  const link = r.link || (r.lat != null ? `https://www.google.com/maps?q=${r.lat},${r.lng}` : '');   // plain numbers pasted: a Google Maps link to them
+  Object.assign(ADR, {pasting: false, link, lat: r.lat ?? null, lng: r.lng ?? null, at: ''}); adrSave(); adrPinBox(); toast('Location saved ✓');
 }
 document.addEventListener('input', e => { if (e.target.id !== 'adr-link' || !ADR) return; const v = e.target.value.trim(); if (!v) return;
   const r = adrLinkRead(v); if (r) { adrLinkUse(r); return; }
@@ -6815,7 +6811,7 @@ async function adrMap(){
 dlg.addEventListener('close', () => { if (ADR && ADR._map) { try { ADR._map.remove(); } catch(_){} ADR._map = null; } dlg._drag = false; });
 // The Map button: the pin when there is one, else a search for the address
 const fullAddr = c => { const a = String(c.addr || '').trim(), city = cityOf(c); return a && city && a.toLowerCase().includes(city.toLowerCase()) ? a : [a, city].filter(Boolean).join(', '); };
-const mapLink = c => c.adr && c.adr.lat != null ? `https://www.google.com/maps/search/?api=1&query=${c.adr.lat},${c.adr.lng}` : c.adr && /^https:\/\//.test(c.adr.link || '') ? c.adr.link : fullAddr(c) ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(fullAddr(c)) : '';
+const mapLink = c => c.adr && /^https:\/\//.test(c.adr.link || '') ? c.adr.link : c.adr && c.adr.lat != null ? `https://www.google.com/maps/search/?api=1&query=${c.adr.lat},${c.adr.lng}` : fullAddr(c) ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(fullAddr(c)) : '';
 
 // ---- the customer page (Purvi: "the customer profile page will have all the details displayed properly (look at odoo)")
 const sheetCache = {};
@@ -7843,4 +7839,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-132339 -->
+<!-- build 20261021-133158 -->
