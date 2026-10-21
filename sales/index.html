@@ -2116,6 +2116,12 @@ function findIn(sup, q){
 function openSugg(input, row){
   suggFor = {input, row};
   const q = input.value.trim(), sup = row.sup;
+  sugg.innerHTML = fabListHTML(q, sup);
+  placeSugg(input);
+}
+// The fabric list (Curtains; Upholstery since 21 Oct: "the upholstery page does not have the same fabric list that we have on the
+// curtains"): every company's fabrics, or one company's, with the company, roll width and MRP per metre. Fills suggItems.
+function fabListHTML(q, sup){
   let html = '';
   if (CAT.state !== 'ready') html = `<div class="msg">${shared ? 'Loading the supplier lists…' : 'Supplier lists load when the page is opened from claude.ai.'}</div>`;
   else if (q.length < 2) html = `<div class="msg">Type at least 2 letters: a collection, a serial number or a SKU.${sup ? '' : ' Pick the company first to search only its fabrics.'}</div>`;
@@ -2128,8 +2134,7 @@ function openSugg(input, row){
       return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.n)}</b><br><small>${esc(who)} · ${roll}</small></span><span class="pr">${price}${cost}</span></div>`;
     }).join('') : `<div class="msg">No fabric matches “${esc(q)}”${sup ? ' at ' + esc(SUPS[sup]) : ''}. Check the spelling, or pick another company.</div>`;
   }
-  sugg.innerHTML = html;
-  placeSugg(input);
+  return html;
 }
 function closeSugg(){
   // left without a pick: a box that shows a picked item goes back to it (blind collection)
@@ -2198,6 +2203,7 @@ function suggOpener(el){
   if (el.dataset.adr) return () => adrOpen(el);   // 21 Oct: address boxes on the new enquiry (crm.js)
   if (el.dataset.f === 'fabric') return () => openSugg(el, rowById(el.closest('tr').dataset.id));
   if (wpDesignInput(el)) return () => wpOpenSugg(el);
+  if (uphFabInput(el)) return () => uphOpenSugg(el);
   if (flProductInput(el)) return () => flOpenSugg(el);
   if (el.dataset.bfam) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bFamSugg(el, b); };
   if (el.dataset.bcoll) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bCollSugg(el, b); };
@@ -2235,6 +2241,7 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
   else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
+  else if (uphFabInput(e.target)) uphOpenSugg(e.target);
   else if (flProductInput(e.target)) flOpenSugg(e.target);
   else if (e.target.dataset && e.target.dataset.bfam) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bFamSugg(e.target, b); }
   else if (e.target.dataset && e.target.dataset.bcoll) { const b = state.blinds.find(x => x.id === +e.target.closest('tr').dataset.id); if (b) bCollSugg(e.target, b); }
@@ -5999,7 +6006,7 @@ const MP = {
       return c;
     },
     sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.tot || 0), 0); return m ? `MRP ${rs(m)}` : ''; },
-    rules: ['Start every line with "What is it?". Only that product\'s boxes show.', 'Fabric: pick the company and search its list for the price (MRP = list price + GST). Choose Other to type a fabric and our own rate per metre.',
+    rules: ['Start every line with "What is it?". Only that product\'s boxes show.', 'Fabric: type to search every company\'s list, the same list as the Curtains sheet (or pick a company first to search only its fabrics); the pick gives the company and the price (MRP = list price + GST). Choose Other to type a fabric and our own rate per metre.',
       'Foam: Sleepwell\'s list. A listed sheet or cushion size is priced from the list; any other size is cut to size (about 2 weeks).',
       'Fibre pad, loose fibre, pins, SR solution and astar: our own rates from the Prices page (Upholstery material).', 'Everything here goes on the quotation, in the Upholstery material section.'],
   },
@@ -6048,8 +6055,8 @@ const uSeg = (f, list, val) => `<span class="useg">${list.map(o => `<button data
 function uphFormHTML(r){
   if (r.p === 'Fabric') {
     const own = r.sup === 'Other';
-    return uphField('Company', `<select data-u="sup">${selOpts([...Object.entries(SUPS).map(([k, n]) => [k, n]), ['Other', 'Other (not on a list)']], r.sup, 'Pick')}</select>`)
-      + uphField('Fabric', `${uIn('fabric', r, own ? 'Name or code' : r.sup ? 'Type a collection, serial or SKU' : 'Pick the company first')}<div class="usugg" id="usugg"></div>`)
+    return uphField('Company', `<select data-u="sup">${selOpts([...Object.entries(SUPS).map(([k, n]) => [k, n]), ['Other', 'Other (not on a list)']], r.sup, 'Any company')}</select>`)
+      + uphField('Fabric', uIn('fabric', r, own ? 'Name or code' : 'Type to search: collection, serial or SKU'))
       + (own ? uphField('Our rate per metre, ₹ incl. GST', uIn('rate', r, '₹', 1)) : '') + uphField('Metres', uIn('m', r, '0', 1));
   }
   if (r.p === 'Foam') {
@@ -6075,16 +6082,15 @@ function uphSide(){
     ${r.p ? `<div class="ustep"><i>2</i>${esc(r.p)}</div><div class="uform">${uphFormHTML(r)}${uphField('Remarks', uIn('remarks', r, 'Anything to note'))}</div>` : ''}
     <div id="uph-res">${r.p ? uphResHTML(r) : ''}</div>`;
 }
-function uphSugg(r){
-  const box = $('#usugg'); if (!box) return;
-  const q = String(r.fabric || '').trim();
-  if (r.sup === 'Other' || !r.sup || r.key || q.length < 2) { box.innerHTML = ''; return; }
-  if (CAT.state !== 'ready') { box.innerHTML = '<div class="msg">Loading the fabric lists…</div>'; return; }
-  const L = findIn(r.sup, q).slice(0, 8);
-  box.innerHTML = L.length ? L.map((x, i) => `<button data-usug="${i}"><span><b>${esc(x.n)}</b></span><span class="num">${has(x.r) ? rs(mrpOf2(x.r, x.g || 5)) + '/m' : 'no price'}</span></button>`).join('')
-    : `<div class="msg">No fabric matches “${esc(q)}” at ${esc(SUPS[r.sup])}.</div>`;
-  box._items = L;
+// Upholstery's fabric box opens the Curtains list (our list, any company unless one is picked); a pick sets the company too
+function uphOpenSugg(input){
+  const r = uphCur(); if (!r || r.sup === 'Other') { closeSugg(); return; }
+  suggFor = {input, pick: x => { r.sup = x.sup; r.key = x.k; r.fabric = x.n; uphChanged(r, true); const m = $('#pside [data-u="m"]'); if (m) m.focus(); }};
+  sugg.innerHTML = fabListHTML(input.value.trim(), r.sup || '');
+  sugg.style.width = Math.max(input.offsetWidth, 360) + 'px';
+  placeSugg(input);
 }
+const uphFabInput = el => !!(el && el.dataset && el.dataset.u === 'fabric' && mpCur === 'uph' && el.closest('#pside'));
 function uphChanged(r, side){ uphUpdateRow(r); mpTotal('uph'); if (side) uphSide(); else { const x = $('#uph-res'); if (x) x.innerHTML = uphResHTML(r); } save(); }
 const uphCur = () => state.more.uph[state.msel.uph];
 $('#pside').addEventListener('click', e => {
@@ -6096,13 +6102,12 @@ $('#pside').addEventListener('click', e => {
     const U = UPH[r.p]; if (U.opts) r[U.v] = U.opts[0][0];
     uphChanged(r, true); const f = $('#pside .uform input, #pside .uform select'); if (f && matchMedia('(min-width: 1150px)').matches) f.focus(); return; }
   if (v) { r[v.dataset.uvar] = v.dataset.val; uphChanged(r, true); return; }
-  if (s) { const x = ($('#usugg')._items || [])[+s.dataset.usug]; if (!x) return; r.sup = x.sup; r.key = x.k; r.fabric = x.n; uphChanged(r, true); return; }
 });
 $('#pside').addEventListener('input', e => {
   if (mpCur !== 'uph') return;
   const f = e.target.dataset.u, r = uphCur(); if (!f || !r) return;
   r[f] = e.target.value;
-  if (f === 'fabric') { r.key = ''; uphSugg(r); }
+  if (f === 'fabric') { r.key = ''; uphOpenSugg(e.target); }
   if (f === 'sup') { r.key = ''; r.fabric = ''; uphChanged(r, true); return; }   // a new company clears the old company's fabric (7 Oct)
   if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; uphChanged(r, true); return; }
   uphChanged(r, false);
@@ -7990,4 +7995,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-193514 -->
+<!-- build 20261021-213859 -->
