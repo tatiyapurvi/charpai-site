@@ -2111,12 +2111,18 @@ function placeSugg(input){
   const home = input.closest('dialog[open]') || document.body; if (sugg.parentNode !== home) home.appendChild(sugg);
   const host = input.closest('dialog') || document.body; if (sugg.parentNode !== host) host.appendChild(sugg);   // inside a dialog: show above it
   const rc = input.getBoundingClientRect();
-  if (rc.bottom < 0 || rc.top > innerHeight || rc.right < 0 || rc.left > innerWidth) { closeSugg(); return; }
+  // 21 Oct (Purvi: "typing a city in phone… not showing the bottom list"): on phones the keyboard covers the bottom of the screen
+  // without innerHeight knowing, so the list opened behind it. visualViewport = the part of the screen that is really visible.
+  const vv = window.visualViewport, y0 = vv ? vv.offsetTop : 0, y1 = vv ? vv.offsetTop + vv.height : innerHeight;
+  if (rc.bottom < y0 || rc.top > y1 || rc.right < 0 || rc.left > innerWidth) { closeSugg(); return; }
   sugg.hidden = false;
   sugg.style.left = Math.max(8, Math.min(rc.left, innerWidth - sugg.offsetWidth - 8)) + 'px';
-  const below = innerHeight - rc.bottom;
-  sugg.style.top = (below > 220 ? rc.bottom + 4 : Math.max(8, rc.top - Math.min(340, sugg.offsetHeight) - 4)) + 'px';
+  const below = y1 - rc.bottom - 8, above = rc.top - y0 - 8, down = below >= 180 || below >= above;
+  const maxH = Math.max(100, Math.min(340, down ? below : above)); sugg.style.maxHeight = maxH + 'px';
+  sugg.style.top = (down ? rc.bottom + 4 : Math.max(y0 + 8, rc.top - Math.min(maxH, sugg.offsetHeight) - 4)) + 'px';
 }
+if (window.visualViewport) { const again = () => { if (!sugg.hidden && suggFor && suggFor.input && suggFor.input.isConnected) placeSugg(suggFor.input); };
+  visualViewport.addEventListener('resize', again); visualViewport.addEventListener('scroll', again); }   // the keyboard opening or closing moves the list with it
 // Which list a box opens (the same as on focus); null = it isn't a search box
 // Every dropdown (<select>) and every typed box with suggestions (<input list>) opens our list too (Purvi, 7 Oct: "on all the 6 product
 // types, each column/field should open the list in our format not chrome's format"). The <select> stays in the page and keeps its value,
@@ -6650,12 +6656,14 @@ function adrParse(p){
   return {name, area: rest.slice(1, -2).filter(v => v !== name && v !== city).join(', '), city, state, pin, lat: g.lat, lng: g.lng, sec: sf.secondary_text || ''};
 }
 const adrInCity = (p, city) => !city || (p.city + ' ' + p.sec).toLowerCase().includes(city.toLowerCase());
-const adrSearch = (q, city) => adrFetch(OLA + 'autocomplete?' + new URLSearchParams(Object.assign({input: city ? q + ' ' + city : q, api_key: OLA_KEY}, ADR && ADR.clat != null ? {location: ADR.clat + ',' + ADR.clng} : {})))
-  .then(d => (d.predictions || []).map(adrParse).filter(p => adrInCity(p, city)));
-const adrCities = q => adrFetch('https://photon.komoot.io/api/?' + new URLSearchParams({q, layer: 'city', limit: 15, lang: 'en', bbox: '68,6,98,37'}), 5000)
+const adrCache = new Map();   // answers already fetched: backspacing and retyping show at once
+const adrMemo = (k, f) => { if (!adrCache.has(k)) { const p = f().catch(e => { adrCache.delete(k); throw e; }); adrCache.set(k, p); } return adrCache.get(k); };
+const adrSearch = (q, city) => adrMemo('p|' + city + '|' + q.toLowerCase(), () => adrFetch(OLA + 'autocomplete?' + new URLSearchParams(Object.assign({input: city ? q + ' ' + city : q, api_key: OLA_KEY}, ADR && ADR.clat != null ? {location: ADR.clat + ',' + ADR.clng} : {})))
+  .then(d => (d.predictions || []).map(adrParse).filter(p => adrInCity(p, city))));
+const adrCities = q => adrMemo('c|' + q.toLowerCase(), () => adrFetch('https://photon.komoot.io/api/?' + new URLSearchParams({q, layer: 'city', limit: 15, lang: 'en', bbox: '68,6,98,37'}), 5000)
   .then(d => { const seen = new Set(); return (d.features || []).filter(f => f.properties.countrycode === 'IN' && /^(city|town)$/.test(f.properties.osm_value))
     .map(f => ({city: f.properties.name, state: f.properties.state || '', lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0]}))
-    .filter(c => { const k = (c.city + '|' + c.state).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }); });
+    .filter(c => { const k = (c.city + '|' + c.state).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }); }));
 // the one line everyone reads (quotation "Delivery Address", client page, To Do): flat, building / area, landmark, city, state PIN
 function adrLine(){
   const A = ADR || {}, tail = [adrCity(), A.state].filter(Boolean).join(', ') + (A.pin ? ' ' + A.pin : '');
@@ -6726,7 +6734,7 @@ function adrOpen(el){
       for (const x of more) if (!all.includes(x) && !all.some(m => m.city.toLowerCase() === x.city.toLowerCase() && !m.state)) all.push(x);
       show(all, all.map((x, i) => it(i, x.city, x.state)).join('')); };
     draw([]);
-    if (q.length >= 2) adrT = setTimeout(() => adrCities(q).then(draw).catch(() => {}), 250);
+    if (q.length >= 2) adrT = setTimeout(() => adrCities(q).then(draw).catch(() => {}), 120);
     return;
   }
   const city = adrCity(), keep = kind === 'place' && q ? [{keep: true}] : [];
@@ -6735,7 +6743,7 @@ function adrOpen(el){
   show(keep, head + '<div class="msg">Searching the map…</div>');
   adrT = setTimeout(() => adrSearch(q, city).then(L => show([...keep, ...L], head + (L.length ? '<div class="grp">On the map</div>' + L.map((p, i) => it(i + keep.length, p.name, p.sec)).join('')
       : `<div class="msg">Not on the map${city ? ' in ' + esc(city) : ''}. That's fine.</div>`)))
-    .catch(() => show(keep, head + `<div class="msg">The map search is not answering. ${kind === 'near' ? 'Just move the map.' : 'Just type it; it is saved as typed.'}</div>`)), 250);
+    .catch(() => show(keep, head + `<div class="msg">The map search is not answering. ${kind === 'near' ? 'Just move the map.' : 'Just type it; it is saved as typed.'}</div>`)), 150);
 }
 function adrPick(el, x){
   const k = el.dataset.adr, next = id => { const f = document.getElementById(id); if (f) f.focus(); };
@@ -6745,7 +6753,11 @@ function adrPick(el, x){
     adrSave(); adrPinBox(); next('cpf-alm'); return; }
   if (k === 'near') { el.value = x.name; if (x.lat != null && ADR._map) ADR._map.flyTo([x.lat, x.lng], 17, {duration: .6}); }
 }
-document.addEventListener('focusin', e => { const t = e.target; if (t.dataset && t.dataset.adr) adrOpen(t); });
+document.addEventListener('focusin', e => { const t = e.target; if (!(t.dataset && t.dataset.adr)) return; adrOpen(t);
+  // phones: bring the box near the top, so the list has room between it and the keyboard (as Swiggy does)
+  if (t.dataset.adr !== 'near' && matchMedia('(max-width: 760px)').matches) setTimeout(() => { if (document.activeElement !== t) return;
+    const vv = window.visualViewport, r = t.getBoundingClientRect(), y0 = vv ? vv.offsetTop : 0, room = (vv ? vv.height : innerHeight) - (r.bottom - y0);
+    if (room < 300) scrollBy({top: r.top - y0 - 96, behavior: 'smooth'}); }, 320); });
 document.addEventListener('input', e => { const t = e.target; if (e.isTrusted && t.dataset && t.dataset.adr && document.activeElement === t) adrOpen(t); });
 $('#cp-body').addEventListener('click', e => { if (e.target.closest('[data-adrpin]')) adrMap();
   else if (e.target.closest('[data-adrnopin]') && ADR) { ADR.lat = ADR.lng = null; ADR.at = ADR.link = ''; adrSave(); adrPinBox(); }
@@ -7839,4 +7851,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-133158 -->
+<!-- build 20261021-151924 -->
