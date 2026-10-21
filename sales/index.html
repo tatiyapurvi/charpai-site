@@ -5553,10 +5553,10 @@ function wpFig(r, c){
 }
 // Wall-to-wall carpet has no % wastage since 7 Oct: it is ordered as pieces cut off the roll (flCut), like carpet makers do.
 const FL_WASTE = {'Laminate': 10, 'Engineered wood': 10, 'Solid wood': 10, 'Vinyl (SPC / LVT)': 8, 'Wall-to-wall carpet': 0, 'Carpet tiles': 5};
-const FL_WW = 'Wall-to-wall carpet', FL_TRIM = 3;   // 3″ extra at each end of every piece, for trimming at the wall
+const FL_WW = 'Wall-to-wall carpet', FL_TRIM = 4.5;   // 21 Oct (Purvi, the team's sums): 4.5″ extra on every side for trimming at the wall (was 3″)
 // Carpet off the roll (Purvi, 7 Oct: "follow standards"): pieces at the roll's width, each = the room + 3″ at each end.
 // 21 Oct (Purvi): "for wall to wall carpet, joint from any angle is possible". So when the room is a little wider than whole pieces,
-// the strip left over is filled with short pieces cut ACROSS the roll (each = the strip's width + 3″ each side, as long as the roll
+// the strip left over is filled with short pieces cut ACROSS the roll (each = the strip's width + the trim each side, as long as the roll
 // is wide) and joined end to end, instead of a whole extra full-length piece. Both directions, plain or filled, are tried: the least
 // carpet wins, unless a way with fewer joints needs at most 15% more carpet (fitters avoid joints).
 function flCut(L, W, rollm, anyWay = true){   // anyWay: the row's "Join any way" (Yes by default); No = every piece runs the same way
@@ -5643,7 +5643,7 @@ function flBuySVG(r, c){
       if (used < p.rw - .5) { g += `<rect class="spare" fill="none" x="${x}" y="${y0 + uh}" width="${pw}" height="${rh - uh}"/>`;
         if (rh - uh > 18 && pw > 90) g += `<text x="${x + pw / 2}" y="${y0 + uh + (rh - uh) / 2 + 5}" text-anchor="middle" class="t-mut">${fmt(Math.round(p.rw - used))}″ left over</text>`; } }
     g += `<text x="${x0}" y="${y0 - 12}" class="t-dim">${fmt(p.rollm)} m roll</text>`;
-    g += `<text x="${x0 + aw}" y="${y0 + rh + 26}" text-anchor="end" class="t-dimb">${fmt(Math.round(p.total * 2.54) / 100)} m off the roll = ${p.sqft} sq ft</text>`;
+    g += `<text x="${x0 + aw}" y="${y0 + rh + 26}" text-anchor="end" class="t-dimb">cutting plan: ${fmt(Math.round(p.total * 2.54) / 100)} m off the roll</text>`;
     return `<svg viewBox="0 0 ${VW} ${y0 + rh + 36}" role="img" aria-label="Pieces cut from the roll">${g}</svg>`;
   }
   if (c.tiles) {
@@ -5841,16 +5841,19 @@ const MP = {
       if (!c.ok) return c;
       const w = has(r.waste) && r.waste !== '' ? nv(r.waste) : (+c.wasteDef || 0), pack = nv(r.pack);
       c.area = r2(L * W / 144); c.order = Math.ceil(c.area * (1 + w / 100) - 1e-9);
-      if (ww) { c.cut = flCut(L, W, nv(r.rollw) > 0 ? nv(r.rollw) : c.rollDef, r.xjoin !== 'No'); c.order = Math.ceil(c.cut.sqft * (1 + w / 100) - 1e-9); }   // rows from before 21 Oct have no xjoin: Yes
+      // 21 Oct (Purvi: "use 4.5″ and make it live"): the client is charged (L + 4.5″ each side) × (W + 4.5″ each side) ÷ 144, rounded up,
+      // as the team works it out. The pieces off the roll (flCut) stay as the cutting plan for the fitter.
+      if (ww) { c.cut = flCut(L, W, nv(r.rollw) > 0 ? nv(r.rollw) : c.rollDef, r.xjoin !== 'No'); c.charge = r2((L + 2 * FL_TRIM) * (W + 2 * FL_TRIM) / 144); c.order = Math.ceil(c.charge * (1 + w / 100) - 1e-9); }   // rows from before 21 Oct have no xjoin: Yes
       if (r.type === 'Carpet tiles') { c.tile = flTile(it); c.tiles = Math.ceil(c.order * 144 / (c.tile.tw * c.tile.th) - 1e-9); }
       if (pack > 0 && !(/carpet$/i.test(r.type) && r.type !== 'Carpet tiles')) c.boxes = Math.ceil(c.order / pack - 1e-9);
       const doors = Math.max(0, parseInt(r.doors, 10) || 0);
       if (r.edge && r.edge !== 'None') c.rft = Math.max(0, Math.ceil(2 * (L + W) / 12 - doors * 3 - 1e-9));
-      c.how = ww ? `<b>${fmt(L)}″ × ${fmt(W)}″</b> = <b>${cpF(c.area)} sq ft</b> of floor. Carpet is cut off the <b>${fmt(c.cut.rollm)} m</b> (${fmt(Math.round(c.cut.rw))}″) roll: <b>${c.cut.n} piece${c.cut.n > 1 ? 's' : ''} × ${fmt(c.cut.len)}″</b> (the room's ${c.cut.run === 'L' ? 'length' : 'width'} + ${FL_TRIM}″ at each end)`
+      c.how = ww ? `Carpet charged: (${fmt(L)}″ + ${FL_TRIM}″ each side) × (${fmt(W)}″ + ${FL_TRIM}″ each side) = <b>${fmt(L + 2 * FL_TRIM)}″ × ${fmt(W + 2 * FL_TRIM)}″</b> ÷ 144 = ${cpF(c.charge)} → <b>${Math.ceil(c.charge - 1e-9)} sq ft</b>${w ? `, plus ${w}% = <b>${c.order} sq ft</b>` : ''}. `
+          + `Cutting plan for the fitter: off the <b>${fmt(c.cut.rollm)} m</b> (${fmt(Math.round(c.cut.rw))}″) roll, <b>${c.cut.n} piece${c.cut.n > 1 ? 's' : ''} × ${fmt(c.cut.len)}″</b> (the room's ${c.cut.run === 'L' ? 'length' : 'width'} + ${FL_TRIM}″ at each end)`
           + (c.cut.fill ? `, and the ${fmt(Math.round(c.cut.fill.w))}″ strip left over is made of <b>${c.cut.fill.k} piece${c.cut.fill.k > 1 ? 's' : ''} × ${fmt(Math.round(c.cut.fill.plen))}″ cut across the roll</b> (${fmt(Math.round(c.cut.fill.w))}″ + ${FL_TRIM}″ each side), joined end to end` : '')
-          + ` = ${fmt(Math.round(c.cut.total))}″ × ${fmt(Math.round(c.cut.rw))}″ ÷ 144 = <b>${c.cut.sqft} sq ft</b>${w ? `, plus ${w}% = <b>${c.order} sq ft</b>` : ''}.`
+          + `: ${fmt(Math.round(c.cut.total))}″ off the roll.`
         : `<b>${fmt(L)}″ × ${fmt(W)}″</b> ÷ 144 = <b>${cpF(c.area)} sq ft</b>. Plus ${w}% wastage = <b>${c.order} sq ft</b>${c.tiles ? ` = <b>${c.tiles} tiles</b> of ${c.tile.txt}` : ''}${c.boxes ? ` ÷ ${fmt(pack)} sq ft a box = <b>${c.boxes} boxes</b>` : ''}.${c.rft ? ` ${r.edge}: room edge ${fmt(r2(2 * (L + W) / 12))} ft${doors ? ` less ${doors} door${doors > 1 ? 's' : ''} × 3 ft` : ''} = <b>${c.rft} rft</b>.` : ''}`;
-      c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: 'To order', v: c.order, u: ww ? `sq ft · ${c.cut.pieces} piece${c.cut.pieces > 1 ? 's' : ''} off the roll` : `sq ft, ${w}% wastage`, m: 1}];
+      c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: ww ? 'To charge' : 'To order', v: c.order, u: ww ? `sq ft · room + ${FL_TRIM}″ each side` : `sq ft, ${w}% wastage`, m: 1}];
       if (ww) c.kpis.push({l: 'Joints', v: c.cut.joints, u: c.cut.joints ? 'where pieces meet' : 'one piece'});
       if (c.tiles) c.kpis.push({l: 'Tiles', v: c.tiles, u: c.tile.txt});
       if (c.boxes) c.kpis.push({l: 'Boxes', v: c.boxes, u: `${fmt(pack)} sq ft each`});
@@ -5863,7 +5866,7 @@ const MP = {
       return c;
     },
     sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.order || 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0); return n ? `${n.toLocaleString('en-IN')} sq ft to order${m ? ` · MRP ${rs(m)}` : ''}` : ''; },
-    rules: ['Area = length × width ÷ 144 (inches to sq ft).', 'Wall-to-wall carpet is cut off the roll in pieces as wide as the roll: each piece = the room + 3″ at each end. With Join any way: Yes (the default), joints may run any way, so a strip left over beside the full pieces is made of short pieces cut across the roll (strip width + 3″ each side) joined end to end, instead of a whole extra piece; No = every piece runs the same way. The app takes the way that uses least carpet, unless a way with fewer joints needs at most 15% more. To order = the pieces\' length × the roll width.',
+    rules: ['Area = length × width ÷ 144 (inches to sq ft).', 'Wall-to-wall carpet is charged (length + 4.5″ each side) × (width + 4.5″ each side) ÷ 144, rounded up to a whole sq ft. The drawing shows the cutting plan for the fitter: pieces as wide as the roll, each = the room + 4.5″ at each end. With Join any way: Yes (the default), joints may run any way, so a strip left over beside the full pieces is made of short pieces cut across the roll (strip width + 4.5″ each side) joined end to end, instead of a whole extra piece; No = every piece runs the same way. The plan takes the way that uses least carpet, unless a way with fewer joints needs at most 15% more.',
       'Wastage: laminate and wood 10%, vinyl 8%, carpet tiles 5%; diagonal adds 5%, herringbone or chevron 10%. Type over it if the company says otherwise.',
       'To order = area + wastage, rounded up to a whole sq ft. Boxes = that ÷ what one box covers, rounded up.', 'Skirting / beading = the room\'s edge (2 × (length + width)) less 3 ft for every door.',
       'Always ask skirting or beading, and check the floor is level and dry, before quoting.',
@@ -7980,4 +7983,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-175919 -->
+<!-- build 20261021-192609 -->
