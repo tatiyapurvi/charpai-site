@@ -5436,6 +5436,18 @@ function wpPicked(r){
 const WP_MATCH = {Straight: 'Straight', Offset: 'Offset (half drop)', Free: 'Free match', Random: 'Random', Mural: 'Mural panels'};
 const wpNoRep = r => /^(Free|Random)/.test(r.match || '');
 const WP_TRIM = 10;   // trimming per strip, 5″ top + 5″ bottom (Purvi, 7 Oct: "convert 4″ to 10″ for trimming"; was 4″)
+// 21 Oct (Purvi): "the first strip will not have extra 10″ height added, but from 2nd strip onwards all other strips will get 10″ added".
+// Strip 1 = height (+ repeat); strips 2… = height + 10″ (+ repeat). The first roll gives strip 1 plus as many full strips as fit after it.
+function wpRollsFor(strips, drop1, drop, len, join){
+  if (join) { const total = drop1 + Math.max(0, strips - 1) * drop, rolls = Math.ceil(total / len - 1e-9);
+    const per = Math.floor(len / drop), per1 = drop1 <= len ? 1 + Math.floor((len - drop1) / drop) : 0;
+    return {rolls, whole: Math.min(strips, rolls ? per1 + (rolls - 1) * per : 0)}; }
+  const per = Math.floor(len / drop), per1 = drop1 <= len ? 1 + Math.floor((len - drop1) / drop) : 0;
+  if (!per1) return {rolls: 0};
+  if (strips <= per1) return {rolls: 1, per1};
+  if (!per) return {rolls: 0};
+  return {rolls: 1 + Math.ceil((strips - per1) / per), per1};
+}
 const wpJoin = r => r.join === 'Yes';   // "Join across": leftover pieces may be joined into strips with a horizontal joint (Purvi, 7 Oct)
 function wpWallSVG(r, c){
   const H = nv(r.H), W = nv(r.W), VW = 640, L = 84, T = 34, aw = VW - L - 34, ah = 300, s = Math.min(aw / W, ah / H);
@@ -5447,7 +5459,7 @@ function wpWallSVG(r, c){
     g += `<text x="${x0 + w / 2}" y="${y0 + h / 2 + 6}" text-anchor="middle" class="t-dim">mural ${fmt(H + 4)}″ × ${fmt(W + 4)}″</text><text x="${x0 + w / 2}" y="${y0 - e - 8}" text-anchor="middle" class="t-mut">dashed = 2″ extra on every side for trimming</text>`;
   } else {
     const [wcm] = wpRoll(r.roll) || [53], win = wcm / 2.54, sw = win * s, n = c.strips || Math.ceil(W / win - 1e-9), rep = wpNoRep(r) ? 0 : nv(r.rep), off = /^Offset/.test(r.match || '');
-    const t2 = WP_TRIM / 2 * s;
+    const t2 = WP_TRIM / 2 * s, x1 = x0 + Math.min(w, sw);   // trimming shown from strip 2 on (strip 1 has none)
     for (let i = 0; i < n; i++) {
       const x = x0 + i * sw, vis = Math.min(sw, x0 + w - x);
       g += `<rect class="f-main" x="${x}" y="${y0}" width="${vis}" height="${h}"${i % 2 ? ' fill-opacity=".6"' : ''}/>`;
@@ -5458,7 +5470,7 @@ function wpWallSVG(r, c){
       if (sw > 16) g += `<text x="${x + Math.min(sw, vis) / 2}" y="${y0 - 8}" text-anchor="middle" class="t-mut">${i + 1}</text>`;
       if (c.joined && i >= n - c.joined && c.jointAt > 0 && c.jointAt < nv(r.H)) g += `<path stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="7 4" d="M${x},${y0 + c.jointAt * s}h${vis}"/>`;   // joint in a joined strip
     }
-    g += `<path class="s-dim" stroke-dasharray="4 3" d="M${x0},${y0 - t2}h${w}M${x0},${yb + t2}h${w}"/>`;
+    if (w > x1 - x0 + .5) g += `<path class="s-dim" stroke-dasharray="4 3" d="M${x1},${y0 - t2}h${x0 + w - x1}M${x1},${yb + t2}h${x0 + w - x1}"/>`;
     const last = W - (n - 1) * win;
     if (last < win - .5) g += `<text x="${x0 + w}" y="${yb + 66}" text-anchor="end" class="t-mut">strip ${n} cut to ${fmt(Math.round(last * 4) / 4)}″</text>`;
     if (rep > 0) g += `<text x="${x0}" y="${yb + 66}" class="t-mut">◆ repeat ${fmt(rep)}″${off ? ', every other strip ' + fmt(rep / 2) + '″ lower' : ''}</text>`;
@@ -5470,17 +5482,21 @@ function wpWallSVG(r, c){
   return `<svg viewBox="0 0 ${VW} ${wy + (c.joined ? 70 : 52)}" role="img" aria-label="Front view of the wall, ${fmt(H)} by ${fmt(W)} inches">${g}</svg>`;
 }
 function wpRollSVG(r, c){
-  const [, lm] = wpRoll(r.roll) || [53, 10], len = lm * 39.37, drop = nv(r.H) + WP_TRIM + (wpNoRep(r) ? 0 : nv(r.rep)), VW = 640, x0 = 20, aw = VW - 40, sx = aw / len, y0 = 30, rh = 34;
-  let g = `<rect class="roll" x="${x0}" y="${y0}" width="${aw}" height="${rh}"/>`;
-  for (let i = 0; i < c.per; i++) { const x = x0 + i * drop * sx;
-    g += `<rect class="f-main" x="${x}" y="${y0}" width="${drop * sx - 2}" height="${rh}"/>`;
-    if (drop * sx > 30) g += `<text x="${x + drop * sx / 2}" y="${y0 + rh / 2 + 5}" text-anchor="middle" class="t-dim">${drop * sx > 70 ? fmt(drop) + '″' : i + 1}</text>`; }
-  const sp = len - c.per * drop;
-  if (sp * sx > 1) { g += `<rect class="spare" fill="none" x="${x0 + c.per * drop * sx}" y="${y0}" width="${sp * sx}" height="${rh}"/>`;
-    if (sp * sx > 44) g += `<text x="${x0 + c.per * drop * sx + sp * sx / 2}" y="${y0 + rh / 2 + 5}" text-anchor="middle" class="t-mut">${c.joined ? `${fmt(Math.round(sp))}″ → joined strips` : `spare ${fmt(Math.round(sp))}″`}</text>`; }
-  g += `<text x="${x0}" y="${y0 - 10}" class="t-dim">one ${lm} m roll (${fmt(Math.round(len))}″) → ${c.per} strip${c.per > 1 ? 's' : ''} of ${fmt(drop)}″</text>`;
-  g += `<text x="${x0 + aw}" y="${y0 + rh + 22}" text-anchor="end" class="t-dimb">× ${c.rolls} roll${c.rolls > 1 ? 's' : ''}  = ${c.per * c.rolls} strips${c.joined ? ` + ${c.joined} joined` : ''} · the wall needs ${c.strips}</text>`;
-  return `<svg viewBox="0 0 ${VW} ${y0 + rh + 32}" role="img" aria-label="How one roll is cut into strips">${g}</svg>`;
+  const [, lm] = wpRoll(r.roll) || [53, 10], len = lm * 39.37, drop = nv(r.H) + WP_TRIM + (wpNoRep(r) ? 0 : nv(r.rep)), drop1 = c.drop1 || drop, VW = 640, x0 = 20, aw = VW - 40, sx = aw / len, rh = 34;
+  // 21 Oct: the first roll (strip 1 has no trimming, so it is shorter), then a full roll when more rolls are needed
+  const bar = (y0, cuts, title) => { let g = `<rect class="roll" x="${x0}" y="${y0}" width="${aw}" height="${rh}"/>`, x = x0;
+    cuts.forEach((d, i) => { g += `<rect class="f-main" x="${x}" y="${y0}" width="${d * sx - 2}" height="${rh}"${i === 0 && cuts.first ? ' fill-opacity=".75"' : ''}/>`;
+      if (d * sx > 30) g += `<text x="${x + d * sx / 2}" y="${y0 + rh / 2 + 5}" text-anchor="middle" class="t-dim">${d * sx > 70 ? fmt(d) + '″' : ''}</text>`; x += d * sx; });
+    const sp = len - cuts.reduce((a, d) => a + d, 0);
+    if (sp * sx > 1) { g += `<rect class="spare" fill="none" x="${x}" y="${y0}" width="${sp * sx}" height="${rh}"/>`;
+      if (sp * sx > 44) g += `<text x="${x + sp * sx / 2}" y="${y0 + rh / 2 + 5}" text-anchor="middle" class="t-mut">${c.joined ? `${fmt(Math.round(sp))}″ → joined strips` : `spare ${fmt(Math.round(sp))}″`}</text>`; }
+    return g + `<text x="${x0}" y="${y0 - 10}" class="t-dim">${title}</text>`; };
+  const k1 = Math.max(0, (c.per1 || 1) - 1), first = drop1 <= len ? [drop1, ...Array(Math.min(k1, Math.max(0, c.strips - 1))).fill(drop)] : [], more = c.rolls > 1 && c.per > 0;
+  first.first = true;
+  let g = bar(30, first, `roll 1 (${lm} m = ${fmt(Math.round(len))}″) → strip 1 of ${fmt(drop1)}″${first.length > 1 ? ` + ${first.length - 1} of ${fmt(drop)}″` : ''}`), y = 30 + rh + 34;
+  if (more) { g += bar(y + 4, Array(c.per).fill(drop), `each other roll → ${c.per} strip${c.per > 1 ? 's' : ''} of ${fmt(drop)}″`); y += rh + 38; }
+  g += `<text x="${x0 + aw}" y="${y - 12}" text-anchor="end" class="t-dimb">${c.rolls} roll${c.rolls > 1 ? 's' : ''}${c.joined ? ` · ${c.joined} joined` : ''} · the wall needs ${c.strips} strip${c.strips > 1 ? 's' : ''}</text>`;
+  return `<svg viewBox="0 0 ${VW} ${y}" role="img" aria-label="How the rolls are cut into strips">${g}</svg>`;
 }
 // What the company's list says about the design (Asian Paints: design no., brand, sample book, repeat as written…)
 function wpFacts(r){
@@ -5687,19 +5703,21 @@ const MP = {
         return c;
       }
       const [wcm, lm] = wpRoll(r.roll) || WP_ROLLS['53 cm × 10 m'], win = wcm / 2.54, rep = wpNoRep(r) ? 0 : nv(r.rep);   // free / random match: no repeat to allow for
-      const len = lm * 39.37, drop = H + WP_TRIM + rep, per = Math.floor(len / drop), strips = Math.ceil(W / win - 1e-9), join = wpJoin(r);
-      c.strips = strips; c.per = per;
-      if (!per && !join) { c.warn.push(`Wall is taller than one ${lm} m roll: allow a joint across (Join across: Yes), or order a mural or a longer roll`); c.how = `Each strip is ${fmt(drop)}″, longer than the roll.`; return c; }
+      const len = lm * 39.37, drop = H + WP_TRIM + rep, drop1 = H + rep, per = Math.floor(len / drop), strips = Math.ceil(W / win - 1e-9), join = wpJoin(r);
+      c.strips = strips; c.per = per; c.drop1 = drop1;
+      const RF = wpRollsFor(strips, drop1, drop, len, join); c.per1 = drop1 <= len ? Math.min(strips, 1 + Math.floor((len - drop1) / drop)) : 0;
+      if (!RF.rolls && !join) { c.warn.push(`Wall is taller than one ${lm} m roll: allow a joint across (Join across: Yes), or order a mural or a longer roll`); c.how = `Each strip is ${fmt(strips > 1 ? drop : drop1)}″, longer than the roll.`; return c; }
       // Join across: leftovers are joined into strips, so rolls = all the strip length ÷ the roll length. Strips that are joined (beyond
       // what whole rolls give) get a joint where the leftover piece ends: at (roll length − strips cut × strip length) − 5″ top trim.
-      c.calcRolls = join ? Math.ceil(strips * drop / len - 1e-9) : Math.ceil(strips / per); c.rolls = +r.rolls > 0 ? +r.rolls : c.calcRolls;
-      if (join) { c.joined = Math.max(0, strips - c.calcRolls * per); c.jointAt = (per ? len - per * drop : len) - WP_TRIM / 2; }
+      c.calcRolls = RF.rolls; c.rolls = +r.rolls > 0 ? +r.rolls : c.calcRolls;
+      if (join) { c.joined = Math.max(0, strips - RF.whole); c.jointAt = (per ? len - per * drop : len) - WP_TRIM / 2; }
       const it = wpItem(r), byRoll = !!(it && WPL[r.sup] && WPL[r.sup].uom === 'roll'), inBox = byRoll ? 1 : (wpRoll(r.roll) || [])[2] || 1;   // Asian Paints is priced per roll, F&F-style lists per box
       const sq = wpSq(it);
       if ((it && !sq) || inBox > 1) c.boxes = Math.ceil(c.rolls / inBox);
-      c.how = `Width <b>${fmt(W)}″</b> ÷ roll width ${fmt(r2(win))}″ = <b>${strips} strips</b>. Each strip = height ${fmt(H)}″ + ${WP_TRIM}″ trimming${rep ? ` + ${fmt(rep)}″ repeat` : ''} = ${fmt(drop)}″, so one ${lm} m roll (${fmt(Math.round(len))}″) gives <b>${per} full strip${per === 1 ? '' : 's'}</b>. `
-        + (join ? `Joints across allowed: ${strips} × ${fmt(drop)}″ = ${fmt(strips * drop)}″ ÷ ${fmt(Math.round(len))}″ = <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>${c.joined ? `; ${c.joined} strip${c.joined > 1 ? 's are' : ' is'} made of two pieces joined about ${fmt(Math.round(c.jointAt))}″ from the top` : ', no joint needed'}.`
-          : `${strips} ÷ ${per} = <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>.`);
+      const s1 = `Strip 1 = height ${fmt(H)}″${rep ? ` + ${fmt(rep)}″ repeat = ${fmt(drop1)}″` : ''} (no trimming)`;
+      c.how = `Width <b>${fmt(W)}″</b> ÷ roll width ${fmt(r2(win))}″ = <b>${strips} strip${strips > 1 ? 's' : ''}</b>. ${s1}${strips > 1 ? `; strips 2${strips > 2 ? '–' + strips : ''} = height ${fmt(H)}″ + ${WP_TRIM}″ trimming${rep ? ` + ${fmt(rep)}″ repeat` : ''} = <b>${fmt(drop)}″</b> each` : ''}. `
+        + (join ? `Joints across allowed: ${fmt(drop1)}″${strips > 1 ? ` + ${strips - 1} × ${fmt(drop)}″` : ''} = ${fmt(drop1 + (strips - 1) * drop)}″ ÷ roll ${fmt(Math.round(len))}″ = <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>${c.joined ? `; ${c.joined} strip${c.joined > 1 ? 's are' : ' is'} made of two pieces joined about ${fmt(Math.round(c.jointAt))}″ from the top` : ', no joint needed'}.`
+          : `One ${lm} m roll (${fmt(Math.round(len))}″) gives strip 1 and ${RF.per1 - 1} more (${RF.per1} in all), then <b>${per} full strip${per === 1 ? '' : 's'}</b> per roll: <b>${c.calcRolls} roll${c.calcRolls > 1 ? 's' : ''}</b>.`);
       if (!join && per === 1 && len - drop > drop * 0.5) c.warn.push(`Tall wall: each roll gives 1 strip and ${fmt(Math.round(len - drop))}″ is left over. If a joint across is OK for this design, set Join across: Yes`);
       if (/^Offset/.test(r.match || '') && rep) c.how += ` Offset match: every other strip starts ${fmt(rep / 2)}″ lower, so cut the strips from the roll in turn and keep them in order.`;
       if (wpNoRep(r) && nv(r.rep)) c.how += ` ${r.match}: no repeat to allow for.`;
@@ -5718,7 +5736,7 @@ const MP = {
     },
     sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.rolls || 0), 0), b = cs.reduce((a, c) => a + (c.boxes || 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0);
       return n ? `${n} roll${n > 1 ? 's' : ''} to order${b ? ` · ${b} box${b > 1 ? 'es' : ''}` : ''}${m ? ` · MRP ${rs(m)}` : ''}` : ''; },
-    rules: ['Strips = wall width ÷ the roll width, rounded up.', 'Each strip = wall height + 10″ for trimming (5″ top, 5″ bottom), plus one pattern repeat if the design has one.', 'Strips from one roll = roll length ÷ strip length, rounded down. Rolls = strips ÷ strips per roll, rounded up.',
+    rules: ['Strips = wall width ÷ the roll width, rounded up.', 'Strip 1 = wall height (no trimming). Strips 2 onwards = wall height + 10″ for trimming (5″ top, 5″ bottom). Every strip adds one pattern repeat if the design has one.', 'The first roll gives strip 1 plus as many full strips as fit after it; every other roll gives roll length ÷ strip length, rounded down. Rolls = enough for all the strips.',
       'Join across: Yes = the design may have a horizontal joint, so leftover pieces are joined into strips. Rolls = all the strip length ÷ the roll length, rounded up. The drawing shows where the joints fall.',
       'Doors and windows are not taken off: the leftover covers matching and mistakes.', 'Murals are made to size: the wall plus 2″ on every side.',
       'Order every roll in one go so they come from the same batch, and count the rolls that arrive before cutting any.',
@@ -7851,4 +7869,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-154637 -->
+<!-- build 20261021-163649 -->
