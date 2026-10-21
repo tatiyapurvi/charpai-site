@@ -186,7 +186,15 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
      frozen top row. */
   body:has(:is(#v-measure,#v-blinds,#v-product):not([hidden])) .tbl-scroll{max-height:none;overflow-y:visible}
 }
-@media (min-width:1150px){ :is(#v-measure,#v-blinds) .wrap{grid-template-columns:minmax(0,1fr) 420px} }
+@media (min-width:1150px){ :is(#v-measure,#v-blinds,#v-product) .wrap{grid-template-columns:minmax(0,1fr) 420px} }   /* + the other sheets, 21 Oct */
+/* 21 Oct (Purvi: "make all the other sheet's form table compact" like Curtains and Blinds): same sizes, short names, narrower boxes */
+#v-product .sheet th{font-size:13.5px}
+#v-product .sheet th.grp{font-size:14px}
+#v-product .sheet input,#v-product .sheet select{font-size:15px}
+#v-product .sheet td{padding:5px 3px}
+#v-product .sheet th.r,#v-product .sheet td.out{padding-left:6px;padding-right:8px}
+#v-product .psheet td.howc{min-width:240px;max-width:300px}
+#v-product .tbl-scroll{overscroll-behavior-y:auto;overscroll-behavior-x:contain}
 /* Blinds sheet, 19 Oct (Purvi: "apply same right left panel and margin settings to the blinds page"): the same margins and 420px
    panel as Curtains; the panel scrolls inside itself and hands over to the page at its end; more room around the numbers and the
    drawing. The order details stay in the panel (they are typed there, not in the table). */
@@ -258,7 +266,7 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
 .tbl-wrap.more-r::after,.tbl-wrap.more-l::before{opacity:1}
 @media (max-width:760px){ .hnav{display:none} }   /* phones swipe */
 /* a small arrow instead of Chrome's wide one, so the short names fit */
-#v-measure .sheet select,#v-blinds .sheet select{appearance:none;-webkit-appearance:none;padding-right:18px;background:var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 6px center}
+#v-measure .sheet select,#v-blinds .sheet select,#v-product .sheet select{appearance:none;-webkit-appearance:none;padding-right:18px;background:var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 6px center}
 .bar{font-size:14px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
 .bar b{color:var(--ink)}
 .bar .acts2{display:flex;gap:8px;flex-wrap:wrap}
@@ -5675,9 +5683,9 @@ function swFPrice(m, L, W, t){
 }
 const SWH = SW.hcp.items, hcpId = x => `${x.n} · ${x.s}″`, swHcp = r => SWH.find(x => hcpId(x) === r.item) || null;
 // Select options can be plain strings, [value, label] pairs, or {g: group, items: [...]}. A saved value that is not in the list stays shown.
-function selOpts(list, val, blank){
-  const one = x => Array.isArray(x) ? x : [x, x], seen = new Set();
-  const o = ([v, t, off]) => { seen.add(String(v)); return `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(t)}</option>`; };   // [value, label, greyed out]
+function selOpts(list, val, blank, short){   // short(label): what the box shows (21 Oct); our list shows the full label (data-full)
+  const one = x => Array.isArray(x) ? x : [x, x], seen = new Set(), sh = t => short ? short(String(t)) : t;
+  const o = ([v, t, off]) => { seen.add(String(v)); return `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}${off ? ' disabled' : ''}${short && sh(t) !== t ? ` data-full="${esc(t)}"` : ''}>${esc(sh(t))}</option>`; };   // [value, label, greyed out]
   const body = list.map(x => x && x.g ? `<optgroup label="${esc(x.g)}">${x.items.map(y => o(one(y))).join('')}</optgroup>` : o(one(x))).join('');
   return (blank ? `<option value="">${esc(blank)}</option>` : '') + body + (has(val) && !seen.has(String(val)) ? `<option value="${esc(val)}" selected>${esc(val)}</option>` : '');
 }
@@ -5698,23 +5706,24 @@ const MP = {
     fig: wpFig,
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
-      {g: 'Wallpaper', k: 'sup', label: 'Company', t: 'sel', opts: () => ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F'].map(n => [n, n, !WPL[n]]).concat(['Other']), blank: 'Pick', w: 160},   // greyed out until the company has a wallpaper list here (Purvi, 7 Oct)   // D'Decor's wallpaper list = FabriCare / Home Ideas (Purvi, 7 Oct)
-      {g: 'Wallpaper', k: 'design', label: 'Design', sub: 'collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Type a name or design no.' : 'Collection · design no.', list: wpListId, w: 230},
-      {g: 'Wallpaper', k: 'kind', label: 'Comes as', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 170},
-      {g: 'Wallpaper', k: 'roll', label: 'Roll size', t: 'sel', opts: wpRollOpts, w: 150, off: r => r.kind !== 'Roll'},
-      {g: 'Wallpaper', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 70},
-      {g: 'Wallpaper', k: 'match', label: 'Match', t: 'sel', opts: Object.values(WP_MATCH), blank: 'Not known', w: 150, off: r => r.kind !== 'Roll'},
-      {g: 'Wallpaper', k: 'join', label: 'Join across', sub: 'joint ok?', t: 'sel', opts: ['No', 'Yes'], w: 100, off: r => r.kind !== 'Roll'},
-      {g: 'Size', k: 'H', label: 'Height', sub: '″', t: 'num', key: 1},
-      {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
+      {g: 'Wallpaper', k: 'sup', label: 'Co.', tip: 'Company', t: 'sel', opts: () => ['Asian Paints', "D'Decor Sansaar", "D'Decor FabriCare", 'F&F'].map(n => [n, n, !WPL[n]]).concat(['Other']), blank: 'Pick', w: 96, short: n => ({'Asian Paints': 'AP', "D'Decor Sansaar": 'Sansaar', "D'Decor FabriCare": 'FabriCare'})[n] || n},   // greyed out until the company has a wallpaper list
+      {g: 'Wallpaper', k: 'design', label: 'Design', tip: 'Collection, design no.', t: 'text', ph: r => WPL[r.sup] ? 'Name or design no.' : 'Collection · design', list: wpListId, w: 170},
+      {g: 'Wallpaper', k: 'kind', label: 'Type', name: 'Comes as', tip: 'Comes as: roll, or mural made to size', t: 'sel', opts: ['Roll', 'Mural (made to size)'], w: 84, short: n => n.replace(' (made to size)', '')},
+      {g: 'Wallpaper', k: 'roll', label: 'Roll', sub: 'cm × m', tip: 'Roll size', t: 'sel', opts: wpRollOpts, w: 96, off: r => r.kind !== 'Roll', short: n => n.replace(/ cm × /, '×').replace(/ m$/, '')},
+      {g: 'Wallpaper', k: 'rep', label: 'Repeat', sub: '″', t: 'num', w: 58},
+      {g: 'Wallpaper', k: 'match', label: 'Match', t: 'sel', opts: Object.values(WP_MATCH), blank: 'Not known', w: 100, off: r => r.kind !== 'Roll', short: n => n.replace(' (half drop)', '').replace(' match', '').replace(' panels', '')},
+      {g: 'Wallpaper', k: 'join', label: 'Join', name: 'Join across', tip: 'Join across: is a horizontal joint ok?', t: 'sel', opts: ['No', 'Yes'], w: 62, off: r => r.kind !== 'Roll'},
+      {g: 'Size', k: 'H', label: 'H', sub: '″', tip: 'Height', t: 'num', key: 1, w: 64},
+      {g: 'Size', k: 'W', label: 'W', sub: '″', tip: 'Width', t: 'num', key: 1, w: 64},
       {g: 'Result', k: 'area', label: 'Area', out: c => c.ok ? `${cpF(c.area)}<span class="u"> sq ft</span>` : ''},
-      {g: 'Result', k: 'rolls', label: 'Rolls', t: 'auto', def: c => c.calcRolls, off: r => r.kind !== 'Roll'},
+      {g: 'Result', k: 'rolls', label: 'Rolls', t: 'auto', w: 58, def: c => c.calcRolls, off: r => r.kind !== 'Roll'},
       {g: 'Result', k: 'how', how: 1},
-      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
+      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 150},
       // "The wall" after Remarks and optional (Purvi, 7 Oct): no orange box, no warning when left blank
-      {g: 'The wall', k: 'cond', label: 'Condition', sub: 'optional', t: 'sel', opts: ['Flat and dry', 'Bumps or cracks', 'Damp or leakage', 'Fresh plaster or paint'], blank: '—', w: 190},
-      {g: 'The wall', k: 'open', label: 'Doors / windows on it', sub: 'optional', t: 'sel', opts: ['None', 'Window', 'Door', 'Window and door', 'Switchboards only'], blank: '—', w: 170},
+      {g: 'The wall', k: 'cond', label: 'Wall', name: 'Condition', tip: 'Condition of the wall (optional)', t: 'sel', opts: ['Flat and dry', 'Bumps or cracks', 'Damp or leakage', 'Fresh plaster or paint'], blank: '—', w: 96, short: n => ({'Flat and dry': 'Flat, dry', 'Bumps or cracks': 'Bumps', 'Damp or leakage': 'Damp', 'Fresh plaster or paint': 'Fresh'})[n] || n},
+      {g: 'The wall', k: 'open', label: 'On it', name: 'Doors / windows', tip: 'Doors / windows on the wall (optional)', t: 'sel', opts: ['None', 'Window', 'Door', 'Window and door', 'Switchboards only'], blank: '—', w: 96, short: n => ({'Window and door': 'Both', 'Switchboards only': 'Switches'})[n] || n},
     ],
+    roomW: 100,
     calc(r){
       const H = nv(r.H), W = nv(r.W), c = {ok: !!(H && W), warn: [], kpis: []};
       if (r.cond === 'Damp or leakage') c.warn.push('Damp wall: fix the leakage and let it dry before papering');
@@ -5775,26 +5784,27 @@ const MP = {
     blank: () => ({room: '', type: '', sup: '', product: '', rollw: '', xjoin: 'Yes', L: '', W: '', lay: 'Straight', waste: '', pack: '', edge: '', doors: '', sub: '', under: '', remarks: ''}),
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
-      {g: 'Floor', k: 'type', label: 'Type', t: 'sel', opts: Object.keys(FL_WASTE), blank: 'Pick', w: 180},
-      {g: 'Floor', k: 'sup', label: 'Company', t: 'text', ph: 'Company', list: () => 'flsups', w: 140},
-      {g: 'Floor', k: 'product', label: 'Product', sub: 'collection, design', t: 'text', ph: r => FLL[r.sup] ? 'Type a carpet name' : 'Collection · design', list: flListId, w: 220},
-      {g: 'Floor', k: 'rollw', label: 'Roll width', sub: 'm', t: 'auto', def: c => c.rollDef, off: r => r.type !== FL_WW},
-      {g: 'Floor', k: 'xjoin', label: 'Join any way', sub: 'joint ok?', t: 'sel', opts: ['Yes', 'No'], w: 100, off: r => r.type !== FL_WW},   // 21 Oct (Purvi): "keep it as a button, by default keep it on yes"
-      {g: 'Size', k: 'L', label: 'Length', sub: '″', t: 'num', key: 1},
-      {g: 'Size', k: 'W', label: 'Width', sub: '″', t: 'num', key: 1},
-      {g: 'Laying', k: 'lay', label: 'Pattern', t: 'sel', opts: Object.keys(FL_LAY), w: 180, off: r => r.type === FL_WW},
-      {g: 'Laying', k: 'waste', label: 'Wastage', sub: '%', t: 'auto', def: (c, r) => c.wasteDef},
-      {g: 'Laying', k: 'pack', label: 'Box covers', sub: 'sq ft', t: 'num', w: 80, off: r => /carpet$/i.test(r.type) && r.type !== 'Carpet tiles'},
-      {g: 'Edges', k: 'edge', label: 'Skirting or beading', t: 'sel', opts: ['Skirting', 'Beading', 'Both', 'None'], blank: 'Ask', todo: 1, w: 150},
-      {g: 'Edges', k: 'doors', label: 'Doors', t: 'num', w: 60},
-      {g: 'Site', k: 'sub', label: 'Floor now', t: 'sel', opts: ['Level tiles or marble', 'Level cement', 'Uneven', 'Damp'], blank: 'Check the floor', todo: 1, w: 180},
-      {g: 'Site', k: 'under', label: 'Underlay', t: 'sel', opts: ['Yes', 'No', 'Comes attached'], blank: 'Pick', w: 130},
+      {g: 'Floor', k: 'type', label: 'Type', t: 'sel', opts: Object.keys(FL_WASTE), blank: 'Pick', w: 112, short: n => ({'Engineered wood': 'Eng. wood', 'Vinyl (SPC / LVT)': 'Vinyl', 'Wall-to-wall carpet': 'WW carpet'})[n] || n},
+      {g: 'Floor', k: 'sup', label: 'Co.', tip: 'Company', t: 'text', ph: 'Company', list: () => 'flsups', w: 96},
+      {g: 'Floor', k: 'product', label: 'Product', tip: 'Collection, design', t: 'text', ph: r => FLL[r.sup] ? 'Carpet name' : 'Collection · design', list: flListId, w: 170},
+      {g: 'Floor', k: 'rollw', label: 'Roll', sub: 'm', name: 'Roll width', tip: 'Roll width (m)', t: 'auto', w: 58, def: c => c.rollDef, off: r => r.type !== FL_WW},
+      {g: 'Floor', k: 'xjoin', label: 'Join', name: 'Join any way', tip: 'Join any way: is a joint in any direction ok?', t: 'sel', opts: ['Yes', 'No'], w: 62, off: r => r.type !== FL_WW},   // 21 Oct (Purvi): "keep it as a button, by default keep it on yes"
+      {g: 'Size', k: 'L', label: 'L', sub: '″', tip: 'Length', t: 'num', key: 1, w: 64},
+      {g: 'Size', k: 'W', label: 'W', sub: '″', tip: 'Width', t: 'num', key: 1, w: 64},
+      {g: 'Laying', k: 'lay', label: 'Pattern', t: 'sel', opts: Object.keys(FL_LAY), w: 100, off: r => r.type === FL_WW, short: n => n.replace(' / chevron', '')},
+      {g: 'Laying', k: 'waste', label: 'Waste', sub: '%', name: 'Wastage', tip: 'Wastage %', t: 'auto', w: 56, def: (c, r) => c.wasteDef},
+      {g: 'Laying', k: 'pack', label: 'Box', sub: 'sq ft', name: 'Box covers', tip: 'One box covers (sq ft)', t: 'num', w: 60, off: r => /carpet$/i.test(r.type) && r.type !== 'Carpet tiles'},
+      {g: 'Edges', k: 'edge', label: 'Edges', tip: 'Skirting or beading', t: 'sel', opts: ['Skirting', 'Beading', 'Both', 'None'], blank: 'Ask', todo: 1, w: 92},
+      {g: 'Edges', k: 'doors', label: 'Doors', t: 'num', w: 50},
+      {g: 'Site', k: 'sub', label: 'Floor now', t: 'sel', opts: ['Level tiles or marble', 'Level cement', 'Uneven', 'Damp'], blank: 'Check', todo: 1, w: 104, short: n => ({'Level tiles or marble': 'Tiles, level', 'Level cement': 'Cement, level'})[n] || n},
+      {g: 'Site', k: 'under', label: 'Underlay', t: 'sel', opts: ['Yes', 'No', 'Comes attached'], blank: 'Pick', w: 88, short: n => n === 'Comes attached' ? 'Attached' : n},
       {g: 'Result', k: 'area', label: 'Area', out: c => c.ok ? `${cpF(c.area)}<span class="u"> sq ft</span>` : ''},
       {g: 'Result', k: 'order', label: 'To order', out: c => c.ok ? `${cpF(c.order)}<span class="u"> sq ft</span>${c.boxes ? `<span class="tag" style="color:var(--muted)">${c.boxes} boxes</span>` : ''}` : ''},
       {g: 'Result', k: 'rft', label: 'Edging', out: c => c.rft ? `${c.rft}<span class="u"> rft</span>` : ''},
       {g: 'Result', k: 'how', how: 1},
-      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 200},
+      {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 150},
     ],
+    roomW: 100,
     calc(r){
       const L = nv(r.L), W = nv(r.W), c = {ok: !!(L && W), warn: [], kpis: []};
       const it = flItem(r), ww = r.type === FL_WW;
@@ -5906,7 +5916,7 @@ const MP = {
     rules: ['Start every line with "What is it?": a mattress, or a pillow, protector, bolster, back cushion or sofa \'n\' bed (picked from Sleepwell\'s list, at its MRP).',
       'Measure inside the bed frame, where the mattress sits: length head to foot, then width.', 'Sleepwell lengths are 72, 75, 78 and 84″; widths 30 to 72″. Any other size is a custom size.',
       'Custom size up to 84 × 72: Sleepwell charges the next bigger size on its list, same thickness. Bigger than 84 × 72: the 72 × 36 price, pro rata by area.',
-      'Prices are Sleepwell\'s MRP (North Zone, from 1 Aug 2026), including GST.',
+      'Prices are Sleepwell\'s MRP (North Zone, 1 Aug 2026 list, with Sleepwell\'s 21 Oct 2026 increase of 4–7% on 21 mattress models), including GST.',
       'If the headboard is still to be padded, measure again once it is done: the foam takes up length.', 'A size the customer tells us is checked at site before the order goes on the Sleepwell portal.'],
   },
   // Upholstery material (Purvi, 6 Oct night): one list, no tabs. Someone buys material from us to get furniture made elsewhere,
@@ -6202,9 +6212,9 @@ function mpCellHTML(k, col, r){
   const P = MP[k], dis = col.off && col.off(r) ? ' disabled' : '', w = col.w ? ` style="width:${col.w}px"` : '';
   if (col.how) return `<td class="howc" data-o="how"></td>`;
   if (col.out) return `<td class="out" data-o="${col.k}"></td>`;
-  if (col.t === 'room') return `<td class="first"><div class="cell"><span class="idx grip" title="Drag to move this row">${state.more[k].indexOf(r) + 1}</span><input data-p="room" value="${esc(r.room)}" list="roomlist" placeholder="Room" style="width:130px"></div></td>`;
-  if (col.t === 'sel') return `<td><select data-p="${col.k}"${w}${dis} aria-label="${esc(col.label)}"${col.todo && !r[col.k] ? ' class="ovr"' : ''}>${selOpts(typeof col.opts === 'function' ? col.opts(r) : col.opts, r[col.k], col.blank)}</select></td>`;
-  if (col.t === 'auto') return `<td><span class="auto-wrap"><input data-p="${col.k}" class="n auto big" inputmode="decimal" style="width:76px"${dis} aria-label="${esc(col.label)}"><button class="reset" data-reset="${col.k}" title="Put back the worked-out value">↺</button></span></td>`;
+  if (col.t === 'room') return `<td class="first"><div class="cell"><span class="idx grip" title="Drag to move this row">${state.more[k].indexOf(r) + 1}</span><input data-p="room" value="${esc(r.room)}" list="roomlist" placeholder="Room" style="width:${MP[k].roomW || 130}px"></div></td>`;
+  if (col.t === 'sel') return `<td><select data-p="${col.k}"${w}${dis} aria-label="${esc(col.tip || col.label)}"${col.todo && !r[col.k] ? ' class="ovr"' : ''}>${selOpts(typeof col.opts === 'function' ? col.opts(r) : col.opts, r[col.k], col.blank, col.short)}</select></td>`;
+  if (col.t === 'auto') return `<td><span class="auto-wrap"><input data-p="${col.k}" class="n auto big" inputmode="decimal" style="width:${col.w || 76}px"${dis} aria-label="${esc(col.label)}"><button class="reset" data-reset="${col.k}" title="Put back the worked-out value">↺</button></span></td>`;
   if (col.t === 'num') return `<td><input data-p="${col.k}" class="n${col.key ? ' key' : ''}" inputmode="decimal" value="${esc(r[col.k])}" placeholder="${col.key ? '0' : ''}" style="width:${col.w || 80}px"${dis} aria-label="${esc(col.label)}"></td>`;
   const ph = typeof col.ph === 'function' ? col.ph(r) : col.ph, ls = col.list && col.list(r);
   return `<td><input data-p="${col.k}" value="${esc(r[col.k])}" placeholder="${esc(ph || '')}"${ls ? ` list="${ls}" autocomplete="off"` : ''}${w}${dis} aria-label="${esc(col.label)}"></td>`;
@@ -6240,7 +6250,7 @@ function renderProduct(k){
   }
   const groups = []; P.cols.forEach(c => { const g = groups[groups.length - 1]; if (g && g.g === c.g) g.n++; else groups.push({g: c.g, n: 1, res: c.g === 'Result'}); });
   $('#p-head').innerHTML = `<tr>${groups.map((g, i) => `<th class="grp${i ? '' : ' first'}${g.res ? ' res' : ''}" colspan="${g.n}">${esc(g.g)}</th>`).join('')}<th class="grp"></th></tr>
-    <tr>${P.cols.map((c, i) => `<th class="${i ? '' : 'first'}${c.out || c.t === 'auto' ? ' r' : ''}${c.how ? ' howh' : ''}">${c.how ? 'How it was worked out' : esc(c.label)}${c.sub ? ` <small>${esc(c.sub)}</small>` : ''}</th>`).join('')}<th></th></tr>`;
+    <tr>${P.cols.map((c, i) => `<th class="${i ? '' : 'first'}${c.out || c.t === 'auto' ? ' r' : ''}${c.how ? ' howh' : ''}"${c.tip ? ` title="${esc(c.tip)}"` : ''}>${c.how ? 'How it was worked out' : esc(c.label)}${c.sub ? ` <small>${esc(c.sub)}</small>` : ''}</th>`).join('')}<th></th></tr>`;
   $('#ptb').innerHTML = rows.map(r => mpRowHTML(k, r)).join('');
   rows.forEach(r => mpUpdateRow(k, r));
   $('#p-note').textContent = P.note; $('#p-add').textContent = P.add; $('#p-hint').textContent = P.hint;
@@ -6263,7 +6273,7 @@ function renderPSide(k){
   const skip = new Set(['room', 'remarks', 'how']);
   const spec = P.cols.filter(col => !col.out && !col.how && !skip.has(col.k) && !(col.off && col.off(r)) && col.t !== 'auto').map(col => {
     let v = r[col.k]; if (col.t === 'sel' && typeof col.opts === 'function' && has(v)) { const o = col.opts(r).flatMap(x => x && x.g ? x.items : [x]).find(x => Array.isArray(x) && String(x[0]) === String(v)); if (o) v = o[1]; }   // show the option's words ("4″ · 11 cm")
-    return `<dt>${esc(col.label)}</dt><dd>${has(v) && v !== '' ? esc(v) + (col.sub && col.t === 'num' ? `<small> ${esc(col.sub)}</small>` : '') : `<span class="ed">${col.todo ? 'not asked yet' : '—'}</span>`}</dd>`;
+    return `<dt>${esc(col.name || col.tip || col.label)}</dt><dd>${has(v) && v !== '' ? esc(v) + (col.sub && col.t === 'num' ? `<small> ${esc(col.sub)}</small>` : '') : `<span class="ed">${col.todo ? 'not asked yet' : '—'}</span>`}</dd>`;
   }).join('') + (r.remarks ? `<dt>Remarks</dt><dd class="note">${esc(r.remarks)}</dd>` : '');
   el.innerHTML = `<div class="side-h"><h2>${esc(title)}</h2><span class="sub">${P.name} · #${i + 1}</span></div>
     ${c.kpis.length ? `<div class="kpis">${c.kpis.map(x => `<div class="kpi${x.m ? ' m' : ''}"><small>${esc(x.l)}</small><b class="num">${x.v}</b><small>${esc(x.u || '')}</small></div>`).join('')}</div>` : `<div class="p-empty-tip">${P.empty || `Type the ${P.cols.filter(x => x.key).map(x => x.label.toLowerCase()).join(' and ')} to see the numbers.`}</div>`}
@@ -7898,4 +7908,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-174119 -->
+<!-- build 20261021-174905 -->
