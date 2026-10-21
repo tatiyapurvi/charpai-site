@@ -1070,7 +1070,9 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 @media (max-width:520px){.adr-grid{grid-template-columns:1fr}}
 .adr-line{margin:8px 0 0;font-size:13.5px}.adr-line b{color:var(--ink);font-weight:600}
 .adr-nopin{display:flex;gap:10px;align-items:center;border:1.5px dashed var(--line);border-radius:10px;padding:9px 12px;margin-top:10px;font-size:13.5px;color:var(--muted)}.adr-nopin span{flex:1}
-.adr-nopin svg{width:16px;height:16px;flex:none}.adr-cpin svg{width:34px;height:44px}
+.adr-nopin svg{width:16px;height:16px;flex:none}
+.adr-nopin{flex-wrap:wrap}.adr-nopin a.btn{text-decoration:none;color:inherit}
+.adr-paste{border:1.5px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;display:grid;gap:8px;justify-items:start}.adr-paste .cpf{width:100%}.adr-paste .hint{margin:0;font-size:13px}.adr-cpin svg{width:34px;height:44px}
 .adr-pin{display:flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px;background:var(--paper)}
 .adr-mini{width:240px;min-height:100px;position:relative;z-index:0;cursor:pointer;background:var(--line2);flex:none}
 .adr-pr{flex:1;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;font-size:13.5px;color:var(--muted)}.adr-pr span{flex:1}.adr-pr b{color:var(--ink);font-weight:600}.adr-pr small{display:block}
@@ -1130,6 +1132,7 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 /* header */
 .n-head{display:grid;gap:10px}
 .n-headtop{display:flex;justify-content:space-between;align-items:flex-start}
+.n-topr{display:flex;gap:8px;align-items:center}.n-edit{display:inline-flex;gap:6px;align-items:center;padding:7px 12px;font-size:14px}   /* 21 Oct: Edit client */
 .n-av{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--tape-soft);color:var(--tape-ink);font:600 20px var(--body);letter-spacing:.02em}
 .n-name{margin:4px 0 0;font:600 30px/1.15 var(--body);letter-spacing:-.01em}
 .n-name button{all:unset;cursor:text;border-radius:8px;padding:0 4px;margin-left:-4px;overflow-wrap:anywhere}
@@ -6567,6 +6570,7 @@ clb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classLi
 // ---- New enquiry: the customer page opens empty; the client is created on the first thing typed
 const NEW = '__new';
 let creating = null, cpFresh = null;   // cpFresh: the enquiry made on this visit keeps the simple form (nothing moves while typing)
+let cpEditing = null;   // 21 Oct (Purvi): "Edit client" opens the new-enquiry form for a saved client; Done goes back to their page
 function newEnquiry(){ if (!shared) { newLocalSheet(); return; } cpId = NEW; cpFresh = null; go('client'); setTimeout(() => { const n = $('#cpf-name'); if (n) n.focus(); }, 50); }
 async function ensureClient(){
   if (cpId !== NEW) return cpId;
@@ -6625,7 +6629,15 @@ const OLA_KEY = 'Ef32kLpOFXEshRpNO23zxg6SOeaYq4w6TAqDY3em';
 const ADR_PIN = '<svg width="34" height="44" viewBox="0 0 34 44" aria-hidden="true"><path d="M17 43s15-14.3 15-26A15 15 0 0 0 2 17c0 11.7 15 26 15 26z" fill="#D93025" stroke="#fff" stroke-width="2"/><circle cx="17" cy="17" r="5.5" fill="#fff"/></svg>';
 const ADR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 let ADR = null;   // the address on screen: {cid, city, house, place, sub, lm, state, pin, lat, lng, at, clat, clng}
-function adrOf(c){ if (!ADR || ADR.cid !== cpId) ADR = Object.assign({cid: cpId, city: c.city || ''}, c.adr || {}); return ADR; }
+function adrOf(c){
+  if (!ADR || ADR.cid !== cpId) {
+    ADR = Object.assign({cid: cpId, city: c.city || ''}, c.adr || {});
+    if (!c.adr && c.addr) { const parts = String(c.addr).split(',').map(x => x.trim()).filter(Boolean), city = (c.city || '').toLowerCase();   // a client from before 21 Oct
+      while (parts.length > 1 && (parts[parts.length - 1].toLowerCase() === city || /^\d{6}$/.test(parts[parts.length - 1]))) parts.pop();
+      ADR.place = parts.join(', '); }
+  }
+  return ADR;
+}
 const adrFetch = (url, ms = 6000) => { const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
   return fetch(url, {signal: ac.signal}).then(r => { clearTimeout(t); if (!r.ok) throw new Error('status ' + r.status); return r.json(); }); };
 const adrTidy = t => t && t === t.toLowerCase() ? tidyCity(t) : (t || '').trim();   // all small letters → capitals (shastri nagar → Shastri Nagar); else as typed
@@ -6649,7 +6661,7 @@ function adrLine(){
   const A = ADR || {}, tail = [adrCity(), A.state].filter(Boolean).join(', ') + (A.pin ? ' ' + A.pin : '');
   return [A.house, adrTidy(A.place), A.sub, A.lm && 'Near ' + adrTidy(A.lm).replace(/^near\s+/i, ''), tail].map(x => (x || '').trim()).filter(Boolean).join(', ');
 }
-function adrData(){ const A = ADR || {}, o = {}; for (const k of ['house', 'place', 'sub', 'lm', 'state', 'pin', 'at']) if (A[k] && String(A[k]).trim()) o[k] = String(A[k]).trim(); if (A.lat != null) { o.lat = +A.lat; o.lng = +A.lng; } return o; }
+function adrData(){ const A = ADR || {}, o = {}; for (const k of ['house', 'place', 'sub', 'lm', 'state', 'pin', 'at', 'link']) if (A[k] && String(A[k]).trim()) o[k] = String(A[k]).trim(); if (A.lat != null) { o.lat = +A.lat; o.lng = +A.lng; } return o; }
 function adrSave(){ if (!ADR) return; cpQueue('addr', adrLine()); cpQueue('adr', adrData()); const l = $('#adr-line'); if (l) l.innerHTML = adrLineHTML(); }
 const adrLineHTML = () => { const l = adrLine(); return l ? `Saved as: <b>${esc(l)}</b>` : ''; };
 function adrFormHTML(c){
@@ -6671,11 +6683,13 @@ function adrInput(x){
 }
 // ---- the pin: a small map + Move pin, or an offer to set one (only once a building or area is typed)
 function adrPinHTML(){
-  const A = ADR || {};
+  const A = ADR || {}, paste = `<button type="button" class="btn" data-adrpaste>Paste location link</button>`;
+  if (A.pasting) return `<div class="adr-paste"><label class="cpf"><span>Location link from WhatsApp or Google Maps</span><input id="adr-link" autocomplete="off" placeholder="Paste the link here (long-press → Paste)"></label>
+    <p class="hint" id="adr-linkmsg">On WhatsApp: tap the location → it opens in Maps → Share → Copy link. Then paste here.</p><button type="button" class="btn" data-adrpastex>Cancel</button></div>`;
+  if (A.lat == null && A.link) return `<div class="adr-nopin">${ADR_ICON}<span>Location link saved. The Map button opens it. <small>Not printed.</small></span><a class="btn" href="${esc(A.link)}" target="_blank" rel="noopener">Open ↗</a><button type="button" class="btn" data-adrpin>Set pin</button><button type="button" class="btn" data-adrnopin>Remove</button></div>`;
   if (A.lat != null) return `<div class="adr-pin"><div class="adr-mini" id="adr-mini" data-adrpin title="Move pin"><div class="adr-cpin">${ADR_PIN}</div></div>
     <div class="adr-pr"><span>Map pin${A.at ? ` near <b>${esc(A.at)}</b>` : ''}<small>Only for the Map button. Not printed.</small></span><button type="button" class="btn" data-adrpin>Move pin</button><button type="button" class="btn" data-adrnopin>Remove pin</button></div></div>`;
-  if ((A.place || '').trim()) return `<div class="adr-nopin">${ADR_ICON}<span>Not on the map yet. Set a pin so the Map button goes to the right gate? <small>(optional)</small></span><button type="button" class="btn" data-adrpin>Set pin</button></div>`;
-  return '';
+  return `<div class="adr-nopin">${ADR_ICON}<span>${(A.place || '').trim() ? 'Not on the map yet. Set a pin, or paste the location they sent, so the Map button goes to the right gate?' : 'Did they send their location on WhatsApp? Paste it here.'} <small>(optional)</small></span>${paste}<button type="button" class="btn" data-adrpin>Set pin</button></div>`;
 }
 function adrPinBox(){ const el = $('#adr-pin'); if (!el) return; const h = adrPinHTML(); if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; adrMini(); } }
 let LF = null;   // Leaflet, loaded the first time a map is shown
@@ -6732,7 +6746,36 @@ function adrPick(el, x){
 document.addEventListener('focusin', e => { const t = e.target; if (t.dataset && t.dataset.adr) adrOpen(t); });
 document.addEventListener('input', e => { const t = e.target; if (e.isTrusted && t.dataset && t.dataset.adr && document.activeElement === t) adrOpen(t); });
 $('#cp-body').addEventListener('click', e => { if (e.target.closest('[data-adrpin]')) adrMap();
-  else if (e.target.closest('[data-adrnopin]') && ADR) { ADR.lat = ADR.lng = null; ADR.at = ''; adrSave(); adrPinBox(); } });   // 21 Oct (Purvi): no pin wanted → the Map button searches the address again
+  else if (e.target.closest('[data-adrnopin]') && ADR) { ADR.lat = ADR.lng = null; ADR.at = ADR.link = ''; adrSave(); adrPinBox(); }
+  else if (e.target.closest('[data-adrpaste]') && ADR) adrPasteOpen();
+  else if (e.target.closest('[data-adrpastex]') && ADR) { ADR.pasting = false; adrPinBox(); } });
+// 21 Oct (Purvi): "sometimes client sends a location link or current location through whatsapp". A link with the spot in it
+// (maps.google.com/?q=26.28,73.05 · …/@26.28,73.05 · maps.apple.com/?ll= · geo: · plain "26.28, 73.05") becomes the map pin.
+// A short link (maps.app.goo.gl/…) hides the spot and a web page may not open it to look, so it is kept as it is: the Map button opens it.
+const ADR_LINK_HOSTS = /^(maps\.app\.goo\.gl|goo\.gl|(www\.|maps\.)?google\.[a-z.]+|maps\.apple\.com|maps\.apple|(www\.)?openstreetmap\.org|maps\.olakrutrim\.com|olamaps\.io)$/i;
+function adrLinkRead(text){
+  const t = String(text || ''); let u = (t.match(/https?:\/\/[^\s<>"']+/) || [])[0] || '', d = t; try { d = decodeURIComponent(t); } catch(_){}
+  const ok = (a, b) => a >= 6 && a <= 37.5 && b >= 68 && b <= 97.5;   // inside India
+  for (const re of [/[?&](?:q|query|ll|sll|daddr|destination|center)=(?:loc:)?(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/, /@(-?\d{1,2}\.\d{3,}),(-?\d{1,3}\.\d{3,})/, /!3d(-?\d{1,2}\.\d{3,})!4d(-?\d{1,3}\.\d{3,})/, /geo:(-?\d{1,2}\.\d{3,}),(-?\d{1,3}\.\d{3,})/, /^\s*(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})\s*$/]) {
+    const m = d.match(re); if (m && ok(+m[1], +m[2])) return {lat: +(+m[1]).toFixed(6), lng: +(+m[2]).toFixed(6), link: u && /^https:/.test(u) ? u : ''};
+  }
+  if (u) { try { const h = new URL(u); if (h.protocol === 'https:' && ADR_LINK_HOSTS.test(h.hostname) && h.pathname.length > 5) return {link: u}; } catch(_){} }
+  return null;
+}
+function adrPasteOpen(){
+  ADR.pasting = true; adrPinBox(); const box = $('#adr-link'); if (box) box.focus();
+  if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(t => { const r = adrLinkRead(t); if (r && ADR && ADR.pasting) adrLinkUse(r); }).catch(() => {});   // allowed: done in one tap; else they paste into the box
+}
+function adrLinkUse(r){
+  Object.assign(ADR, {pasting: false, link: r.link || '', lat: r.lat ?? null, lng: r.lng ?? null, at: ''}); adrSave(); adrPinBox();
+  toast(r.lat != null ? 'Location added to the map ✓' : 'Location link saved ✓');
+  if (r.lat != null) adrFetch(OLA + 'reverse-geocode?' + new URLSearchParams({latlng: r.lat + ',' + r.lng, api_key: OLA_KEY})).then(d => {   // name it, like a pin set on the map
+    const x = (d.results || [])[0]; if (!x || !ADR || ADR.lat !== r.lat) return;
+    ADR.at = x.formatted_address.replace(/, India$/, '').split(', ').find(v => !/\d/.test(v) && !/Tehsil/.test(v)) || ''; adrSave(); adrPinBox(); }).catch(() => {});
+}
+document.addEventListener('input', e => { if (e.target.id !== 'adr-link' || !ADR) return; const v = e.target.value.trim(); if (!v) return;
+  const r = adrLinkRead(v); if (r) { adrLinkUse(r); return; }
+  const m = $('#adr-linkmsg'); if (m) m.innerHTML = '<b>That is not a map link.</b> Copy the link from the location in WhatsApp or Google Maps and paste it here.'; });   // 21 Oct (Purvi): no pin wanted → the Map button searches the address again
 // ---- the map you move: the pin stays in the middle and the map moves under it (Swiggy); full screen on phones
 async function adrMap(){
   const A = ADR; if (!A) return;
@@ -6772,7 +6815,7 @@ async function adrMap(){
 dlg.addEventListener('close', () => { if (ADR && ADR._map) { try { ADR._map.remove(); } catch(_){} ADR._map = null; } dlg._drag = false; });
 // The Map button: the pin when there is one, else a search for the address
 const fullAddr = c => { const a = String(c.addr || '').trim(), city = cityOf(c); return a && city && a.toLowerCase().includes(city.toLowerCase()) ? a : [a, city].filter(Boolean).join(', '); };
-const mapLink = c => c.adr && c.adr.lat != null ? `https://www.google.com/maps/search/?api=1&query=${c.adr.lat},${c.adr.lng}` : fullAddr(c) ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(fullAddr(c)) : '';
+const mapLink = c => c.adr && c.adr.lat != null ? `https://www.google.com/maps/search/?api=1&query=${c.adr.lat},${c.adr.lng}` : c.adr && /^https:\/\//.test(c.adr.link || '') ? c.adr.link : fullAddr(c) ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(fullAddr(c)) : '';
 
 // ---- the customer page (Purvi: "the customer profile page will have all the details displayed properly (look at odoo)")
 const sheetCache = {};
@@ -6796,6 +6839,7 @@ function archList(){ const m = new Map(); for (const c of CL.list) if (c.arch &&
 // The new-enquiry form (also the fallback while a client loads). Saved clients get renderClientPage below.
 function renderEnquiryPage(){
   if (cpFresh && cpFresh !== cpId) cpFresh = null;
+  if (cpEditing && cpEditing !== cpId) cpEditing = null;
   const el = $('#cp-body'), isNew = cpId === NEW || cpFresh === cpId, c = cpId === NEW ? {} : CL.byId.get(cpId);
   if (!c) { el.innerHTML = `<div class="cp"><div class="card">${CL.state === 'ready' ? 'This client is no longer in the list. <button class="linkbtn" data-act="clients">Back to My Clients</button>' : 'Loading…'}</div></div>`; return; }
   const keepFocus = document.activeElement && document.activeElement.closest('#cp-body') && document.activeElement.id;
@@ -6840,7 +6884,7 @@ function renderEnquiryPage(){
     </div>${isNew ? '' : `<div class="cpf-grid" style="margin-top:10px">${cpField('exec', 'Handled by <small>(on the quotation)</small>', c.exec, 'placeholder="Name and phone"')}</div>`}
     <datalist id="archlist">${archList().map(a => `<option value="${esc(a.name)}">${esc(a.phone || '')}</option>`).join('')}</datalist>${refListHTML()}
     <label class="cpf wide" style="margin-top:12px"><span>Remarks</span><textarea data-k="remarks" id="cpf-remarks" rows="3" placeholder="Anything to remember: budget, timing, who decides, colours they like…">${esc(c.remarks || '')}</textarea></label>
-    ${isNew ? `<div class="cp-done"><span class="hint">Saved as you type. It is on the board under New Enquiry${cpId === NEW ? ' once you type something' : ''}.</span><span class="cp-acts"><button class="btn solid" data-act="done">Done</button></span></div>` : ''}
+    ${isNew ? `<div class="cp-done"><span class="hint">${cpEditing === cpId ? 'Saved as you type. Done takes you back to their page.' : `Saved as you type. It is on the board under New Enquiry${cpId === NEW ? ' once you type something' : ''}.`}</span><span class="cp-acts"><button class="btn solid" data-act="done">Done</button></span></div>` : ''}
   </div>`;
   el.innerHTML = `<div class="cp cp2${isNew ? ' newform' : ''}">
     <div class="cp-top">
@@ -6888,7 +6932,7 @@ cpb.addEventListener('click', async e => {
   const td = e.target.closest('[data-todo]'); if (td) { const t = TD.list.find(x => x.id === td.dataset.todo); if (t) showTodo(t); return; }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act; if (act === 'clients') { go('clients'); return; }
-  if (act === 'done') { await cpFlush(); cpFresh = null; go('clients'); return; }
+  if (act === 'done') { await cpFlush(); const back = cpEditing && cpEditing === cpId; cpFresh = cpEditing = null; ADR = null; if (back) { renderClientPage(); scrollTo(0, 0); } else go('clients'); return; }
   if (act === 'sheet' && cpId === NEW) { await cpFlush(); await ensureClient(); }
   const c = CL.byId.get(cpId); if (!c) return;
   if (act === 'delete') { askDelete(c); return; }
@@ -6916,6 +6960,7 @@ cpb.addEventListener('change', e => {
 // The Measurement sheet and Quotation buttons live in the client bar (ctabsHTML). A new enquiry keeps the simple form (renderEnquiryPage).
 let cpEd = null, cpMore = false;   // cpEd: the detail being changed; cpMore: empty details shown as rows
 const CP_ICON = {
+  edit: '<path d="M13.5 3.5l3 3L7 16H4v-3z"/><path d="M11.5 5.5l3 3"/>',
   phone: '<path d="M5 3h3l1.5 4-2 1.5a9 9 0 0 0 4 4l1.5-2 4 1.5v3a2 2 0 0 1-2 2A14 14 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
   wa: '<path d="M3.5 16.5l1.1-3.4a7 7 0 1 1 2.6 2.5z"/><path d="M7.6 7.4c.3 2 2.6 4.4 4.9 4.9l1-1.1-1.6-.9-.7.6c-.9-.3-1.9-1.3-2.2-2.2l.6-.7-.9-1.6z"/>',
   todo: '<rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4M10 11v4M8 13h4"/>',
@@ -6948,7 +6993,7 @@ function cpHead(c){
   const name = cpEd === 'name' ? `<div class="n-nameed" data-grp="name"><input data-k="name" id="cpf-name" value="${esc(c.name || '')}" placeholder="Name" autocomplete="off"><button class="n-btn dark" data-cpdone="1">Done</button></div>`
     : `<h1 class="n-name"><button data-cped="name" title="Change the name">${esc(c.name || mobile(c.phone) || 'No name yet')}</button></h1>`;
   return `<header class="n-head">
-    <div class="n-headtop"><span class="n-av">${esc(initials(c.name))}</span>${cpMoreMenu(c)}</div>
+    <div class="n-headtop"><span class="n-av">${esc(initials(c.name))}</span><span class="n-topr"><button class="n-btn n-edit" data-cpedit="1">${cpIcon('edit', 16)}Edit client</button>${cpMoreMenu(c)}</span></div>
     ${name}
     <div class="n-sub"><span class="n-stat ${s}">${CP_STAT[s]}${s === 'won' && c.outcome ? ', v' + c.outcome.n : ''}</span>${starsHTML(c.stars || 0, true)}${cpQSum(c)}<span id="cp-saved" class="n-saved">Saved</span></div>
     ${c.latest && c.dsig && c.dsig !== c.sig && statusOf(c) !== 'won' && statusOf(c) !== 'lost' ? `<p class="n-asked n-changed"><span class="n-dot"></span><span>The sheet has changed since v${c.latest} was sent. Open <b>Quotation</b> and download the PDF to send v${c.latest + 1}.</span></p>` : ''}
@@ -7205,6 +7250,7 @@ function cpStartEdit(g){
 cpb.addEventListener('click', async e => {
   const ed = e.target.closest('[data-cped]'); if (ed) { const g = ed.dataset.cped; if (cpEd) await cpFlush(); cpStartEdit(g); return; }
   if (e.target.closest('[data-cpdone]')) { cpFinish(); return; }
+  if (e.target.closest('[data-cpedit]')) { if (cpEd) await cpFlush(); cpEd = null; cpEditing = cpFresh = cpId; ADR = null; renderClientPage(); scrollTo(0, 0); const n = $('#cpf-name'); if (n) n.focus(); return; }
   const m = e.target.closest('[data-cpmore]'); if (m) { cpMore = m.dataset.cpmore === '1'; renderClientPage(); return; }
   const d = e.target.closest('[data-cptodone]'); if (d) { const t = TD.list.find(x => x.id === d.dataset.cptodone); if (t) { d.disabled = true; try { await todoDone(t, true); toast('Done ✓'); } catch (er) { toast('Not saved. Check the internet.'); d.disabled = false; } } }
 });
@@ -7797,4 +7843,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-130118 -->
+<!-- build 20261021-132339 -->
