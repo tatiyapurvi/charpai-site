@@ -334,6 +334,12 @@ tr.row.sel td.first{background:var(--sel)}
 details.rules{padding:0 14px 14px}
 details.rules summary{cursor:pointer;font-weight:600;padding:10px 0}
 details.rules li{margin:3px 0;font-size:14px;color:var(--muted)}
+/* 22 Oct: the rules behind an ⓘ in the sheet's top line */
+.rulei{display:inline-grid;place-items:center;width:24px;height:24px;margin-left:8px;border-radius:50%;border:1.5px solid var(--muted);background:var(--paper);color:var(--muted);font:italic 700 13px/1 Georgia,serif;cursor:pointer;padding:0;flex:none;vertical-align:middle}
+.rulei:hover,.rulei:focus-visible{border-color:var(--ink);color:var(--ink)}
+.bar .rulei{margin-right:auto}   /* right after the sheet's note, the total stays at the end */
+.rulepop{position:fixed;z-index:30;width:min(560px,calc(100vw - 16px));box-sizing:border-box;max-height:min(70vh,520px);overflow:auto;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:12px 14px;font-size:13.5px;line-height:1.45}
+.rulepop[hidden]{display:none}.rulepop-h{display:block;font-size:14px;margin-bottom:6px}.rulepop ul{margin:0;padding-left:18px}.rulepop li{margin:4px 0;color:var(--muted)}
 
 /* wallpaper, fabric, flooring, mattress sheets (3 Oct) */
 table.sheet.psheet{min-width:0;width:max-content}
@@ -1448,7 +1454,7 @@ button.n-prop:hover{background:var(--soft)}
     <div class="wrap">
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
         <div class="panel" id="m-panel">
-          <div class="bar"><span id="note"></span></div>
+          <div class="bar"><span id="note"></span><button type="button" class="rulei" data-rules="#m-rules" aria-label="How this sheet works" title="How this sheet works">i</button></div>
           <div class="hnav" id="hnav" hidden><div class="hn-pills" id="hn-pills"></div><span class="hn-arrs" id="hn-arrs-top" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></span></div>
           <div class="tbl-wrap" id="m-wrap"><div class="tbl-scroll" id="m-scroll">
             <table class="sheet">
@@ -1484,7 +1490,7 @@ button.n-prop:hover{background:var(--soft)}
         </div>
         <div class="panel">
           <div class="totals" id="totals"></div>
-          <details class="rules">
+          <details class="rules" id="m-rules" hidden>
             <summary>The rules this sheet follows</summary>
             <ul>
               <li>Panels: the fewest panels that keep each panel 19–22″ of window. Only if no number of panels lands in 19–22″, up to 24″. The same on 140 cm and 300 cm rolls.</li>
@@ -1525,12 +1531,12 @@ button.n-prop:hover{background:var(--soft)}
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0">
         <div class="panel">
           <div class="pseg" id="p-seg" hidden></div>
-          <div class="bar"><span id="p-note"></span><span class="acts2"><b id="p-total"></b></span></div>
+          <div class="bar"><span id="p-note"></span><button type="button" class="rulei" data-rules="#p-rules-box" aria-label="How this sheet works" title="How this sheet works">i</button><span class="acts2"><b id="p-total"></b></span></div>
           <div class="hnav" id="p-hnav" hidden><div class="hn-pills" id="p-hn-pills"></div><span class="hn-arrs" id="p-hn-arrs-top" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></span></div>
           <div class="tbl-wrap" id="p-wrap"><div class="tbl-scroll" id="p-scroll"><table class="sheet psheet" id="p-table"><thead id="p-head"></thead><tbody id="ptb"></tbody></table></div></div>
           <div class="addbar"><button class="btn solid" id="p-add"></button><span class="hint" id="p-hint"></span><span class="hn-arrs" id="p-hn-arrs" hidden><button class="hn-arr" data-h="-1" aria-label="Move the table left" title="Move left">‹</button><button class="hn-arr" data-h="1" aria-label="Move the table right" title="Move right">›</button></span></div>
         </div>
-        <div class="panel"><details class="rules" open><summary id="p-rules-h">The rules this sheet follows</summary><ul id="p-rules"></ul></details></div>
+        <div class="panel" hidden><details class="rules" id="p-rules-box" open><summary id="p-rules-h">The rules this sheet follows</summary><ul id="p-rules"></ul></details></div>
       </div>
       <aside class="side panel" id="pside" aria-live="polite"></aside>
     </div>
@@ -2282,6 +2288,27 @@ document.addEventListener('scroll', e => { if (!sugg.hidden && e.target !== sugg
 addEventListener('resize', () => { if (!sugg.hidden && suggFor && suggFor.input && suggFor.input.isConnected) placeSugg(suggFor.input); });
 
 // ================= measure table
+// 22 Oct (Purvi: the "How the … sheet works" / "The rules this sheet follows" box "is taking up too much space and high cognitive load,
+// can't this be a simple i icon, which when clicked or hovered over, give the explanation?"): ⓘ in the sheet's top line; the rules open
+// in a pop-up (hover on a laptop, tap on a phone; tap again, tap elsewhere, Esc or scrolling closes it). The box itself is hidden.
+const rulePop = document.createElement('div'); rulePop.className = 'rulepop'; rulePop.hidden = true; rulePop.setAttribute('role', 'tooltip'); document.body.appendChild(rulePop);
+let ruleFor = null, ruleHover = false;
+function ruleShow(b, hover){
+  const box = $(b.dataset.rules); if (!box) return; ruleFor = b; ruleHover = hover;
+  const h = box.querySelector('summary'), ul = box.querySelector('ul');
+  rulePop.innerHTML = `<b class="rulepop-h">${esc(h ? h.textContent : 'How this sheet works')}</b>${ul ? ul.outerHTML : ''}`;
+  rulePop.hidden = false; const r = b.getBoundingClientRect(), vv = window.visualViewport, y1 = vv ? vv.offsetTop + vv.height : innerHeight, w = rulePop.offsetWidth, hh = rulePop.offsetHeight;
+  rulePop.style.left = Math.max(8, Math.min(r.left - 12, innerWidth - w - 8)) + 'px';
+  rulePop.style.top = (r.bottom + 6 + hh < y1 ? r.bottom + 6 : Math.max(8, r.top - hh - 6)) + 'px';
+}
+function ruleHide(){ rulePop.hidden = true; ruleFor = null; }
+document.addEventListener('mouseover', e => { if (!matchMedia('(hover: hover)').matches) return; const b = e.target.closest('[data-rules]');
+  if (b) { if (ruleFor !== b) ruleShow(b, true); } else if (ruleFor && ruleHover && !rulePop.contains(e.target)) ruleHide(); });
+document.addEventListener('click', e => { const b = e.target.closest('[data-rules]');
+  if (b) { e.preventDefault(); if (ruleFor === b && !ruleHover) ruleHide(); else ruleShow(b, false); return; }
+  if (ruleFor && !rulePop.contains(e.target)) ruleHide(); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ruleFor) ruleHide(); });
+document.addEventListener('scroll', e => { if (ruleFor && !rulePop.contains(e.target)) ruleHide(); }, true);
 const tb = $('#tb');
 const AUTO = {
   panelTxt: c => c.ok && c.res.panels ? f1(c.d.W / c.res.panels) : '',
@@ -8191,4 +8218,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-123630 -->
+<!-- build 20261022-123914 -->
