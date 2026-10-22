@@ -7691,9 +7691,9 @@ function msData(){
   { const R = [];
     (state.more.mattress || []).forEach((r, i) => { if (!r.p) return; const c = mtCalc(r); if (!c.ok) return; const mat = r.p === 'Mattress';
       R.push({key: 'mattress|' + i, amt: c.tot || 0, n: {q: c.qty || 1},
-        c: {room: r.room || '', bed: r.bed || '', item: mat ? ['Mattress', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' · ') : r.item || r.p, size: mat && nv(r.L) ? `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″` : '',
+        c: {room: r.room || '', bed: r.bed || '', item: mat ? ['Mattress', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' · ') : [r.p, r.item].filter(Boolean).join(' · '),   // 22 Oct: says what it is (Pillow · FitRest…) size: mat && nv(r.L) ? `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″` : '',
           qty: String(c.qty || 1), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''},
-        u: {area: r.room || '', product: 'MATTRESS', pattern: String(r.bed || '').toUpperCase(), details: mat ? ['Sleepwell', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' ') : r.item || r.p,
+        u: {area: r.room || '', product: String(r.p).toUpperCase(), pattern: String(r.bed || '').toUpperCase(), details: mat ? [r.sup === 'Other' ? '' : 'Sleepwell', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' ') : ['Sleepwell', r.item].filter(Boolean).join(' '),   // 22 Oct (Purvi): PILLOW, MATTRESS PROTECTOR… not MATTRESS for everything
           H: mat && nv(r.L) ? fmt(nv(r.L)) : '', W: mat && nv(r.W) ? fmt(nv(r.W)) : '', qty: `${c.qty || 1} pcs`, note: r.remarks || ''}}); });
     sec('mattress', 'Mattresses and pillows', [['room', 'Room'], ['bed', 'Bed'], ['item', 'Item'], ['size', 'Size'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R,
       L => [`${msSum(L, x => x.n.q)} piece${msSum(L, x => x.n.q) === 1 ? '' : 's'}`]); }
@@ -8159,4 +8159,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-113748 -->
+<!-- build 20261022-114306 -->
