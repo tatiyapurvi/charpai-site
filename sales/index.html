@@ -915,6 +915,8 @@ tr.dash-r:hover td{background:var(--sel)}
 .paper td.r input.qin,.paper td.r input.ms-in{text-align:right}
 .paper tr.qadd td{background:#fff;text-align:left;padding:6px 8px}
 .paper .qe .qh+.qh{margin-left:4px}
+.ro-v{font-weight:600;padding:6px 2px}
+#btb .ro-v{display:inline-block;padding:0 4px;font-size:13px}
 .man-tag{display:inline-block;margin:2px 0 0;padding:1px 6px;border-radius:5px;background:#FDECEC;color:#B00020;font:600 10.5px/1.5 var(--body);white-space:nowrap}
 th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .qe-open{padding:14px 14px 4px;display:flex;flex-direction:column;gap:6px}
@@ -1914,7 +1916,7 @@ const DD_BASE = [DD_OP, DD_SYS, DD_CONTROL, DD_BRACKET];
 const DD_COLS = ['shade', 'W', 'H', 'op', 'motor', 'system', 'control', 'bracket', 'loc', 'qty'];
 const DD_FORMS = {
   roller: {title: 'ROLLER BLIND ORDER', fields: DD_BASE},
-  roman: {title: 'DDECOR ROMAN BLIND ORDER FORM', fields: [...DD_BASE, {k: 'lining', label: 'Lining', opts: ['Blackout Lining', 'Dimout Lining', 'No Lining'], auto: true}]},
+  roman: {title: 'DDECOR ROMAN BLIND ORDER FORM', fields: [...DD_BASE, {k: 'lining', label: 'Lining', opts: ['Blackout Lining', 'Dimout Lining', 'Normal Lining', 'No Lining'], auto: true}]},
   duplex: {title: 'DDECOR DUPLEX BLIND ORDER FORM', fields: DD_BASE},
   sheer: {title: 'SHEER HORIZON BLIND ORDER FORM', fields: DD_BASE},
   panel: {title: 'DDECOR PANEL BLIND ORDER FORM', fields: [...DD_BASE, {k: 'stack', label: 'Stack', opts: ['As per Control', 'Split']}, {k: 'ways', label: 'Ways', opts: ['3 Way', '4 Way', '6 Way']}],
@@ -1946,12 +1948,13 @@ const DD_HEAD = {shade: ['Shade No.', ''], W: ['Width', 'mm'], H: ['Drop', 'mm']
   loc: ['Location', 'of Blinds'], qty: ['No. of Blinds', ''], motorType: ['Motor Type', ''], remoteType: ['Remote Type', ''],
   hcBT: ['Bottom To Top Single Fabric (BT)', 'Shade No.'], hcTDBU: ['Top Down & Bottom Up Single Fabric (TDBU)', 'Shade No.'], hcTop: ['Day & Night', 'Top Shade No.'], hcBottom: ['Day & Night', 'Bottom Shade No.'],
   bar: ['ARC BOTTOM BAR', 'GOLD / ROSE GOLD'], panels: ['NO. OF PANEL', '']};
-// what the price list already says, so nobody has to pick it again (sys = the blind's System, p = its price row)
+// what the price list already says, so nobody has to pick it again (sys = the blind's System, p = its price row). 22 Oct (Purvi: "we are
+// entering double data on row and on side in some cases in roman making from sansaar"): a value the row already says is shown, not asked.
 function ddAuto(k, sys, p){
   const s = String(sys || ''), t = p ? `${p.coll || ''} ${p.design || ''}` : '';
-  if (k === 'system') return /classic/i.test(s) ? 'Classic System' : /evo/i.test(s) ? 'Evo System' : /hybrid/i.test(s) ? 'Hybrid System' : '';
+  if (k === 'system') { const x = `${s} ${t}`; return /classic/i.test(x) ? 'Classic System' : /evo/i.test(x) ? 'Evo System' : /hybrid/i.test(x) ? 'Hybrid System' : ''; }   // Roman (making): the row's option says it
   if (k === 'kind') return /day\s*&\s*night/i.test(s) ? 'Day & Night' : /top.?down/i.test(s) ? 'Top Down Bottom Up (TDBU)' : /free hanging/i.test(s) ? 'Bottom To Top (BT)' : '';
-  if (k === 'lining') return /black\s*-?out/i.test(t) ? 'Blackout Lining' : /dim\s*-?out/i.test(t) ? 'Dimout Lining' : /without|w\/o/i.test(t) ? 'No Lining' : '';
+  if (k === 'lining') return /without|w\/o|no lining/i.test(t) ? 'No Lining' : /black\s*-?out/i.test(t) ? 'Blackout Lining' : /dim\s*-?out/i.test(t) ? 'Dimout Lining' : /lining/i.test(t) ? 'Normal Lining' : '';
   if (k === 'ladder') return /ladder tape/i.test(s) ? 'Ladder Tape (LT)' : /ladder (cord|string)/i.test(s) ? 'Ladder String (LS)' : '';
   return '';
 }
@@ -3234,7 +3237,7 @@ function bRowHTML(b, i){
     ${loading ? '<td></td>' : priced ? `
     <td><input data-bcoll="1" value="${esc(bCollOf(b))}" autocomplete="off" placeholder="${b.sys ? 'Pick' : 'System first'}" style="width:128px"${b.sys ? '' : ' disabled'} aria-label="Collection"></td>` : `
     <td><input data-b="series" value="${esc(b.series)}" placeholder="Series / collection" style="width:128px" aria-label="Series"></td>`}
-    <td>${bDN(b) ? '<div class="dnsh">' : ''}<input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bDN(b) ? 'Top' : bCollOf(b) ? 'Pick' : 'Shade no.'}" title="${bDN(b) ? 'Top fabric (light)' : 'Pick the collection to see its shades, or type the shade number: the collection fills in'}" style="width:70px" aria-label="${bDN(b) ? 'Top (light) shade' : 'Shade number'}">${bDN(b) ? `<input data-bshade2="1" value="${esc((b.o || {}).shade2 || '')}" autocomplete="off" placeholder="Bottom" title="Bottom fabric (dark)" style="width:70px" aria-label="Bottom (dark) shade"></div>` : ''}</td>
+    <td>${bDN(b) ? '<div class="dnsh">' : ''}<input data-b="shade" value="${esc(b.shade)}" autocomplete="off" placeholder="${bDN(b) ? 'Top' : /making/i.test(b.fam || '') ? 'Making option' : bCollOf(b) ? 'Pick' : 'Shade no.'}" title="${bDN(b) ? 'Top fabric (light)' : 'Pick the collection to see its shades, or type the shade number: the collection fills in'}" style="width:70px" aria-label="${bDN(b) ? 'Top (light) shade' : 'Shade number'}">${bDN(b) ? `<input data-bshade2="1" value="${esc((b.o || {}).shade2 || '')}" autocomplete="off" placeholder="Bottom" title="Bottom fabric (dark)" style="width:70px" aria-label="Bottom (dark) shade"></div>` : ''}</td>
     <td><input data-b="W" class="n key" inputmode="decimal" value="${esc(b.W)}" placeholder="0" style="width:64px" aria-label="Width in inches"></td>
     <td><input data-b="H" class="n key" inputmode="decimal" value="${esc(b.H)}" placeholder="0" style="width:64px" aria-label="Height in inches"></td>
     <td class="out sep" data-o="size"></td><td class="out" data-o="area"></td><td class="out" data-o="rate"></td><td class="out m" data-o="amt"></td>   <!-- 20 Oct (Purvi): Result right after Size, then Motor & extras -->
@@ -3270,7 +3273,7 @@ function bOpenSugg(input, b, kind){
 // collections and the lowest MRP per sq ft. Picking a type clears the system and collection (one system = picked by itself).
 function bSetFam(b, v){
   if (b.fam === v) return; b.fam = v; b.sys = b.pid = ''; b.pidAuto = false;
-  const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0];
+  const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; const c1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.coll)); if (c1.length === 1 && !b.coll) b.coll = c1[0];   /* 22 Oct: one collection (Roman making: MADE-UPS) is picked by itself */
   bRedraw(b);
 }
 function bFamSugg(input, b){
@@ -3402,7 +3405,8 @@ function bUpdateRow(b){
   ['op', 'system', 'control', 'bracket'].forEach(k => { const x = o('q-' + k); if (!x || x.contains(document.activeElement)) return;
     const f = c.t && c.t.dd && c.t.fields.find(y => y.k === k && (!y.when || y.when(b.o || {})));
     if (!f) { x.innerHTML = c.t && c.t.dd ? '<span class="hint">—</span>' : ''; return; }
-    const av = f.auto && !has((b.o || {})[k]) ? ddAuto(k, b.sys, c.p) : '', v = (b.o || {})[k] || av;
+    const av = f.auto ? ddAuto(k, b.sys, c.p) : '', v = av || (b.o || {})[k];
+    if (av) { x.innerHTML = `<span class="ro-v" title="From the row">${esc(av.replace(' System', ''))}</span>`; return; }   // the row already says it
     x.innerHTML = `<select data-bq="${k}" class="${has(v) ? '' : 'todo'}" style="width:${k === 'op' ? 112 : k === 'system' ? 118 : k === 'control' ? 58 : 84}px" aria-label="${esc(f.label)}" title="${av ? 'From the price list' : esc(f.label)}">${bOpts(uniq([...f.opts, ...(v ? [v] : [])]).map(y => [y, y.replace(' System', '')]), v, 'Pick')}</select>`; });
   o('det').innerHTML = c.t ? `<button class="miss${c.done === c.need && !c.warn?.length ? ' ok' : ''}" data-ba="det">${c.done === c.need ? 'Order details ✓' : `Order details ${c.done}/${c.need}`}${c.warn && c.warn.length ? ' · check' : ''}</button>` : '';
 }
@@ -3472,7 +3476,7 @@ btb.addEventListener('input', e => {
   if (f === 'shade' && e.isTrusted && document.activeElement === e.target) { if (bDN(b) && dnPairs(b).length) { e.target._typed = true; b.shade = e.target.value; save(); bDNSugg(e.target, b, 'top'); return; } bShadeSugg(e.target, b); }
   b[f] = e.target.value;
   if (f === 'sup') { b.fam = b.sys = b.pid = b.coll = ''; b.adds = []; }   // another company's motors and extras don't fit
-  if (f === 'fam') { b.sys = b.pid = b.coll = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; }
+  if (f === 'fam') { b.sys = b.pid = b.coll = ''; const s1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.sys)); if (s1.length === 1) b.sys = s1[0]; const c1 = uniq(BL.rows.filter(r => r.sup === b.sup && r.fam === b.fam).map(r => r.coll)); if (c1.length === 1 && !b.coll) b.coll = c1[0];   /* 22 Oct: one collection (Roman making: MADE-UPS) is picked by itself */ }
   if (f === 'sys') { b.pid = ''; b.pidAuto = false; shadePick(b); b.coll = (BL.byId.get(b.pid) || {}).coll || ''; }
   if (f === 'pid') b.pidAuto = false;
   if (f === 'shade') { const t = blindType(b.sup, b.fam), l = t && t.shades && (BL.shades[b.sup] || {})[t.shades]; const hit = l && l.find(x => x[0] === b.shade.trim()); if (hit) { b.series = hit[1]; const si = tr.querySelector('[data-b=series]'); if (si) si.value = hit[1]; }
@@ -3632,8 +3636,10 @@ function renderBSide(){
   if (!t) { el.innerHTML = head + `<div class="empty">Pick the blind type to see what the company needs on the order.</div>`; return; }
   const fld = f => {
     if (f.when && !f.when(o)) return '';
-    const av = f.auto && !has(o[f.k]) ? ddAuto(f.k, b.sys, c.p) : '', v = o[f.k] || av, miss = !has(v) && !B_OPTIONAL.has(f.k) ? ' todo' : '';
-    return `<div class="fld${miss}"><label for="bo-${f.k}">${esc(f.label)}${av ? ' <small class="hint">from the price list</small>' : ''}</label>${f.opts
+    const av = f.auto ? ddAuto(f.k, b.sys, c.p) : '';
+    if (av) return `<div class="fld"><label>${esc(f.label)}</label><div class="ro-v" title="Comes from what is picked in the row. To change it, change the row.">${esc(av)} <small class="hint">from the row</small></div></div>`;   // said by the row: not asked again
+    const v = o[f.k] || '', miss = !has(v) && !B_OPTIONAL.has(f.k) ? ' todo' : '';
+    return `<div class="fld${miss}"><label for="bo-${f.k}">${esc(f.label)}</label>${f.opts
       ? `<select id="bo-${f.k}" data-bo="${f.k}">${bOpts(uniq([...f.opts, ...(v ? [v] : [])]).map(x => [x, x]), v, 'Choose')}</select>`
       : `<input id="bo-${f.k}" data-bo="${f.k}" value="${esc(v)}" placeholder="${esc(f.text || '')}">`}</div>`;
   };
@@ -3677,7 +3683,7 @@ function orderHead(gr, col){ if (gr.t.dd) return DD_HEAD[col] ? DD_HEAD[col].fil
 // D'Decor's forms (22 Oct): capitals as their forms are filled; the shade is collection + shade (+ " WITH BLACKOUT LINING" on a Roman);
 // a honeycomb's shade goes in the column of its kind, NIL in the others
 function ddCell(col, {b, c}){
-  const o = b.o || {}, val = k => o[k] || ddAuto(k, b.sys, c.p) || '', up = v => String(v || '').toUpperCase();
+  const o = b.o || {}, val = k => ddAuto(k, b.sys, c.p) || o[k] || '', up = v => String(v || '').toUpperCase();
   const lin = c.t.key === 'roman' ? val('lining') : '', base = c.rom && c.rom.x ? c.rom.x.n : [c.p ? c.p.coll : bCollOf(b) || b.series, b.shade || (c.p ? c.p.design : '')].filter(Boolean).join(' ');
   const shade = up(base + (lin && lin !== 'No Lining' ? ' WITH ' + lin : '')), kind = val('kind'), mot = o.op === 'Motorized';
   switch (col) {
@@ -8746,4 +8752,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-193353 -->
+<!-- build 20261022-194107 -->
