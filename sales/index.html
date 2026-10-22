@@ -6499,7 +6499,7 @@ if ($('#copy')) $('#copy').onclick = () => {
 
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;   // local date: toISOString() is a day behind in IST before 5:30 am
 const dayPlus = n => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
-const INTEREST = [['curtains', 'Curtains'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['uph', 'Upholstery'], ['flooring', 'Flooring / carpet'], ['mattress', 'Mattress'], ['foam', 'Foam'], ['bedbath', 'Bed & bath'], ['motor', 'Motorised']];
+const INTEREST = [['curtains', 'Curtains'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['uph', 'Upholstery'], ['flooring', 'Flooring / carpet'], ['mattress', 'Mattress'], ['foam', 'Foam'], ['bedbath', 'Bed & bath'], ['furniture', 'Furniture'], ['motor', 'Motorised']];   // Furniture: 22 Oct (Purvi)
 // Project types from Charpai's past customers (1,306 in the 2021–2026 quotations): mostly homes, then hotels and havelis,
 // offices and exporters, builders, government (CPWD, courts), community bhawans, shops, doctors and schools.
 const PTYPES = [['home', 'Home (flat / house)'], ['villa', 'Bungalow / villa / farmhouse'], ['hotel', 'Hotel / resort / haveli'], ['office', 'Office / company'], ['shop', 'Shop / showroom'],
@@ -8026,7 +8026,7 @@ const HI = {
   'Paste location link': 'लोकेशन लिंक पेस्ट करें', 'Set pin': 'पिन लगाएँ', 'Move pin': 'पिन हिलाएँ', 'Remove pin': 'पिन हटाएँ', 'Remove': 'हटाएँ',
   'Location they sent': 'उनकी भेजी लोकेशन', 'Open ↗': 'खोलें ↗', 'Map': 'मैप', 'Call': 'कॉल', 'WhatsApp': 'WhatsApp',
   'Interested in': 'क्या चाहिए', 'Project type': 'कैसी जगह', 'How they found us': 'हमें कैसे जाना',
-  'Bed & bath': 'बेड और बाथ', 'Flooring / carpet': 'फ़्लोरिंग / कारपेट', 'Foam': 'फ़ोम', 'Motorised': 'मोटर वाला',
+  'Bed & bath': 'बेड और बाथ', 'Flooring / carpet': 'फ़्लोरिंग / कारपेट', 'Foam': 'फ़ोम', 'Motorised': 'मोटर वाला', 'Furniture': 'फ़र्नीचर',
   'Home (flat / house)': 'घर (फ़्लैट / मकान)', 'Bungalow / villa / farmhouse': 'बंगला / विला / फ़ार्महाउस', 'Hotel / resort / haveli': 'होटल / रिज़ॉर्ट / हवेली',
   'Office / company': 'ऑफ़िस / कंपनी', 'Shop / showroom': 'दुकान / शोरूम', 'Hospital / clinic': 'हॉस्पिटल / क्लिनिक', 'School / college / coaching': 'स्कूल / कॉलेज / कोचिंग',
   'Restaurant / café / banquet': 'रेस्टोरेंट / कैफ़े / बैंक्वेट', 'Builder project': 'बिल्डर प्रोजेक्ट', 'Government / defence': 'सरकारी / डिफ़ेंस',
@@ -8136,4 +8136,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261021-215850 -->
+<!-- build 20261022-112453 -->
