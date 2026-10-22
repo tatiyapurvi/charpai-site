@@ -905,6 +905,17 @@ tr.dash-r:hover td{background:var(--sel)}
 .qh:hover{background:#DFE3DF}
 .qh.show{background:#FBEBB5;color:#2B230A}
 .qh.show:hover{background:#F6DD8A}
+.man{color:#C00000!important;font-weight:600}   /* typed by hand (22 Oct): red on screen, plain for the client */
+#print-root .man,.qv-body .man{color:inherit!important;font-weight:inherit}
+.paper input.qin,.paper input.ms-in{width:100%;min-width:62px;box-sizing:border-box;border:1px solid #9bb7d4;border-radius:4px;padding:4px 5px;font:500 12.5px var(--body);color:#1B211E;background:#fffdf3}
+.paper input.qin.man,.paper input.ms-in.man{color:#C00000;font-weight:600}
+.paper input.qin:focus,.paper input.ms-in:focus{outline:2px solid var(--tape);border-color:var(--tape-ink)}
+.paper input.qin[data-qm=what],.paper input.ms-in[data-msm=details]{min-width:190px}
+.paper input.qin[data-qm=product],.paper input.qin[data-qm=area],.paper input.ms-in[data-msm=area]{min-width:110px}
+.paper td.r input.qin,.paper td.r input.ms-in{text-align:right}
+.paper tr.qadd td{background:#fff;text-align:left;padding:6px 8px}
+.paper .qe .qh+.qh{margin-left:4px}
+.man-tag{display:inline-block;margin:2px 0 0;padding:1px 6px;border-radius:5px;background:#FDECEC;color:#B00020;font:600 10.5px/1.5 var(--body);white-space:nowrap}
 th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .qe-open{padding:14px 14px 4px;display:flex;flex-direction:column;gap:6px}
 /* the measurement sheet download page (19 Oct) */
@@ -2365,7 +2376,7 @@ function rowHTML(r, i){
   // scrolling sideways; every list still opens with the full names (data-full). Order: what you measure first, the
   // results next, then track + fixing, then the boxes you change only when needed.
   return `<tr class="row" data-id="${r.id}">
-    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this row" aria-label="Row ${i+1}, drag to move">${i+1}</span><input id="${id('room')}" data-f="room" list="roomlist" value="${esc(r.room)}" placeholder="Room" style="width:104px"></div></td>
+    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this row" aria-label="Row ${i+1}, drag to move">${i+1}</span>${manTag(r, 1)}<input id="${id('room')}" data-f="room" list="roomlist" value="${esc(r.room)}" placeholder="Room" style="width:104px"></div></td>
     <td><select id="${id('layer')}" data-f="layer" style="width:50px" aria-label="Main or sheer curtain">${optS(['Main','Sheer'], r.layer, v => v[0], v => v + ' curtain')}</select></td>
     <td><select id="${id('sup')}" data-f="sup" style="width:80px" aria-label="Company"><option value="" data-full="Any company">Any</option>${Object.entries(SUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${r.sup === k ? ' selected' : ''}>${esc(QCODE[k] || k)}</option>`).join('')}</select></td>
     <td><input id="${id('fabric')}" data-f="fabric" autocomplete="off" value="${esc(r.fabric)}" placeholder="Type to search" style="width:178px" class="${fabricState(r)}" aria-label="Curtain fabric" title="${esc(r.fabric)}"></td>
@@ -2920,7 +2931,10 @@ function rowAmount(row, c){
   const G = gstRates(), items = [];
   const add = (label, qty, unit, rate, gst, incl) => { const mrp = incl ? (has(rate) ? Math.round(rate) : null) : mrpOf2(rate, gst); items.push({label, qty, unit, mrp, amt: mrp == null ? null : Math.round(qty * mrp)}); };
   const cf = catRow(row);
-  add('Fabric', c.res.qty, 'm', cf ? cf.r : null, cf ? (cf.g || 5) : +G.fabric, false);
+  const mm = row.man || {}, mq = qmNum(mm.qty), mp = qmNum(mm.mrp);   // typed on View quotation / measurement sheet (22 Oct)
+  if (mq != null || mp != null) add('Fabric', mq ?? c.res.qty, 'm', mp ?? (cf ? mrpOf2(cf.r, cf.g || 5) : null), 0, true);
+  else add('Fabric', c.res.qty, 'm', cf ? cf.r : null, cf ? (cf.g || 5) : +G.fabric, false);
+  if (qmNum(mm.amt) != null) items[0].amt = Math.round(qmNum(mm.amt));
   if (c.lin) { const lf = findFabric(c.lin.name); add('Lining', c.lin.m, 'm', lf ? lf.sale : null, +G.fabric, gstIncl('lining')); }
   add('Stitching', c.res.panels, c.res.panels === 1 ? 'panel' : 'panels', prices.stitch[stitchKey(row.style, !!c.lin)], +G.stitching, gstIncl('stitching'));
   if (c.res.track) {
@@ -2947,7 +2961,7 @@ function renderSide(){
   const line = (k, v, cls) => `<dt>${k}</dt><dd${cls ? ` class="${cls}"` : ''}>${v}</dd>`;
   // 17 Oct (Purvi: "the visual of the curtain has gone down … room stays as the first line, then panels fabric track, then the drawing,
   // then other things"): name line → big numbers + amount → front view → the details list → money → the other drawings.
-  const head = `<div class="side-h id-h"><h2>${esc(r.room || 'Room not named')}</h2><span class="layer ${r.layer === 'Sheer' ? 'sheer' : 'main'}">${r.layer === 'Sheer' ? 'Sheer curtain' : 'Main curtain'}</span><span class="idx">#${i + 1}</span></div>`;
+  const head = `<div class="side-h id-h"><h2>${esc(r.room || 'Room not named')}</h2><span class="layer ${r.layer === 'Sheer' ? 'sheer' : 'main'}">${r.layer === 'Sheer' ? 'Sheer curtain' : 'Main curtain'}</span>${manTag(r)}<span class="idx">#${i + 1}</span></div>`;
   const spec = `<dl class="spec">
       ${line('Size', r.H || r.W ? `<span class="big">${fmt(r.H) || '—'}″ high × ${fmt(r.W) || '—'}″ wide</span>` : miss('Not measured yet'))}
       ${line('Style', `${esc(r.style)} · ${esc(pt)} parts${own ? ' <span class="ed">edited</span>' : ''}`)}
@@ -3118,6 +3132,8 @@ function bCalc(b){
   c.charge = Math.ceil(Math.max(c.sqft, minSqft) * 2 - 1e-9) / 2;   // rounded up to the next ½ sq ft, as in the quotations
   c.minApplied = !!p && c.sqft < minSqft;
   if (p) { c.gst = p.gst; c.mrp = Math.round(p.sqm * (1 + p.gst / 100) / SQFT); c.amt = c.charge * c.q * c.mrp; }
+  { const m = b.man || {}, sq = qmNum(m.sqft) ?? c.charge * c.q, mr = qmNum(m.mrp) ?? c.mrp, am = qmNum(m.amt);   // typed on View quotation / measurement sheet (22 Oct)
+    if (m.mrp != null || m.sqft != null || am != null) { if (mr != null) { c.mrp = mr; c.amt = Math.round(sq * mr); } if (am != null) c.amt = Math.round(am); c.typed = c.amt != null; } }
   // Extras: each is priced on its own unit; "each" items use the typed number, else 1 (a motor: one per blind)
   c.adds = (b.adds || []).map((x, i) => { const a = BL.addons.find(y => y.key === x.k); if (!a) return null;
     const units = r2(a.uom === 'per sq m' ? c.charge / SQFT * q : a.uom === 'per running m' ? 2 * H * 0.0254 * q : a.uom === 'per m width' ? W * 0.0254 * q : a.uom === 'per blind' ? q
@@ -3146,7 +3162,7 @@ function bRowHTML(b, i){
   const adds = BL.addons.filter(a => a.sup === b.sup);
   const list = shadeListId(b, t);
   return `<tr class="row" data-id="${b.id}">
-    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this blind" aria-label="Blind ${i + 1}, drag to move">${i + 1}</span><input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:100px"></div></td>
+    <td class="first"><div class="cell"><span class="idx grip" title="Drag to move this blind" aria-label="Blind ${i + 1}, drag to move">${i + 1}</span>${manTag(b, 1)}<input data-b="room" value="${esc(b.room)}" list="roomlist" placeholder="Room" style="width:100px"></div></td>
     <td><select data-b="sup" style="width:84px" title="${esc(BSUPS[b.sup] || '')}">${Object.entries(BSUPS).map(([k, n]) => `<option value="${k}" data-full="${esc(n)}"${k === b.sup ? ' selected' : ''}${BL.state === 'ready' && !bPriced(k) && b.sup !== k ? ' disabled' : ''}>${esc(BSHORT[k] || n)}</option>`).join('')}</select></td>
     <td><input data-bfam="1" value="${esc(b.fam)}" autocomplete="off" placeholder="Pick a type" style="width:100px" aria-label="Blind type"></td>
     ${loading ? `<td class="hint">${esc(loading)}</td>` : priced ? `
@@ -3318,7 +3334,7 @@ function bUpdateRow(b){
   o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>${bad ? '<span class="tag bad-t">Size not possible</span>' : ''}${c.parts > 1 ? `<span class="tag" style="color:var(--warn)">${c.parts} parts of ${c.partMm}</span>` : ''}` : '';
   o('area').innerHTML = c.ok ? `${cpF(c.charge * c.q)}<span class="u"> sq ft</span>${c.minApplied ? `<span class="tag" style="color:var(--warn)">minimum ${cpF(r2(c.p.min * SQFT))} sq ft</span>` : c.q > 1 ? `<span class="tag" style="color:var(--muted)">${c.q} × ${cpF(c.charge)}</span>` : ''}` : '';
   o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.p.gst}% GST</span>${c.p.extra === 'to confirm' ? '<span class="tag" style="color:var(--warn)">price to confirm</span>' : ''}` : '';
-  o('amt').innerHTML = bad ? '<span class="bad-t" title="D\'Decor can\'t make this size">Not possible</span>' : c.ok && c.p ? `<span class="v">${rs(c.amt + (c.addonAmt || 0) + (c.fabAmt || 0))}</span>${c.fabAmt ? `<span class="tag" style="color:var(--muted)">incl. fabric ${rs(c.fabAmt)}</span>` : ''}${c.addonAmt ? `<span class="tag" style="color:var(--muted)">incl. extras ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
+  o('amt').innerHTML = bad ? '<span class="bad-t" title="D\'Decor can\'t make this size">Not possible</span>' : c.ok && (c.p || c.typed) ? `<span class="v">${rs(c.amt + (c.addonAmt || 0) + (c.fabAmt || 0))}</span>${c.fabAmt ? `<span class="tag" style="color:var(--muted)">incl. fabric ${rs(c.fabAmt)}</span>` : ''}${c.addonAmt ? `<span class="tag" style="color:var(--muted)">incl. extras ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
   o('det').innerHTML = c.t ? `<button class="miss${c.done === c.need && !c.warn?.length ? ' ok' : ''}" data-ba="det">${c.done === c.need ? 'Order details ✓' : `Order details ${c.done}/${c.need}`}${c.warn && c.warn.length ? ' · check' : ''}</button>` : '';
 }
 function renderBlinds(){
@@ -3333,7 +3349,7 @@ function renderBlinds(){
   $('#bnote').textContent = [ix && `D'Decor Sansaar: ${nn(ix.count)} prices`, BL.info.EXP && `D'Decor Express: ${nn(BL.info.EXP.count)} prices`, BL.info.FC && `D'Decor FabriCare: ${nn(BL.info.FC.count)} prices`, BL.info.AP && BL.info.AP.count && `Asian Paints: ${nn(BL.info.AP.count)} prices`,
     mv && (mv.count ? `Marvel: ${nn(mv.count)} prices and ${nn(mv.shades)} shades` : `Marvel: ${nn(mv.shades)} shades, no prices`)].filter(Boolean).join(' · ') + '. Rates are MRP per sq ft, GST included. Type a shade number and the collection fills in.';
 }
-function bTotal(){ const t = state.blinds.reduce((a, b) => { const c = bCalc(b); return a + (c.ok && c.p && !(c.lim && c.lim.bad) ? c.amt + (c.addonAmt || 0) + (c.fabAmt || 0) : 0); }, 0); $('#btotal').textContent = t ? 'Blinds total ' + rs(t) + ' incl. GST' : ''; }
+function bTotal(){ const t = state.blinds.reduce((a, b) => { const c = bCalc(b); return a + (c.ok && (c.p || c.typed) && !(c.lim && c.lim.bad) ? c.amt + (c.addonAmt || 0) + (c.fabAmt || 0) : 0); }, 0); $('#btotal').textContent = t ? 'Blinds total ' + rs(t) + ' incl. GST' : ''; }
 function bMarkSel(){ const b = state.blinds[state.bsel]; $('#btb').querySelectorAll('tr.row').forEach(tr => tr.classList.toggle('sel', !!b && +tr.dataset.id === b.id)); }
 function bSelect(tr){ const i = state.blinds.findIndex(x => x.id === +tr.dataset.id); if (i < 0 || i === state.bsel) return; state.bsel = i; bMarkSel(); renderBSide(); save(); }
 // Typing a shade number picks the collection (Purvi, 6 Oct). It needs the company and type (and system) chosen first.
@@ -3543,7 +3559,7 @@ function romanSideHTML(b, c){
 function renderBSide(){
   const b = state.blinds[state.bsel] || state.blinds[0], el = $('#bside'); if (!b) { el.innerHTML = ''; return; }
   const i = state.blinds.indexOf(b), c = bCalc(b), t = c.t, o = b.o || (b.o = {});
-  const head = `<div class="side-h"><h2>${i + 1}. ${esc(b.room || 'Opening')}</h2><span class="sub">${esc(BSUPS[b.sup])}${b.fam ? ' · ' + esc(b.fam) + (t && t.name.toLowerCase() !== b.fam.toLowerCase() ? ` (${esc(t.name)})` : '') : ''}${c.p ? ' · ' + esc(c.p.coll) : b.series ? ' · ' + esc(b.series) : ''}${b.shade ? ' ' + esc(b.shade) : ''}</span></div>`;
+  const head = `<div class="side-h"><h2>${i + 1}. ${esc(b.room || 'Opening')}</h2>${manTag(b)}<span class="sub">${esc(BSUPS[b.sup])}${b.fam ? ' · ' + esc(b.fam) + (t && t.name.toLowerCase() !== b.fam.toLowerCase() ? ` (${esc(t.name)})` : '') : ''}${c.p ? ' · ' + esc(c.p.coll) : b.series ? ' · ' + esc(b.series) : ''}${b.shade ? ' ' + esc(b.shade) : ''}</span></div>`;
   if (!t) { el.innerHTML = head + `<div class="empty">Pick the blind type to see what the company needs on the order.</div>`; return; }
   const fld = f => {
     if (f.when && !f.when(o)) return '';
@@ -3675,7 +3691,7 @@ const TNC = ['50% ADVANCE AGAINST ORDER & REST 50% BEFORE DELIVERY OF THE PRODUC
   'ALL DISPUTES ARE SUBJECT TO JODHPUR JURISDICTION.', 'PAYMENT MODE SHOULD BE ONLINE & CHEQUE.'];
 // Product column names a customer can read: "D'Decor motor" → "Blind motor" (the brand is in the details column).
 const addonProduct = g => { const k = g.replace(/^(D'Decor|Somfy|FabriCare) /i, ''); return /^skylight/i.test(k) ? 'Skylight blind fitting' : /assembly/i.test(k) ? 'Motorised blind assembly' : 'Blind ' + k.toLowerCase(); };
-const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['flooring', 'Flooring'], ['mattress', 'Mattresses and pillows'], ['bedbath', 'Bed and bath'], ['uph', 'Upholstery material'], ['foam', 'Upholstery foam'], ['hw', 'Accessories and installation']];   // Wallpaper after Blinds, then Flooring (Purvi, 6 Oct); Sleepwell mattresses and foam after Flooring (6 Oct)
+const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['flooring', 'Flooring'], ['mattress', 'Mattresses and pillows'], ['bedbath', 'Bed and bath'], ['uph', 'Upholstery material'], ['foam', 'Upholstery foam'], ['other', 'Other items'], ['hw', 'Accessories and installation']];   // Wallpaper after Blinds, then Flooring (Purvi, 6 Oct); Sleepwell mattresses and foam after Flooring (6 Oct)
 // 22 Oct (Purvi: "combine curtains and blinds … the room wise clubbing needs to show how many curtains/blinds are going in each room"):
 // shown as ONE section, room by room, each room under a heading row "Master bedroom · 2 curtains · 1 blind". Only the showing changes:
 // the data keeps Curtain fabric and Blinds apart (the discount on curtain fabric, versions and the "sheet changed" check use them).
@@ -3694,7 +3710,7 @@ function qDisp(S, sub){
   }
   return out;
 }
-const QOPT = ['wallpaper', 'flooring', 'mattress', 'bedbath', 'uph', 'foam'];   // 'foam' only in versions saved on 6 Oct, before Upholstery became one list   // drawn only when the client has some, so older quotations keep their version number
+const QOPT = ['wallpaper', 'flooring', 'mattress', 'bedbath', 'uph', 'foam', 'other'];   // 'foam' only in versions saved on 6 Oct, before Upholstery became one list   // drawn only when the client has some, so older quotations keep their version number
 // Accessories and installation splits into Manual and Motorised when a quote has both (Purvi, 2 Oct). Lines carry grp 'man' | 'mot'.
 // Returns null (no split) for other sections, a quote with only one kind, or an old saved version without grp.
 const HW_PARTS = [['man', 'Manual (non-motorised)'], ['mot', 'Motorised']];
@@ -3722,7 +3738,7 @@ function byRoom(list, roomOf = x => x.room){
   return list.map((x, i) => [x, i]).sort((a, b) => first.get(roomKey(roomOf(a[0]))) - first.get(roomKey(roomOf(b[0]))) || a[1] - b[1]).map(a => a[0]);
 }
 function qSections(){
-  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], mattress: [], bedbath: [], uph: [], foam: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
+  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], mattress: [], bedbath: [], uph: [], foam: [], other: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
   // Supplier list prices (fabric RRP, blinds per m²) are before GST, so GST is added. Our own tables follow their GST switch (gstIncl).
   const add = (sec, l) => { l.mrp = l.incl ? (has(l.rate) ? Math.round(l.rate) : null) : mrpOf2(l.rate, l.gst); l.amt = l.mrp == null ? null : Math.round(l.qty * l.mrp); l.camt = has(l.cost) ? l.qty * l.cost : null; S[sec].push(l); };
   const stitch = new Map(); let pieces = 0, kits = 0;
@@ -3737,7 +3753,7 @@ function qSections(){
   byRoom(state.rows).forEach(row => {
     const c = calc(row); if (!c.ok) return;
     const {res, lin} = c, cf = catRow(row);
-    add('fabric', {area: row.room, product: row.layer === 'Sheer' ? 'Sheer curtain fabric' : 'Main curtain fabric', what: fabricName(row), hsn: cf ? cf.h || '' : '', qty: res.qty, unit: 'MTR',
+    add('fabric', {srcs: ['curtains|' + row.id], typed: cf ? null : `${QCODE[row.sup] || ''} ${String(row.fabric || '').trim()}`.trim() || null, area: row.room, product: row.layer === 'Sheer' ? 'Sheer curtain fabric' : 'Main curtain fabric', what: fabricName(row), hsn: cf ? cf.h || '' : '', qty: res.qty, unit: 'MTR',
       rate: cf ? cf.r : null, gst: cf ? (cf.g || 5) : +G.fabric, cost: cf ? (CAT.cost.get(row.sup + '|' + row.key) ?? null) : null, fix: cf ? 'fabric' : 'pick'});
     if (lin) { const lf = findFabric(lin.name); add('fabric', {area: row.room, product: 'Lining curtain fabric', what: lin.name, hsn: H.lining || '', qty: lin.m, unit: 'MTR', rate: lf ? lf.sale : null, gst: +G.fabric, cost: lf ? costs.fabrics[lf.n] : null, incl: gstIncl('lining'), fix: 'fabric'}); }
     // Stitching is clubbed by its rate: style ± lining (Purvi, 1 Oct). 7 + 6 American Pleat panels = one line of 13.
@@ -3763,7 +3779,7 @@ function qSections(){
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
     const typed = `${b.series || ''} ${b.shade || ''}`.trim();   // 20 Oct (Purvi): no collection picked → said plainly, as curtain fabric
-    add('blinds', {area: b.room, product: isRomanMaking(p) ? (b.sup === 'LOC' ? (/With lining/.test(p.coll) ? 'Roman blind (local stitching + lining)' : 'Roman blind (local stitching)') : 'Roman blind (stitching + lining)') : b.fam + ' blind', nocoll: !p, what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + bShadeTxt(b, b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
+    add('blinds', {srcs: ['blinds|' + b.id], area: b.room, product: isRomanMaking(p) ? (b.sup === 'LOC' ? (/With lining/.test(p.coll) ? 'Roman blind (local stitching + lining)' : 'Roman blind (local stitching)') : 'Roman blind (stitching + lining)') : b.fam + ' blind', nocoll: !p, what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + bShadeTxt(b, b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
       hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
     if (c.rom && c.rom.x) { const x = c.rom.x;   // 22 Oct: the Roman's fabric, right under its stitching
       add('blinds', {area: b.room, product: 'Roman blind fabric', what: `${QCODE[c.rom.fs] || ''} ${x.n} · ${c.rom.n} panel${c.rom.n > 1 ? 's' : ''} × ${fmt(c.rom.drop)}″`.trim(), hsn: x.h || '', qty: c.rom.m, unit: 'MTR',
@@ -3777,14 +3793,14 @@ function qSections(){
   ensureMore(); byRoom(state.more.wallpaper || []).forEach(r => {
     const c = MP.wallpaper.calc(r); if (!c.ok) return;
     const it = wpItem(r), mural = r.kind !== 'Roll'; if (!mural && !c.rolls) return;
-    const k = it ? r.sup + '|' + it.sku : [r.sup, r.design, r.kind, r.roll].join('|'), g = wp.get(k) || {rooms: new Set(), rolls: 0, sqft: 0, r, it, mural};
-    g.rooms.add(r.room || '—'); g.rolls += c.rolls || 0; g.sqft += mural ? c.area : 0; wp.set(k, g);
+    const k = it ? r.sup + '|' + it.sku : [r.sup, r.design, r.kind, r.roll].join('|'), g = wp.get(k) || {rooms: new Set(), rolls: 0, sqft: 0, r, it, mural, srcs: []};
+    g.rooms.add(r.room || '—'); g.srcs.push('wallpaper|' + state.more.wallpaper.indexOf(r)); g.rolls += c.rolls || 0; g.sqft += mural ? c.area : 0; wp.set(k, g);
   });
   for (const g of wp.values()) {
     const {r, it} = g, byRoll = !!(it && WPL[r.sup] && WPL[r.sup].uom === 'roll'), inBox = byRoll ? 1 : (wpRoll(r.roll) || [])[2] || 1, what = it ? `${r.sup} ${it.sku} ${it.name} (${it.coll})` : [r.sup, r.design].filter(Boolean).join(' ') || 'Design not named';
-    if (it && !wpSq(it)) add('wallpaper', {area: roomsTxt(g.rooms), product: 'Wallpaper', what, hsn: it.hsn || H.wallpaper || '', qty: Math.ceil(g.rolls / inBox), unit: byRoll ? 'ROLL' : 'BOX',
+    if (it && !wpSq(it)) add('wallpaper', {srcs: g.srcs, area: roomsTxt(g.rooms), product: 'Wallpaper', what, hsn: it.hsn || H.wallpaper || '', qty: Math.ceil(g.rolls / inBox), unit: byRoll ? 'ROLL' : 'BOX',
       rate: it.rrp, gst: it.gst, cost: WPC.has(r.sup + '|' + it.sku) ? WPC.get(r.sup + '|' + it.sku) : null, fix: 'wpick'});
-    else add('wallpaper', {area: roomsTxt(g.rooms), product: g.mural ? 'Wallpaper mural' : 'Wallpaper', what, hsn: H.wallpaper || '', qty: g.mural ? r2(g.sqft) : g.rolls, unit: g.mural ? 'SQ FT' : 'ROLL',
+    else add('wallpaper', {srcs: g.srcs, area: roomsTxt(g.rooms), product: g.mural ? 'Wallpaper mural' : 'Wallpaper', what, hsn: H.wallpaper || '', qty: g.mural ? r2(g.sqft) : g.rolls, unit: g.mural ? 'SQ FT' : 'ROLL',
       rate: null, gst: 18, cost: null, fix: 'wpick'});
   }
   // Flooring (Purvi, 6 Oct): one line per product, rooms of the same product clubbed; quantity = sq ft to order (area + wastage).
@@ -3792,28 +3808,28 @@ function qSections(){
   const fl = new Map();
   byRoom(state.more.flooring || []).forEach(r => {
     const c = MP.flooring.calc(r); if (!c.ok || !c.order) return;
-    const it = flItem(r), k = it ? r.sup + '|' + it.code : [r.sup, r.type, r.product].join('|'), g = fl.get(k) || {rooms: new Set(), sqft: 0, r, it};
-    g.rooms.add(r.room || '—'); g.sqft += c.order; fl.set(k, g);
+    const it = flItem(r), k = it ? r.sup + '|' + it.code : [r.sup, r.type, r.product].join('|'), g = fl.get(k) || {rooms: new Set(), sqft: 0, r, it, srcs: []};
+    g.rooms.add(r.room || '—'); g.srcs.push('flooring|' + state.more.flooring.indexOf(r)); g.sqft += c.order; fl.set(k, g);
   });
   for (const g of fl.values()) {
     const {r, it} = g, what = it ? `${r.sup} ${FLL[r.sup].brand || ''} ${it.name}${it.rollm ? ` (${it.rollm} m roll)` : it.tile ? ` (${it.tile} tiles)` : ''}`.replace(/\s+/g, ' ') : [r.sup, r.product].filter(Boolean).join(' ') || 'Product not named';
-    add('flooring', {area: roomsTxt(g.rooms), product: (it ? it.type : r.type) || 'Flooring', what, hsn: it ? it.hsn : '', qty: g.sqft, unit: 'SQ FT',
+    add('flooring', {srcs: g.srcs, area: roomsTxt(g.rooms), product: (it ? it.type : r.type) || 'Flooring', what, hsn: it ? it.hsn : '', qty: g.sqft, unit: 'SQ FT',
       rate: it ? it.rrp : null, gst: it ? it.gst : 18, cost: it && FLC.has(r.sup + '|' + it.code.toUpperCase()) ? FLC.get(r.sup + '|' + it.code.toUpperCase()) : null, fix: 'fpick'});
   }
   // Mattresses and foam (6 Oct): Sleepwell MRP already includes GST (incl), one line per row. Pillows and the rest are clubbed by item.
   byRoom((state.more.mattress || []).filter(r => r.p === 'Mattress')).forEach(r => {
     const c = mtCalc(r); if (!c.ok) return;
     const m = swMat(r), q = Math.max(1, parseInt(r.qty, 10) || 1), size = `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″${c.std ? '' : ' (custom size)'}`;
-    add('mattress', {area: [r.room, r.bed].filter(Boolean).join(' · '), product: 'Mattress', what: m && c.each ? `Sleepwell ${m.n} ${inchTxt(parseFloat(r.T))} · ${size}${mtWar(r) ? ` · ${mtWar(r)} years warranty` : ''}` : [r.sup, r.model, r.T].filter(Boolean).join(' ') + ' · ' + size,
+    add('mattress', {srcs: ['mattress|' + state.more.mattress.indexOf(r)], area: [r.room, r.bed].filter(Boolean).join(' · '), product: 'Mattress', what: m && c.each ? `Sleepwell ${m.n} ${inchTxt(parseFloat(r.T))} · ${size}${mtWar(r) ? ` · ${mtWar(r)} years warranty` : ''}` : [r.sup, r.model, r.T].filter(Boolean).join(' ') + ' · ' + size,
       hsn: H.mattress || '9404', qty: q, unit: 'PCS', rate: c.each || null, gst: 18, cost: c.cost ?? null, incl: true, fix: 'mpick'});   // "Other" mattress: our own rate, GST included
   });
   const hc = new Map();
-  byRoom((state.more.mattress || []).filter(r => r.p && r.p !== 'Mattress')).forEach(r => { const x = swHcp(r); if (!x) return; const g = hc.get(r.item) || {x, rooms: new Set(), q: 0}; g.rooms.add(r.room || '—'); g.q += Math.max(1, parseInt(r.qty, 10) || 1); hc.set(r.item, g); });
+  byRoom((state.more.mattress || []).filter(r => r.p && r.p !== 'Mattress')).forEach(r => { const x = swHcp(r); if (!x) return; const g = hc.get(r.item) || {x, rooms: new Set(), q: 0, srcs: []}; g.srcs.push('mattress|' + state.more.mattress.indexOf(r)); g.rooms.add(r.room || '—'); g.q += Math.max(1, parseInt(r.qty, 10) || 1); hc.set(r.item, g); });
   // Bed & bath (22 Oct): the same item and colour in more than one room = one line, the rooms named
-  const bbq = new Map(); ensureMore(); byRoom(state.more.bedbath || []).forEach(r => { const x = bbItem(r); if (!x) return; const k = x.k + '|' + (r.col || ''), g = bbq.get(k) || {x, col: r.col || '', rooms: new Set(), q: 0};
-    g.rooms.add(r.room || '—'); g.q += Math.max(1, parseInt(r.qty, 10) || 1); bbq.set(k, g); });
-  for (const g of bbq.values()) add('bedbath', {area: roomsTxt(g.rooms), product: g.x.g, what: `Obsessions ${g.x.n}${g.col ? ' · ' + g.col : ''}`, hsn: H.bedbath || '', qty: g.q, unit: g.x.u, rate: g.x.v, gst: 18, cost: null, incl: true, fix: 'bbpick'});
-  for (const g of hc.values()) add('mattress', {area: roomsTxt(g.rooms), product: g.x.g, what: `Sleepwell ${g.x.n} · ${g.x.s}″`, hsn: H.mattress || '9404', qty: g.q, unit: 'PCS', rate: g.x.v, gst: 18, cost: null, incl: true, fix: 'mpick'});
+  const bbq = new Map(); ensureMore(); byRoom(state.more.bedbath || []).forEach(r => { const x = bbItem(r); if (!x) return; const k = x.k + '|' + (r.col || ''), g = bbq.get(k) || {x, col: r.col || '', rooms: new Set(), q: 0, srcs: []};
+    g.rooms.add(r.room || '—'); g.srcs.push('bedbath|' + state.more.bedbath.indexOf(r)); g.q += Math.max(1, parseInt(r.qty, 10) || 1); bbq.set(k, g); });
+  for (const g of bbq.values()) add('bedbath', {srcs: g.srcs, area: roomsTxt(g.rooms), product: g.x.g, what: `Obsessions ${g.x.n}${g.col ? ' · ' + g.col : ''}`, hsn: H.bedbath || '', qty: g.q, unit: g.x.u, rate: g.x.v, gst: 18, cost: null, incl: true, fix: 'bbpick'});
+  for (const g of hc.values()) add('mattress', {srcs: g.srcs, area: roomsTxt(g.rooms), product: g.x.g, what: `Sleepwell ${g.x.n} · ${g.x.s}″`, hsn: H.mattress || '9404', qty: g.q, unit: 'PCS', rate: g.x.v, gst: 18, cost: null, incl: true, fix: 'mpick'});
   // Upholstery material (6 Oct night): one line per product and details, the same thing on two lines added up.
   const up = new Map();
   byRoom(state.more.uph || []).forEach(r => {
@@ -3829,15 +3845,91 @@ function qSections(){
     if (kits) add('hw', {grp: 'mot', area: 'All Rooms', product: 'Installation', what: 'All motorised track', hsn: H.install || '', qty: kits, unit: 'NOS', rate: inst.motor, gst: +G.install, cost: instC.motor, incl: gstIncl('install'), fix: 'install'});
   }
   S.hw = S.hw.filter(l => l.grp !== 'mot').concat(S.hw.filter(l => l.grp === 'mot'));   // manual first, then motorised
+  qApplyMan(S);
   return S;
 }
+// ================= Typed by hand (Purvi, 22 Oct: "on qtn i also want to be able to edit qtn and write some fields manually … keep a record
+// of what was added manually … in red … when i send it to client it should be just like everything else … if i am adding any amount, i need
+// that to be included in the amount calculation properly everywhere"; "applicable for all product types and fields … on view measurement sheet
+// and view qtn"; "whatever is written in view qtn gets updated in measurement sheet and whatever is written in view measurement sheet is
+// updated in view qtn"; "on actual form, just show a small label as manually edited").
+// Where it is kept:
+// - a quotation line that comes from ONE measured row (most do): on that row, as row.man = {name: value}. The measurement sheet keeps its
+//   values there too, under its own column names, and the names both show are shared (area, details, qty or sqft), so typing on one view
+//   shows on the other. Quotation-only things: qproduct, hsn, unit, mrp, amt (+ qarea / qqty where the two views mean different things).
+// - a line made of several rows (stitching, accessories, the same wallpaper in two rooms…): state.quote.man = [{k: line key, f: {field: v}}].
+// - a line or row added by hand: state.quote.add = [{id, sec, area, product, what, hsn, qty, unit, mrp, amt, + measurement sheet columns}],
+//   shown on both views (measurement sheet: "Other items").
+// The typed values replace the worked-out ones before anything is drawn, so totals, discounts, PDF, Excel, WhatsApp, versions and the client's
+// amount all follow. l.man lists what was typed: red on screen and in saved versions; plain black in the PDF, Excel, print and for the client.
+const QM_F = ['area', 'product', 'what', 'hsn', 'qty', 'unit', 'mrp', 'amt'], QM_NUM = new Set(['qty', 'mrp', 'amt']);
+const QSYNC_QTY = {fabric: 'qty', blinds: 'sqft', flooring: 'sqft', mattress: 'qty', bedbath: 'qty'};   // the quotation's Qty = this measurement sheet column
+const qmName = (sec, f) => f === 'what' ? 'details' : f === 'area' ? (sec === 'mattress' || sec === 'uph' ? 'qarea' : 'area') : f === 'qty' ? (QSYNC_QTY[sec] || 'qqty') : f === 'product' ? 'qproduct' : f;
+function qMan(){ return (state.quote || {}).man || []; }   // function declarations: the sheets may draw before this line runs
+function qAdds(){ return (state.quote || {}).add || []; }
+function qmNum(v){ if (v == null || v === '') return null; if (typeof v === 'number') return v; const x = parseFloat(String(v).replace(/[₹,\s]/g, '')); return isFinite(x) ? x : null; }
+const qmSrc = l => (l.srcs || []).length === 1 ? msSrc(l.srcs[0]) : null;
+function qAmt(l){
+  const m = l.man || [];
+  if (m.includes('amt')) l.amt = Math.round(l.amt);
+  else if (m.includes('qty') || m.includes('mrp')) l.amt = l.mrp == null || l.qty == null ? null : Math.round(l.qty * l.mrp);
+  if (m.includes('qty')) l.camt = has(l.cost) && l.qty != null ? l.qty * l.cost : null;
+  return l;
+}
+function qApplyMan(S){
+  const M = new Map(qMan().map(x => [x.k, x.f || {}])), G = gstRates();
+  for (const k of Object.keys(S)) S[k].forEach(l => {
+    l.okey = lineKey(k, l); l.orig = {}; QM_F.forEach(f => l.orig[f] = l[f] ?? null); l.man = [];
+    const src = qmSrc(l), o = src ? src.man || {} : M.get(l.okey) || {}, nm = f => src ? qmName(k, f) : f;
+    QM_F.forEach(f => { let v = o[nm(f)]; if (v == null) return; if (QM_NUM.has(f)) { v = qmNum(v); if (v == null) return; } l[f] = v; l.man.push(f); });
+    if (l.typed && l.man.includes('mrp') && !l.man.includes('what')) { l.what = l.typed; l.man.push('what'); }   // not on the company's list: its typed name
+    qAmt(l);
+  });
+  qAdds().forEach(a => { const k = S[a.sec] ? a.sec : 'other', qty = qmNum(a.qty), mrp = qmNum(a.mrp), amt = qmNum(a.amt);
+    S[k].push({okey: 'add|' + a.id, added: true, grp: 'man', area: a.area || '', product: a.product || '', what: a.what || '', hsn: a.hsn || '', qty, unit: a.unit || '', mrp,
+      amt: amt != null ? Math.round(amt) : mrp != null && qty != null ? Math.round(qty * mrp) : null, gst: k === 'fabric' ? +G.fabric : 18, cost: null, camt: null, man: QM_F.slice(), orig: {}}); });
+}
+// a box on View quotation was changed: keep it where both views read it
+function qmSet(k, f, raw){
+  const S = qSections(); let sec = null, l = null;
+  for (const kk of Object.keys(S)) { const x = S[kk].find(y => y.okey === k); if (x) { sec = kk; l = x; break; } }
+  if (!l) return;
+  let v = String(raw).trim(); if (QM_NUM.has(f)) { if (v !== '' && qmNum(v) == null) { toast('Type a number there'); return; } v = qmNum(v); }
+  const q = state.quote || (state.quote = {});
+  if (l.added) { const a = qAdds().find(x => 'add|' + x.id === k); if (a) a[f] = v; save(); return; }
+  const o = l.orig[f], same = v == null ? true : QM_NUM.has(f) ? o != null && Math.abs(v - o) < 0.005 : v === String(o ?? '');
+  const src = qmSrc(l);
+  if (src) { const m = src.man || (src.man = {}), n = qmName(sec, f); if (same) delete m[n]; else m[n] = v; if (!Object.keys(m).length) delete src.man; }
+  else { const M = q.man || (q.man = []); let e = M.find(x => x.k === k); if (!e) M.push(e = {k, f: {}}); if (same) delete e.f[f]; else e.f[f] = v;
+    q.man = M.filter(x => Object.keys(x.f).length); if (!q.man.length) delete q.man; }
+  save();
+}
+function qmUndo(k){
+  const S = qSections();
+  for (const sec of Object.keys(S)) { const l = S[sec].find(y => y.okey === k); if (!l) continue;
+    const src = qmSrc(l);
+    if (src && src.man) { QM_F.forEach(f => delete src.man[qmName(sec, f)]); if (!Object.keys(src.man).length) delete src.man; }
+    else if (state.quote && state.quote.man) { state.quote.man = state.quote.man.filter(x => x.k !== k); if (!state.quote.man.length) delete state.quote.man; }
+  }
+  save();
+}
+function qmAdd(sec){ const q = state.quote || (state.quote = {}), id = Date.now().toString(36); (q.add || (q.add = [])).push({id, sec, area: '', product: '', what: '', qty: 1, unit: 'PCS'}); save(); return 'add|' + id; }
+function qmRemove(k){ const q = state.quote || {}; q.add = qAdds().filter(a => 'add|' + a.id !== k); if (!q.add.length) delete q.add; save(); }
+// after a box is left, draw again and put the cursor back in the box that was clicked or tabbed to
+function reTyped(render){ setTimeout(() => { const a = document.activeElement, d = (a && a.dataset) || {}, esc_ = v => CSS.escape(v || '');
+  const sel = d.qm ? `[data-qm="${d.qm}"][data-k="${esc_(d.k)}"]` : d.msm ? `[data-msm="${d.msm}"][data-k="${esc_(d.k)}"]` : d.msrem ? `[data-msrem="${esc_(d.msrem)}"]` : null;
+  render(); if (sel) { const n = document.querySelector(sel); if (n) { n.focus(); if (n.select) n.select(); } } }, 0); }
+// the small label on the sheets (Purvi: "on actual form, you can just show a small label as manually edited on qtn / measurement sheet")
+function curManTags(){ state.rows.forEach(r => { const tr = document.querySelector(`#tb tr.row[data-id="${r.id}"]`), ix = tr && tr.querySelector('.first .idx'); if (!ix) return;
+  const old = tr.querySelector('.first .man-tag'); if (old) old.remove(); ix.insertAdjacentHTML('afterend', manTag(r, 1)); }); }
+function manTag(r, short){ return r && r.man && Object.keys(r.man).length ? `<span class="man-tag" title="Something on this row was typed by hand on View quotation or View measurement sheet: ${esc(Object.keys(r.man).join(', '))}">${short ? 'edited' : 'manually edited on quotation / measurement sheet'}</span>` : ''; }
 // Edit quotation (Purvi, 19 Oct: "hide a row, hide a column, hide a full section … before sending"). state.quote.hide =
 // {sec: [section keys], row: [line keys], col: [column keys]}; it stays until shown again (a yellow line on the quotation says so).
 // Hidden things are taken out here, before anything is drawn, so the paper, PDF, Excel, Print, total, version number and the
 // WhatsApp message always match. Hiding the Amount column also leaves out every total and the amount in words.
 const QCOLS = [['area', 'AREA'], ['product', 'PRODUCT'], ['what', 'FABRIC DETAILS'], ['hsn', 'HSN'], ['qty', 'Qty'], ['unit', 'Unit'], ['mrp', 'MRP'], ['amt', 'Amount']];
 const QALL = QCOLS.map(c => c[0]), QCOL_NAME = {area: 'Area', product: 'Product', what: 'Fabric details', hsn: 'HSN', qty: 'Qty', unit: 'Unit', mrp: 'MRP', amt: 'Amount'};
-const lineKey = (k, l) => [k, l.area || '', l.product || '', l.what || '', l.unit || ''].join('|');
+const lineKey = (k, l) => l.okey || [k, l.area || '', l.product || '', l.what || '', l.unit || ''].join('|');   // okey: the key before anything was typed over it (22 Oct)
 const qHide = () => { const h = (state.quote || {}).hide || {}; return {sec: h.sec || [], row: h.row || [], col: h.col || []}; };
 function qShown(S){ const h = qHide(), out = {}; for (const k of Object.keys(S)) out[k] = h.sec.includes(k) ? [] : S[k].filter(l => !h.row.includes(lineKey(k, l))); return out; }
 const listTxt = a => a.length < 2 ? (a[0] || '') : a.some(x => / and /.test(x)) ? a.join(', ') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];   // "Stitching, Accessories and installation"
@@ -3869,7 +3961,7 @@ function quoteTotals(S){
   let full = null; if (!S) { full = qSections(); S = qShown(full); }
   const cols = QALL.filter(c => !qHide().col.includes(c)), hid = full ? hideTxt(full, S) : '';
   let total = 0, missing = 0, costMissing = 0; const sub = {};
-  for (const [k] of SECTIONS) { sub[k] = 0; for (const l of S[k]) { if (l.amt == null) missing++; else { total += l.amt; sub[k] += l.amt; } if (l.camt == null) costMissing++; } }
+  for (const [k] of SECTIONS) { sub[k] = 0; for (const l of S[k] || []) { if (l.amt == null) missing++; else { total += l.amt; sub[k] += l.amt; } if (l.camt == null) costMissing++; } }
   const q = state.quote || {}, pct = parseFloat(q.disc) || 0, amt = parseFloat(q.discAmt) || 0;
   // Discount is on the curtain fabric amount only (Purvi, 2 Oct): % of section 1, or ₹ up to section 1's total.
   const disc = Math.round(Math.min(sub.fabric, amt || sub.fabric * pct / 100));
@@ -3879,11 +3971,11 @@ function quoteTotals(S){
   const disc2 = Math.round(Math.max(0, Math.min(after, amt2 || after * pct2 / 100))), final = after - disc2;
   const disc2Txt = 'Discount' + (!amt2 && pct2 ? ` (${cpF(pct2)}%)` : '');
   // Margin: amounts carry GST, costs don't, so both are compared before GST; the discount comes off the fabric lines.
-  let netSale = 0, netFab = 0; for (const [k] of SECTIONS) for (const l of S[k]) if (l.amt != null) { const n = l.amt / (1 + (+l.gst || 0) / 100); netSale += n; if (k === 'fabric') netFab += n; }
-  const net1 = netSale - (sub.fabric ? netFab * disc / sub.fabric : 0), netAfter = after > 0 ? net1 * (1 - disc2 / after) : net1, rawCost = [].concat(...SECTIONS.map(([k]) => S[k])).reduce((a, l) => a + (l.camt || 0), 0);
+  let netSale = 0, netFab = 0; for (const [k] of SECTIONS) for (const l of S[k] || []) if (l.amt != null) { const n = l.amt / (1 + (+l.gst || 0) / 100); netSale += n; if (k === 'fabric') netFab += n; }
+  const net1 = netSale - (sub.fabric ? netFab * disc / sub.fabric : 0), netAfter = after > 0 ? net1 * (1 - disc2 / after) : net1, rawCost = [].concat(...SECTIONS.map(([k]) => S[k] || [])).reduce((a, l) => a + (l.camt || 0), 0);
   // 20 Oct (Purvi): curtains measured but no fabric picked: stitching, track and the rest stay in; the fabric line says so and
   // the client is told the fabric amount isn't in the total yet
-  const nf = (S.fabric || []).filter(l => l.fix === 'pick'), nb = (S.blinds || []).filter(l => l.nocoll), rooms = L => [...new Set(L.map(l => l.area || '—'))].join(', ');
+  const nf = (S.fabric || []).filter(l => l.fix === 'pick' && l.amt == null), nb = (S.blinds || []).filter(l => l.nocoll && l.amt == null), rooms = L => [...new Set(L.map(l => l.area || '—'))].join(', ');
   const parts = [nf.length && `Fabric not selected yet for ${nf.length} curtain${nf.length > 1 ? 's' : ''} (${rooms(nf)})`, nb.length && `Collection not selected yet for ${nb.length} blind${nb.length > 1 ? 's' : ''} (${rooms(nb)})`].filter(Boolean);
   const noFab = parts.length ? `${parts.join('. ')}. ${nf.length + nb.length > 1 ? 'These amounts are' : 'Its amount is'} not in the total and will be added once ${nf.length && nb.length ? 'they are' : nf.length ? 'the fabric is' : 'the collection is'} chosen.` : '';
   return {S, sub, total, disc, discTxt, disc2, disc2Txt, final, missing, noFab, costMissing, netAfter, cost: rawCost, cols, hid};
@@ -3972,11 +4064,15 @@ function fixBtn(l){
   return PF && !IS_ADMIN && !['pick', 'remote', 'wpick', 'fpick', 'mpick', 'bbpick', 'opick'].includes(l.fix) ? `<span class="miss" style="cursor:default">${l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</span>` : `<button class="miss" data-go="${l.fix}">${l.fix === 'pick' ? 'Pick the fabric' : l.fix === 'wpick' ? 'Pick the design from a list' : l.fix === 'fpick' ? 'Pick the product from a list' : l.fix === 'mpick' ? 'Pick the mattress' : l.fix === 'opick' ? 'Fill it in on Upholstery' : l.fix === 'uprice' ? 'Set the rate in Prices' : l.fix === 'remote' ? 'Pick the remote' : l.fix === 'marvel' ? 'Price after Marvel login' : 'No price yet'}</button>`;
 }
 // vis = the columns drawn, off(c) = drawn greyed (editing), tail = the Hide / Show cell (editing), dim = a hidden line (editing)
-function lineHTML(l, n, showC, ro, vis = QALL, off = () => false, tail = '', dim = false){
-  const rate = l.mrp == null ? ro ? '—' : fixBtn(l) : inr(l.mrp);
-  const C = {area: ['', esc(l.area || '')], product: ['', esc(l.product)], what: ['', esc(l.what)], hsn: ['c', esc(l.hsn || '')], qty: ['r', cpF(r2(l.qty))],
+function lineHTML(l, n, showC, ro, vis = QALL, off = () => false, tail = '', dim = false, typing = false){
+  const rate = l.mrp == null ? ro || l.added ? '—' : fixBtn(l) : inr(l.mrp), mn = l.man || [];
+  const red = c => l.added || mn.includes(c) || (c === 'amt' && (mn.includes('qty') || mn.includes('mrp')));   // typed by hand (22 Oct)
+  const inp = (c, v, num) => `<input class="qin${red(c) ? ' man' : ''}" data-qm="${c}" data-k="${esc(l.okey || '')}" value="${esc(v == null ? '' : String(v))}"${num ? ' inputmode="decimal"' : ''} aria-label="${QCOL_NAME[c]}" placeholder="${c === 'mrp' ? '₹' : ''}">`;
+  const C = typing && l.okey ? {area: ['', inp('area', l.area)], product: ['', inp('product', l.product)], what: ['', inp('what', l.what)], hsn: ['c', inp('hsn', l.hsn)], qty: ['r', inp('qty', l.qty == null ? '' : r2(l.qty), 1)],
+      unit: ['c', inp('unit', l.unit)], mrp: ['r', inp('mrp', l.mrp, 1)], amt: ['r', inp('amt', l.amt, 1)]}
+    : {area: ['', esc(l.area || '')], product: ['', esc(l.product)], what: ['', esc(l.what)], hsn: ['c', esc(l.hsn || '')], qty: ['r', l.qty == null ? '' : cpF(r2(l.qty))],
     unit: ['c', esc(l.unit)], mrp: ['r', rate], amt: ['r', `<b>${l.amt == null ? '—' : inr(l.amt)}</b>`]};
-  return `<tr${dim ? ' data-off' : ''}><td class="c">${n}</td>${vis.map(c => `<td${C[c][0] ? ` class="${C[c][0]}"` : ''}${off(c) ? ' data-off' : ''}>${C[c][1]}</td>`).join('')}
+  return `<tr${dim ? ' data-off' : ''}><td class="c">${n}</td>${vis.map(c => { const cl = [C[c][0], !typing && red(c) ? 'man' : ''].filter(Boolean).join(' '); return `<td${cl ? ` class="${cl}"` : ''}${off(c) ? ' data-off' : ''}>${C[c][1]}</td>`; }).join('')}
     ${showC ? `<td class="r cost">${l.camt == null ? '—' : inr(l.camt)}</td>` : ''}${tail}</tr>`;
 }
 function renderPaper(){
@@ -4008,11 +4104,13 @@ function paperHTML(q, house, t, showC, ro, ed){
     const F = S[k], secOff = !!ed && H.sec.includes(k), vk = new Set((t.S[k] || []).map(l => lineKey(k, l))), on = vk.size > 0, no = on ? ++si : '';
     body += `<tr class="secrow"${on ? '' : ' data-off'}><td colspan="${ncol}">${no ? no + ' · ' : ''}${name}</td>${ed ? `<td class="qe">${qbtn('sec', k, !secOff, 'Hide section', 'Show section')}</td>` : ''}</tr>`;
     const row = l => { const key = lineKey(k, l), lon = vk.has(key);
-      return lineHTML(l, lon ? ++n : '—', showC, ro, vis, off, ed ? `<td class="qe">${secOff ? '' : qbtn('row', key, lon, 'Hide', 'Show')}</td>` : '', !!ed && !lon); };
+      const more = l.added ? `<button class="qh" data-qmr="${esc(key)}">Remove</button>` : (l.man || []).length ? `<button class="qh" data-qmu="${esc(key)}" title="Back to what the sheets work out">Undo typing</button>` : '';
+      return lineHTML(l, lon ? ++n : '—', showC, ro, vis, off, ed ? `<td class="qe">${secOff ? '' : qbtn('row', key, lon, 'Hide', 'Show')}${more}</td>` : '', !!ed && !lon, !!ed); };
     const subOf = L => L.filter(l => vk.has(lineKey(k, l))).reduce((a, l) => a + (l.amt || 0), 0), P = secParts(k, F);
     body += (P ? P.map(p => `<tr class="secrow part"${on ? '' : ' data-off'}><td colspan="${ncol}">${no}${p.ab} · ${p.n}</td>${tailE}</tr>` + p.L.map(row).join('') + sumRow('subrow', `${p.n} total`, inr(subOf(p.L)), undefined, !on)).join('')
-      : F.map(row).join('')) + sumRow('subrow', `${name} total`, inr(t.sub[k] || 0), undefined, !on);
+      : F.map(row).join('')) + (ed && !secOff ? `<tr class="qadd"><td colspan="${ncol}"><button class="qh show" data-qadd="${k}">+ Add a line in ${esc(name)}</button></td>${tailE}</tr>` : '') + sumRow('subrow', `${name} total`, inr(t.sub[k] || 0), undefined, !on);
   });
+  if (ed && !(S.other || []).length) body += `<tr class="qadd"><td colspan="${ncol}"><button class="qh show" data-qadd="other">+ Add a line for something else</button></td>${tailE}</tr>`;
   const empty = !body, allHid = empty && !ed && t.hid;
   const hdr = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
   return allHid ? `<div class="q-empty"><b>Everything is hidden from this quotation</b>${ro ? '' : '<button class="btn solid" data-qedit="1">Edit quotation</button>'}</div>`
@@ -4077,11 +4175,13 @@ function renderQuoteSum(t = quoteTotals()){
 function renderQuote(){ renderQuoteHead(); renderPaper(); }
 // Top of the quotation's side panel: Edit quotation; while editing, what to do + Done; when something is hidden, a yellow line saying what.
 function qeTopHTML(t){
-  if (qEdit) return `<div class="qe-card"><h3>Editing the quotation</h3><p>Press <b>Hide</b> on a column, a line or a section. Hidden things are left out of the PDF, Excel, WhatsApp and the total.</p>
+  const typed = SECTIONS.reduce((a, [k]) => a + (t.S[k] || []).filter(l => (l.man || []).length).length, 0);
+  if (qEdit) return `<div class="qe-card"><h3>Editing the quotation</h3><p><b>Type in any box</b> to change it, or <b>+ Add a line</b>. Amounts and totals work themselves out. What you type shows <span class="man">in red</span> here and on the measurement sheet; the client's PDF, Excel and print look normal.</p><p>Press <b>Hide</b> on a column, a line or a section. Hidden things are left out of the PDF, Excel, WhatsApp and the total.</p>
     ${t.hid ? `<p class="qe-now"><b>The client gets:</b> ${esc(t.hid)}</p>` : '<p class="qe-now">Nothing hidden yet.</p>'}
     <div class="qe-acts">${t.hid ? '<button class="btn" data-qall="1">Show everything</button>' : ''}<button class="btn solid" data-qedit="0">Done</button></div></div>`;
   return (t.hid ? `<div class="qe-ban"><b>Part quotation.</b> ${esc(t.hid)}<div class="qe-acts"><button class="btn" data-qall="1">Show everything</button></div></div>` : '')
-    + `<div class="qe-open"><button class="btn" data-qedit="1">${EDIT_ICON}Edit quotation</button><span class="hint">Hide a section, a line or a column before sending.</span></div>`;
+    + `<div class="qe-open"><button class="btn" data-qedit="1">${EDIT_ICON}Edit quotation</button><span class="hint">Type over anything, add a line, or hide a part before sending.</span></div>`
+    + (typed ? `<p class="hint" style="margin:6px 0 0"><span class="man">Red</span> = typed by hand (${typed} line${typed > 1 ? 's' : ''}). The client gets it in plain black.</p>` : '');
 }
 const EDIT_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" style="width:16px;height:16px;flex:none" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
 // Phones and tablets: one screen with a switch for every section, line and column (on = the client gets it).
@@ -4109,6 +4209,14 @@ document.addEventListener('click', e => {
   const b = e.target.closest('button[data-qh]'); if (b) qToggle(b.dataset.qh, b.dataset.k);
 });
 document.addEventListener('change', e => { const x = e.target.closest('input[data-qh]'); if (x) qToggle(x.dataset.qh, x.dataset.k); });
+// typed on View quotation (22 Oct)
+document.addEventListener('change', e => { const x = e.target.closest('input[data-qm]'); if (!x) return; qmSet(x.dataset.k, x.dataset.qm, x.value); reTyped(renderPaper); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches && e.target.matches('input.qin, input.ms-in')) e.target.blur(); });
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-qadd]'); if (a) { const k = qmAdd(a.dataset.qadd); renderPaper(); const n = document.querySelector(`[data-qm="product"][data-k="${CSS.escape(k)}"]`); if (n) n.focus(); return; }
+  const u = e.target.closest('[data-qmu]'); if (u) { qmUndo(u.dataset.qmu); renderPaper(); return; }
+  const r = e.target.closest('[data-qmr]'); if (r) { qmRemove(r.dataset.qmr); renderPaper(); }
+});
 // Quotation on phones and tablets (Purvi, 18 Oct: "the sending ctas should be up … only when you click on view pdf i should be able to
 // view it"; option A picked from two drawn phones). One card: who, the final amount, Send on WhatsApp, then View PDF · ↓ PDF · ↓ Excel.
 // Under it one line per product, and Discount / Installation / our cost open in place. Details (bill to, dates…) fold into one line.
@@ -4346,7 +4454,7 @@ document.addEventListener('click', async e => {
 // downloading again with no change keeps the same number. Kept with the sheet, so Clear sheet starts again at v1.
 function quoteSig(t){
   const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''),
-    SECTIONS.filter(([k]) => !QOPT.includes(k) || t.S[k].length).map(([k]) => t.S[k].map(l => [l.area, l.product, l.what, l.hsn, l.qty, l.unit, l.mrp, l.amt])), t.total, t.disc, ...(t.disc2 ? [t.disc2] : []),
+    SECTIONS.filter(([k]) => !QOPT.includes(k) || (t.S[k] || []).length).map(([k]) => (t.S[k] || []).map(l => [l.area, l.product, l.what, l.hsn, l.qty, l.unit, l.mrp, l.amt])), t.total, t.disc, ...(t.disc2 ? [t.disc2] : []),
     ...(t.cols && t.cols.length < QALL.length ? [t.cols] : [])]);
   let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 ^ txt.charCodeAt(i)) >>> 0;
   return h.toString(36);
@@ -6232,7 +6340,7 @@ function uphRowHTML(r){
     : foam ? sel('foam', SWF_RNG.map(g => ({g, items: SWF.filter(x => x.rng === g).map(x => x.n)})), r.foam, 'Pick the foam', 220, false, 'Foam')
     : U && U.opts ? sel(U.v, U.opts.map(o => o[0]), r[U.v], 'Pick', 220, false, U.vl) : '<span class="none">—</span>';
   const [qf, qu] = uphQ(r.p);
-  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span></td>
+  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span>${manTag(r, 1)}</td>
     <td>${sel('p', Object.keys(UPH), r.p, 'Pick', 140, false, 'What it is')}</td>
     <td>${r.p ? item : '<span class="none">pick what it is</span>'}</td>
     <td>${sel('T', foam ? Object.keys(tc).map(Number).sort((a, b) => a - b).map(t => [String(t), `${inchTxt(t)} · ${tc[t]} cm`]) : [], r.T, foam ? (m ? 'Pick' : 'foam first') : '—', 96, !foam || !m, 'Thickness')}</td>
@@ -6392,7 +6500,7 @@ function bbRowHTML(r){
   const sel = (f, list, val, blank, w, dis, lab) => `<select data-bb="${f}" style="width:${w}px"${dis ? ' disabled' : ''} aria-label="${lab}">${selOpts(list, val, blank)}</select>`;
   const inp = (f, ph, w, num, lab) => `<input data-bb="${f}" value="${esc(r[f] ?? '')}" placeholder="${esc(ph)}" style="width:${w}px"${num ? ' class="n" inputmode="decimal"' : ''}${f === 'room' ? ' list="roomlist"' : ''} aria-label="${lab}" autocomplete="off">`;
   const items = r.g ? uniq(BB.items.filter(y => y.g === r.g).map(y => y.c)).map(cn => ({g: cn, items: BB.items.filter(y => y.g === r.g && y.c === cn).map(y => [y.k, `${y.n} · ${rs(y.v)}`])})) : [];
-  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span></td>
+  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span>${manTag(r, 1)}</td>
     <td>${sel('g', BB.groups, r.g, 'Pick', 140, false, 'What it is')}</td>
     <td>${r.g ? sel('k', items, r.k, 'Pick the item', 290, false, 'Item') : '<span class="none">pick what it is</span>'}</td>
     <td>${sel('col', cols || [], r.col, cols ? 'Pick' : '—', 92, !cols, 'Colour')}</td>
@@ -6440,7 +6548,7 @@ function mtRowHTML(r){
   const sel = (f, list, val, blank, w, dis, lab, short) => `<select data-mt="${f}" style="width:${w}px"${dis ? ' disabled' : ''} aria-label="${lab}">${selOpts(list, val, blank, short)}</select>`;
   const inp = (f, ph, w, num, dis, lab) => `<input data-mt="${f}" value="${esc(r[f] ?? '')}" placeholder="${esc(ph)}" style="width:${w}px"${num ? ` class="n${f === 'L' || f === 'W' ? ' key' : ''}" inputmode="decimal"` : ''}${f === 'room' ? ' list="roomlist"' : ''}${dis ? ' disabled' : ''} aria-label="${lab}" autocomplete="off">`;
   const thList = mat ? (m ? m.th : [4, 5, 6, 8, 10, 12]).map(t => [t + '″', inchTxt(t)]) : [];
-  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span></td>
+  return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span>${manTag(r, 1)}</td>
     <td>${sel('p', Object.keys(MT), r.p, 'Pick', 138, false, 'What it is', n => n.replace('Mattress protector', 'Protector'))}</td>
     <td>${inp('room', 'Room', 104, false, false, 'Room')}</td>
     <td>${inp('L', mat ? '0' : '', 56, true, !mat, 'Length')}</td><td>${inp('W', mat ? '0' : '', 56, true, !mat, 'Width')}</td>
@@ -6552,7 +6660,7 @@ function mpCellHTML(k, col, r){
 }
 function mpRowHTML(k, r){
   return `<tr class="row" data-id="${r.id}">${MP[k].cols.map(col => mpCellHTML(k, col, r)).join('')}
-    <td class="acts"><button class="ico" data-pa="dup" title="Copy this ${MP[k].one}">⧉</button><button class="ico" data-pa="del" title="Delete this ${MP[k].one}">✕</button></td></tr>`;
+    <td class="acts">${manTag(r, 1)}<button class="ico" data-pa="dup" title="Copy this ${MP[k].one}">⧉</button><button class="ico" data-pa="del" title="Delete this ${MP[k].one}">✕</button></td></tr>`;
 }
 function mpUpdateRow(k, r){
   const tr = $('#ptb').querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
@@ -6708,6 +6816,7 @@ function go(v){
   $('#sub-prices').setAttribute('aria-selected', v === 'b-prices' ? 'true' : 'false');
   $('#subnote').textContent = v === 'b-prices' ? 'Blinds price lists, motors and remotes, installation.' : 'Stitching, linings, tracks, motor kits and remotes, installation, upholstery material.';
   if (v === 'quote') renderQuote();
+  if (v === 'c-measure') curManTags();
   if (v === 'clients') renderClients();
   if (v === 'client') renderClientPage();
   if (v === 'dash') renderDash();
@@ -7974,6 +8083,15 @@ function msData(){
         u: {area: r.room || '', product: String(x.g).toUpperCase(), pattern: String(r.col || '').toUpperCase(), details: ['Obsessions', x.n].join(' '), qty: `${c.qty || 1} ${x.u === 'SET' ? 'sets' : 'pcs'}`, note: r.remarks || ''}}); });
     sec('bedbath', 'Bed and bath', [['room', 'Room'], ['item', 'Item'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R,
       L => [`${msSum(L, x => x.n.q)} piece${msSum(L, x => x.n.q) === 1 ? '' : 's'}`]); }
+  // 22 Oct: typed by hand on View quotation or here, kept on the measured row (row.man), shared with the quotation (page.src.html qApplyMan)
+  for (const s of S) s.rows.forEach(r => { const src = msSrc(r.key), m = src && src.man; r.orig = Object.assign({}, r.u); r.man = [];
+    if (!m || !r.u) return;
+    for (const k of MS_EDIT) if (m[k] != null && k !== 'note') { r.u[k] = typeof m[k] === 'number' ? cpF(m[k]) : String(m[k]); r.man.push(k); } });
+  // lines added by hand (on either view) are "Other items" here
+  const A = qAdds(); if (A.length) S.push({k: 'other', name: 'Other items', cols: [['item', 'Item']], sum: L => [`${L.length} line${L.length > 1 ? 's' : ''}`],
+    rows: A.map(a => ({key: 'add|' + a.id, amt: 0, n: {}, c: {room: a.area || '', item: a.what || a.product || ''}, man: MS_EDIT.slice(), orig: {},
+      u: {area: a.area || '', product: String(a.product || '').toUpperCase(), pattern: a.pattern || '', details: a.what || '', H: a.H || '', W: a.W || '', panel: a.panel || '', part: a.part || '',
+        qty: qmNum(a.qty) != null ? `${cpF(qmNum(a.qty))} ${a.unit || ''}`.trim() : '', sqft: a.sqft || '', lining: a.lining || '', track: a.track || '', mzd: a.mzd || '', fixing: a.fixing || '', note: a.remarks || ''}}))});
   // a column nobody filled in (e.g. Remarks, or Lining with no lined curtain) is left out, so the sheet stays short
   for (const s of S) s.cols = s.cols.filter(([k]) => s.rows.some(r => String(r.c[k] || '').trim()));
   return S;
@@ -7986,7 +8104,7 @@ function msShown(full = msData()){
     if (h.sec.includes(s.k)) continue;
     const rows = s.rows.filter(r => !h.row.includes(r.key)); if (!rows.length) continue;
     const cols = s.cols.filter(([k]) => !h.col.includes(s.k + '.' + k)), amtOn = cols.some(([k]) => k === 'amt');
-    out.push({k: s.k, name: s.name, cols, rows: rows.map(r => ({key: r.key, c: r.c, amt: r.amt, u: r.u})), sum: s.sum(rows).filter(Boolean), amt: amtOn ? msSum(rows, r => r.amt) : null});
+    out.push({k: s.k, name: s.name, cols, rows: rows.map(r => ({key: r.key, c: r.c, amt: r.amt, u: r.u, man: r.man || []})), sum: s.sum(rows).filter(Boolean), amt: amtOn ? msSum(rows, r => r.amt) : null});
   }
   const shown = out.filter(s => s.amt != null);
   return {S: out, amt: shown.length ? msSum(shown, s => s.amt) : null, hid: msHideTxt(full, out), ref: msRef()};
@@ -8042,15 +8160,17 @@ function msRef(){ const c = shared && state.clientId && CL.byId.get(state.client
 // rooms in the order they were first measured (curtains first, then blinds…), products in that order inside each room
 function msRooms(D){
   const tr = u => u.track != null || !(u.kit || u.rft) ? u : Object.assign({}, u, {track: u.rft ? u.rft + ' Rft' : u.kit + ' m kit'});   // versions saved before 20 Oct had two columns
-  const flat = []; (D.S || []).forEach(s => s.rows.forEach(r => flat.push({key: r.key, sec: s.k, u: tr(msU(s, r))})));
+  const flat = []; (D.S || []).forEach(s => s.rows.forEach(r => flat.push({key: r.key, sec: s.k, u: tr(msU(s, r)), man: r.man || []})));
   const G = []; let cur = null;
   byRoom(flat, x => x.u.area).forEach(x => { const k = roomKey(x.u.area); if (!cur || cur.k !== k) G.push(cur = {k, room: x.u.area, rows: []}); cur.rows.push(x); });
   return G;
 }
 const msFilled = (x, k) => String(x.u[k] || '').trim();
-function msCols(G, ed){ const h = msHide(); return MS_COLS.filter(([k]) => (ed && k === 'note') || G.some(g => g.rows.some(x => msFilled(x, k)))).filter(([k]) => ed || !h.col.includes('u.' + k)); }
+const MS_EDIT = ['area', ...MS_COLS.map(c => c[0])];   // every box that can be typed over (22 Oct)
+function msCols(G, ed){ const h = msHide(); return MS_COLS.filter(([k]) => ed || G.some(g => g.rows.some(x => msFilled(x, k)))).filter(([k]) => ed || !h.col.includes('u.' + k)); }
 // the row a sheet line comes from, so a remark typed on the measurement sheet is that row's own Remarks (one place, both views)
 function msSrc(key){ const [k, id] = String(key).split('|');
+  if (k === 'add') return qAdds().find(a => a.id === id);   // a line added by hand (22 Oct)
   return k === 'curtains' ? state.rows.find(r => r.id === +id) : k === 'blinds' ? state.blinds.find(b => b.id === +id) : (state.more[k] || [])[+id]; }
 const msDateTxt = q => q.date ? q.date.split('-').reverse().join('-') : '';
 const msMeasurer = q => q.exec ? String(q.exec).split(' - ')[0] : '';
@@ -8066,18 +8186,22 @@ function msPaperHTML(q, house, D, n, ed){
   const head1 = cols.map(c => c[0] === 'W' && size ? '' : c[0] === 'H' && size ? '<th colspan="2">SIZE (INCH.)</th>' : th(c, true)).join('');
   const head2 = size ? cols.filter(c => c[0] === 'H' || c[0] === 'W').map(c => th(c)).join('') : '';
   let sr = 0;
+  const red = (x, k) => (x.man || []).includes(k) ? ' man' : '';   // typed by hand: red on screen (22 Oct)
+  const inp = (x, k) => `<input class="ms-in${red(x, k)}" data-msm="${k}" data-k="${esc(x.key)}" value="${esc(x.u[k] || '')}" aria-label="${esc(k)}">`;
   const cell = (x, [k, , num]) => { const v = x.u[k] || '', off = colOn(k) ? '' : ' data-off';
+    if (ed && k !== 'note') return `<td class="${num ? 'r' : ''}"${off}>${inp(x, k)}</td>`;
     if (k === 'mzd') return `<td class="c${v ? ' ms-mzd' : ''}"${off}>${esc(v)}</td>`;
     if (k === 'note') return ed && msSrc(x.key) ? `<td class="ms-remc"${off}><input class="ms-rem" data-msrem="${esc(x.key)}" value="${esc(v)}" placeholder="Remarks" aria-label="Remarks"></td>` : `<td class="ms-remc"${off}>${esc(v)}</td>`;
-    return `<td class="${num ? 'r' : k === 'product' || k === 'pattern' ? 'c' : ''}"${off}>${esc(v)}</td>`; };
+    return `<td class="${num ? 'r' : k === 'product' || k === 'pattern' ? 'c' : ''}${red(x, k)}"${off}>${esc(v)}</td>`; };
   const body = G.map(g => g.rows.map((x, i) => { const yes = !ed || on.has(x.key);
-    return `<tr${yes ? '' : ' data-off'}><td class="c">${yes ? ++sr : '—'}</td>${i ? '' : `<td class="ms-area" rowspan="${g.rows.length}">${esc(String(g.room || '—').toUpperCase())}</td>`}${cols.map(c => cell(x, c)).join('')}${ed ? `<td class="qe">${btn('row', x.key, yes, 'Hide', 'Show')}</td>` : ''}</tr>`; }).join('')).join('');
+    const more = String(x.key).startsWith('add|') ? `<button class="qh" data-msx="${esc(x.key)}">Remove</button>` : (x.man || []).length ? `<button class="qh" data-msu="${esc(x.key)}" title="Back to what the sheets say">Undo typing</button>` : '';
+    return `<tr${yes ? '' : ' data-off'}><td class="c">${yes ? ++sr : '—'}</td>${ed ? `<td class="ms-area">${inp(x, 'area')}</td>` : i ? '' : `<td class="ms-area${g.rows.every(y => (y.man || []).includes('area')) ? ' man' : ''}" rowspan="${g.rows.length}">${esc(String(g.room || '—').toUpperCase())}</td>`}${cols.map(c => cell(x, c)).join('')}${ed ? `<td class="qe">${btn('row', x.key, yes, 'Hide', 'Show')}${more}</td>` : ''}</tr>`; }).join('')).join('');
   return `<table class="paper-top ms-top"><tr><th colspan="3" class="pi">MEASUREMENT SHEET${n ? ' · M' + n : ''}</th></tr>
       <tr><td colspan="3" class="firm"><b>${FIRM.name}</b> · ${FIRM.phone}</td></tr>
       <tr><td colspan="3"><b>DATE :</b> ${esc(msDateTxt(q))}</td></tr>
       <tr><td><b>CUSTOMER NAME :</b> ${esc(house || '')}</td><td><b>EXECUTIVE :</b> ${esc(q.exec || '')}</td><td><b>MEASURED BY :</b> ${esc(msMeasurer(q))}</td></tr></table>
     <div class="q-scroll"><table class="paper ms-tab ms-room${ed ? ' editing' : ''}"><thead><tr><th rowspan="2" class="qc-no">SR.NO</th><th rowspan="2">AREA</th>${head1}${ed ? '<th rowspan="2" class="qe"></th>' : ''}</tr>${size ? `<tr>${head2}</tr>` : ''}</thead>
-      <tbody>${body}</tbody></table></div>
+      <tbody>${body}${ed ? `<tr class="qadd"><td colspan="${cols.length + 3}"><button class="qh show" data-msadd="1">+ Add a row</button></td></tr>` : ''}</tbody></table></div>
     <div class="paper-foot ms-foot"><p><b>Totals :</b> ${(D.S || []).map(s => `${esc(s.name)}: ${esc(s.sum.join(', '))}`).join(' · ') || '—'}</p>
       <div class="sign"><span>MEASURED BY${q.exec ? ' : ' + esc(msMeasurer(q)).toUpperCase() : ''}</span><span>CUSTOMER SIGNATURE.</span><span>${FIRM.name}.</span></div></div>`;
 }
@@ -8093,11 +8217,13 @@ function renderMsheet(){
   // 20 Oct (Purvi): the same four buttons as View quotation (PDF · Excel · Print · Send on WhatsApp), at the top of the panel
   const acts = `<div class="q-acts"><button class="btn solid dl" id="ms-pdf">${DL_ICON}PDF</button><button class="btn solid dl" id="ms-xlsx">${DL_ICON}Excel</button>
       <button class="btn dl" id="ms-print" title="Print on A4 (landscape)">${PRINT_ICON}Print</button><button class="btn dl" id="ms-wa">${WA_ICON}Send on WhatsApp</button><span class="hint">${ver} Each download or send is kept on the client's page.</span></div>`;
-  $('#ms-sum').innerHTML = acts + (msEdit && !phone ? `<div class="qe-card"><h3>Editing the measurement sheet</h3><p>Press <b>Hide</b> on a column, a row or a product. Hidden things are left out of the PDF, Excel and WhatsApp.</p>
+  const typed = D.S.reduce((a, s) => a + s.rows.filter(r => (r.man || []).length).length, 0);
+  $('#ms-sum').innerHTML = acts + (msEdit && !phone ? `<div class="qe-card"><h3>Editing the measurement sheet</h3><p><b>Type in any box</b> to change it, or <b>+ Add a row</b>. What you type shows <span class="man">in red</span> here and on the quotation; the client's PDF, Excel and print look normal.</p><p>Press <b>Hide</b> on a column, a row or a product. Hidden things are left out of the PDF, Excel and WhatsApp.</p>
       ${D.hid ? `<p class="qe-now"><b>The client gets:</b> ${esc(D.hid)}</p>` : '<p class="qe-now">Nothing hidden yet.</p>'}
       <div class="rows">${msData().map(s => { const yes = !msHide().sec.includes(s.k); return `<div class="srow"><span>${esc(s.name)}</span><button class="qh${yes ? '' : ' show'}" data-msh="sec" data-k="${esc(s.k)}">${yes ? 'Hide' : 'Show'}</button></div>`; }).join('')}</div>
       <div class="qe-acts">${D.hid ? '<button class="btn" data-msall="1">Show everything</button>' : ''}<button class="btn solid" data-msedit="0">Done</button></div></div>`
-    : ban + `<div class="qe-open"><button class="btn" data-msedit="1">${EDIT_ICON}Edit measurement sheet</button><span class="hint">Hide a product, a row or a column before sending.</span></div>`)
+    : ban + `<div class="qe-open"><button class="btn" data-msedit="1">${EDIT_ICON}Edit measurement sheet</button><span class="hint">Type over anything, add a row, or hide a part before sending.</span></div>`
+      + (typed ? `<p class="hint" style="margin:6px 0 0"><span class="man">Red</span> = typed by hand (${typed} row${typed > 1 ? 's' : ''}). The client gets it in plain black.</p>` : ''))
     + `<div class="rows">${D.S.map(s => `<div class="srow"><span>${esc(s.name)}</span><b>${esc(s.sum[0] || '')}</b></div>`).join('')}</div>`;
   if (dlg.open && dlg.querySelector('#mse-list')) msDlgFill();
 }
@@ -8128,6 +8254,26 @@ document.addEventListener('click', e => {
 document.addEventListener('input', e => { const t = e.target; if (!t.dataset || t.dataset.msrem == null) return; const r = msSrc(t.dataset.msrem); if (!r) return; r.remarks = t.value; save();
   const box = String(t.dataset.msrem).startsWith('curtains|') && document.getElementById(`r${r.id}-remarks`); if (box) box.value = t.value; });   // the curtain sheet isn't redrawn on opening; blinds and the rest are
 document.addEventListener('change', e => { const x = e.target.closest('input[data-msh]'); if (x) msToggle(x.dataset.msh, x.dataset.k); });
+// typed on View measurement sheet (22 Oct): kept on the measured row, so the quotation shows it too
+function msSet(key, col, raw){
+  const v = String(raw).trim();
+  if (String(key).startsWith('add|')) { const a = msSrc(key); if (!a) return;
+    if (col === 'details') a.what = v;
+    else if (col === 'qty') { const m = v.match(/^([\d.,]+)\s*(.*)$/); if (m) { a.qty = qmNum(m[1]); if (m[2]) a.unit = m[2].toUpperCase(); } else if (!v) a.qty = null; else a.unit = v; }
+    else a[col] = v;
+    save(); return; }
+  const src = msSrc(key), row = msData().flatMap(s => s.rows).find(r => r.key === key); if (!src || !row) return;
+  const m = src.man || (src.man = {});
+  if (v === String((row.orig || {})[col] ?? '')) delete m[col]; else m[col] = (col === 'qty' || col === 'sqft') && /^[\d.,]+$/.test(v) ? qmNum(v) : v;
+  if (!Object.keys(m).length) delete src.man;
+  save();
+}
+document.addEventListener('change', e => { const x = e.target.closest('input[data-msm]'); if (!x) return; msSet(x.dataset.k, x.dataset.msm, x.value); reTyped(renderMsheet); });
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-msadd]')) { const k = qmAdd('other'); renderMsheet(); const n = document.querySelector(`[data-msm="area"][data-k="${CSS.escape(k)}"]`); if (n) n.focus(); return; }
+  const u = e.target.closest('[data-msu]'); if (u) { const src = msSrc(u.dataset.msu); if (src && src.man) { MS_EDIT.forEach(k => delete src.man[k]); if (!Object.keys(src.man).length) delete src.man; save(); } renderMsheet(); return; }
+  const r = e.target.closest('[data-msx]'); if (r) { qmRemove(r.dataset.msx); renderMsheet(); }
+});
 
 // ---- PDF (A4 landscape) and Excel in the team's layout: one table, rooms first, Area written once per room, Size (inch.) over
 // Height / Width, MZD in green, remarks in red under Fixing (20 Oct). No prices.
@@ -8436,4 +8582,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-181632 -->
+<!-- build 20261022-190706 -->
