@@ -384,7 +384,10 @@ table.sheet.psheet.uwide{width:100%}
 #pside .mtf{gap:8px}#pside .mtf .uf input,#pside .mtf .uf select{padding:7px 9px;min-height:0;height:36px;font-size:14.5px}
 #pside .mt-empty{padding:4px 20px 16px;margin:0}
 #v-product .psheet td select[data-mt],#v-product .psheet td input[data-mt]{height:40px}
-#v-product .psheet td :is(input,select)[data-mt]:disabled{opacity:.3;border-style:dashed;border-width:1px}
+#v-product .psheet td :is(input,select)[data-mt]:disabled,#v-product .psheet td :is(input,select)[data-ur]:disabled{opacity:.3;border-style:dashed;border-width:1px}
+#v-product .psheet td select[data-ur],#v-product .psheet td input[data-ur]{height:40px}
+#v-product .psheet .uq{display:inline-flex;align-items:center;gap:4px}#v-product .psheet .uq small{color:var(--muted);font-size:12px;min-width:26px}
+#v-product .psheet input[data-ur="fabric"].picked{font-weight:600}
 .swm-fam{padding:10px 14px 2px;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
 .swm-row{display:flex;align-items:center;gap:10px;padding:6px 14px;border-bottom:1px solid var(--line2)}
 .swm-row .nm{flex:1 1 auto;min-width:0;font-weight:600;font-size:14.5px}
@@ -5972,9 +5975,9 @@ const MP = {
   // Upholstery material (Purvi, 6 Oct night): one list, no tabs. Someone buys material from us to get furniture made elsewhere,
   // so there is no room or item: each line starts with "What is it?" and then shows only that product's boxes (layout "B").
   uph: {name: 'Upholstery', hasName: 'Upholstery material', one: 'line', many: 'lines', add: '+ Add material', form: true,
-    head: () => `<tr><th class="first">#</th><th>What it is</th><th>Details</th><th class="r">To order</th><th class="r">Rate</th><th class="r">Amount</th><th></th></tr>`, rowHTML: r => uphRowHTML(r), side: () => uphSide(),
+    head: () => UPH_HEAD, rowHTML: r => uphRowHTML(r), side: () => uphSide(),
     note: 'Material a customer takes to get furniture made elsewhere: fabric, foam, fibre, pins, solution, astar. One line each.',
-    hint: 'Tap a line to change it on the right.',
+    hint: 'Type each line here. The panel on the right shows its price, the company for fabric, and remarks.',
     filled: r => !!r.p,
     blank: () => ({p: '', sup: '', key: '', fabric: '', rate: '', m: '', foam: '', T: '', L: '', W: '', qty: '', th: '', kg: '', size: '', n: '', l: '', type: '', remarks: ''}),
     cols: [],
@@ -6016,7 +6019,7 @@ const MP = {
       return c;
     },
     sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.tot || 0), 0); return m ? `MRP ${rs(m)}` : ''; },
-    rules: ['Start every line with "What is it?". Only that product\'s boxes show.', 'Fabric: type to search every company\'s list, the same list as the Curtains sheet (or pick a company first to search only its fabrics); the pick gives the company and the price (MRP = list price + GST). Choose Other to type a fabric and our own rate per metre.',
+    rules: ['Each line is typed in the table: What it is, then only the boxes that kind needs (fabric: search it; foam: the foam, thickness, length, width and pieces; the rest: their choice and qty). The panel on the right shows the price, the company for fabric and remarks.', 'Fabric: type to search every company\'s list, the same list as the Curtains sheet (or pick a company first to search only its fabrics); the pick gives the company and the price (MRP = list price + GST). Choose Other to type a fabric and our own rate per metre.',
       'Foam: Sleepwell\'s list. A listed sheet or cushion size is priced from the list; any other size is cut to size (about 2 weeks).',
       'Fibre pad, loose fibre, pins, SR solution and astar: our own rates from the Prices page (Upholstery material).', 'Everything here goes on the quotation, in the Upholstery material section.'],
   },
@@ -6048,16 +6051,41 @@ function uphFromOld(){
     out.push(Object.assign(MP.uph.blank(), {p: 'Foam', foam: r.foam, T: r.T, L: r.L, W: r.W, qty: r.qty, remarks: [r.room, r.item, r.part, r.remarks].filter(Boolean).join(' · ')})); });
   if (Array.isArray(M.fabric) || Array.isArray(M.foam)) { M.uph = (Array.isArray(M.uph) ? M.uph : []).concat(out); delete M.fabric; delete M.foam; }
 }
+// 22 Oct (Purvi: "do the same table layout for the upholstery sheet", as Mattress): every line typed in the table on one row; the
+// boxes follow what it is (fabric: the Curtains search; foam: Sleepwell foam, thickness, size; the rest: their choice and qty).
+const UPH_HEAD = `<tr><th class="first">#</th><th>What it is</th><th>Item</th><th title="Thickness">Thick.</th><th class="r" title="Length (foam)">L <small>″</small></th><th class="r" title="Width (foam)">W <small>″</small></th><th class="r">Qty</th><th class="r">Amount</th><th></th></tr>`;
+const uphQ = p => p === 'Fabric' ? ['m', 'm'] : p === 'Foam' ? ['qty', 'pcs'] : UPH[p] ? [UPH[p].q, UPH[p].u === 'packet' ? 'pkts' : UPH[p].u] : ['', ''];
+const uphAmtHTML = r => { const c = MP.uph.calc(r); return c.tot ? rs(c.tot) : c.ok ? '<span class="chip warn">No price yet</span>' : '<span class="none">—</span>'; };
 function uphRowHTML(r){
-  const i = state.more.uph.indexOf(r) + 1, c = MP.uph.calc(r);
+  const i = state.more.uph.indexOf(r) + 1, U = UPH[r.p], foam = r.p === 'Foam', fab = r.p === 'Fabric', m = foam ? swFoam(r) : null, tc = m ? m.tcm : {};
+  const sel = (f, list, val, blank, w, dis, lab, short) => `<select data-ur="${f}" style="width:${w}px"${dis ? ' disabled' : ''} aria-label="${lab}">${selOpts(list, val, blank, short)}</select>`;
+  const inp = (f, ph, w, num, dis, lab, cls = '') => `<input data-ur="${f}" value="${esc(r[f] ?? '')}" placeholder="${esc(ph)}" style="width:${w}px"${num ? ' inputmode="decimal"' : ''} class="${num ? 'n ' : ''}${cls}"${dis ? ' disabled' : ''} aria-label="${lab}" autocomplete="off">`;
+  const item = fab ? (r.sup === 'Other' ? inp('fabric', 'Fabric name or code', 220, false, false, 'Fabric') : inp('fabric', 'Type to search fabrics', 220, false, false, 'Fabric', r.key ? 'picked' : ''))
+    : foam ? sel('foam', SWF_RNG.map(g => ({g, items: SWF.filter(x => x.rng === g).map(x => x.n)})), r.foam, 'Pick the foam', 220, false, 'Foam')
+    : U && U.opts ? sel(U.v, U.opts.map(o => o[0]), r[U.v], 'Pick', 220, false, U.vl) : '<span class="none">—</span>';
+  const [qf, qu] = uphQ(r.p);
   return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span></td>
-    <td>${r.p ? `<span class="uprod">${uphDot(r.p)}${esc(r.p)}</span>` : '<span class="chip warn">Pick what it is →</span>'}</td>
-    <td class="uwhat">${c.what ? esc(c.what) : '<span class="none">—</span>'}</td>
-    <td class="out">${c.ok ? `${fmt(c.qty)}<span class="u"> ${esc(c.u)}</span>` : '<span class="none">—</span>'}</td>
-    <td class="out">${c.each ? rs(c.each) : '<span class="none">—</span>'}</td>
-    <td class="out">${c.tot ? rs(c.tot) : c.ok ? '<span class="chip warn">No price yet</span>' : '<span class="none">—</span>'}</td>
+    <td>${sel('p', Object.keys(UPH), r.p, 'Pick', 140, false, 'What it is')}</td>
+    <td>${r.p ? item : '<span class="none">pick what it is</span>'}</td>
+    <td>${sel('T', foam ? Object.keys(tc).map(Number).sort((a, b) => a - b).map(t => [String(t), `${inchTxt(t)} · ${tc[t]} cm`]) : [], r.T, foam ? (m ? 'Pick' : 'foam first') : '—', 96, !foam || !m, 'Thickness')}</td>
+    <td>${inp('L', foam ? '0' : '', 56, true, !foam, 'Length', foam ? 'key' : '')}</td><td>${inp('W', foam ? '0' : '', 56, true, !foam, 'Width', foam ? 'key' : '')}</td>
+    <td><span class="uq">${inp(qf || 'qty', '0', 56, true, !r.p, 'Qty')}<small>${esc(qu)}</small></span></td>
+    <td class="out" data-o="amt">${uphAmtHTML(r)}</td>
     <td class="acts"><button class="ico" data-pa="dup" title="Copy this line">⧉</button><button class="ico" data-pa="del" title="Delete this line">✕</button></td></tr>`;
 }
+$('#ptb').addEventListener('input', e => {
+  if (mpCur !== 'uph') return; const f = e.target.dataset.ur; if (!f) return;
+  const tr = e.target.closest('tr'), r = state.more.uph.find(x => x.id === +tr.dataset.id); if (!r) return;
+  const v = e.target.value;
+  if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.uph.blank(), {p: v, remarks: r.remarks}); const U = UPH[v]; if (U && U.opts) r[U.v] = U.opts[0][0]; }   // a new kind starts clean
+  else { r[f] = v; if (f === 'fabric') r.key = ''; if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; } }
+  state.msel.uph = state.more.uph.indexOf(r);
+  if (e.target.tagName === 'SELECT') { tr.outerHTML = uphRowHTML(r); } else { const a = tr.querySelector('[data-o=amt]'); if (a) a.innerHTML = uphAmtHTML(r); }
+  mpMarkSel('uph'); mpTotal('uph');
+  if (e.target.tagName === 'SELECT') uphSide(); else { const x = $('#uph-res'); if (x) x.innerHTML = uphResHTML(r); }
+  if (f === 'fabric' && e.isTrusted && document.activeElement === e.target) uphOpenSugg(e.target);
+  save();
+});
 const uphUpdateRow = r => { const tr = $('#ptb').querySelector(`tr[data-id="${r.id}"]`); if (tr) { tr.outerHTML = uphRowHTML(r); mpMarkSel('uph'); } };
 function uphField(label, html){ return `<label class="uf"><span>${label}</span>${html}</label>`; }
 const uIn = (f, r, ph, num) => `<input data-u="${f}" value="${esc(r[f])}" placeholder="${esc(ph || '')}"${num ? ' inputmode="decimal" class="n"' : ''} autocomplete="off">`;
@@ -6086,21 +6114,22 @@ function uphResHTML(r){
 }
 function uphSide(){
   const rows = state.more.uph, r = rows[state.msel.uph] || rows[0], el = $('#pside'); if (!r) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div class="side-h"><h2>Line ${rows.indexOf(r) + 1}</h2><span class="sub">${r.p ? esc(r.p) : 'Upholstery material'}</span></div>
-    <div class="ustep"><i>1</i>What is it?</div>
-    <div class="uchoose">${Object.keys(UPH).map(p => `<button data-uprod="${esc(p)}" aria-pressed="${r.p === p}"><b>${uphDot(p)}${esc(p)}</b><small>${esc(UPH[p].d)}</small></button>`).join('')}</div>
-    ${r.p ? `<div class="ustep"><i>2</i>${esc(r.p)}</div><div class="uform">${uphFormHTML(r)}${uphField('Remarks', uIn('remarks', r, 'Anything to note'))}</div>` : ''}
-    <div id="uph-res">${r.p ? uphResHTML(r) : ''}</div>`;
+  let h = `<div class="side-h"><h2>Line ${rows.indexOf(r) + 1}</h2><span class="sub">${r.p ? esc(r.p) : 'Upholstery material'}</span></div>`;
+  if (!r.p) { el.innerHTML = h + '<p class="hint mt-empty">Pick <b>What it is</b> in the table: fabric, foam, fibre pad, loose fibre, pins, SR solution or astar. Then fill the rest of the row.</p>'; return; }
+  h += `<div id="uph-res">${uphResHTML(r)}</div><div class="uform mtf">`;
+  if (r.p === 'Fabric') h += uphField('Company', `<select data-u="sup">${selOpts([...Object.entries(SUPS).map(([k, n]) => [k, n]), ['Other', 'Other (not on a list)']], r.sup, 'Any company')}</select>`)
+    + (r.sup === 'Other' ? uphField('Our rate per metre, ₹ incl. GST', uIn('rate', r, '₹', 1)) : '<span class="hint">Pick a company to search only its fabrics, or Other to type a fabric and our own rate.</span>');
+  el.innerHTML = h + uphField('Remarks', uIn('remarks', r, 'Anything to note')) + '</div>';
 }
 // Upholstery's fabric box opens the Curtains list (our list, any company unless one is picked); a pick sets the company too
 function uphOpenSugg(input){
   const r = uphCur(); if (!r || r.sup === 'Other') { closeSugg(); return; }
-  suggFor = {input, pick: x => { r.sup = x.sup; r.key = x.k; r.fabric = x.n; uphChanged(r, true); const m = $('#pside [data-u="m"]'); if (m) m.focus(); }};
+  suggFor = {input, pick: x => { r.sup = x.sup; r.key = x.k; r.fabric = x.n; uphChanged(r, true); const m = $(`#ptb tr[data-id="${r.id}"] [data-ur="m"]`); if (m) m.focus(); }};
   sugg.innerHTML = fabListHTML(input.value.trim(), r.sup || '');
   sugg.style.width = Math.max(input.offsetWidth, 360) + 'px';
   placeSugg(input);
 }
-const uphFabInput = el => !!(el && el.dataset && el.dataset.u === 'fabric' && mpCur === 'uph' && el.closest('#pside'));
+const uphFabInput = el => !!(el && el.dataset && el.dataset.ur === 'fabric' && mpCur === 'uph' && el.closest('#ptb'));   // 22 Oct: the box is in the table now
 function uphChanged(r, side){ uphUpdateRow(r); mpTotal('uph'); if (side) uphSide(); else { const x = $('#uph-res'); if (x) x.innerHTML = uphResHTML(r); } save(); }
 const uphCur = () => state.more.uph[state.msel.uph];
 $('#pside').addEventListener('click', e => {
@@ -6117,7 +6146,7 @@ $('#pside').addEventListener('input', e => {
   if (mpCur !== 'uph') return;
   const f = e.target.dataset.u, r = uphCur(); if (!f || !r) return;
   r[f] = e.target.value;
-  if (f === 'fabric') { r.key = ''; uphOpenSugg(e.target); }
+  if (f === 'fabric') { r.key = ''; }
   if (f === 'sup') { r.key = ''; r.fabric = ''; uphChanged(r, true); return; }   // a new company clears the old company's fabric (7 Oct)
   if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; uphChanged(r, true); return; }
   uphChanged(r, false);
@@ -6302,7 +6331,7 @@ function mpUpdateRow(k, r){
   return c;
 }
 function renderProduct(k){
-  ensureMore(); mpCur = k; const P = MP[k], rows = state.more[k]; $('#p-table').classList.remove('uwide'); $('#pside').classList.toggle('mtp', k === 'mattress');
+  ensureMore(); mpCur = k; const P = MP[k], rows = state.more[k]; $('#p-table').classList.remove('uwide'); $('#pside').classList.toggle('mtp', k === 'mattress' || k === 'uph');
   if (!rows.length) rows.push(P.blank()), rows[0].id = uid++;
   const sel = Math.min(state.msel[k] || 0, rows.length - 1); state.msel[k] = sel;
   if (P.form) {   // summary table + side form (Upholstery, Mattress)
@@ -8159,4 +8188,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-114306 -->
+<!-- build 20261022-115415 -->
