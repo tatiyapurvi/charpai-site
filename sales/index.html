@@ -6164,15 +6164,20 @@ function uphRowHTML(r){
     <td>${r.p ? item : '<span class="none">pick what it is</span>'}</td>
     <td>${sel('T', foam ? Object.keys(tc).map(Number).sort((a, b) => a - b).map(t => [String(t), `${inchTxt(t)} · ${tc[t]} cm`]) : [], r.T, foam ? (m ? 'Pick' : 'foam first') : '—', 96, !foam || !m, 'Thickness')}</td>
     <td>${inp('L', foam ? '0' : '', 56, true, !foam, 'Length', foam ? 'key' : '')}</td><td>${inp('W', foam ? '0' : '', 56, true, !foam, 'Width', foam ? 'key' : '')}</td>
-    <td><span class="uq">${inp(qf || 'qty', '0', 56, true, !r.p, 'Qty')}<small>${esc(qu)}</small></span></td>
+    <td><span class="uq">${foam && !(parseInt(r.qty, 10) >= 1) ? inp('qty', '1', 56, true, false, 'Pieces').replace(/value="[^"]*"/, 'value="1"') : inp(qf || 'qty', '0', 56, true, !r.p, 'Qty')}<small>${esc(qu)}</small></span></td>
     <td class="out" data-o="amt">${uphAmtHTML(r)}</td>
     <td class="acts"><button class="ico" data-pa="dup" title="Copy this line">⧉</button><button class="ico" data-pa="del" title="Delete this line">✕</button></td></tr>`;
 }
+// 22 Oct (Purvi: "in foam pcs should be 1 by default never 0"): leaving the pieces box empty or at 0 puts 1 back
+$('#ptb').addEventListener('focusout', e => {
+  if (mpCur !== 'uph' || e.target.dataset.ur !== 'qty') return; const tr = e.target.closest('tr'), r = state.more.uph.find(x => x.id === +tr.dataset.id);
+  if (r && r.p === 'Foam' && !(parseInt(r.qty, 10) >= 1)) { r.qty = '1'; e.target.value = '1'; save(); }
+});
 $('#ptb').addEventListener('input', e => {
   if (mpCur !== 'uph') return; const f = e.target.dataset.ur; if (!f) return;
   const tr = e.target.closest('tr'), r = state.more.uph.find(x => x.id === +tr.dataset.id); if (!r) return;
   const v = e.target.value;
-  if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.uph.blank(), {p: v, remarks: r.remarks}); const U = UPH[v]; if (U && U.opts) r[U.v] = U.opts[0][0]; }   // a new kind starts clean
+  if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.uph.blank(), {p: v, remarks: r.remarks}, v === 'Foam' ? {qty: '1'} : {}); const U = UPH[v]; if (U && U.opts) r[U.v] = U.opts[0][0]; }   // a new kind starts clean; foam = 1 piece (22 Oct)
   else { r[f] = v; if (f === 'fabric') r.key = ''; if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; } }
   state.msel.uph = state.more.uph.indexOf(r);
   if (e.target.tagName === 'SELECT') { tr.outerHTML = uphRowHTML(r); } else { const a = tr.querySelector('[data-o=amt]'); if (a) a.innerHTML = uphAmtHTML(r); }
@@ -8283,4 +8288,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-141657 -->
+<!-- build 20261022-142349 -->
