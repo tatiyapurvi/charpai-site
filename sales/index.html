@@ -378,6 +378,13 @@ table.sheet.psheet.uwide{width:100%}
 .swm-seg button{border:0;background:var(--paper);padding:5px 10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted)}
 .swm-seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .swm-list{max-height:520px;overflow:auto;overscroll-behavior:contain;padding-bottom:6px}
+/* 22 Oct: Mattress panel = detail only, in its own scroll beside the table; checks compact; the price menu shorter */
+@media (min-width:1150px){ #pside.mtp{max-height:calc(100dvh - var(--tabs-h, 70px) - var(--cbar-h, 60px) - 24px);overflow:auto;overscroll-behavior:contain} }
+#pside.mtp .swm-list{max-height:340px}
+#pside .mtf{gap:8px}#pside .mtf .uf input,#pside .mtf .uf select{padding:7px 9px;min-height:0;height:36px;font-size:14.5px}
+#pside .mt-empty{padding:4px 20px 16px;margin:0}
+#v-product .psheet td select[data-mt],#v-product .psheet td input[data-mt]{height:40px}
+#v-product .psheet td :is(input,select)[data-mt]:disabled{opacity:.3;border-style:dashed;border-width:1px}
 .swm-fam{padding:10px 14px 2px;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
 .swm-row{display:flex;align-items:center;gap:10px;padding:6px 14px;border-bottom:1px solid var(--line2)}
 .swm-row .nm{flex:1 1 auto;min-width:0;font-weight:600;font-size:14.5px}
@@ -5895,7 +5902,7 @@ const MP = {
     filled: r => r.p === 'Mattress' ? !!(nv(r.L) && nv(r.W)) : !!r.item,
     empty: 'Type the length and width: every Sleepwell mattress for this bed shows here with its price.',
     note: 'Mattresses, pillows, protectors, bolsters, back cushions, sofa \'n\' beds. One line each.',
-    hint: 'Tap a line to change it on the right.',
+    hint: 'Type each line here. The panel on the right shows its price, the checks and every Sleepwell price for that size.',
     blank: () => ({p: '', room: '', bed: '', sup: 'Sleepwell', model: '', L: '', W: '', T: '', feel: '', by: '', head: '', bedType: '', qty: 1, item: '', rate: '', remarks: ''}),
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
@@ -5956,7 +5963,7 @@ const MP = {
       return `<div class="swm"><div class="swm-h"><b>Every Sleepwell mattress for ${fmt(L)} × ${fmt(W)}</b><span class="swm-seg"><button data-msort="range" aria-pressed="${swmSort === 'range'}">By range</button><button data-msort="price" aria-pressed="${swmSort === 'price'}">Cheapest first</button></span></div><div class="swm-list">${body}</div></div>`;
     },
     sum: (rows, cs) => { const n = rows.reduce((a, r, i) => a + (r.p === 'Mattress' && cs[i].ok ? Math.max(1, parseInt(r.qty, 10) || 1) : 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0); return [n ? `${n} mattress${n > 1 ? 'es' : ''}` : '', m ? `MRP ${rs(m)}` : ''].filter(Boolean).join(' · '); },
-    rules: ['Start every line with "What is it?": a mattress, or a pillow, protector, bolster, back cushion or sofa \'n\' bed (picked from Sleepwell\'s list, at its MRP).',
+    rules: ['Each line is typed in the table: What it is (a mattress, or a pillow, protector, bolster, back cushion or sofa \'n\' bed), room, length and width, the mattress range or the item from Sleepwell\'s list, thickness and qty. The panel on the right shows the price, the checks and every Sleepwell price for that size.',
       'Measure inside the bed frame, where the mattress sits: length head to foot, then width.', 'Sleepwell lengths are 72, 75, 78 and 84″; widths 30 to 72″. Any other size is a custom size.',
       'Custom size up to 84 × 72: Sleepwell charges the next bigger size on its list, same thickness. Bigger than 84 × 72: the 72 × 36 price, pro rata by area.',
       'Prices are Sleepwell\'s MRP (North Zone, 1 Aug 2026 list, with Sleepwell\'s 21 Oct 2026 increase of 4–7% on 21 mattress models), including GST.',
@@ -6156,17 +6163,49 @@ function mtCalc(r){
   if (x.g === 'Mattress protector') c.how += ' Protectors come in the sizes listed; a bigger custom one is made to order (ask Sleepwell).';
   return c;
 }
-const MT_HEAD = `<tr><th class="first">#</th><th>What it is</th><th>Details</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th><th></th></tr>`;
+// 22 Oct (Purvi: "the ui for mattress section is super disgusting, my team has to scroll back and forth so much … what it is can be a
+// drop down list in the main list only na? and the right panel stays for detailing"): every line is typed in the table on one row
+// (What it is ▾ · Room · L · W · Mattress / item ▾ · Thick. ▾ · Qty → Amount); the panel shows only the price, the checks and every
+// Sleepwell price for that size, in its own scroll. The big "What is it?" cards are gone. Data unchanged.
+const MT_HEAD = `<tr><th class="first">#</th><th>What it is</th><th>Room</th><th class="r" title="Length, inside the bed frame">L <small>″</small></th><th class="r" title="Width, inside the bed frame">W <small>″</small></th><th>Mattress / item</th><th title="Thickness">Thick.</th><th class="r">Qty</th><th class="r">Amount</th><th></th></tr>`;
+const MT_OTHER = '__other';
+function mtItemOpts(r){
+  if (r.p === 'Mattress') return [...SWM_FAMS.map(f => ({g: 'Sleepwell · ' + f, items: SWM.filter(x => x.fam === f).map(x => x.n)})), {g: 'Other brand', items: [[MT_OTHER, r.sup === 'Other' && r.model ? r.model + ' (other brand)' : 'Other brand: type it on the right']]}];
+  return SWH.filter(x => x.g === r.p).map(x => [hcpId(x), `${x.n} · ${x.s}″ · ${rs(x.v)}`]);
+}
+const mtAmtHTML = r => { const c = mtCalc(r); return c.tot ? rs(c.tot) : c.ok ? '<span class="chip warn">No price yet</span>' : '<span class="none">—</span>'; };
 function mtRowHTML(r){
-  const i = state.more.mattress.indexOf(r) + 1, c = mtCalc(r);
+  const i = state.more.mattress.indexOf(r) + 1, mat = r.p === 'Mattress', m = mat ? swMat(r) : null;
+  const sel = (f, list, val, blank, w, dis, lab, short) => `<select data-mt="${f}" style="width:${w}px"${dis ? ' disabled' : ''} aria-label="${lab}">${selOpts(list, val, blank, short)}</select>`;
+  const inp = (f, ph, w, num, dis, lab) => `<input data-mt="${f}" value="${esc(r[f] ?? '')}" placeholder="${esc(ph)}" style="width:${w}px"${num ? ` class="n${f === 'L' || f === 'W' ? ' key' : ''}" inputmode="decimal"` : ''}${f === 'room' ? ' list="roomlist"' : ''}${dis ? ' disabled' : ''} aria-label="${lab}" autocomplete="off">`;
+  const thList = mat ? (m ? m.th : [4, 5, 6, 8, 10, 12]).map(t => [t + '″', inchTxt(t)]) : [];
   return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span></td>
-    <td>${r.p ? `<span class="uprod">${mtDot(r.p)}${esc(r.p)}</span>` : '<span class="chip warn">Pick what it is →</span>'}</td>
-    <td class="uwhat">${c.what ? esc(c.what) : '<span class="none">—</span>'}</td>
-    <td class="out">${c.ok ? `${fmt(c.qty)}<span class="u"> ${esc(c.u)}</span>` : '<span class="none">—</span>'}</td>
-    <td class="out">${c.each ? rs(c.each) : '<span class="none">—</span>'}</td>
-    <td class="out">${c.tot ? rs(c.tot) : c.ok ? '<span class="chip warn">No price yet</span>' : '<span class="none">—</span>'}</td>
+    <td>${sel('p', Object.keys(MT), r.p, 'Pick', 138, false, 'What it is', n => n.replace('Mattress protector', 'Protector'))}</td>
+    <td>${inp('room', 'Room', 104, false, false, 'Room')}</td>
+    <td>${inp('L', mat ? '0' : '', 56, true, !mat, 'Length')}</td><td>${inp('W', mat ? '0' : '', 56, true, !mat, 'Width')}</td>
+    <td>${r.p ? sel('item', mtItemOpts(r), mat ? (r.sup === 'Other' ? MT_OTHER : r.model) : r.item, mat ? 'Pick the range' : 'Pick', 200, false, 'Mattress or item') : '<span class="none">pick what it is</span>'}</td>
+    <td>${sel('T', thList, r.T, mat ? 'Pick' : '—', 66, !mat || (r.sup !== 'Other' && !m), 'Thickness')}</td>
+    <td>${inp('qty', '1', 46, true, false, 'Qty')}</td>
+    <td class="out" data-o="amt">${mtAmtHTML(r)}</td>
     <td class="acts"><button class="ico" data-pa="dup" title="Copy this line">⧉</button><button class="ico" data-pa="del" title="Delete this line">✕</button></td></tr>`;
 }
+// typed in the table: a text box updates the amount and the panel's numbers (the row stays, so the cursor stays); a dropdown redraws the row
+$('#ptb').addEventListener('input', e => {
+  if (mpCur !== 'mattress') return; const f = e.target.dataset.mt; if (!f) return;
+  const tr = e.target.closest('tr'), r = state.more.mattress.find(x => x.id === +tr.dataset.id); if (!r) return;
+  const v = e.target.value;
+  if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.mattress.blank(), {room: r.room, bed: r.bed, remarks: r.remarks, qty: r.qty}, {p: v}); }   // a new kind starts clean, same room
+  else if (f === 'item') {
+    if (r.p !== 'Mattress') r.item = v;
+    else if (v === MT_OTHER) { if (r.sup !== 'Other') Object.assign(r, {sup: 'Other', model: '', T: ''}); }
+    else { Object.assign(r, {sup: 'Sleepwell', model: v, rate: ''}); const m = swMat(r); if (m && r.T && !m.th.includes(parseFloat(r.T))) r.T = ''; }
+  } else r[f] = v;
+  state.msel.mattress = state.more.mattress.indexOf(r);
+  if (e.target.tagName === 'SELECT') { tr.outerHTML = mtRowHTML(r); } else { const a = tr.querySelector('[data-o=amt]'); if (a) a.innerHTML = mtAmtHTML(r); }
+  mpMarkSel('mattress'); mpTotal('mattress');
+  if (e.target.tagName === 'SELECT' || f === 'L' || f === 'W') mtSide(); else { const x = $('#mt-res'); if (x) x.innerHTML = mtResHTML(r); }
+  save();
+});
 const mtIn = (f, r, ph, num) => `<input data-mt="${f}" value="${esc(r[f])}" placeholder="${esc(ph || '')}"${num ? ' inputmode="decimal" class="n"' : ''}${f === 'room' ? ' list="roomlist"' : ''} autocomplete="off">`;
 const mtSeg = (f, list, val) => `<span class="useg">${list.map(o => `<button data-mtv="${f}" data-val="${esc(o)}" aria-pressed="${o === val}">${esc(o)}</button>`).join('')}</span>`;
 const mtSel = (f, list, val, blank) => `<select data-mt="${f}">${selOpts(list, val, blank)}</select>`;
@@ -6178,36 +6217,20 @@ function mtResHTML(r){
 }
 function mtSide(){
   const rows = state.more.mattress, r = rows[state.msel.mattress] || rows[0], el = $('#pside'); if (!r) { el.innerHTML = ''; return; }
-  let h = `<div class="side-h"><h2>Line ${rows.indexOf(r) + 1}</h2><span class="sub">${r.p ? esc(r.p) : 'Mattress and pillows'}</span></div>
-    <div class="ustep"><i>1</i>What is it?</div>
-    <div class="uchoose">${Object.keys(MT).map(p => `<button data-mtp="${esc(p)}" aria-pressed="${r.p === p}"><b>${mtDot(p)}${esc(p)}</b><small>${esc(MT[p].d)}</small></button>`).join('')}</div>`;
+  el.classList.add('mtp');
+  let h = `<div class="side-h"><h2>Line ${rows.indexOf(r) + 1}${r.room ? ' · ' + esc(r.room) : ''}</h2><span class="sub">${r.p ? esc(r.p) : ''}</span></div>`;
+  if (!r.p) { el.innerHTML = h + '<p class="hint mt-empty">Pick <b>What it is</b> in the table: a mattress, pillow, protector, bolster, back cushion or sofa bed. Then fill the rest of the row.</p>'; return; }
+  h += `<div id="mt-res">${mtResHTML(r)}</div>`;
   if (r.p === 'Mattress') {
-    const m = swMat(r);
-    h += `<div class="ustep"><i>2</i>Which bed, and its size</div><div class="uform">
-      <div class="ufrow" style="grid-template-columns:1fr 1fr">${uphField('Room', mtIn('room', r, 'Room'))}${uphField('Bed', mtIn('bed', r, 'e.g. master bed'))}</div>
-      <div class="ufrow">${uphField('Length ″', mtIn('L', r, '0', 1))}${uphField('Width ″', mtIn('W', r, '0', 1))}${uphField('Qty', mtIn('qty', r, '1', 1))}</div>
-      <span class="hint">Measured inside the bed frame, where the mattress sits.</span></div>
-      <div id="mt-res">${mtResHTML(r)}</div>
-      <div class="ustep"><i>3</i>Pick the mattress</div><div class="uform">
-      ${uphField('Company', mtSeg('sup', ['Sleepwell', 'Other'], r.sup))}
-      ${r.sup === 'Sleepwell'
-        ? `<div class="ufrow" style="grid-template-columns:2fr 1fr">${uphField('Range', mtSel('model', SWM_FAMS.map(f => ({g: f, items: SWM.filter(x => x.fam === f).map(x => x.n)})), r.model, 'Pick, or tap a price below'))}${uphField('Thickness', mtSel('T', (m ? m.th : [4, 5, 6, 8, 10]).map(t => [t + '″', inchTxt(t)]), r.T, 'Pick'))}</div>`
-        : `<div class="ufrow" style="grid-template-columns:2fr 1fr">${uphField('Brand and model', mtIn('model', r, 'e.g. Kurlon Spine Care'))}${uphField('Thickness', mtSel('T', [4, 5, 6, 8, 10, 12].map(t => [t + '″', inchTxt(t)]), r.T, 'Pick'))}</div>${uphField('Our rate per piece, ₹ incl. GST', mtIn('rate', r, '₹', 1))}`}
-      </div>
-      <div id="mt-menu">${r.sup === 'Sleepwell' ? MP.mattress.extra(r, MP.mattress.mat(r)) : ''}</div>
-      <div class="ustep"><i>4</i>Checks</div><div class="uform">
+    if (r.sup === 'Other') h += `<div class="uform mtf"><div class="ufrow" style="grid-template-columns:3fr 2fr">${uphField('Other brand: brand and model', mtIn('model', r, 'e.g. Kurlon Spine Care'))}${uphField('Our rate / piece, ₹ incl. GST', mtIn('rate', r, '₹', 1))}</div></div>`;
+    h += `<div class="ustep">Checks</div><div class="uform mtf">
       ${uphField('Measured by', mtSeg('by', ['Our team, at site', 'Customer told us'], r.by))}
-      ${uphField('Headboard', mtSel('head', ['Bed finished, padding done', 'Raw bed, padding to come', 'No padded headboard'], r.head, 'Ask the customer'))}
+      <div class="ufrow" style="grid-template-columns:1fr 1fr">${uphField('Bed', mtIn('bed', r, 'e.g. king bed'))}${uphField('Headboard', mtSel('head', ['Bed finished, padding done', 'Raw bed, padding to come', 'No padded headboard'], r.head, 'Ask the customer'))}</div>
       <div class="ufrow" style="grid-template-columns:1fr 1fr">${uphField('Feel', mtSel('feel', ['Soft', 'Medium', 'Firm'], r.feel, 'Pick'))}${uphField('Bed type', mtSel('bedType', ['Plain', 'Box storage', 'Hydraulic storage', 'Drawer storage'], r.bedType, 'Pick'))}</div>
-      ${uphField('Remarks', mtIn('remarks', r, 'Anything to note'))}</div>`;
-  } else if (r.p) {
-    const items = SWH.filter(x => x.g === r.p).map(x => [hcpId(x), `${x.n} · ${x.s}″ · ${rs(x.v)}`]);
-    h += `<div class="ustep"><i>2</i>${esc(r.p)}</div><div class="uform">
-      ${uphField(r.p, mtSel('item', items, r.item, 'Pick'))}
-      <div class="ufrow">${uphField('Qty', mtIn('qty', r, '1', 1))}${uphField('Room', mtIn('room', r, 'optional'))}${uphField('For', mtIn('bed', r, 'optional'))}</div>
-      ${uphField('Remarks', mtIn('remarks', r, 'Anything to note'))}</div>
-      <div id="mt-res">${mtResHTML(r)}</div>`;
-  }
+      ${uphField('Remarks', mtIn('remarks', r, 'Anything to note'))}
+      <span class="hint">Length and width are measured inside the bed frame, where the mattress sits.</span></div>
+      <div id="mt-menu">${r.sup === 'Sleepwell' ? MP.mattress.extra(r, MP.mattress.mat(r)) : ''}</div>`;
+  } else h += `<div class="uform mtf"><div class="ufrow" style="grid-template-columns:1fr 2fr">${uphField('For', mtIn('bed', r, 'optional'))}${uphField('Remarks', mtIn('remarks', r, 'Anything to note'))}</div></div>`;
   el.innerHTML = h;
 }
 const mtCur = () => state.more.mattress[state.msel.mattress];
@@ -6232,7 +6255,7 @@ $('#pside').addEventListener('input', e => {
   if (mpCur !== 'mattress') return;
   const f = e.target.dataset.mt, r = mtCur(); if (!f || !r) return;
   r[f] = e.target.value;
-  if (f === 'model') { const m = swMat(r); if (m && r.T && !m.th.includes(parseFloat(r.T))) r.T = ''; mtChanged(r, true); return; }
+  if (f === 'model' && r.sup !== 'Other') { const m = swMat(r); if (m && r.T && !m.th.includes(parseFloat(r.T))) r.T = ''; mtChanged(r, true); return; }   // other brand: typed, so the panel stays (22 Oct)
   mtChanged(r, false);
 });
 
@@ -6279,7 +6302,7 @@ function mpUpdateRow(k, r){
   return c;
 }
 function renderProduct(k){
-  ensureMore(); mpCur = k; const P = MP[k], rows = state.more[k]; $('#p-table').classList.remove('uwide');
+  ensureMore(); mpCur = k; const P = MP[k], rows = state.more[k]; $('#p-table').classList.remove('uwide'); $('#pside').classList.toggle('mtp', k === 'mattress');
   if (!rows.length) rows.push(P.blank()), rows[0].id = uid++;
   const sel = Math.min(state.msel[k] || 0, rows.length - 1); state.msel[k] = sel;
   if (P.form) {   // summary table + side form (Upholstery, Mattress)
@@ -8136,4 +8159,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-112453 -->
+<!-- build 20261022-113748 -->
