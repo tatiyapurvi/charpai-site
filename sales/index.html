@@ -384,7 +384,7 @@ table.sheet.psheet.uwide{width:100%}
 #pside .mtf{gap:8px}#pside .mtf .uf input,#pside .mtf .uf select{padding:7px 9px;min-height:0;height:36px;font-size:14.5px}
 #pside .mt-empty{padding:4px 20px 16px;margin:0}
 #v-product .psheet td select[data-mt],#v-product .psheet td input[data-mt]{height:40px}
-#v-product .psheet td :is(input,select)[data-mt]:disabled,#v-product .psheet td :is(input,select)[data-ur]:disabled{opacity:.3;border-style:dashed;border-width:1px}
+#v-product .psheet td :is(input,select)[data-mt]:disabled,#v-product .psheet td :is(input,select)[data-ur]:disabled,#v-product .psheet td :is(input,select)[data-p]:disabled{opacity:.3;border-style:dashed;border-width:1px}
 #v-product .psheet td select[data-ur],#v-product .psheet td input[data-ur]{height:40px}
 #v-product .psheet .uq{display:inline-flex;align-items:center;gap:4px}#v-product .psheet .uq small{color:var(--muted);font-size:12px;min-width:26px}
 #v-product .psheet input[data-ur="fabric"].picked{font-weight:600}
@@ -5464,17 +5464,20 @@ function fillFLLists(){
 const flListId = r => null;   // no browser datalist: flOpenSugg shows the app's own box (7 Oct)
 // Carpet suggestions in the same box as curtain fabric (7 Oct, Purvi: "switch flooring to the curtains style box too").
 const flProductInput = el => !!(el && el.dataset && el.dataset.p === 'product' && mpCur === 'flooring' && el.closest('#ptb'));
-function flOpenSugg(input){
-  const r = state.more.flooring.find(x => x.id === +input.closest('tr').dataset.id), L = r && FLL[r.sup];
-  if (!L) { closeSugg(); return; }
-  suggFor = {input, row: r, mp: true, val: x => x.code + ' · ' + L.brand}; suggOn = 0;
+function flOpenSugg(input){   // 22 Oct: with no company picked, every carpet list is searched and the pick fills the company too
+  const r = state.more.flooring.find(x => x.id === +input.closest('tr').dataset.id); if (!r) { closeSugg(); return; }
+  const lists = r.sup && FLL[r.sup] ? [[r.sup, FLL[r.sup]]] : Object.entries(FLL); if (!lists.length) { closeSugg(); return; }
   const toks = String(input.value || '').split('·')[0].trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const all = [...L.items.values()].sort((a, b) => (b.type === r.type) - (a.type === r.type)), hit = x => [x.code, x.name, x.type, x.cons, x.tile].join(' ').toLowerCase();
-  suggItems = (toks.length ? all.filter(x => toks.every(w => hit(x).includes(w))) : all).slice(0, 60);
-  sugg.innerHTML = suggItems.length ? suggItems.map((x, i) => {
-    const mrp = Math.round(x.rrp * (1 + x.gst / 100)), dp = canSeeCost ? FLC.get(r.sup + '|' + x.code.toUpperCase()) : null;
-    return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.name)}</b> <small>${esc(x.type)}</small><br><small>${esc([x.cons, x.yarn, x.rollm ? `${x.rollm} m roll` : x.tile].filter(Boolean).join(' · '))}</small></span><span class="pr">MRP ${rs(mrp)}<small>per sq ft${dp != null ? ` · we pay ${rs(dp)}` : ''}</small></span></div>`;
-  }).join('') : `<div class="msg">No carpet matches “${esc(toks.join(' '))}” in ${esc(r.sup)}'s list.</div>`;
+  const all = lists.flatMap(([sup, L]) => [...L.items.values()].map(x => ({x, sup, L}))).sort((a, b) => (b.x.type === r.type) - (a.x.type === r.type)), hit = ({x}) => [x.code, x.name, x.type, x.cons, x.tile].join(' ').toLowerCase();
+  const items = (toks.length ? all.filter(e => toks.every(w => hit(e).includes(w))) : all).slice(0, 60);
+  suggFor = {input, pick: e => { r.sup = e.sup; const co = input.closest('tr').querySelector('[data-p="sup"]'); if (co) co.value = e.sup;
+    input.value = e.x.code + ' · ' + e.L.brand; input.dispatchEvent(new Event('input', {bubbles: true})); }};
+  suggItems = items; suggOn = 0;
+  sugg.innerHTML = items.length ? items.map(({x, sup, L}, i) => {
+    const mrp = Math.round(x.rrp * (1 + x.gst / 100)), dp = canSeeCost ? FLC.get(sup + '|' + x.code.toUpperCase()) : null;
+    return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.name)}</b> <small>${esc(x.type)}</small><br><small>${esc([lists.length > 1 ? sup : '', x.cons, x.yarn, x.rollm ? `${x.rollm} m roll` : x.tile].filter(Boolean).join(' · '))}</small></span><span class="pr">MRP ₹${mrp.toLocaleString('en-IN')}/sq ft${dp != null ? `<small>we pay ₹${Math.round(dp).toLocaleString('en-IN')}</small>` : ''}</span></div>`;
+  }).join('') : `<div class="msg">No carpet matches “${esc(toks.join(' '))}”${r.sup ? ` in ${esc(r.sup)}'s list` : ''}.</div>`;
+  sugg.style.width = Math.max(input.offsetWidth, 360) + 'px';
   placeSugg(input);
 }
 function flPicked(r){ const it = flItem(r); if (!it) return false; r.type = it.type; return true; }
@@ -5822,29 +5825,29 @@ const MP = {
       'Match: straight = the pattern lines up across strips; offset (half drop) = every other strip starts half a repeat lower; free match or random = no repeat to allow for.'],
   },
   flooring: {name: 'Flooring', one: 'area', many: 'areas', add: '+ Add area', fig: flFig,
-    note: 'One row per room or area. Length and width in inches, as measured.',
-    hint: 'Wastage fills itself from the floor type and laying; type over it if needed (orange), ↺ puts it back.',
-    blank: () => ({room: '', type: '', sup: '', product: '', rollw: '', xjoin: 'Yes', L: '', W: '', lay: 'Straight', waste: '', pack: '', edge: '', doors: '', sub: '', under: '', remarks: ''}),
+    note: 'Wall-to-wall carpet or carpet tiles. One row per room. Length and width in inches, as measured.',
+    hint: 'Pick the type (WW carpet is already picked), search the carpet, type the length and width: the price shows at once.',
+    blank: () => ({room: '', type: FL_WW, sup: '', product: '', rollw: '', xjoin: 'Yes', L: '', W: '', lay: 'Straight', waste: '', pack: '', edge: '', doors: '', sub: '', under: '', remarks: ''}),
+    // 22 Oct (Purvi: "right now we are only doing wall to wall carpet and carpet tiles, optimize sheet for just these two and make it super
+    // simple to use for anyone"): two types only (WW carpet by default), the result right after the size, no Pattern or Wastage boxes
+    // (the defaults still apply: tiles 5%), site checks after. Rows of other floor types from before keep working.
     cols: [
       {g: 'Where', k: 'room', label: 'Room', t: 'room'},
-      {g: 'Floor', k: 'type', label: 'Type', t: 'sel', opts: Object.keys(FL_WASTE), blank: 'Pick', w: 112, short: n => ({'Engineered wood': 'Eng. wood', 'Vinyl (SPC / LVT)': 'Vinyl', 'Wall-to-wall carpet': 'WW carpet'})[n] || n},
-      {g: 'Floor', k: 'sup', label: 'Co.', tip: 'Company', t: 'text', ph: 'Company', list: () => 'flsups', w: 96},
-      {g: 'Floor', k: 'product', label: 'Product', tip: 'Collection, design', t: 'text', ph: r => FLL[r.sup] ? 'Carpet name' : 'Collection · design', list: flListId, w: 170},
-      {g: 'Floor', k: 'rollw', label: 'Roll', sub: 'm', name: 'Roll width', tip: 'Roll width (m)', t: 'auto', w: 58, def: c => c.rollDef, off: r => r.type !== FL_WW},
-      {g: 'Floor', k: 'xjoin', label: 'Join', name: 'Join any way', tip: 'Join any way: is a joint in any direction ok?', t: 'sel', opts: ['Yes', 'No'], w: 62, off: r => r.type !== FL_WW},   // 21 Oct (Purvi): "keep it as a button, by default keep it on yes"
+      {g: 'Carpet', k: 'type', label: 'Type', t: 'sel', opts: [FL_WW, 'Carpet tiles'], w: 104, short: n => n === FL_WW ? 'WW carpet' : n},
+      {g: 'Carpet', k: 'sup', label: 'Co.', tip: 'Company', t: 'text', ph: 'Company', list: () => 'flsups', w: 84},
+      {g: 'Carpet', k: 'product', label: 'Carpet', tip: 'Collection, design', t: 'text', ph: r => FLL[r.sup] ? 'Carpet name' : 'Collection · design', list: flListId, w: 150},
+      {g: 'Carpet', k: 'rollw', label: 'Roll', sub: 'm', name: 'Roll width', tip: 'Roll width (m)', t: 'auto', w: 58, def: c => c.rollDef, off: r => r.type !== FL_WW},
+      {g: 'Carpet', k: 'xjoin', label: 'Join', name: 'Join any way', tip: 'Join any way: is a joint in any direction ok?', t: 'sel', opts: ['Yes', 'No'], w: 56, off: r => r.type !== FL_WW},
       {g: 'Size', k: 'L', label: 'L', sub: '″', tip: 'Length', t: 'num', key: 1, w: 64},
       {g: 'Size', k: 'W', label: 'W', sub: '″', tip: 'Width', t: 'num', key: 1, w: 64},
-      {g: 'Laying', k: 'lay', label: 'Pattern', t: 'sel', opts: Object.keys(FL_LAY), w: 100, off: r => r.type === FL_WW, short: n => n.replace(' / chevron', '')},
-      {g: 'Laying', k: 'waste', label: 'Waste', sub: '%', name: 'Wastage', tip: 'Wastage %', t: 'auto', w: 56, def: (c, r) => c.wasteDef},
-      {g: 'Laying', k: 'pack', label: 'Box', sub: 'sq ft', name: 'Box covers', tip: 'One box covers (sq ft)', t: 'num', w: 60, off: r => /carpet$/i.test(r.type) && r.type !== 'Carpet tiles'},
-      {g: 'Edges', k: 'edge', label: 'Edges', tip: 'Skirting or beading', t: 'sel', opts: ['Skirting', 'Beading', 'Both', 'None'], blank: 'Ask', todo: 1, w: 92},
-      {g: 'Edges', k: 'doors', label: 'Doors', t: 'num', w: 50},
+      {g: 'Size', k: 'pack', label: 'Box', sub: 'sq ft', name: 'Box covers', tip: 'One box of tiles covers (sq ft)', t: 'num', w: 54, off: r => r.type !== 'Carpet tiles'},
+      // Area: in the panel on the right (22 Oct: so To charge fits on a laptop without scrolling)
+      {g: 'Result', k: 'order', label: 'To charge', sub: 'sq ft', out: c => c.ok ? `${cpF(c.order)}${c.tiles ? `<span class="tag" style="color:var(--muted)">${c.tiles} tiles</span>` : ''}${c.boxes ? `<span class="tag" style="color:var(--muted)">${c.boxes} boxes</span>` : ''}` : ''},
+      {g: 'Result', k: 'how', how: 1},
       {g: 'Site', k: 'sub', label: 'Floor now', t: 'sel', opts: ['Level tiles or marble', 'Level cement', 'Uneven', 'Damp'], blank: 'Check', todo: 1, w: 104, short: n => ({'Level tiles or marble': 'Tiles, level', 'Level cement': 'Cement, level'})[n] || n},
       {g: 'Site', k: 'under', label: 'Underlay', t: 'sel', opts: ['Yes', 'No', 'Comes attached'], blank: 'Pick', w: 88, short: n => n === 'Comes attached' ? 'Attached' : n},
-      {g: 'Result', k: 'area', label: 'Area', out: c => c.ok ? `${cpF(c.area)}<span class="u"> sq ft</span>` : ''},
-      {g: 'Result', k: 'order', label: 'To order', out: c => c.ok ? `${cpF(c.order)}<span class="u"> sq ft</span>${c.boxes ? `<span class="tag" style="color:var(--muted)">${c.boxes} boxes</span>` : ''}` : ''},
-      {g: 'Result', k: 'rft', label: 'Edging', out: c => c.rft ? `${c.rft}<span class="u"> rft</span>` : ''},
-      {g: 'Result', k: 'how', how: 1},
+      {g: 'Site', k: 'edge', label: 'Edges', tip: 'Skirting or beading', t: 'sel', opts: ['Skirting', 'Beading', 'Both', 'None'], blank: 'Ask', todo: 1, w: 92},
+      {g: 'Site', k: 'doors', label: 'Doors', t: 'num', w: 50},
       {g: '', k: 'remarks', label: 'Remarks', t: 'text', ph: 'Anything to note', w: 150},
     ],
     roomW: 100,
@@ -5880,7 +5883,7 @@ const MP = {
           + (c.cut.fill ? `, and the ${fmt(Math.round(c.cut.fill.w))}″ strip left over is made of <b>${c.cut.fill.k} piece${c.cut.fill.k > 1 ? 's' : ''} × ${fmt(Math.round(c.cut.fill.plen))}″ cut across the roll</b> (${fmt(Math.round(c.cut.fill.w))}″ + ${FL_TRIM}″ each side), joined end to end` : '')
           + `: ${fmt(Math.round(c.cut.total))}″ off the roll.`
         : `<b>${fmt(L)}″ × ${fmt(W)}″</b> ÷ 144 = <b>${cpF(c.area)} sq ft</b>. Plus ${w}% wastage = <b>${c.order} sq ft</b>${c.tiles ? ` = <b>${c.tiles} tiles</b> of ${c.tile.txt}` : ''}${c.boxes ? ` ÷ ${fmt(pack)} sq ft a box = <b>${c.boxes} boxes</b>` : ''}.${c.rft ? ` ${r.edge}: room edge ${fmt(r2(2 * (L + W) / 12))} ft${doors ? ` less ${doors} door${doors > 1 ? 's' : ''} × 3 ft` : ''} = <b>${c.rft} rft</b>.` : ''}`;
-      c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: ww ? 'To charge' : 'To order', v: c.order, u: ww ? (c.minRoll ? `sq ft · at least the ${fmt(c.cut.rollm)} m roll width` : `sq ft · room + ${FL_TRIM}″ each side`) : `sq ft, ${w}% wastage`, m: 1}];
+      c.kpis = [{l: 'Area', v: cpF(c.area), u: 'sq ft'}, {l: ww || r.type === 'Carpet tiles' ? 'To charge' : 'To order', v: c.order, u: ww ? (c.minRoll ? `sq ft · at least the ${fmt(c.cut.rollm)} m roll width` : `sq ft · room + ${FL_TRIM}″ each side`) : `sq ft, ${w}% wastage`, m: 1}];
       if (ww) c.kpis.push({l: 'Joints', v: c.cut.joints, u: c.cut.joints ? 'where pieces meet' : 'one piece'});
       if (c.tiles) c.kpis.push({l: 'Tiles', v: c.tiles, u: c.tile.txt});
       if (c.boxes) c.kpis.push({l: 'Boxes', v: c.boxes, u: `${fmt(pack)} sq ft each`});
@@ -5894,8 +5897,8 @@ const MP = {
     },
     sum: (rows, cs) => { const n = cs.reduce((a, c) => a + (c.order || 0), 0), m = cs.reduce((a, c) => a + (c.mrp || 0), 0); return n ? `${n.toLocaleString('en-IN')} sq ft to order${m ? ` · MRP ${rs(m)}` : ''}` : ''; },
     rules: ['Area = length × width ÷ 144 (inches to sq ft).', 'Wall-to-wall carpet is charged (length + 4.5″ each side) × (width + 4.5″ each side) ÷ 144, rounded up to a whole sq ft. A side shorter than the roll is charged at least the roll\'s full width (4 m) across it: the other side + 4.5″ each side × the roll width; if both sides are shorter, the shorter side runs along the roll. The drawing shows the cutting plan for the fitter: pieces as wide as the roll, each = the room + 4.5″ at each end. With Join any way: Yes (the default), joints may run any way, so a strip left over beside the full pieces is made of short pieces cut across the roll (strip width + 4.5″ each side) joined end to end, instead of a whole extra piece; No = every piece runs the same way. The plan takes the way that uses least carpet, unless a way with fewer joints needs at most 15% more.',
-      'Wastage: laminate and wood 10%, vinyl 8%, carpet tiles 5%; diagonal adds 5%, herringbone or chevron 10%. Type over it if the company says otherwise.',
-      'To order = area + wastage, rounded up to a whole sq ft. Boxes = that ÷ what one box covers, rounded up.', 'Skirting / beading = the room\'s edge (2 × (length + width)) less 3 ft for every door.',
+      'Carpet tiles: area + 5% for cutting at the walls, rounded up to a whole sq ft; tiles = that ÷ one tile (50 × 50 cm unless the list says otherwise); boxes = that ÷ what one box covers, rounded up.',
+      'Skirting / beading = the room\'s edge (2 × (length + width)) less 3 ft for every door.',
       'Always ask skirting or beading, and check the floor is level and dry, before quoting.',
       'F&F (Divine) carpets: pick the company, then the carpet from the list. The type, price per sq ft and roll width fill in; MRP = sq ft to order × MRP per sq ft.'],
   },
@@ -8188,4 +8191,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-115415 -->
+<!-- build 20261022-120307 -->
