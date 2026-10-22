@@ -2984,6 +2984,17 @@ function bMigrate(b){ b.id = uid++; if (!b.o) b.o = {}; for (const k of ['shade'
 const bAddKind = a => a.uom !== 'each' ? 'extra' : /motor/i.test(a.group) ? 'motor'
   : /remote|switch|control|hub|bridge|transmitter|receiver|connexoon|tahoma|beacon/i.test(a.group + ' ' + a.name) && !/charger|bracket|cable|adaptor/i.test(a.name) ? 'remote' : 'extra';
 const B_KIND = {motor: 'motor', remote: 'remote', extra: 'extra'};
+// 22 Oct (Purvi: "whichever company's motor has been chosen, show remote options of that company only"): the brand of a blind motor or
+// remote, read from the company's own list. '' = works with any (or not known), so it is never hidden.
+// Marvel: Solis Rise or Somfy (Altus, Sonesse, LSN, Situo, TaHoma…); FabriCare: TOSO, or FabriCare / D'Decor; the rest by the group name.
+const B_BRAND_N = {somfy: 'Somfy', dd: "D'Decor", motion: 'Motion', toso: 'Toso', solis: 'Solis Rise'};
+function bBrand(a){
+  if (!a) return ''; const t = (a.group + ' ' + a.name).toLowerCase();
+  if (a.sup === 'MV') return /solis/.test(t) ? 'solis' : /panel blind/.test(t) ? '' : 'somfy';
+  if (a.sup === 'FC') return /toso/.test(t) ? 'toso' : 'dd';
+  return /^somfy/.test(t) ? 'somfy' : /^d'decor/.test(t) ? 'dd' : /^motion/.test(t) ? 'motion' : /toso/.test(t) ? 'toso' : '';
+}
+const bMotorBrands = b => uniq((b.adds || []).map(x => BL.addons.find(y => y.key === x.k)).filter(a => a && bAddKind(a) === 'motor').map(bBrand).filter(Boolean));
 state.blinds.forEach(bMigrate); bSplitQty();
 if (state.bsel == null) state.bsel = 0;
 const bPriced = sup => BL.rows.some(r => r.sup === sup);
@@ -3072,6 +3083,8 @@ function bCalc(b){
   if (c.rollMm && c.mmW > c.rollMm) { c.parts = Math.ceil(c.mmW / c.rollMm - 1e-9); c.partMm = Math.round(c.mmW / c.parts);
     c.warn.push(`Wider than the ${fmt(c.rollMm / 1000)} m roll: made in ${c.parts} equal parts of ${c.partMm} mm (${fmt(Math.round(c.partMm / 25.4 * 10) / 10)}″) each. Tell the client.`); }
   c.lim = bLimit(b, c);   // D'Decor's size chart (20 Oct)
+  { const mb = bMotorBrands(b); if (mb.length) for (const x of b.adds || []) { const a = BL.addons.find(y => y.key === x.k); const rb = a && bAddKind(a) === 'remote' ? bBrand(a) : '';
+      if (rb && !mb.includes(rb)) c.warn.push(`${a.name} is for ${B_BRAND_N[rb]} motors, not the ${mb.map(m => B_BRAND_N[m]).join(' / ')} motor picked: change the remote`); } }   // 22 Oct
   if (c.lim && c.lim.bad) c.warn.unshift('Size not possible. ' + c.lim.bad + ' Change the size, or ask D\'Decor\'s CC team before quoting.');
   else if (c.lim && c.lim.note) c.warn.push(c.lim.note);
   return c;
@@ -3117,10 +3130,12 @@ function bPickHTML(b, kind){
 function bOpenSugg(input, b, kind){
   const fam = String(b.fam || '').toLowerCase().split(/[\s(]/)[0], toks = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const fits = a => fam && (a.group + ' ' + a.name).toLowerCase().includes(fam);
-  let L = BL.addons.filter(a => a.sup === b.sup && bAddKind(a) === kind && toks.every(t => (a.group + ' ' + a.name).toLowerCase().includes(t)));
+  const mb = kind === 'remote' ? bMotorBrands(b) : [];   // 22 Oct: remotes of the picked motor's brand only
+  let L = BL.addons.filter(a => a.sup === b.sup && bAddKind(a) === kind && (!mb.length || !bBrand(a) || mb.includes(bBrand(a))) && toks.every(t => (a.group + ' ' + a.name).toLowerCase().includes(t)));
   L = L.filter(fits).concat(L.filter(a => !fits(a))).slice(0, 60);
   suggFor = {input, row: b, pick: a => { b.adds.push({k: a.key, q: ''}); bRedraw(b, kind); }}; suggItems = L; suggOn = 0;
-  sugg.innerHTML = L.length ? L.map((a, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(a.name)}</b><br><small>${esc(a.group)}${fits(a) ? ' · fits ' + esc(b.fam) : ''}</small></span><span class="pr">MRP ₹${Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)).toLocaleString('en-IN')}<small>${esc(a.uom)}</small></span></div>`).join('')
+  const head = mb.length ? `<div class="grp">Remotes for ${esc(mb.map(x => B_BRAND_N[x]).join(' / '))} motors</div>` : '';   // 22 Oct
+  sugg.innerHTML = L.length ? head + L.map((a, i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(a.name)}</b><br><small>${esc(a.group)}${fits(a) ? ' · fits ' + esc(b.fam) : ''}</small></span><span class="pr">MRP ₹${Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)).toLocaleString('en-IN')}<small>${esc(a.uom)}</small></span></div>`).join('')
     : `<div class="msg">No ${kind === 'extra' ? 'extra' : kind} matches “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s list.</div>`;
   placeSugg(input);
 }
@@ -8245,4 +8260,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-135825 -->
+<!-- build 20261022-140642 -->
