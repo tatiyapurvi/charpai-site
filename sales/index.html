@@ -193,7 +193,7 @@ body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([
 #v-product .sheet input,#v-product .sheet select{font-size:15px}
 #v-product .sheet td{padding:5px 3px}
 #v-product .sheet th.r,#v-product .sheet td.out{padding-left:6px;padding-right:8px}
-#v-product .psheet td.howc{min-width:52px;max-width:52px}
+#v-product .psheet td.howc{min-width:240px;max-width:300px}
 #v-product .tbl-scroll{overscroll-behavior-y:auto;overscroll-behavior-x:contain}
 /* Blinds sheet, 19 Oct (Purvi: "apply same right left panel and margin settings to the blinds page"): the same margins and 420px
    panel as Curtains; the panel scrolls inside itself and hands over to the page at its end; more room around the numbers and the
@@ -285,14 +285,8 @@ table.sheet{border-collapse:separate;border-spacing:0;width:100%;min-width:2300p
 .sheet th.r{padding-right:18px;padding-left:16px}
 .sheet td.howc,.sheet th.howh{padding-left:24px;padding-right:16px;border-left:1px solid var(--line)}
 .sheet td.howc b{color:var(--ink);font-weight:700}
-.sheet td.howc{width:52px;min-width:52px;text-align:center}   /* 22 Oct: ⓘ instead of the long text */
-.sheet td.howc,.sheet th.howh{padding-left:6px !important;padding-right:6px !important;text-align:center}
-.howi{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--muted);background:var(--paper);color:var(--muted);font:700 13px/1 Georgia,serif;font-style:italic;cursor:pointer;padding:0;flex:none}
-.howi:hover,.howi:focus-visible{border-color:var(--ink);color:var(--ink)}
-.howl{display:flex;align-items:center;gap:8px;margin:10px 14px;border:0;background:none;color:var(--muted);font:600 13.5px var(--body);cursor:pointer;padding:4px 0}
-.howl:hover{color:var(--ink)}.howl:hover .howi{border-color:var(--ink);color:var(--ink)}
-.howpop{position:fixed;z-index:30;width:min(400px,calc(100vw - 16px));box-sizing:border-box;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:10px 12px;font-size:13.5px;line-height:1.45}
-.howpop[hidden]{display:none}.howpop-h{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.howpop b{font-weight:700}
+.sheet td.howc{min-width:560px;max-width:620px;white-space:normal;font-size:12.5px;line-height:1.35;color:var(--muted)}
+.sheet td.howc .howt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;cursor:help}
 /* 20 Oct (Purvi): one row height on every measurement sheet form, the Blinds one (57px); a curtain with motor + remote may be taller */
 :is(#tb, #btb, #ptb) > tr.row > td{height:57px}
 .sheet th{font-weight:600;font-size:12.5px;color:var(--muted);text-align:left;padding:6px 6px;white-space:nowrap;background:var(--paper);border-bottom:1px solid var(--line)}
@@ -343,7 +337,7 @@ details.rules li{margin:3px 0;font-size:14px;color:var(--muted)}
 
 /* wallpaper, fabric, flooring, mattress sheets (3 Oct) */
 table.sheet.psheet{min-width:0;width:max-content}
-.psheet td.howc{min-width:52px;max-width:52px}
+.psheet td.howc{min-width:300px;max-width:380px}
 .spec.wide{grid-template-columns:118px minmax(0,1fr)}
 .p-empty-tip{margin:0 14px 12px;padding:10px 12px;border-radius:8px;background:var(--bg);color:var(--muted);font-size:13.5px}
 /* Upholstery = Fabric | Foam, Mattress = Mattresses | Pillows and more: one tab, a switch on top (Purvi picked "X", 6 Oct) */
@@ -1466,7 +1460,7 @@ button.n-prop:hover{background:var(--soft)}
                   <th class="grp res sep">Result</th>
                   <th class="grp sep">Fitting</th><th class="grp res" data-nopill="1">Result</th><th class="grp"></th>
                   <th class="grp soft sep" colspan="6">Change only if needed</th>
-                  <th class="grp sep" data-pill="Stitched"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp howh" data-pill="How" title="How it was worked out">How</th><th class="grp"></th>
+                  <th class="grp sep" data-pill="Stitched"></th><th class="grp sep" data-pill="Remarks"></th><th class="grp howh" data-pill="How">How it was worked out</th><th class="grp"></th>
                 </tr>
                 <tr>
                   <th class="first">Room</th><th title="M = Main curtain, S = Sheer curtain">M / S</th>
@@ -2390,28 +2384,8 @@ function bHnavSync(){ if (bHnavFn) bHnavFn(); }
 const TRACK_MAX_FT = 12;   // 20 Oct (Purvi): was 15
 const trackStr = res => !res.track ? '' : res.trackUnit === 'ft' ? cpF(res.track) + ' ft' + (res.trackPieces ? ` (${res.trackPieces} × ${cpF(res.trackPieceFt)} ft)` : '') : (kitSize(res.track, res.kitMin) ? kitSize(res.track, res.kitMin) + ' m kit' : 'over 9 m: ask ' + res.kitBy);
 // Numbers (with their unit) in bold, so the How column can be read at a glance.
-// 22 Oct (Purvi: "how it was worked out on all measurement sheets is taking up too much space and high cognitive load, can't this be a
-// simple i icon, which when clicked or hovered over, give the explanation?"): the table shows ⓘ, the panel one short line; the
-// explanation opens in a small pop-up (hover on a laptop, tap on a phone; tap elsewhere or Esc closes it).
-const howBox = h => `<button type="button" class="howi" data-how="${esc(h)}" aria-label="How it was worked out">i</button>`;
-const howLine = h => `<button type="button" class="howl" data-how="${esc(h)}"><span class="howi" aria-hidden="true">i</span>How it was worked out</button>`;
-const howPop = document.createElement('div'); howPop.className = 'howpop'; howPop.hidden = true; howPop.setAttribute('role', 'tooltip'); document.body.appendChild(howPop);
-let howFor = null, howHover = false;
-function howShow(b, hover){
-  howFor = b; howHover = hover; howPop.innerHTML = '<b class="howpop-h">How it was worked out</b><div>' + b.dataset.how + '</div>';
-  const host = b.closest('dialog[open]') || document.body; if (howPop.parentNode !== host) host.appendChild(howPop);
-  howPop.hidden = false; const r = b.getBoundingClientRect(), vv = window.visualViewport, y1 = vv ? vv.offsetTop + vv.height : innerHeight, w = howPop.offsetWidth, h = howPop.offsetHeight;
-  howPop.style.left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)) + 'px';
-  howPop.style.top = (r.bottom + 6 + h < y1 ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + 'px';
-}
-function howHide(){ howPop.hidden = true; howFor = null; }
-document.addEventListener('mouseover', e => { if (!matchMedia('(hover: hover)').matches) return; const b = e.target.closest('[data-how]');
-  if (b) { if (howFor !== b) howShow(b, true); } else if (howFor && howHover && !howPop.contains(e.target)) howHide(); });
-document.addEventListener('click', e => { const b = e.target.closest('[data-how]');
-  if (b) { e.preventDefault(); e.stopPropagation(); if (howFor === b && !howHover) howHide(); else howShow(b, false); return; }
-  if (howFor && !howPop.contains(e.target)) howHide(); }, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && howFor) howHide(); });
-document.addEventListener('scroll', () => { if (howFor) howHide(); }, true);
+// 20 Oct (Purvi: every form's rows the same height as Blinds'): "How it was worked out" shows 2 lines; the whole text on hover
+const howBox = h => { const d = document.createElement('div'); d.innerHTML = h; return `<div class="howt" title="${esc(d.textContent.replace(/\s+/g, ' ').trim())}">${h}</div>`; };
 const boldNums = t => esc(t).replace(/\d+(?:\.\d+)?(?:–\d+(?:\.\d+)?)?(?:″| cm\b| m\b| ft\b)?/g, '<b class="n">$&</b>');
 const linHowOf = lin => lin ? ` Lining (${lin.name}): ${lin.drops} × ${cpF(lin.cut)}″ = ${f2(lin.raw)} m, rounded up to ${cpF(lin.m)} m.` : '';
 function updateRow(r){
@@ -2954,7 +2928,7 @@ function renderSide(){
     <div class="fig"><h4>Curtain fabric off the roll <span>${d.wide ? (res.rotated ? `turned: ${cpF(d.roll)} cm across the width, 2 panels a width` : `${cpF(d.roll)} cm as the height, one piece`) : res.turned ? 'turned sideways' : 'panels cut one after another'}</span></h4>${rollView({panels: res.panels, cut: d.cut, qty: res.qty, roll: d.roll, turned: res.turned, turnLen: d.turnLen, fl: d.fl, hem: d.hem, mPer: d.wide && d.mPer, turnPanels: d.turnPanels, rep: d.rep, W: d.W, cls: fcls, pid: 'h1'})}</div>
     ${lin ? `<div class="fig"><h4>Lining off the roll <span>${esc(lin.name)}</span></h4>${rollView({panels: lin.panels, cut: lin.cut, qty: lin.m, roll: lin.roll, turned: false, rep: 0, W: d.W, cls: 'f-lining', pid: 'h2'})}</div>` : ''}
     ${chips(r, res, d)}
-    ${howLine(boldNums(res.how + linHow))}
+    <div class="how"><b>How it was worked out</b>${boldNums(res.how + linHow)}</div>
     </div>`;
 }
 
@@ -6139,7 +6113,7 @@ function uphResHTML(r){
   const c = MP.uph.calc(r);
   return `${c.kpis.length ? `<div class="kpis">${c.kpis.map(x => `<div class="kpi${x.m ? ' m' : ''}"><small>${esc(x.l)}</small><b class="num">${x.v}</b><small>${esc(x.u || '')}</small></div>`).join('')}</div>` : ''}
     <div class="chips">${c.warn.map(w => `<span class="chip warn">${esc(w)}</span>`).join('') || (r.p ? '<span class="chip good">Ready for the quotation</span>' : '')}</div>
-    ${c.how ? howLine(`${c.how.replace(/<b>/g, '<b class="n">')} = <b class="n">${rs(c.each)}</b> each.`) : ''}`;
+    ${c.how ? `<div class="how"><b>How it was worked out</b>${c.how.replace(/<b>/g, '<b class="n">')} = <b class="n">${rs(c.each)}</b> each.</div>` : ''}`;
 }
 function uphSide(){
   const rows = state.more.uph, r = rows[state.msel.uph] || rows[0], el = $('#pside'); if (!r) { el.innerHTML = ''; return; }
@@ -6271,7 +6245,7 @@ function mtResHTML(r){
   const c = mtCalc(r);
   return `${c.kpis.length ? `<div class="kpis">${c.kpis.map(x => `<div class="kpi${x.m ? ' m' : ''}"><small>${esc(x.l)}</small><b class="num">${x.v}</b><small>${esc(x.u || '')}</small></div>`).join('')}</div>` : r.p === 'Mattress' ? `<div class="p-empty-tip">${esc(MP.mattress.empty)}</div>` : ''}
     <div class="chips">${c.warn.map(w => `<span class="chip warn">${esc(w)}</span>`).join('') || (r.p ? '<span class="chip good">All checks done</span>' : '')}</div>
-    ${c.how ? howLine(c.how.replace(/<b>/g, '<b class="n">')) : ''}`;
+    ${c.how ? `<div class="how"><b>How it was worked out</b>${c.how.replace(/<b>/g, '<b class="n">')}</div>` : ''}`;
 }
 function mtSide(){
   const rows = state.more.mattress, r = rows[state.msel.mattress] || rows[0], el = $('#pside'); if (!r) { el.innerHTML = ''; return; }
@@ -6372,7 +6346,7 @@ function renderProduct(k){
   }
   const groups = []; P.cols.forEach(c => { const g = groups[groups.length - 1]; if (g && g.g === c.g) g.n++; else groups.push({g: c.g, n: 1, res: c.g === 'Result'}); });
   $('#p-head').innerHTML = `<tr>${groups.map((g, i) => `<th class="grp${i ? '' : ' first'}${g.res ? ' res' : ''}" colspan="${g.n}">${esc(g.g)}</th>`).join('')}<th class="grp"></th></tr>
-    <tr>${P.cols.map((c, i) => `<th class="${i ? '' : 'first'}${c.out || c.t === 'auto' ? ' r' : ''}${c.how ? ' howh' : ''}"${c.tip ? ` title="${esc(c.tip)}"` : ''}>${c.how ? 'How' : esc(c.label)}${c.sub ? ` <small>${esc(c.sub)}</small>` : ''}</th>`).join('')}<th></th></tr>`;
+    <tr>${P.cols.map((c, i) => `<th class="${i ? '' : 'first'}${c.out || c.t === 'auto' ? ' r' : ''}${c.how ? ' howh' : ''}"${c.tip ? ` title="${esc(c.tip)}"` : ''}>${c.how ? 'How it was worked out' : esc(c.label)}${c.sub ? ` <small>${esc(c.sub)}</small>` : ''}</th>`).join('')}<th></th></tr>`;
   $('#ptb').innerHTML = rows.map(r => mpRowHTML(k, r)).join('');
   rows.forEach(r => mpUpdateRow(k, r));
   $('#p-note').textContent = P.note; $('#p-add').textContent = P.add; $('#p-hint').textContent = P.hint;
@@ -6401,9 +6375,9 @@ function renderPSide(k){
     ${c.kpis.length ? `<div class="kpis">${c.kpis.map(x => `<div class="kpi${x.m ? ' m' : ''}"><small>${esc(x.l)}</small><b class="num">${x.v}</b><small>${esc(x.u || '')}</small></div>`).join('')}</div>` : `<div class="p-empty-tip">${P.empty || `Type the ${P.cols.filter(x => x.key).map(x => x.label.toLowerCase()).join(' and ')} to see the numbers.`}</div>`}
     ${P.fig ? P.fig(r, c) : ''}
     <div class="chips">${c.warn.map(w => `<span class="chip warn">${esc(w)}</span>`).join('') || '<span class="chip good">All checks done</span>'}</div>
-    ${c.how && P.extra ? howLine(c.how.replace(/<b>/g, '<b class="n">')) : ''}${P.extra ? P.extra(r, c) : ''}
+    ${c.how && P.extra ? `<div class="how"><b>How it was worked out</b>${c.how.replace(/<b>/g, '<b class="n">')}</div>` : ''}${P.extra ? P.extra(r, c) : ''}
     <dl class="spec wide">${spec}</dl>
-    ${c.how && !P.extra ? howLine(c.how.replace(/<b>/g, '<b class="n">')) : ''}`;
+    ${c.how && !P.extra ? `<div class="how"><b>How it was worked out</b>${c.how.replace(/<b>/g, '<b class="n">')}</div>` : ''}`;
 }
 $('#pside').addEventListener('click', e => {
   const b = e.target.closest('[data-mpick], [data-msort]'); if (!b || !MP[mpCur]) return;
@@ -8217,4 +8191,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-122117 -->
+<!-- build 20261022-123630 -->
