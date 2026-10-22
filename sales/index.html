@@ -3852,7 +3852,7 @@ function renderQuoteHead(){
   if (q.accounts == null) q.accounts = 'Rohit Singh - 9001576636';
   // Executive = the client's executive from People, "Name - mobile" (Purvi, 3 Oct). Typing over it keeps the typed text (execOwn).
   if (!q.execOwn) { const a = execOf(state.clientId); if (a) q.exec = a; else if (!q.exec) { try { q.exec = localStorage.getItem(EXKEY) || ''; } catch(_){} } }
-  $('#q-head').innerHTML = QFIELDS.map(([k, l]) => {
+  $('#q-head').innerHTML = QFIELDS.filter(([k]) => k !== 'ref').map(([k, l]) => {   // 22 Oct (Purvi): the reference stays on the client details only
     const val = esc(k === 'bill' ? state.house || '' : q[k] || '');
     if (k === 'ddate') { const d = parseDay(q.ddate), bad = q.ddate && !d;
       return `<div class="fld${bad ? ' bad' : ''}"><label for="q-ddate">${l}</label><div class="datewrap"><input id="q-ddate" data-q="ddate" value="${val}" placeholder="dd/mm/yy" autocomplete="off">
@@ -7883,7 +7883,7 @@ function msPaperHTML(q, house, D, n, ed){
     return `<tr${yes ? '' : ' data-off'}><td class="c">${yes ? ++sr : '—'}</td>${i ? '' : `<td class="ms-area" rowspan="${g.rows.length}">${esc(String(g.room || '—').toUpperCase())}</td>`}${cols.map(c => cell(x, c)).join('')}${ed ? `<td class="qe">${btn('row', x.key, yes, 'Hide', 'Show')}</td>` : ''}</tr>`; }).join('')).join('');
   return `<table class="paper-top ms-top"><tr><th colspan="3" class="pi">MEASUREMENT SHEET${n ? ' · M' + n : ''}</th></tr>
       <tr><td colspan="3" class="firm"><b>${FIRM.name}</b> · ${FIRM.phone}</td></tr>
-      <tr><td colspan="2"><b>REFERENCE :</b> ${esc(D.ref || '')}</td><td><b>DATE :</b> ${esc(msDateTxt(q))}</td></tr>
+      <tr><td colspan="3"><b>DATE :</b> ${esc(msDateTxt(q))}</td></tr>
       <tr><td><b>CUSTOMER NAME :</b> ${esc(house || '')}</td><td><b>EXECUTIVE :</b> ${esc(q.exec || '')}</td><td><b>MEASURED BY :</b> ${esc(msMeasurer(q))}</td></tr></table>
     <div class="q-scroll"><table class="paper ms-tab ms-room${ed ? ' editing' : ''}"><thead><tr><th rowspan="2" class="qc-no">SR.NO</th><th rowspan="2">AREA</th>${head1}${ed ? '<th rowspan="2" class="qe"></th>' : ''}</tr>${size ? `<tr>${head2}</tr>` : ''}</thead>
       <tbody>${body}</tbody></table></div>
@@ -7949,7 +7949,7 @@ function msPDF(n, d = {q: state.quote || {}, house: state.house, D: msShown()}){
   doc.autoTable(Object.assign({}, base, {startY: M, body: [
     [{content: `MEASUREMENT SHEET · M${n}`, colSpan: 3, styles: {halign: 'center', fontStyle: 'bold', fontSize: 12, fillColor: blue}}],
     [{content: `${FIRM.name} · ${FIRM.phone}`, colSpan: 3, styles: {halign: 'center', fontStyle: 'bold', fontSize: 10}}],
-    [{content: `REFERENCE : ${D.ref || ''}`, colSpan: 2, styles: {fontStyle: 'bold'}}, b(`DATE : ${msDateTxt(q)}`)],
+    [{content: `DATE : ${msDateTxt(q)}`, colSpan: 3, styles: {fontStyle: 'bold'}}],   // 22 Oct (Purvi): the reference stays on the client details only
     [b(`CUSTOMER NAME : ${house || ''}`), b(`EXECUTIVE : ${q.exec || ''}`), b(`MEASURED BY : ${msMeasurer(q)}`)]]}));
   const G = msRooms(D), cols = msCols(G), size = cols.some(c => c[0] === 'H') && cols.some(c => c[0] === 'W');
   const hd = (t, o = {}) => ({content: t, ...o});
@@ -7988,7 +7988,7 @@ async function msXLSX(n, d = {q: state.quote || {}, house: state.house, D: msSho
   const third = Math.floor(NC / 3), two = NC - third;
   band([[`MEASUREMENT SHEET · M${n}`, NC]], {center: true, fill: 'FFDDEBF7', font: {size: 12}, h: 20});
   band([[`${FIRM.name} · ${FIRM.phone}`, NC]], {center: true, font: {size: 11}});
-  band([[`REFERENCE : ${D.ref || ''}`, two], [`DATE : ${msDateTxt(q)}`, third]]);
+  band([[`DATE : ${msDateTxt(q)}`, NC]]);   // 22 Oct: no reference
   band([[`CUSTOMER NAME : ${house || ''}`, NC - 2 * third], [`EXECUTIVE : ${q.exec || ''}`, third], [`MEASURED BY : ${msMeasurer(q)}`, third]]);
   // the two heading rows
   const r1 = ++r, r2 = size ? ++r : r1; let col = 1;
@@ -8245,4 +8245,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-124854 -->
+<!-- build 20261022-135825 -->
