@@ -359,6 +359,7 @@ table.sheet.psheet.uwide{width:100%}
 .udot{width:10px;height:10px;border-radius:3px;flex:none;display:inline-block}
 .uprod{display:inline-flex;align-items:center;gap:7px;font-weight:700;white-space:nowrap}
 .psheet td.uwhat{min-width:220px;max-width:360px;white-space:normal}
+.psheet td.mtw{white-space:nowrap;font-size:14px;color:var(--muted)}
 .ustep{font:700 15px var(--body);margin:14px 14px 8px;display:flex;align-items:center;gap:8px}
 .ustep i{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:12px}
 .uchoose{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;padding:0 14px}
@@ -3758,7 +3759,7 @@ function qSections(){
   byRoom((state.more.mattress || []).filter(r => r.p === 'Mattress')).forEach(r => {
     const c = mtCalc(r); if (!c.ok) return;
     const m = swMat(r), q = Math.max(1, parseInt(r.qty, 10) || 1), size = `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″${c.std ? '' : ' (custom size)'}`;
-    add('mattress', {area: [r.room, r.bed].filter(Boolean).join(' · '), product: 'Mattress', what: m && c.each ? `Sleepwell ${m.n} ${inchTxt(parseFloat(r.T))} · ${size}` : [r.sup, r.model, r.T].filter(Boolean).join(' ') + ' · ' + size,
+    add('mattress', {area: [r.room, r.bed].filter(Boolean).join(' · '), product: 'Mattress', what: m && c.each ? `Sleepwell ${m.n} ${inchTxt(parseFloat(r.T))} · ${size}${mtWar(r) ? ` · ${mtWar(r)} years warranty` : ''}` : [r.sup, r.model, r.T].filter(Boolean).join(' ') + ' · ' + size,
       hsn: H.mattress || '9404', qty: q, unit: 'PCS', rate: c.each || null, gst: 18, cost: c.cost ?? null, incl: true, fix: 'mpick'});   // "Other" mattress: our own rate, GST included
   });
   const hc = new Map();
@@ -6296,8 +6297,10 @@ function mtCalc(r){
 // drop down list in the main list only na? and the right panel stays for detailing"): every line is typed in the table on one row
 // (What it is ▾ · Room · L · W · Mattress / item ▾ · Thick. ▾ · Qty → Amount); the panel shows only the price, the checks and every
 // Sleepwell price for that size, in its own scroll. The big "What is it?" cards are gone. Data unchanged.
-const MT_HEAD = `<tr><th class="first">#</th><th>What it is</th><th>Room</th><th class="r" title="Length, inside the bed frame">L <small>″</small></th><th class="r" title="Width, inside the bed frame">W <small>″</small></th><th>Mattress / item</th><th title="Thickness">Thick.</th><th class="r">Qty</th><th class="r">Amount</th><th></th></tr>`;
+const MT_HEAD = `<tr><th class="first">#</th><th>What it is</th><th>Room</th><th class="r" title="Length, inside the bed frame">L <small>″</small></th><th class="r" title="Width, inside the bed frame">W <small>″</small></th><th>Mattress / item</th><th title="Thickness">Thick.</th><th title="Sleepwell's warranty for this mattress and thickness">Warranty</th><th class="r">Qty</th><th class="r">Amount</th><th></th></tr>`;
 const MT_OTHER = '__other';
+// 22 Oct (Purvi: "for each mattress also display the corresponding warranty"): Sleepwell's warranty (years) for that range and thickness
+const mtWar = r => { const m = r.p === 'Mattress' && r.sup !== 'Other' ? swMat(r) : null, t = parseFloat(r.T); if (!m || !t) return null; const i = m.th.indexOf(t); return i >= 0 ? m.war[i] : null; };
 function mtItemOpts(r){
   if (r.p === 'Mattress') return [...SWM_FAMS.map(f => ({g: 'Sleepwell · ' + f, items: SWM.filter(x => x.fam === f).map(x => x.n)})), {g: 'Other brand', items: [[MT_OTHER, r.sup === 'Other' && r.model ? r.model + ' (other brand)' : 'Other brand: type it on the right']]}];
   return SWH.filter(x => x.g === r.p).map(x => [hcpId(x), `${x.n} · ${x.s}″ · ${rs(x.v)}`]);
@@ -6314,16 +6317,22 @@ function mtRowHTML(r){
     <td>${inp('L', mat ? '0' : '', 56, true, !mat, 'Length')}</td><td>${inp('W', mat ? '0' : '', 56, true, !mat, 'Width')}</td>
     <td>${r.p ? sel('item', mtItemOpts(r), mat ? (r.sup === 'Other' ? MT_OTHER : r.model) : r.item, mat ? 'Pick the range' : 'Pick', 200, false, 'Mattress or item') : '<span class="none">pick what it is</span>'}</td>
     <td>${sel('T', thList, r.T, mat ? 'Pick' : '—', 66, !mat || (r.sup !== 'Other' && !m), 'Thickness')}</td>
-    <td>${inp('qty', '1', 46, true, false, 'Qty')}</td>
+    <td class="mtw">${mtWar(r) ? `${mtWar(r)} years` : '<span class="none">—</span>'}</td>
+    <td>${inp('qty', '1', 46, true, false, 'Qty').replace(/value="(0|)"/, 'value="1"')}</td>
     <td class="out" data-o="amt">${mtAmtHTML(r)}</td>
     <td class="acts"><button class="ico" data-pa="dup" title="Copy this line">⧉</button><button class="ico" data-pa="del" title="Delete this line">✕</button></td></tr>`;
 }
+// 22 Oct (Purvi: "in mattress also qty should be 1 by default"): leaving Qty empty or at 0 puts 1 back
+$('#ptb').addEventListener('focusout', e => {
+  if (mpCur !== 'mattress' || e.target.dataset.mt !== 'qty') return; const tr = e.target.closest('tr'), r = state.more.mattress.find(x => x.id === +tr.dataset.id);
+  if (r && !(parseInt(r.qty, 10) >= 1)) { r.qty = 1; e.target.value = '1'; save(); }
+});
 // typed in the table: a text box updates the amount and the panel's numbers (the row stays, so the cursor stays); a dropdown redraws the row
 $('#ptb').addEventListener('input', e => {
   if (mpCur !== 'mattress') return; const f = e.target.dataset.mt; if (!f) return;
   const tr = e.target.closest('tr'), r = state.more.mattress.find(x => x.id === +tr.dataset.id); if (!r) return;
   const v = e.target.value;
-  if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.mattress.blank(), {room: r.room, bed: r.bed, remarks: r.remarks, qty: r.qty}, {p: v}); }   // a new kind starts clean, same room
+  if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.mattress.blank(), {room: r.room, bed: r.bed, remarks: r.remarks, qty: parseInt(r.qty, 10) >= 1 ? r.qty : 1}, {p: v}); }   // a new kind starts clean, same room
   else if (f === 'item') {
     if (r.p !== 'Mattress') r.item = v;
     else if (v === MT_OTHER) { if (r.sup !== 'Other') Object.assign(r, {sup: 'Other', model: '', T: ''}); }
@@ -7820,9 +7829,9 @@ function msData(){
   { const R = [];
     (state.more.mattress || []).forEach((r, i) => { if (!r.p) return; const c = mtCalc(r); if (!c.ok) return; const mat = r.p === 'Mattress';
       R.push({key: 'mattress|' + i, amt: c.tot || 0, n: {q: c.qty || 1},
-        c: {room: r.room || '', bed: r.bed || '', item: mat ? ['Mattress', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' · ') : [r.p, r.item].filter(Boolean).join(' · '),   // 22 Oct: says what it is (Pillow · FitRest…) size: mat && nv(r.L) ? `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″` : '',
+        c: {room: r.room || '', bed: r.bed || '', item: mat ? ['Mattress', r.model, r.T ? inchTxt(parseFloat(r.T)) : '', mtWar(r) ? mtWar(r) + ' years warranty' : ''].filter(Boolean).join(' · ') : [r.p, r.item].filter(Boolean).join(' · '),   // 22 Oct: says what it is (Pillow · FitRest…) size: mat && nv(r.L) ? `${fmt(nv(r.L))} × ${fmt(nv(r.W))}″` : '',
           qty: String(c.qty || 1), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''},
-        u: {area: r.room || '', product: String(r.p).toUpperCase(), pattern: String(r.bed || '').toUpperCase(), details: mat ? [r.sup === 'Other' ? '' : 'Sleepwell', r.model, r.T ? inchTxt(parseFloat(r.T)) : ''].filter(Boolean).join(' ') : ['Sleepwell', r.item].filter(Boolean).join(' '),   // 22 Oct (Purvi): PILLOW, MATTRESS PROTECTOR… not MATTRESS for everything
+        u: {area: r.room || '', product: String(r.p).toUpperCase(), pattern: String(r.bed || '').toUpperCase(), details: mat ? [r.sup === 'Other' ? '' : 'Sleepwell', r.model, r.T ? inchTxt(parseFloat(r.T)) : '', mtWar(r) ? `· ${mtWar(r)} years warranty` : ''].filter(Boolean).join(' ') : ['Sleepwell', r.item].filter(Boolean).join(' '),   // 22 Oct (Purvi): PILLOW, MATTRESS PROTECTOR… not MATTRESS for everything
           H: mat && nv(r.L) ? fmt(nv(r.L)) : '', W: mat && nv(r.W) ? fmt(nv(r.W)) : '', qty: `${c.qty || 1} pcs`, note: r.remarks || ''}}); });
     sec('mattress', 'Mattresses and pillows', [['room', 'Room'], ['bed', 'Bed'], ['item', 'Item'], ['size', 'Size'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R,
       L => [`${msSum(L, x => x.n.q)} piece${msSum(L, x => x.n.q) === 1 ? '' : 's'}`]); }
@@ -8288,4 +8297,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-142349 -->
+<!-- build 20261022-142709 -->
