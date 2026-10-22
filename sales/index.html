@@ -890,6 +890,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .paper td.c{text-align:center}
 .paper td.r,.paper th.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .paper tr.secrow td{background:#F2F2F2;font-weight:700;letter-spacing:.02em}
+.paper tr.roomrow td{background:#FFF6D6;font-weight:700;padding-left:14px}   /* 22 Oct: a room in Curtains and blinds: "Master bedroom · 2 curtains · 1 blind" */
 .paper tr.subrow td{font-weight:700;background:#FAFAFA}
 .paper tr.secrow.part td{background:#FAFAFA;padding-left:22px;font-style:italic}
 .paper tr.tot td{font-weight:700;font-size:14px}
@@ -998,7 +999,7 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
   #print-root .paper td.r{overflow-wrap:normal}
   #print-root .paper thead{display:table-header-group}
   #print-root .paper tr{break-inside:avoid;page-break-inside:avoid}
-  #print-root .paper tr.secrow{break-after:avoid;page-break-after:avoid}
+  #print-root .paper tr.secrow,#print-root .paper tr.roomrow{break-after:avoid;page-break-after:avoid}
   #print-root .paper tr.secrow td{font-size:9pt}
   #print-root .paper tr.tot td{font-size:9.5pt}
   #print-root .paper tr.tot.big td{font-size:11pt}
@@ -3594,6 +3595,24 @@ const TNC = ['50% ADVANCE AGAINST ORDER & REST 50% BEFORE DELIVERY OF THE PRODUC
 // Product column names a customer can read: "D'Decor motor" → "Blind motor" (the brand is in the details column).
 const addonProduct = g => { const k = g.replace(/^(D'Decor|Somfy|FabriCare) /i, ''); return /^skylight/i.test(k) ? 'Skylight blind fitting' : /assembly/i.test(k) ? 'Motorised blind assembly' : 'Blind ' + k.toLowerCase(); };
 const SECTIONS = [['fabric', 'Curtain fabric'], ['stitch', 'Stitching'], ['blinds', 'Blinds'], ['wallpaper', 'Wallpaper'], ['flooring', 'Flooring'], ['mattress', 'Mattresses and pillows'], ['uph', 'Upholstery material'], ['foam', 'Upholstery foam'], ['hw', 'Accessories and installation']];   // Wallpaper after Blinds, then Flooring (Purvi, 6 Oct); Sleepwell mattresses and foam after Flooring (6 Oct)
+// 22 Oct (Purvi: "combine curtains and blinds … the room wise clubbing needs to show how many curtains/blinds are going in each room"):
+// shown as ONE section, room by room, each room under a heading row "Master bedroom · 2 curtains · 1 blind". Only the showing changes:
+// the data keeps Curtain fabric and Blinds apart (the discount on curtain fabric, versions and the "sheet changed" check use them).
+// A curtain = a main or sheer curtain line (lining is part of its curtain); a blind = a blind line. Rooms in the order measured.
+function qDisp(S, sub){
+  const out = [];
+  for (const [k, name] of SECTIONS) {
+    if (k === 'blinds') continue;
+    if (k !== 'fabric') { if ((S[k] || []).length) out.push({k, name, keys: [k], sub: (sub || {})[k] || 0, rows: S[k].map(l => ({k, l}))}); continue; }
+    const F = S.fabric || [], B = S.blinds || []; if (!F.length && !B.length) continue;
+    const rooms = new Map(), put = (kk, l) => { const rk = roomKey(l.area || ''); if (!rooms.has(rk)) rooms.set(rk, {name: l.area || 'Room not named', cur: 0, bl: 0, L: []});
+      const g = rooms.get(rk); g.L.push({k: kk, l}); if (kk === 'blinds') g.bl++; else if (!/^Lining/i.test(l.product)) g.cur++; };
+    F.forEach(l => put('fabric', l)); B.forEach(l => put('blinds', l));
+    const rows = []; for (const g of rooms.values()) { rows.push({head: [g.name, g.cur ? `${g.cur} curtain${g.cur > 1 ? 's' : ''}` : '', g.bl ? `${g.bl} blind${g.bl > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}); rows.push(...g.L); }
+    out.push({k: 'cb', name: F.length && B.length ? 'Curtains and blinds' : F.length ? 'Curtains' : 'Blinds', keys: ['fabric', 'blinds'], sub: ((sub || {}).fabric || 0) + ((sub || {}).blinds || 0), rows});
+  }
+  return out;
+}
 const QOPT = ['wallpaper', 'flooring', 'mattress', 'uph', 'foam'];   // 'foam' only in versions saved on 6 Oct, before Upholstery became one list   // drawn only when the client has some, so older quotations keep their version number
 // Accessories and installation splits into Manual and Motorised when a quote has both (Purvi, 2 Oct). Lines carry grp 'man' | 'mot'.
 // Returns null (no split) for other sections, a quote with only one kind, or an old saved version without grp.
@@ -3888,7 +3907,16 @@ function paperHTML(q, house, t, showC, ro, ed){
   const sumRow = (cls, label, val, costCell = showC ? '<td></td>' : '', dim) => amt || ed ? `<tr class="${cls}"${dim ? ' data-off' : ''}><td colspan="${vis.length}" class="r">${label}</td><td class="r"${amt ? '' : ' data-off'}>${dim ? '—' : val}</td>${costCell}${tailE}</tr>` : '';
   const qbtn = (kind, k, on, a, b) => `<button class="qh${on ? '' : ' show'}" data-qh="${kind}" data-k="${esc(k)}">${on ? a : b}</button>`;
   let n = 0, si = 0, body = '';
-  SECTIONS.filter(([k]) => (S[k] || []).length).forEach(([k, name]) => {
+  if (!ed) qDisp(S, t.sub).forEach(D => {   // shown to the client: curtains and blinds together, room by room (22 Oct)
+    const vk = new Set(); for (const kk of D.keys) for (const l of t.S[kk] || []) vk.add(kk + '|' + lineKey(kk, l));
+    if (!vk.size) return; const no = ++si;
+    body += `<tr class="secrow"><td colspan="${ncol}">${no} · ${D.name}</td></tr>`;
+    const P = D.k === 'cb' ? null : secParts(D.k, S[D.k]);
+    const row = x => x.head != null ? `<tr class="roomrow"><td colspan="${ncol}">${esc(x.head)}</td></tr>` : vk.has(x.k + '|' + lineKey(x.k, x.l)) ? lineHTML(x.l, ++n, showC, ro, vis, off, '', false) : '';
+    body += (P ? P.map(p => `<tr class="secrow part"><td colspan="${ncol}">${no}${p.ab} · ${p.n}</td></tr>` + p.L.map(l => row({k: D.k, l})).join('') + sumRow('subrow', `${p.n} total`, inr(p.L.filter(l => vk.has(D.k + '|' + lineKey(D.k, l))).reduce((a, l) => a + (l.amt || 0), 0)))).join('')
+      : D.rows.map(row).join('')) + sumRow('subrow', `${D.name} total`, inr(D.sub));
+  });
+  else SECTIONS.filter(([k]) => (S[k] || []).length).forEach(([k, name]) => {
     const F = S[k], secOff = !!ed && H.sec.includes(k), vk = new Set((t.S[k] || []).map(l => lineKey(k, l))), on = vk.size > 0, no = on ? ++si : '';
     body += `<tr class="secrow"${on ? '' : ' data-off'}><td colspan="${ncol}">${no ? no + ' · ' : ''}${name}</td>${ed ? `<td class="qe">${qbtn('sec', k, !secOff, 'Hide section', 'Show section')}</td>` : ''}</tr>`;
     const row = l => { const key = lineKey(k, l), lon = vk.has(key);
@@ -3944,7 +3972,7 @@ function renderQuoteSum(t = quoteTotals()){
     ${t.missing ? `<div style="padding:14px 14px 0"><div class="banner warn"><b>${t.missing} line${t.missing > 1 ? 's have' : ' has'} no price,</b> so the total leaves ${t.missing > 1 ? 'them' : 'it'} out. Tap the orange buttons in the quotation.</div></div>` : ''}
     ${prices.dummy ? `<div style="padding:14px 14px 0"><div class="banner info"><b>Dummy prices for now.</b> Real rates go in the Prices pages.</div></div>` : ''}
     <div class="rows">
-      ${SECTIONS.filter(([k]) => (t.S[k] || []).length).map(([k, n]) => `<div class="srow"><span>${n}</span><b>${rs(t.sub[k])}</b></div>`).join('')}
+      ${qDisp(t.S, t.sub).map(D => `<div class="srow"><span>${D.name}</span><b>${rs(D.sub)}</b></div>`).join('')}
       <div class="srow"><span>Total</span><b>${rs(t.total)}</b></div>
       <div class="srow"><label for="q-disc">Discount on curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
       <div class="srow"><label for="q-discAmt">or discount ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
@@ -4020,7 +4048,7 @@ function renderQuoteSumM(t){
     </div>
     <div class="qm-sec">What’s in it</div>
     <div class="qm-list">
-      ${SECTIONS.filter(([k]) => (t.S[k] || []).length).map(([k, n]) => `<div class="qm-li"><span>${n}</span><b>${rs(t.sub[k])}</b></div>`).join('')}
+      ${qDisp(t.S, t.sub).map(D => `<div class="qm-li"><span>${D.name}</span><b>${rs(D.sub)}</b></div>`).join('')}
       ${row('disc', 'Discount', t.disc || t.disc2 ? '− ' + rs((t.disc || 0) + (t.disc2 || 0)) : 'None', `<div class="srow"><label for="q-disc">On curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
         <div class="srow"><label for="q-discAmt">or ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
         <div class="srow"><label for="q-odisc">On the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${q.odiscAmt ? ' disabled' : ''}></div>
@@ -4109,12 +4137,12 @@ async function quoteXLSX(){
     vals.forEach((v, i) => { const k = keys[i], c = ws.getCell(r, i + 1); c.value = v; c.border = box; c.font = {name: 'Arial', size: 9, bold: k === 'amt'};
       c.alignment = {vertical: 'middle', wrapText: true, horizontal: ['no', 'hsn', 'unit'].includes(k) ? 'center' : ['qty', 'mrp', 'amt'].includes(k) ? 'right' : 'left'};
       if (k === 'qty' && typeof v === 'number') c.numFmt = '0.##'; if ((k === 'mrp' || k === 'amt') && typeof v === 'number') c.numFmt = INR; }); };
-  SECTIONS.filter(([k]) => (t.S[k] || []).length).forEach(([k, name], si) => {
-    merged(`${si + 1} · ${name}`, {font: {bold: true}, fill: 'FFF2F2F2', h: 17});
-    const P = secParts(k, t.S[k]);
+  qDisp(t.S, t.sub).forEach((D, si) => {   // curtains and blinds together, room by room (22 Oct)
+    merged(`${si + 1} · ${D.name}`, {font: {bold: true}, fill: 'FFF2F2F2', h: 17});
+    const P = D.k === 'cb' ? null : secParts(D.k, t.S[D.k]);
     if (P) P.forEach(p => { merged(`${si + 1}${p.ab} · ${p.n}`, {font: {bold: true, italic: true}, fill: 'FFFAFAFA', align: {indent: 1}, h: 16}); p.L.forEach(line); total(`${p.n} total`, p.sub); });
-    else t.S[k].forEach(line);
-    total(`${name} total`, t.sub[k], {fill: 'FFFAFAFA'});
+    else D.rows.forEach(x => x.head != null ? merged(x.head, {font: {bold: true}, fill: 'FFFFF6D6', h: 16}) : line(x.l));
+    total(`${D.name} total`, D.sub, {fill: 'FFFAFAFA'});
   });
   total('TOTAL', t.total, {rs: true, size: 10});
   if (t.disc) total(t.discTxt, t.disc, {rs: true, minus: true});
@@ -4263,14 +4291,13 @@ function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()})
     mrp: l => l.mrp == null ? '—' : inr(l.mrp), amt: l => l.amt == null ? '—' : inr(l.amt)};
   const row = l => body.push([++n, ...cols.map(c => V[c](l))]);
   const tot = (a, b) => [{content: a, colSpan: NC - 1, styles: {halign: 'right', fontStyle: 'bold'}}, {content: b, styles: {halign: 'right', fontStyle: 'bold'}}];
-  SECTIONS.filter(([k]) => (t.S[k] || []).length).forEach(([k, name], si) => {   // number only the sections that are there: 1, 2, 3…
-    if (!t.S[k].length) return;
-    body.push([{content: `${si + 1} · ${name.toUpperCase()}`, colSpan: NC, styles: {fontStyle: 'bold', fillColor: [242, 242, 242]}}]);
-    const P = secParts(k, t.S[k]);
+  qDisp(t.S, t.sub).forEach((D, si) => {   // number only the sections that are there: 1, 2, 3… · curtains and blinds together, room by room (22 Oct)
+    body.push([{content: `${si + 1} · ${D.name.toUpperCase()}`, colSpan: NC, styles: {fontStyle: 'bold', fillColor: [242, 242, 242]}}]);
+    const P = D.k === 'cb' ? null : secParts(D.k, t.S[D.k]);
     if (P) P.forEach(p => { body.push([{content: `${si + 1}${p.ab} · ${p.n.toUpperCase()}`, colSpan: NC, styles: {fontStyle: 'bold', fillColor: [250, 250, 250], cellPadding: {top: 3.5, bottom: 3.5, left: 14, right: 3.5}}}]);
       p.L.forEach(row); if (amt) body.push(tot(`${p.n.toUpperCase()} TOTAL`, inr(p.sub))); });
-    else t.S[k].forEach(row);
-    if (amt) body.push(tot(`${name.toUpperCase()} TOTAL`, inr(t.sub[k])));
+    else D.rows.forEach(x => x.head != null ? body.push([{content: x.head.toUpperCase(), colSpan: NC, styles: {fontStyle: 'bold', fillColor: [255, 246, 214]}}]) : row(x.l));
+    if (amt) body.push(tot(`${D.name.toUpperCase()} TOTAL`, inr(D.sub)));
   });
   if (amt) { body.push(tot('TOTAL', 'Rs. ' + inr(t.total)));
     if (t.disc) body.push(tot((t.discTxt || 'Discount on curtain fabric').toUpperCase(), '- Rs. ' + inr(t.disc)));
@@ -8218,4 +8245,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-123914 -->
+<!-- build 20261022-124854 -->
