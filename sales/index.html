@@ -2207,11 +2207,11 @@ function findIn(sup, q){
   const toks = q.toLowerCase().split(/\s+/).filter(Boolean); if (!toks.length) return [];
   const lists = sup ? [CAT.rows[sup] || []] : Object.values(CAT.rows);
   const out = [];
-  // Cap each company separately, so one big list can't crowd the others out before ranking.
-  for (const list of lists) { let n = 0; for (const x of list) { if (toks.every(t => x.s.includes(t))) { out.push(x); if (++n >= 300) break; } } }
+  // Every match, no cap (Purvi, 23 Oct: "properly show all fabric skus everywhere"); the list draws them FAB_PAGE at a time as you scroll.
+  for (const list of lists) for (const x of list) if (toks.every(t => x.s.includes(t))) out.push(x);
   const q0 = toks[0];
   out.sort((a, b) => (b.s.startsWith(q0) - a.s.startsWith(q0)) || a.n.localeCompare(b.n));
-  return out.slice(0, 40);
+  return out;
 }
 function openSugg(input, row){
   suggFor = {input, row};
@@ -2227,15 +2227,25 @@ function fabListHTML(q, sup){
   else if (q.length < 2) html = `<div class="msg">Type at least 2 letters: a collection, a serial number or a SKU.${sup ? '' : ' Pick the company first to search only its fabrics.'}</div>`;
   else {
     suggItems = findIn(sup, q); suggOn = 0;
-    html = suggItems.length ? suggItems.map((x, i) => {
+    html = suggItems.length ? fabItemsHTML(0) : `<div class="msg">No fabric matches “${esc(q)}”${sup ? ' at ' + esc(SUPS[sup]) : ''}. Check the spelling, or pick another company.</div>`;
+  }
+  return html;
+}
+// One page of fabric suggestions from suggItems, plus a "more" line that the list's scroll handler replaces with the next page.
+const FAB_PAGE = 60;
+function fabItemsHTML(from){
+  const end = Math.min(suggItems.length, from + FAB_PAGE);
+  return suggItems.slice(from, end).map((x, j) => { const i = from + j;
       const who = x.own ? 'Our own list' : SUPS[x.sup], roll = x.w >= 100 ? `${x.w} cm roll` : 'roll width not listed';
       const cost = !x.own && canSeeCost && CAT.cost.has(x.sup + '|' + x.k) ? `<small>dealer ₹${Math.round(CAT.cost.get(x.sup + '|' + x.k)).toLocaleString('en-IN')}</small>` : '';
       const price = has(x.r) ? (x.own ? `₹${Math.round(x.r).toLocaleString('en-IN')}/m` : `MRP ₹${mrpOf(x.r).toLocaleString('en-IN')}/m`) : 'no price';
       return `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(x.n)}</b><br><small>${esc(who)} · ${roll}</small></span><span class="pr">${price}${cost}</span></div>`;
-    }).join('') : `<div class="msg">No fabric matches “${esc(q)}”${sup ? ' at ' + esc(SUPS[sup]) : ''}. Check the spelling, or pick another company.</div>`;
-  }
-  return html;
+    }).join('') + (end < suggItems.length ? `<div class="msg" data-fabmore="${end}">${end.toLocaleString('en-IN')} of ${suggItems.length.toLocaleString('en-IN')} fabrics shown · scroll for more</div>` : '');
 }
+sugg.addEventListener('scroll', () => {
+  const m = sugg.querySelector('[data-fabmore]'); if (!m || sugg.scrollTop + sugg.clientHeight < sugg.scrollHeight - 200) return;
+  m.outerHTML = fabItemsHTML(+m.dataset.fabmore);
+});
 function closeSugg(){
   // left without a pick: a box that shows a picked item goes back to it (blind collection)
   if (suggFor && suggFor.restore) suggFor.restore();
@@ -2347,7 +2357,7 @@ function pickSugg(i){
   if (suggFor.pick) { const f = suggFor.pick; closeSugg(); f(x); return; }
   if (suggFor.mp) { const {input, val} = suggFor; closeSugg(); input.value = val(x); input.dispatchEvent(new Event('input', {bubbles: true})); return; }   // the sheet's own input handler fills the row
   const {input, row} = suggFor, tr = input.closest('tr');
-  { row.sup = x.sup; row.key = x.k; row.fabric = x.n; row.roll = listedRoll(row) || 140; row.rollOwn = ''; row.repeat = ''; row.turn = 'Yes'; }
+  { if (!row.sup) row.supAuto = true; row.sup = x.sup; row.key = x.k; row.fabric = x.n; row.roll = listedRoll(row) || 140; row.rollOwn = ''; row.repeat = ''; row.turn = 'Yes'; }
   input.value = row.fabric; input.className = fabricState(row);
   tr.querySelector('[data-f=sup]').value = row.sup;
   const sel = tr.querySelector('[data-f=roll]');
@@ -2593,8 +2603,10 @@ tb.addEventListener('input', e => {
     r[f] = (!v || (!String(r[f] || '').trim() && v === t.dataset.start)) ? '' : v;
     t.classList.toggle('ovr', !!r[f]);
   } else r[f] = f === 'roll' ? +t.value : t.value;
-  if (f === 'fabric') { r.key = ''; t.className = fabricState(r); openSugg(t, r); }
+  if (f === 'fabric') { if (r.supAuto) { r.sup = ''; r.supAuto = false; const cs = tr.querySelector('[data-f=sup]'); if (cs) cs.value = ''; }   // typing again searches every company unless one was chosen (23 Oct)
+    r.key = ''; t.className = fabricState(r); openSugg(t, r); }
   if (f === 'sup') {   // a new company: the old company's fabric and what came with it go (Purvi, 7 Oct)
+    r.supAuto = false;
     const fi = tr.querySelector('[data-f=fabric]'), was = !!r.key;
     r.key = ''; r.fabric = ''; fi.value = ''; fi.className = fabricState(r);
     if (was) { if (!+r.rollOwn) { r.roll = 140; const sel = tr.querySelector('[data-f=roll]'); if (sel) sel.innerHTML = rollOptHTML(r); } r.repeat = ''; const rp = tr.querySelector('[data-f=repeat]'); if (rp) rp.value = ''; }
@@ -6529,7 +6541,7 @@ $('#ptb').addEventListener('input', e => {
   const tr = e.target.closest('tr'), r = state.more.uph.find(x => x.id === +tr.dataset.id); if (!r) return;
   const v = e.target.value;
   if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.uph.blank(), {p: v, remarks: r.remarks}, v === 'Foam' ? {qty: '1'} : {}); const U = UPH[v]; if (U && U.opts) r[U.v] = U.opts[0][0]; }   // a new kind starts clean; foam = 1 piece (22 Oct)
-  else { r[f] = v; if (f === 'fabric') r.key = ''; if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; } }
+  else { r[f] = v; if (f === 'fabric') { r.key = ''; if (r.supAuto) { r.sup = ''; r.supAuto = false; const cs = $('#pside [data-u=sup]'); if (cs) cs.value = ''; } }  /* 23 Oct: the company a pick set is not a filter */ if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; } }
   state.msel.uph = state.more.uph.indexOf(r);
   if (e.target.tagName === 'SELECT') { tr.outerHTML = uphRowHTML(r); } else { const a = tr.querySelector('[data-o=amt]'); if (a) a.innerHTML = uphAmtHTML(r); }
   mpMarkSel('uph'); mpTotal('uph');
@@ -6575,7 +6587,7 @@ function uphSide(){
 // Upholstery's fabric box opens the Curtains list (our list, any company unless one is picked); a pick sets the company too
 function uphOpenSugg(input){
   const r = uphCur(); if (!r || r.sup === 'Other') { closeSugg(); return; }
-  suggFor = {input, pick: x => { r.sup = x.sup; r.key = x.k; r.fabric = x.n; uphChanged(r, true); const m = $(`#ptb tr[data-id="${r.id}"] [data-ur="m"]`); if (m) m.focus(); }};
+  suggFor = {input, pick: x => { if (!r.sup) r.supAuto = true; r.sup = x.sup; r.key = x.k; r.fabric = x.n; uphChanged(r, true); const m = $(`#ptb tr[data-id="${r.id}"] [data-ur="m"]`); if (m) m.focus(); }};
   sugg.innerHTML = fabListHTML(input.value.trim(), r.sup || '');
   sugg.style.width = Math.max(input.offsetWidth, 360) + 'px';
   placeSugg(input);
@@ -6597,8 +6609,8 @@ $('#pside').addEventListener('input', e => {
   if (mpCur !== 'uph') return;
   const f = e.target.dataset.u, r = uphCur(); if (!f || !r) return;
   r[f] = e.target.value;
-  if (f === 'fabric') { r.key = ''; }
-  if (f === 'sup') { r.key = ''; r.fabric = ''; uphChanged(r, true); return; }   // a new company clears the old company's fabric (7 Oct)
+  if (f === 'fabric') { r.key = ''; if (r.supAuto) { r.sup = ''; r.supAuto = false; } }
+  if (f === 'sup') { r.supAuto = false; r.key = ''; r.fabric = ''; uphChanged(r, true); return; }   // a new company clears the old company's fabric (7 Oct)
   if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; uphChanged(r, true); return; }
   uphChanged(r, false);
 });
@@ -8752,4 +8764,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261022-194346 -->
+<!-- build 20261023-184315 -->
