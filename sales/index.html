@@ -622,6 +622,10 @@ table.q{width:100%;border-collapse:collapse;min-width:520px;table-layout:fixed}
 .grand b{display:block;font:700 36px/1.05 var(--num);font-variant-numeric:tabular-nums}
 .margin{margin:12px 14px 0;border:1px solid var(--good);background:var(--good-soft);border-radius:9px;padding:10px 14px}
 .margin .srow{border-color:transparent;padding:3px 0}
+/* How the margin was worked out (24 Oct, Purvi): per section, the discount, the total, then the rule and what has no cost */
+.how.mhow{margin:10px 0 0;font-size:13px}.mhow table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.mhow th,.mhow td{padding:4px 4px;border-bottom:1px solid var(--line2);text-align:right;white-space:nowrap}.mhow th:first-child,.mhow td:first-child{text-align:left;white-space:normal}
+.mhow th{font-size:11.5px;color:var(--muted);font-weight:600}.mhow tr.tot td{font-weight:700;border-bottom:0}.mhow .lo{color:var(--warn)}.mhow p{margin:4px 0}.mhow ul{margin:2px 0 4px;padding-left:18px}
 .switch{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:14px;font-weight:600;cursor:pointer;padding:14px 14px 0}
 .switch input{width:18px;height:18px;accent-color:var(--good)}
 
@@ -4148,6 +4152,25 @@ function qToggle(kind, k){
 }
 function qShowAll(){ if (state.quote) delete state.quote.hide; save(); renderPaper(); }
 let qEdit = false;   // the quotation paper shows Hide / Show buttons
+// 24 Oct (Purvi): "add a block to show how you've calculated that particular margin, just like … in measurement sheets".
+// Per section: sale before GST (each line's amount ÷ (1 + its GST)), our cost (qty × what we pay, before GST), margin; then the
+// discounts (before GST) and the total, which is exactly the margin shown above (sale after discount − our cost).
+function marginHowHTML(t){
+  const rows = [], noCost = [];
+  for (const [k, name] of SECTIONS) { let sale = 0, cost = 0, n = 0;
+    for (const l of t.S[k] || []) { n++; if (l.amt != null) sale += l.amt / (1 + (+l.gst || 0) / 100); cost += l.camt || 0;
+      if (l.camt == null && l.amt) noCost.push(`${l.product}${l.what ? ' · ' + l.what : ''}${l.area && l.area !== '—' ? ' (' + l.area + ')' : ''}`); }
+    if (n) rows.push([name, sale, cost]); }
+  const sale = rows.reduce((a, r) => a + r[1], 0), discNet = sale - t.netAfter, m = t.netAfter - t.cost, pc = v => v ? Math.round(v) + '%' : '—';
+  const tr = (a, sv, cv, mv, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${a}</td><td>${sv}</td><td>${cv}</td><td>${mv}</td></tr>`;
+  return `<div class="how mhow"><b>How the margin was worked out</b>
+    <table><thead><tr><th>Section</th><th>Sale before GST</th><th>Our cost</th><th>Margin</th></tr></thead><tbody>
+    ${rows.map(([n, sv, cv]) => tr(esc(n), rs(Math.round(sv)), rs(Math.round(cv)), `${rs(Math.round(sv - cv))}<br><small>${pc(sv ? (sv - cv) / sv * 100 : 0)}</small>`, sv - cv < 0 ? 'lo' : '')).join('')}
+    ${discNet > 0.5 ? tr('Discounts, before GST', '− ' + rs(Math.round(discNet)), '', '− ' + rs(Math.round(discNet))) : ''}
+    ${tr('Total', rs(Math.round(t.netAfter)), rs(Math.round(t.cost)), `${rs(Math.round(m))}<br><small>${pc(t.netAfter ? m / t.netAfter * 100 : 0)}</small>`, 'tot')}</tbody></table>
+    <p>Sale before GST = each line's amount ÷ (1 + its GST %). Our cost = qty × what we pay for one unit, before GST: fabrics and blinds from the companies' dealer price lists; stitching, linings, tracks, motors, remotes and installation from <b class="n">We pay</b> on the Prices page; Sleepwell = MRP less the dealer margin. Margin % = margin ÷ sale before GST${discNet > 0.5 ? ', after the discounts' : ''}.</p>
+    ${noCost.length ? `<p class="lo">${noCost.length} line${noCost.length > 1 ? 's have' : ' has'} no cost price, so ${noCost.length > 1 ? 'their' : 'its'} whole sale counts as margin (the margin is higher than it really is):</p><ul>${noCost.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`;
+}
 function quoteTotals(S){
   let full = null; if (!S) { full = qSections(); S = qShown(full); }
   const cols = QALL.filter(c => !qHide().col.includes(c)), hid = full ? hideTxt(full, S) : '';
@@ -4360,7 +4383,7 @@ function renderQuoteSum(t = quoteTotals()){
     </div>
     <label class="switch"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>
     ${canSeeCost ? `<label class="switch"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
-      ${showCost ? `<div class="margin"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}${t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : ''}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price (blinds have no dealer price yet).</div>` : ''}</div>` : ''}` : ''}
+      ${showCost ? `<div class="margin"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}${t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : ''}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price (blinds have no dealer price yet).</div>` : ''}${marginHowHTML(t)}</div>` : ''}` : ''}
 `;
 }
 function renderQuote(){ renderQuoteHead(); renderPaper(); }
@@ -4442,7 +4465,7 @@ function renderQuoteSumM(t){
         <div class="srow"><label for="q-odiscAmt">or ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>`)}
       ${row('inst', 'Installation', q.noInstall ? 'Not added' : 'Added', `<label class="switch" style="padding:0"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>`)}
       ${canSeeCost ? row('cost', 'Our cost and margin', showCost ? rs(marginNet) + (t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : '') : 'Hidden', `<label class="switch" style="padding:0"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
-        ${showCost ? `<div class="margin" style="margin-top:8px"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price.</div>` : ''}</div>` : ''}`) : ''}
+        ${showCost ? `<div class="margin" style="margin-top:8px"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price.</div>` : ''}${marginHowHTML(t)}</div>` : ''}`) : ''}
     </div>`;
   const d = (q.date || '').split('-'), ex = (q.exec || '').split(' - ')[0];
   $('#qm-det-sum').textContent = [d.length === 3 ? `${d[2]}/${d[1]}/${d[0].slice(2)}` : '', ex].filter(Boolean).join(' · ');
@@ -8777,4 +8800,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261024-171156 -->
+<!-- build 20261024-194430 -->
