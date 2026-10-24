@@ -3184,6 +3184,9 @@ const bShadeTxt = (b, base) => bDN(b) ? `top ${base || '?'} · bottom ${(b.o || 
 const ROMAN_FAB = {SAN: 'SAN', FC: 'DD', AP: 'AP', LOC: '*'};   // blind company → its fabric list; Local: any company's fabric (22 Oct)
 const ROMAN_LOCAL = () => ({stitch: 150, lining: 35});   // ₹ a sq ft on the window, GST included (Purvi, 22 Oct)
 const isRomanMaking = p => !!p && p.fam === 'Roman (making)';
+// what we pay per sq ft for a one-line company Roman: their (stitching + lining) cost + the fabric's dealer price spread over the sq ft
+const romCost = c => { const sc = BL.cost.has(c.p.id) ? BL.cost.get(c.p.id) / SQFT : null, fc = CAT.cost.get(c.rom.fs + '|' + c.rom.x.k);
+  return sc == null || fc == null ? null : sc + c.rom.m1 * fc / c.charge; };
 function romanFabric(b, W, H, q){
   const fs = ROMAN_FAB[b.sup], r = {fs};
   if (!fs) { r.warn = `${BSUPS[b.sup]} has no fabric list here yet: the Roman fabric can't be priced`; return r; }
@@ -3193,7 +3196,8 @@ function romanFabric(b, W, H, q){
   let n = 1; while (W / n + 4 > r.roll + 1e-9 && n < 20) n++;
   Object.assign(r, {n, pw: W / n + 4, drop: H + 20});
   r.m1 = Math.ceil(n * r.drop / 39.37 * 4 - 1e-9) / 4; r.m = r.m1 * q;
-  r.mrp = has(x.r) ? mrpOf(x.r) : null; r.amt = r.mrp != null ? Math.round(r.m * r.mrp) : null;
+  r.gst = b.sup === 'LOC' ? 5 : 18;   // 24 Oct (Purvi): a company Roman is one blind, so its fabric pays the blind's 18% GST
+  r.mrp = has(x.r) ? (r.gst === 18 ? mrpOf2(x.r, 18) : mrpOf(x.r)) : null; r.amt = r.mrp != null ? Math.round(r.m * r.mrp) : null;
   if (r.mrp == null) r.warn = 'This Roman fabric has no price in the list';
   return r;
 }
@@ -3210,6 +3214,11 @@ function bCalc(b){
   c.charge = Math.ceil(Math.max(c.sqft, minSqft) * 2 - 1e-9) / 2;   // rounded up to the next ½ sq ft, as in the quotations
   c.minApplied = !!p && c.sqft < minSqft;
   if (p) { c.gst = p.gst; c.mrp = Math.round(p.sqm * (1 + p.gst / 100) / SQFT); c.amt = c.charge * c.q * c.mrp; }
+  if (isRomanMaking(p)) { c.rom = romanFabric(b, W, H, q);   // 22 Oct
+    // 24 Oct (Purvi): a company Roman = ONE blind: the company's per sq ft rate (stitching + lining) and the fabric metres, shown as one
+    // product with one MRP per sq ft and 18% GST on all of it. Local Romans keep their own lines (§1z140).
+    if (b.sup !== 'LOC' && c.rom.x && has(c.rom.x.r)) { c.one = true; c.gst = 18; c.rate = p.sqm / SQFT + c.rom.m1 * c.rom.x.r / c.charge;
+      c.mrp = Math.round(c.rate * 1.18); c.amt = c.charge * c.q * c.mrp; } }
   { const m = b.man || {}, sq = qmNum(m.sqft) ?? c.charge * c.q, mr = qmNum(m.mrp) ?? c.mrp, am = qmNum(m.amt);   // typed on View quotation / measurement sheet (22 Oct)
     if (m.mrp != null || m.sqft != null || am != null) { if (mr != null) { c.mrp = mr; c.amt = Math.round(sq * mr); } if (am != null) c.amt = Math.round(am); c.typed = c.amt != null; } }
   // Extras: each is priced on its own unit; "each" items use the typed number, else 1 (a motor: one per blind)
@@ -3219,7 +3228,7 @@ function bCalc(b){
     const mrp = Math.round(a.rrp * (gstIncl('blindAddons') ? 1 : 1 + a.gst / 100)); return {i, a, units, mrp, amt: units * mrp}; }).filter(Boolean);
   c.addonAmt = c.adds.reduce((t, x) => t + x.amt, 0);
   c.warn = t ? t.rules.map(f => f({W: c.mmW, H: c.mmH}, o, (b.series || '') + ' ' + (p ? p.coll : ''))).filter(Boolean) : [];
-  if (isRomanMaking(p)) { c.rom = romanFabric(b, W, H, q); c.fabAmt = c.rom.amt || 0; if (c.rom.warn) c.warn.push(c.rom.warn); }   // 22 Oct
+  if (c.rom) { c.fabAmt = c.one ? 0 : c.rom.amt || 0; if (c.rom.warn) c.warn.push(c.rom.warn); }   // one blind: the fabric is already in c.amt
   // Wider than the fabric roll: made in equal parts side by side
   c.rollMm = bRollMm(p);
   if (c.rollMm && c.mmW > c.rollMm) { c.parts = Math.ceil(c.mmW / c.rollMm - 1e-9); c.partMm = Math.round(c.mmW / c.parts);
@@ -3411,7 +3420,7 @@ function bUpdateRow(b){
   const bad = !!(c.lim && c.lim.bad); tr.querySelectorAll('[data-b=H], [data-b=W]').forEach(x => { x.classList.toggle('bad', bad); x.title = bad ? c.lim.bad : ''; });
   o('size').innerHTML = c.ok ? `${c.mmH} × ${c.mmW}<span class="u"> mm</span>${bad ? '<span class="tag bad-t">Size not possible</span>' : ''}${c.parts > 1 ? `<span class="tag" style="color:var(--warn)">${c.parts} parts of ${c.partMm}</span>` : ''}` : '';
   o('area').innerHTML = c.ok ? `${cpF(c.charge * c.q)}<span class="u"> sq ft</span>${c.minApplied ? `<span class="tag" style="color:var(--warn)">minimum ${cpF(r2(c.p.min * SQFT))} sq ft</span>` : c.q > 1 ? `<span class="tag" style="color:var(--muted)">${c.q} × ${cpF(c.charge)}</span>` : ''}` : '';
-  o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.p.gst}% GST</span>${c.p.extra === 'to confirm' ? '<span class="tag" style="color:var(--warn)">price to confirm</span>' : ''}` : '';
+  o('rate').innerHTML = c.p ? `₹${c.mrp || Math.round(c.p.sqm * (1 + c.p.gst / 100) / SQFT)}<span class="tag" style="color:var(--muted)">MRP incl. ${c.one ? 'fabric · 18' : c.p.gst}% GST</span>${c.p.extra === 'to confirm' ? '<span class="tag" style="color:var(--warn)">price to confirm</span>' : ''}` : '';
   o('amt').innerHTML = bad ? '<span class="bad-t" title="D\'Decor can\'t make this size">Not possible</span>' : c.ok && (c.p || c.typed) ? `<span class="v">${rs(c.amt + (c.addonAmt || 0) + (c.fabAmt || 0))}</span>${c.fabAmt ? `<span class="tag" style="color:var(--muted)">incl. fabric ${rs(c.fabAmt)}</span>` : ''}${c.addonAmt ? `<span class="tag" style="color:var(--muted)">incl. extras ${rs(c.addonAmt)}</span>` : ''}` : `<span class="none">${c.ok ? 'no price yet' : '—'}</span>`;
   // 22 Oct (Purvi): D'Decor's common order details (its own forms) right in the list; the rest in the side panel. Marvel and the rest: side panel.
   ['op', 'system', 'control', 'bracket'].forEach(k => { const x = o('q-' + k); if (!x || x.contains(document.activeElement)) return;
@@ -3638,7 +3647,7 @@ function romanSideHTML(b, c){
   const any = ROMAN_FAB[b.sup] === '*';
   return `<div class="sec-h bsec"><h2>Roman fabric</h2><p>${any ? 'any company\'s fabric (we stitch it)' : esc(SUPS[fs]) + ' fabric only (they stitch it)'}</p></div>
     <div class="bform"><div class="fld" style="grid-column:1/-1"><label for="b-rfab">Fabric${any && r.x ? ' · ' + esc(SUPS[r.fs] || '') : ''}</label><input id="b-rfab" data-rfab="1" value="${esc(b.rfabric || '')}" placeholder="Type to search ${any ? 'every company\'s' : esc(SUPS[fs])} fabrics" autocomplete="off"></div></div>
-    ${r.n ? `<div class="kpis" style="padding:6px 16px;grid-template-columns:repeat(3,1fr)">${k('Panels', r.n, `${fmt(Math.round(r.pw * 10) / 10)}″ wide each (incl. 4″)`)}${k('Fabric', fmt(r.m) + ' m', `${r.n} × ${fmt(r.drop)}″${b.qty > 1 ? ' × ' + b.qty : ''}`)}${k('Fabric amount', r.amt != null ? rs(r.amt) : '—', r.mrp != null ? `${fmt(r.m)} m × ${rs(r.mrp)}` : 'no price', 1)}</div>
+    ${r.n ? `<div class="kpis" style="padding:6px 16px;grid-template-columns:repeat(3,1fr)">${k('Panels', r.n, `${fmt(Math.round(r.pw * 10) / 10)}″ wide each (incl. 4″)`)}${k('Fabric', fmt(r.m) + ' m', `${r.n} × ${fmt(r.drop)}″${b.qty > 1 ? ' × ' + b.qty : ''}`)}${k('Fabric amount', r.amt != null ? rs(r.amt) : '—', r.mrp != null ? `${fmt(r.m)} m × ${rs(r.mrp)}${r.gst === 18 ? ' (18% GST, part of the blind)' : ''}` : 'no price', 1)}</div>
       <div class="how" style="margin:4px 16px 8px"><b>How the fabric was worked out</b>Roll ${fmt(Math.round(r.roll * 10) / 10)}″${r.listed ? '' : ' (not in the list: 140 cm used)'}. Width ${fmt(c.W)}″ ÷ ${r.n} panel${r.n > 1 ? 's' : ''} + 4″ = ${fmt(Math.round(r.pw * 10) / 10)}″ each (fits the roll). Drop = height ${fmt(c.H)}″ + 20″ = ${fmt(r.drop)}″. ${r.n} × ${fmt(r.drop)}″ ÷ 39.37 = ${fmt(Math.round(r.n * r.drop / 39.37 * 100) / 100)} m, rounded up to ${fmt(r.m1)} m${b.qty > 1 ? ` × ${b.qty} blinds = ${fmt(r.m)} m` : ''}. Stitching${/With lining/.test(c.p.coll) || !/^LOC/.test(c.p.id) ? ' + lining' : ''} is charged on the window, ${fmt(c.H)}″ × ${fmt(c.W)}″${/^LOC/.test(c.p.id) ? ` (our rates: stitching ₹${ROMAN_LOCAL().stitch}${/With lining/.test(c.p.coll) ? ` + lining ₹${ROMAN_LOCAL().lining}` : ''} a sq ft)` : ''}.</div>` : ''}`;
 }
 function renderBSide(){
@@ -3961,9 +3970,9 @@ function qSections(){
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
     const typed = `${b.series || ''} ${b.shade || ''}`.trim();   // 20 Oct (Purvi): no collection picked → said plainly, as curtain fabric
-    add('blinds', {srcs: ['blinds|' + b.id], area: b.room, product: isRomanMaking(p) ? (b.sup === 'LOC' ? (/With lining/.test(p.coll) ? 'Roman blind (local stitching + lining)' : 'Roman blind (local stitching)') : 'Roman blind (stitching + lining)') : b.fam + ' blind', nocoll: !p, what: `${BCODE[b.sup]} ${p ? p.coll + ' ' + bShadeTxt(b, b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
-      hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: p ? p.sqm / SQFT : null, gst: p ? p.gst : 18, cost: p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
-    if (c.rom && c.rom.x) { const x = c.rom.x;   // 22 Oct: the Roman's fabric, right under its stitching
+    add('blinds', {srcs: ['blinds|' + b.id], area: b.room, product: isRomanMaking(p) ? (b.sup === 'LOC' ? (/With lining/.test(p.coll) ? 'Roman blind (local stitching + lining)' : 'Roman blind (local stitching)') : 'Roman blind') : b.fam + ' blind', nocoll: !p, what: c.one ? `${QCODE[c.rom.fs] || ''} ${c.rom.x.n}`.trim() : `${BCODE[b.sup]} ${p ? p.coll + ' ' + bShadeTxt(b, b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
+      hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: c.one ? c.rate : p ? p.sqm / SQFT : null, gst: c.one ? 18 : p ? p.gst : 18, cost: c.one ? romCost(c) : p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
+    if (c.rom && c.rom.x && !c.one) { const x = c.rom.x;   // 22 Oct: the Roman's fabric, right under its stitching (local Romans only since 24 Oct)
       add('blinds', {area: b.room, product: 'Roman blind fabric', what: `${QCODE[c.rom.fs] || ''} ${x.n} · ${c.rom.n} panel${c.rom.n > 1 ? 's' : ''} × ${fmt(c.rom.drop)}″`.trim(), hsn: x.h || '', qty: c.rom.m, unit: 'MTR',
         rate: x.r, gst: x.g || 5, cost: CAT.cost.get(c.rom.fs + '|' + x.k) ?? null, fix: 'bprice'}); }
     (c.adds || []).forEach(({a, units}) => { const k = bAddKind(a); hw(b.room, {grp: k !== 'extra' || isMotorAddon(a.group) ? 'mot' : 'man', product: k === 'remote' ? 'Blind motor remote' : k === 'motor' && !/motor/i.test(addonProduct(a.group)) ? 'Blind motor' : addonProduct(a.group), what: a.name, hsn: H.blindAddons || '', qty: units, unit: a.uom === 'each' ? 'PCS' : a.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: a.rrp, gst: a.gst, cost: BL.cost.has(a.key) ? BL.cost.get(a.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'}); });
@@ -4017,9 +4026,9 @@ function qSections(){
   byRoom(state.more.uph || []).forEach(r => {
     const c = MP.uph.calc(r); if (!c.ok) return;
     const k = [c.q.product, c.what, c.q.rate, c.q.incl].join('|'), g = up.get(k);
-    if (g) g.qty += c.qty; else up.set(k, Object.assign({area: '—', what: c.what, qty: c.qty, fix: c.q.rate == null ? (r.p === 'Fabric' ? 'opick' : 'uprice') : 'opick'}, c.q));
+    if (g) { g.qty += c.qty; g.rooms.add(r.room || '—'); } else up.set(k, Object.assign({rooms: new Set([r.room || '—']), what: c.what, qty: c.qty, fix: c.q.rate == null ? (r.p === 'Fabric' ? 'opick' : 'uprice') : 'opick'}, c.q));
   });
-  for (const l of up.values()) { l.qty = r2(l.qty); add('uph', l); }
+  for (const l of up.values()) { l.qty = r2(l.qty); l.area = roomsTxt(l.rooms); delete l.rooms; add('uph', l); }   // 24 Oct: Area = the use case(s)
   for (const l of club.values()) { l.qty = r2(l.qty); l.area = roomsTxt(l.rooms); delete l.rooms; add('hw', l); }
   motor.forEach(l => add('hw', l));
   if (!(state.quote || {}).noInstall) {
@@ -6437,7 +6446,7 @@ const MP = {
     note: 'Material a customer takes to get furniture made elsewhere: fabric, foam, fibre, pins, solution, astar. One line each.',
     hint: 'Type each line here. The panel on the right shows its price, the company for fabric, and remarks.',
     filled: r => !!r.p,
-    blank: () => ({p: '', sup: '', key: '', fabric: '', rate: '', m: '', foam: '', T: '', L: '', W: '', qty: '', th: '', kg: '', size: '', n: '', l: '', type: '', remarks: ''}),
+    blank: () => ({room: '', p: '', sup: '', key: '', fabric: '', rate: '', m: '', foam: '', T: '', L: '', W: '', qty: '', th: '', kg: '', size: '', n: '', l: '', type: '', remarks: ''}),
     cols: [],
     calc(r){
       const U = UPH[r.p], c = {ok: false, warn: [], kpis: []};
@@ -6477,7 +6486,7 @@ const MP = {
       return c;
     },
     sum: (rows, cs) => { const m = cs.reduce((a, c) => a + (c.tot || 0), 0); return m ? `MRP ${rs(m)}` : ''; },
-    rules: ['Each line is typed in the table: What it is, then only the boxes that kind needs (fabric: search it; foam: the foam, thickness, length, width and pieces; the rest: their choice and qty). The panel on the right shows the price, the company for fabric and remarks.', 'Fabric: type to search every company\'s list, the same list as the Curtains sheet (or pick a company first to search only its fabrics); the pick gives the company and the price (MRP = list price + GST). Choose Other to type a fabric and our own rate per metre.',
+    rules: ['Each line is typed in the table: the Use case (sofa, dining chairs, headboard…: it is the Area on the quotation), What it is, Co. for fabric, then only the boxes that kind needs (fabric: search it; foam: the foam, thickness, length, width and pieces; the rest: their choice and qty). The panel on the right shows the price, the company for fabric and remarks.', 'Fabric: type to search every company\'s list, the same list as the Curtains sheet (or pick a company first to search only its fabrics); the pick gives the company and the price (MRP = list price + GST). Choose Other to type a fabric and our own rate per metre.',
       'Foam: Sleepwell\'s list. A listed sheet or cushion size is priced from the list; any other size is cut to size (about 2 weeks).',
       'Fibre pad, loose fibre, pins, SR solution and astar: our own rates from the Prices page (Upholstery material).', 'Everything here goes on the quotation, in the Upholstery material section.'],
   },
@@ -6511,19 +6520,22 @@ function uphFromOld(){
 }
 // 22 Oct (Purvi: "do the same table layout for the upholstery sheet", as Mattress): every line typed in the table on one row; the
 // boxes follow what it is (fabric: the Curtains search; foam: Sleepwell foam, thickness, size; the rest: their choice and qty).
-const UPH_HEAD = `<tr><th class="first">#</th><th>What it is</th><th>Item</th><th title="Thickness">Thick.</th><th class="r" title="Length (foam)">L <small>″</small></th><th class="r" title="Width (foam)">W <small>″</small></th><th class="r">Qty</th><th class="r">Amount</th><th></th></tr>`;
+// 24 Oct (Purvi): Use case first (sofa, chairs…; kept in r.room = the quotation's Area) and Co. for fabric, as on Curtains
+const UPH_HEAD = `<tr><th class="first">#</th><th title="What it is for: sofa, dining chairs, headboard…">Use case</th><th>What it is</th><th title="Company (fabric)">Co.</th><th>Item</th><th title="Thickness">Thick.</th><th class="r" title="Length (foam)">L <small>″</small></th><th class="r" title="Width (foam)">W <small>″</small></th><th class="r">Qty</th><th class="r">Amount</th><th></th></tr>`;
 const uphQ = p => p === 'Fabric' ? ['m', 'm'] : p === 'Foam' ? ['qty', 'pcs'] : UPH[p] ? [UPH[p].q, UPH[p].u === 'packet' ? 'pkts' : UPH[p].u] : ['', ''];
 const uphAmtHTML = r => { const c = MP.uph.calc(r); return c.tot ? rs(c.tot) : c.ok ? '<span class="chip warn">No price yet</span>' : '<span class="none">—</span>'; };
 function uphRowHTML(r){
   const i = state.more.uph.indexOf(r) + 1, U = UPH[r.p], foam = r.p === 'Foam', fab = r.p === 'Fabric', m = foam ? swFoam(r) : null, tc = m ? m.tcm : {};
   const sel = (f, list, val, blank, w, dis, lab, short) => `<select data-ur="${f}" style="width:${w}px"${dis ? ' disabled' : ''} aria-label="${lab}">${selOpts(list, val, blank, short)}</select>`;
   const inp = (f, ph, w, num, dis, lab, cls = '') => `<input data-ur="${f}" value="${esc(r[f] ?? '')}" placeholder="${esc(ph)}" style="width:${w}px"${num ? ' inputmode="decimal"' : ''} class="${num ? 'n ' : ''}${cls}"${dis ? ' disabled' : ''} aria-label="${lab}" autocomplete="off">`;
-  const item = fab ? (r.sup === 'Other' ? inp('fabric', 'Fabric name or code', 220, false, false, 'Fabric') : inp('fabric', 'Type to search fabrics', 220, false, false, 'Fabric', r.key ? 'picked' : ''))
-    : foam ? sel('foam', SWF_RNG.map(g => ({g, items: SWF.filter(x => x.rng === g).map(x => x.n)})), r.foam, 'Pick the foam', 220, false, 'Foam')
-    : U && U.opts ? sel(U.v, U.opts.map(o => o[0]), r[U.v], 'Pick', 220, false, U.vl) : '<span class="none">—</span>';
+  const item = fab ? (r.sup === 'Other' ? inp('fabric', 'Fabric name or code', 150, false, false, 'Fabric') : inp('fabric', 'Type to search fabrics', 150, false, false, 'Fabric', r.key ? 'picked' : ''))
+    : foam ? sel('foam', SWF_RNG.map(g => ({g, items: SWF.filter(x => x.rng === g).map(x => x.n)})), r.foam, 'Pick the foam', 150, false, 'Foam')
+    : U && U.opts ? sel(U.v, U.opts.map(o => o[0]), r[U.v], 'Pick', 150, false, U.vl) : '<span class="none">—</span>';
   const [qf, qu] = uphQ(r.p);
   return `<tr class="row" data-id="${r.id}"><td class="first"><span class="idx grip" title="Drag to move this line">${i}</span>${manTag(r, 1)}</td>
-    <td>${sel('p', Object.keys(UPH), r.p, 'Pick', 140, false, 'What it is')}</td>
+    <td>${inp('room', 'Sofa, chairs…', 110, false, false, 'Use case')}</td>
+    <td>${sel('p', Object.keys(UPH), r.p, 'Pick', 120, false, 'What it is')}</td>
+    <td>${sel('sup', fab ? [...Object.entries(SUPS).map(([k, n]) => [k, n]), ['Other', 'Other (not on a list)']] : [], r.sup, fab ? 'Any' : '—', 72, !fab, 'Company', t => QCODE[Object.keys(SUPS).find(k => SUPS[k] === t)] || (t === 'Other (not on a list)' ? 'Other' : t))}</td>
     <td>${r.p ? item : '<span class="none">pick what it is</span>'}</td>
     <td>${sel('T', foam ? Object.keys(tc).map(Number).sort((a, b) => a - b).map(t => [String(t), `${inchTxt(t)} · ${tc[t]} cm`]) : [], r.T, foam ? (m ? 'Pick' : 'foam first') : '—', 96, !foam || !m, 'Thickness')}</td>
     <td>${inp('L', foam ? '0' : '', 56, true, !foam, 'Length', foam ? 'key' : '')}</td><td>${inp('W', foam ? '0' : '', 56, true, !foam, 'Width', foam ? 'key' : '')}</td>
@@ -6541,7 +6553,8 @@ $('#ptb').addEventListener('input', e => {
   const tr = e.target.closest('tr'), r = state.more.uph.find(x => x.id === +tr.dataset.id); if (!r) return;
   const v = e.target.value;
   if (f === 'p') { if (v === r.p) return; Object.assign(r, MP.uph.blank(), {p: v, remarks: r.remarks}, v === 'Foam' ? {qty: '1'} : {}); const U = UPH[v]; if (U && U.opts) r[U.v] = U.opts[0][0]; }   // a new kind starts clean; foam = 1 piece (22 Oct)
-  else { r[f] = v; if (f === 'fabric') { r.key = ''; if (r.supAuto) { r.sup = ''; r.supAuto = false; const cs = $('#pside [data-u=sup]'); if (cs) cs.value = ''; } }  /* 23 Oct: the company a pick set is not a filter */ if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; } }
+  else if (f === 'sup') { r.sup = v; r.supAuto = false; r.key = ''; r.fabric = ''; }   // a new company clears the old company's fabric (7 Oct)
+  else { r[f] = v; if (f === 'fabric') { r.key = ''; if (r.supAuto) { r.sup = ''; r.supAuto = false; tr.querySelectorAll('[data-ur=sup]').forEach(x => { x.value = ''; }); const cs = $('#pside [data-u=sup]'); if (cs) cs.value = ''; } }  /* 23 Oct: the company a pick set is not a filter */ if (f === 'foam') { const m = swFoam(r); if (m && r.T && !m.tcm[parseFloat(r.T)]) r.T = ''; } }
   state.msel.uph = state.more.uph.indexOf(r);
   if (e.target.tagName === 'SELECT') { tr.outerHTML = uphRowHTML(r); } else { const a = tr.querySelector('[data-o=amt]'); if (a) a.innerHTML = uphAmtHTML(r); }
   mpMarkSel('uph'); mpTotal('uph');
@@ -8215,7 +8228,7 @@ function msData(){
         msSum(L, x => x.n.lin) ? `${cpF(msSum(L, x => x.n.lin))} m lining` : '', msSum(L, x => x.n.ft) ? `${cpF(msSum(L, x => x.n.ft))} ft track` : '', msSum(L, x => x.n.kit) ? `${msSum(L, x => x.n.kit)} motor kit${msSum(L, x => x.n.kit) > 1 ? 's' : ''}` : '']); }
   { const R = [];
     state.blinds.forEach(b => { if (!(+b.W && +b.H)) return; const c = bCalc(b), p = c.p, motor = (c.adds || []).some(x => bAddKind(x.a) === 'motor') || String(b.motor || '').trim();
-      const amt = c.amt ? c.amt + (c.addonAmt || 0) : 0;
+      const amt = c.amt ? c.amt + (c.addonAmt || 0) + (c.fabAmt || 0) : 0;   // 24 Oct: a local Roman's fabric counts too
       R.push({key: 'blinds|' + b.id, amt, n: {q: c.q, sq: c.ok ? c.charge * c.q : 0},
         c: {room: b.room || '', type: b.fam || '', sys: (p && p.sys) || b.sys || '', coll: bCollOf(b) || b.series || '', shade: b.shade || (p ? p.design || '' : ''), H: msNum(b.H), W: msNum(b.W), qty: String(c.q),
           sqft: c.ok ? cpF(c.charge * c.q) : '', works: motor ? 'Motorised' : 'Manual', remarks: b.remarks || '', mrp: c.mrp ? inr(c.mrp) : '', amt: amt ? inr(amt) : ''},
@@ -8246,9 +8259,9 @@ function msData(){
       ['edge', 'Edges'], ['remarks', 'Remarks'], ['mrp', 'MRP /sq ft', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.a)} area${msSum(L, x => x.n.a) === 1 ? '' : 's'}`, `${cpF(msSum(L, x => x.n.sq))} sq ft to order`]); }
   { const R = [];
     (state.more.uph || []).forEach((r, i) => { const c = MP.uph.calc(r); if (!c.ok) return;
-      R.push({key: 'uph|' + i, amt: c.tot || 0, n: {l: 1}, c: {item: c.q ? c.q.product : r.p || '', what: c.what || '', qty: `${cpF(r2(c.qty))} ${c.u || ''}`.trim(), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''},
+      R.push({key: 'uph|' + i, amt: c.tot || 0, n: {l: 1}, c: {room: r.room || '', item: c.q ? c.q.product : r.p || '', what: c.what || '', qty: `${cpF(r2(c.qty))} ${c.u || ''}`.trim(), remarks: r.remarks || '', mrp: c.each ? inr(c.each) : '', amt: c.tot ? inr(c.tot) : ''},
         u: {area: r.room || '', product: 'UPHOLSTERY', pattern: String(c.q ? c.q.product : r.p || '').toUpperCase(), details: c.what || '', qty: `${cpF(r2(c.qty))} ${c.u || ''}`.trim(), note: r.remarks || ''}}); });
-    sec('uph', 'Upholstery material', [['item', 'Item'], ['what', 'Details'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.l)} line${msSum(L, x => x.n.l) === 1 ? '' : 's'}`]); }
+    sec('uph', 'Upholstery material', [['room', 'Use case'], ['item', 'Item'], ['what', 'Details'], ['qty', 'Qty', 1], ['remarks', 'Remarks'], ['mrp', 'MRP', 1], ['amt', 'Amount', 1]], R, L => [`${msSum(L, x => x.n.l)} line${msSum(L, x => x.n.l) === 1 ? '' : 's'}`]); }
   { const R = [];
     (state.more.mattress || []).forEach((r, i) => { if (!r.p) return; const c = mtCalc(r); if (!c.ok) return; const mat = r.p === 'Mattress';
       R.push({key: 'mattress|' + i, amt: c.tot || 0, n: {q: c.qty || 1},
@@ -8764,4 +8777,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261023-184315 -->
+<!-- build 20261024-170519 -->
