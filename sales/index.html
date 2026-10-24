@@ -3082,7 +3082,7 @@ function renderSide(){
 // ================= blinds (price lists in the shared store: blinds/<company>; order details from blind-forms.js)
 const BSUPS = {SAN: "D'Decor Sansaar", EXP: "D'Decor Express", FC: "D'Decor FabriCare", AP: 'Asian Paints', MV: 'Marvel', LOC: 'Local (our stitching)'};   // LOC: 22 Oct
 const BSHORT = {SAN: 'SS', EXP: 'Express', FC: 'FabriCare', AP: 'AP', MV: 'Marvel', LOC: 'Local'};   // 19 Oct: short in the box (SS as on Purvi's quotations), full name in our list   // Express its own company from 19 Oct (was inside Sansaar)
-const BCODE = {SAN: 'DD', EXP: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL', LOC: 'LOCAL'};   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
+const BCODE = {SAN: 'DD', EXP: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL', LOC: ''};   // LOC: no company name for the client (24 Oct, Purvi: never "local" on the quotation)   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
 const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}, cost: new Map(), costDocs: []};   // cost: what we pay (catcost/blinds-*, owner only), per m² or per add-on unit
 const SQFT = 10.7639;
 const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti']);   // sq ft in a sq m
@@ -3182,7 +3182,7 @@ const bShadeTxt = (b, base) => bDN(b) ? `top ${base || '?'} · bottom ${(b.o || 
 // Express has no fabric list here; Sarom doesn't stitch). Panels = the fewest equal panels where width ÷ panels + 4″ fits the roll;
 // metres = panels × (height + 20″) ÷ 39.37, rounded up to the next ¼ m as curtains; fabric cost = metres × the fabric's MRP per metre.
 const ROMAN_FAB = {SAN: 'SAN', FC: 'DD', AP: 'AP', LOC: '*'};   // blind company → its fabric list; Local: any company's fabric (22 Oct)
-const ROMAN_LOCAL = () => ({stitch: 150, lining: 35});   // ₹ a sq ft on the window, GST included (Purvi, 22 Oct)
+const ROMAN_LOCAL = () => ({stitch: 150, lining: 35});   // ₹ a sq ft on the window (Purvi, 22 Oct); before GST, 18% added like every blind (24 Oct); lining = blackout only
 const isRomanMaking = p => !!p && p.fam === 'Roman (making)';
 // what we pay per sq ft for a one-line company Roman: their (stitching + lining) cost + the fabric's dealer price spread over the sq ft
 const romCost = c => { const sc = BL.cost.has(c.p.id) ? BL.cost.get(c.p.id) / SQFT : null, fc = CAT.cost.get(c.rom.fs + '|' + c.rom.x.k);
@@ -3196,8 +3196,8 @@ function romanFabric(b, W, H, q){
   let n = 1; while (W / n + 4 > r.roll + 1e-9 && n < 20) n++;
   Object.assign(r, {n, pw: W / n + 4, drop: H + 20});
   r.m1 = Math.ceil(n * r.drop / 39.37 * 4 - 1e-9) / 4; r.m = r.m1 * q;
-  r.gst = b.sup === 'LOC' ? 5 : 18;   // 24 Oct (Purvi): a company Roman is one blind, so its fabric pays the blind's 18% GST
-  r.mrp = has(x.r) ? (r.gst === 18 ? mrpOf2(x.r, 18) : mrpOf(x.r)) : null; r.amt = r.mrp != null ? Math.round(r.m * r.mrp) : null;
+  r.gst = 18;   // 24 Oct (Purvi): a Roman is one blind (company or tailor made), so its fabric pays the blind's 18% GST
+  r.mrp = has(x.r) ? mrpOf2(x.r, 18) : null; r.amt = r.mrp != null ? Math.round(r.m * r.mrp) : null;
   if (r.mrp == null) r.warn = 'This Roman fabric has no price in the list';
   return r;
 }
@@ -3216,8 +3216,8 @@ function bCalc(b){
   if (p) { c.gst = p.gst; c.mrp = Math.round(p.sqm * (1 + p.gst / 100) / SQFT); c.amt = c.charge * c.q * c.mrp; }
   if (isRomanMaking(p)) { c.rom = romanFabric(b, W, H, q);   // 22 Oct
     // 24 Oct (Purvi): a company Roman = ONE blind: the company's per sq ft rate (stitching + lining) and the fabric metres, shown as one
-    // product with one MRP per sq ft and 18% GST on all of it. Local Romans keep their own lines (§1z140).
-    if (b.sup !== 'LOC' && c.rom.x && has(c.rom.x.r)) { c.one = true; c.gst = 18; c.rate = p.sqm / SQFT + c.rom.m1 * c.rom.x.r / c.charge;
+    // product with one MRP per sq ft and 18% GST on all of it. Tailor made (Local) Romans the same: ₹150 stitching + ₹35 blackout lining a sq ft.
+    if (c.rom.x && has(c.rom.x.r)) { c.one = true; c.gst = 18; c.rate = p.sqm / SQFT + c.rom.m1 * c.rom.x.r / c.charge;
       c.mrp = Math.round(c.rate * 1.18); c.amt = c.charge * c.q * c.mrp; } }
   { const m = b.man || {}, sq = qmNum(m.sqft) ?? c.charge * c.q, mr = qmNum(m.mrp) ?? c.mrp, am = qmNum(m.amt);   // typed on View quotation / measurement sheet (22 Oct)
     if (m.mrp != null || m.sqft != null || am != null) { if (mr != null) { c.mrp = mr; c.amt = Math.round(sq * mr); } if (am != null) c.amt = Math.round(am); c.typed = c.amt != null; } }
@@ -3648,7 +3648,7 @@ function romanSideHTML(b, c){
   return `<div class="sec-h bsec"><h2>Roman fabric</h2><p>${any ? 'any company\'s fabric (we stitch it)' : esc(SUPS[fs]) + ' fabric only (they stitch it)'}</p></div>
     <div class="bform"><div class="fld" style="grid-column:1/-1"><label for="b-rfab">Fabric${any && r.x ? ' · ' + esc(SUPS[r.fs] || '') : ''}</label><input id="b-rfab" data-rfab="1" value="${esc(b.rfabric || '')}" placeholder="Type to search ${any ? 'every company\'s' : esc(SUPS[fs])} fabrics" autocomplete="off"></div></div>
     ${r.n ? `<div class="kpis" style="padding:6px 16px;grid-template-columns:repeat(3,1fr)">${k('Panels', r.n, `${fmt(Math.round(r.pw * 10) / 10)}″ wide each (incl. 4″)`)}${k('Fabric', fmt(r.m) + ' m', `${r.n} × ${fmt(r.drop)}″${b.qty > 1 ? ' × ' + b.qty : ''}`)}${k('Fabric amount', r.amt != null ? rs(r.amt) : '—', r.mrp != null ? `${fmt(r.m)} m × ${rs(r.mrp)}${r.gst === 18 ? ' (18% GST, part of the blind)' : ''}` : 'no price', 1)}</div>
-      <div class="how" style="margin:4px 16px 8px"><b>How the fabric was worked out</b>Roll ${fmt(Math.round(r.roll * 10) / 10)}″${r.listed ? '' : ' (not in the list: 140 cm used)'}. Width ${fmt(c.W)}″ ÷ ${r.n} panel${r.n > 1 ? 's' : ''} + 4″ = ${fmt(Math.round(r.pw * 10) / 10)}″ each (fits the roll). Drop = height ${fmt(c.H)}″ + 20″ = ${fmt(r.drop)}″. ${r.n} × ${fmt(r.drop)}″ ÷ 39.37 = ${fmt(Math.round(r.n * r.drop / 39.37 * 100) / 100)} m, rounded up to ${fmt(r.m1)} m${b.qty > 1 ? ` × ${b.qty} blinds = ${fmt(r.m)} m` : ''}. Stitching${/With lining/.test(c.p.coll) || !/^LOC/.test(c.p.id) ? ' + lining' : ''} is charged on the window, ${fmt(c.H)}″ × ${fmt(c.W)}″${/^LOC/.test(c.p.id) ? ` (our rates: stitching ₹${ROMAN_LOCAL().stitch}${/With lining/.test(c.p.coll) ? ` + lining ₹${ROMAN_LOCAL().lining}` : ''} a sq ft)` : ''}.</div>` : ''}`;
+      <div class="how" style="margin:4px 16px 8px"><b>How the fabric was worked out</b>Roll ${fmt(Math.round(r.roll * 10) / 10)}″${r.listed ? '' : ' (not in the list: 140 cm used)'}. Width ${fmt(c.W)}″ ÷ ${r.n} panel${r.n > 1 ? 's' : ''} + 4″ = ${fmt(Math.round(r.pw * 10) / 10)}″ each (fits the roll). Drop = height ${fmt(c.H)}″ + 20″ = ${fmt(r.drop)}″. ${r.n} × ${fmt(r.drop)}″ ÷ 39.37 = ${fmt(Math.round(r.n * r.drop / 39.37 * 100) / 100)} m, rounded up to ${fmt(r.m1)} m${b.qty > 1 ? ` × ${b.qty} blinds = ${fmt(r.m)} m` : ''}. Stitching${/^With /.test(c.p.coll) || !/^LOC/.test(c.p.id) ? ' + lining' : ''} is charged on the window, ${fmt(c.H)}″ × ${fmt(c.W)}″${/^LOC/.test(c.p.id) ? ` (our rates: stitching ₹${ROMAN_LOCAL().stitch}${/^With /.test(c.p.coll) ? ` + blackout lining ₹${ROMAN_LOCAL().lining}` : ''} a sq ft, + 18% GST)` : ''}.</div>` : ''}`;
 }
 function renderBSide(){
   const b = state.blinds[state.bsel] || state.blinds[0], el = $('#bside'); if (!b) { el.innerHTML = ''; return; }
@@ -3970,9 +3970,9 @@ function qSections(){
     const c = bCalc(b); if (!c.ok || !c.t) return;
     pieces += c.q; const p = c.p;
     const typed = `${b.series || ''} ${b.shade || ''}`.trim();   // 20 Oct (Purvi): no collection picked → said plainly, as curtain fabric
-    add('blinds', {srcs: ['blinds|' + b.id], area: b.room, product: isRomanMaking(p) ? (b.sup === 'LOC' ? (/With lining/.test(p.coll) ? 'Roman blind (local stitching + lining)' : 'Roman blind (local stitching)') : 'Roman blind') : b.fam + ' blind', nocoll: !p, what: c.one ? `${QCODE[c.rom.fs] || ''} ${c.rom.x.n}`.trim() : `${BCODE[b.sup]} ${p ? p.coll + ' ' + bShadeTxt(b, b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
+    add('blinds', {srcs: ['blinds|' + b.id], area: b.room, product: isRomanMaking(p) ? (b.sup === 'LOC' ? 'Tailor made Roman blind' : 'Roman blind') : b.fam + ' blind', nocoll: !p, what: c.one ? `${QCODE[c.rom.fs] || ''} ${c.rom.x.n}`.trim() : b.sup === 'LOC' && p ? `${p.coll} · fabric not selected yet` : `${BCODE[b.sup]} ${p ? p.coll + ' ' + bShadeTxt(b, b.shade || p.design) + (p.sys && !/^(Classic|Making only)$/.test(p.sys) ? ' · ' + p.sys : '') : 'Collection not selected yet' + (typed ? ` (${typed})` : '')}${c.parts > 1 ? ` · made in ${c.parts} equal parts` : ''}`,
       hsn: H.blinds || '', qty: c.charge * c.q, unit: 'SQ FT', rate: c.one ? c.rate : p ? p.sqm / SQFT : null, gst: c.one ? 18 : p ? p.gst : 18, cost: c.one ? romCost(c) : p && BL.cost.has(p.id) ? BL.cost.get(p.id) / SQFT : null, fix: b.sup === 'MV' && !p ? 'marvel' : 'bprice'});
-    if (c.rom && c.rom.x && !c.one) { const x = c.rom.x;   // 22 Oct: the Roman's fabric, right under its stitching (local Romans only since 24 Oct)
+    if (c.rom && c.rom.x && !c.one) { const x = c.rom.x;   // 22 Oct: the Roman's fabric, right under its stitching (only a fabric with no price, since 24 Oct)
       add('blinds', {area: b.room, product: 'Roman blind fabric', what: `${QCODE[c.rom.fs] || ''} ${x.n} · ${c.rom.n} panel${c.rom.n > 1 ? 's' : ''} × ${fmt(c.rom.drop)}″`.trim(), hsn: x.h || '', qty: c.rom.m, unit: 'MTR',
         rate: x.r, gst: x.g || 5, cost: CAT.cost.get(c.rom.fs + '|' + x.k) ?? null, fix: 'bprice'}); }
     (c.adds || []).forEach(({a, units}) => { const k = bAddKind(a); hw(b.room, {grp: k !== 'extra' || isMotorAddon(a.group) ? 'mot' : 'man', product: k === 'remote' ? 'Blind motor remote' : k === 'motor' && !/motor/i.test(addonProduct(a.group)) ? 'Blind motor' : addonProduct(a.group), what: a.name, hsn: H.blindAddons || '', qty: units, unit: a.uom === 'each' ? 'PCS' : a.uom === 'per sq m' ? 'SQ M' : 'RMT', rate: a.rrp, gst: a.gst, cost: BL.cost.has(a.key) ? BL.cost.get(a.key) : null, incl: gstIncl('blindAddons'), fix: 'bprice'}); });
@@ -5061,8 +5061,8 @@ async function loadCatalog(){
     }
     // 22 Oct (Purvi): "for local stitching we just have a fixed lining which is rs 35/sqft, then stitching cost is rs 150/sqft (this is on
     // actual blind/window size)": two rows of our own under Local, charged per sq ft on the window like every blind (GST included).
-    const RL = ROMAN_LOCAL(), toSqm = v => v * SQFT / 1.18;
-    rows.push({id: 'LOC-1', sup: 'LOC', fam: 'Roman (making)', sys: 'Our stitching', coll: 'With lining', design: '', extra: 'fabric extra', sqm: toSqm(RL.stitch + RL.lining), min: 0, gst: 18},
+    const RL = ROMAN_LOCAL(), toSqm = v => v * SQFT;   // before GST (24 Oct)
+    rows.push({id: 'LOC-1', sup: 'LOC', fam: 'Roman (making)', sys: 'Our stitching', coll: 'With blackout lining', design: '', extra: 'fabric extra', sqm: toSqm(RL.stitch + RL.lining), min: 0, gst: 18},
       {id: 'LOC-2', sup: 'LOC', fam: 'Roman (making)', sys: 'Our stitching', coll: 'Without lining', design: '', extra: 'fabric extra', sqm: toSqm(RL.stitch), min: 0, gst: 18});
     BL.info.LOC = {count: 2, source: 'Our own rates (22 Oct 2026)', year: '', shades: 0};
     BL.rows = rows; BL.byId = new Map(rows.map(r => [r.id, r])); BL.addons = addons; BL.state = 'ready'; fillShadeLists();
@@ -8777,4 +8777,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261024-170519 -->
+<!-- build 20261024-171156 -->
