@@ -2141,7 +2141,107 @@ function load(){
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.rows)) { s.rows.forEach(migrate); s.quote = s.quote || {}; return s; } } catch(e){}
   return null;
 }
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} queueDraft(); }   // and, with the shared store, for the team (clients section)
+// ---- Undo / redo everywhere (Purvi, 25 Oct 2026: "the entire application … needs to have ctrl z functionality at every action no
+// matter how small or big. ctrl z to undo and ctrl shift z to redo"). One list for the whole app, in the order things were done.
+// One step = everything one click or key press changed:
+//  • the open client's sheet (Curtains, Blinds, every product sheet, typed quotation / measurement sheet values, discounts…):
+//    a copy of the sheet before and after (save() calls UNDO.sheet());
+//  • anything written to the database (client details, Won / Lost, to-dos, notes, hand-overs, prices, people, deleting a client):
+//    the record as it was just before, read from the database first, so undo puts exactly that back and redo the new one (db is
+//    wrapped in connectPrices: every db.doc(…).set / update / delete passes through UNDO.before()).
+// Typing in one box is one step (as in Excel) until you leave the box. A box not saved anywhere yet (a search, a new-enquiry form, a
+// note being written) keeps the browser's own undo of its letters. Not undone: a quotation or measurement sheet already sent or
+// downloaded (the client has it), the automatic sheet copies (drafts), sign-in, theme / language and moving between pages.
+const UNDO = (() => {
+  const U = [], R = [], MAX = 200; let evt = 0, cur = null, applying = false, busy = false, base = null, raw = null;
+  const txt = el => !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|file|range|color)$/i.test(el.type)) || !!el.isContentEditable);
+  document.addEventListener('pointerdown', () => { evt++; }, true);
+  document.addEventListener('keydown', e => { if (!/^(Control|Meta|Shift|Alt)$/.test(e.key)) evt++; }, true);
+  document.addEventListener('focusin', e => { const t = e.target; if (t && 'value' in t) t._fv = t.value; if (cur && cur.el !== t) cur = null; }, true);
+  function entry(ev){   // the step this change belongs to: the same click / key press, or more typing in the same box
+    const a = document.activeElement, top = U[U.length - 1];
+    if (top && (top.evt === ev || (top === cur && txt(a) && top.el === a))) { top.evt = Math.max(top.evt, ev); return top; }
+    const e = {parts: [], evt: ev, el: txt(a) ? a : null}; U.push(e); if (U.length > MAX) U.shift(); R.length = 0; cur = e;
+    if (e.el) e.el._ub = true;   // this box is saved: Ctrl Z in it is the app's undo now
+    return e;
+  }
+  const rebase = () => { try { base = {cid: state.clientId || '', json: JSON.stringify(sheetOf())}; } catch (_) { base = null; } };
+  function sheet(){
+    if (applying) { rebase(); return; }
+    let now; try { now = JSON.stringify(sheetOf()); } catch (_) { return; }   // too early on load (sheetOf not defined yet)
+    const cid = state.clientId || '';
+    if (!base || base.cid !== cid) { base = {cid, json: now}; return; }   // another client opened: start from here
+    if (base.json === now) return;
+    const e = entry(evt), p = e.parts.find(x => x.kind === 'sheet' && x.cid === cid);
+    if (p) p.after = now; else e.parts.push({kind: 'sheet', cid, before: base.json, after: now, house: state.house || ''});
+    base.json = now;
+  }
+  const SKIP = /^(catalog|catcost|blinds)\//;
+  async function before(path, op, args, ref){
+    const ev = evt; if (applying || SKIP.test(path)) return;
+    let had = false, prev = null; try { const d = await ref.get(); had = d.exists; prev = had ? d.data() : null; } catch (_) { return; }
+    const e = entry(ev), data = op === 'delete' ? null : clone(args[0] || {}), old = e.parts.find(x => x.kind === 'db' && x.path === path);
+    if (op === 'update') {
+      if (old && old.op === 'update') { for (const k of Object.keys(data)) if (!(k in old.prevF)) old.prevF[k] = prev ? prev[k] : undefined; Object.assign(old.fields, data); return; }
+      const prevF = {}; for (const k of Object.keys(data)) prevF[k] = prev ? prev[k] : undefined;
+      e.parts.push({kind: 'db', path, op, prevF, fields: data}); return;
+    }
+    const now = op === 'delete' ? null : args[1] && args[1].merge ? Object.assign({}, prev || {}, data) : data;
+    if (old && old.op !== 'update') { old.op = op; old.now = now; return; }   // the same record saved again: keep the first "before"
+    const part = {kind: 'db', path, op, had, prev, now};
+    if (op === 'set' && !had && /^qversions\//.test(path)) part.sent = /_m\d+$/.test(path) ? 'measurement sheet' : 'quotation';
+    e.parts.push(part);
+  }
+  const DEL = () => window.firebase && firebase.firestore && firebase.firestore.FieldValue ? firebase.firestore.FieldValue.delete() : null;
+  async function putDoc(p, dir){
+    const ref = raw.doc(p.path);
+    if (p.op === 'update') { if (dir < 0) { const f = {}; for (const k of Object.keys(p.prevF)) f[k] = p.prevF[k] === undefined ? DEL() : p.prevF[k]; await ref.update(f); } else await ref.update(p.fields); }
+    else { const doc = dir < 0 ? p.prev : p.now; if (dir < 0 ? p.had : !!doc) await ref.set(doc); else await ref.delete(); }
+    if (p.path === 'prices/current' || p.path === 'costs/current') {   // the page keeps its own copy of the prices
+      const d = await ref.get(); if (d.exists) { if (p.path === 'prices/current') prices = clone(d.data()); else costs = clone(d.data()); }
+      refreshAll(); if (/prices$/.test(current)) renderPrices();
+    }
+  }
+  async function putSheet(p, json){
+    if ((state.clientId || '') !== p.cid) { if (p.cid && shared) await openClient(p.cid, current); if ((state.clientId || '') !== p.cid) throw new Error('client'); }
+    const s = JSON.parse(json); Object.assign(state, {house: s.house || '', rows: s.rows || [], blinds: s.blinds || [], more: s.more, quote: s.quote || {}});
+    if (!state.rows.length) state.rows.push(blank());
+    if (state.sel >= state.rows.length) state.sel = 0; if (state.bsel >= state.blinds.length) state.bsel = 0;
+    refreshSheet(); if (current === 'msheet' && typeof renderMsheet === 'function') renderMsheet(); save(); base = {cid: p.cid, json};
+  }
+  const NAMES = {clients: 'client details', todos: 'to-do', notes: 'note', users: 'team list', prices: 'prices', costs: 'prices', qversions: 'quotation', drafts: 'sheet'};
+  const what = e => [...new Set(e.parts.map(p => p.kind === 'sheet' ? 'change on ' + (p.house || 'the sheet') : NAMES[p.path.split('/')[0]] || 'change'))].join(', ');
+  async function run(dir){
+    if (busy) return;
+    const from = dir < 0 ? U : R, to = dir < 0 ? R : U, e = from.pop();
+    if (!e) { toast(dir < 0 ? 'Nothing to undo' : 'Nothing to redo'); return; }
+    const sent = dir < 0 && e.parts.find(p => p.sent);
+    if (sent) { toast(`Can't undo: the ${sent.sent} was already sent or downloaded. Ctrl Z again for the step before it.`); return; }
+    busy = applying = true; cur = null;
+    try { for (const p of dir < 0 ? [...e.parts].reverse() : e.parts) await (p.kind === 'sheet' ? putSheet(p, dir < 0 ? p.before : p.after) : putDoc(p, dir));
+      to.push(e); toast((dir < 0 ? 'Undone: ' : 'Redone: ') + what(e)); }
+    catch (er) { from.push(e); toast(`Could not ${dir < 0 ? 'undo' : 'redo'}: ${er && /permission/i.test(er.code || '') ? 'not allowed for your login' : er && er.message === 'client' ? 'that client could not be opened' : 'check the internet'}.`); }
+    busy = applying = false;
+  }
+  document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key.toLowerCase(), redo = (k === 'z' && e.shiftKey) || (k === 'y' && e.ctrlKey && !e.metaKey && !e.shiftKey);
+    if (!(k === 'z' && !e.shiftKey) && !redo) return;
+    const a = document.activeElement;
+    if (document.querySelector('dialog[open]')) return;   // a window is open: its boxes keep their own undo
+    if (txt(a) && !a._ub && a.value !== a._fv) return;     // letters typed in a box that isn't saved yet: the browser's undo
+    e.preventDefault(); e.stopImmediatePropagation(); if (typeof closeSugg === 'function') closeSugg(); run(redo ? 1 : -1);
+  }, true);
+  // db = UNDO.wrap(firestore): db.doc(path).set / update / delete first note what the record was
+  function wrap(d){
+    raw = d;
+    const ref = (r, path) => new Proxy(r, {get(t, k){ if (k === 'set' || k === 'update' || k === 'delete') return async (...a) => { await before(path, k, a, t); return t[k](...a); };
+      const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; }});
+    return new Proxy(d, {get(t, k){ if (k === 'doc') return path => ref(t.doc(path), path); const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; }});
+  }
+  return {sheet, rebase, wrap, raw: () => raw || db, undo: () => run(-1), redo: () => run(1), clear(){ U.length = R.length = 0; cur = null; rebase(); }};
+})();
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} UNDO.sheet(); queueDraft(); }   // and, with the shared store, for the team (clients section)
 let state = load() || sample();
 if (!Array.isArray(state.blinds)) state.blinds = [];
 if (!state.rows.length) state.rows.push(blank());
@@ -2677,12 +2777,12 @@ $('#add').onclick = () => curtainRows.add();   // an empty row at the end, curso
 // match excel short cuts to match the mental model of my team"). Curtains first, then Blinds; one helper so the other sheets
 // can follow. In a row (or on the yellow selected row when the cursor isn't in any box):
 //   Ctrl/⌘ +  a fresh, empty row below                               Ctrl/⌘ −  delete this row (message with Undo)
-//   Ctrl/⌘ D  a copy of this row below (as ⧉)                        Ctrl/⌘ Z  undo the last add / delete / move / copy
+//   Ctrl/⌘ D  a copy of this row below (as ⧉)                        Ctrl/⌘ Z  undo, Ctrl/⌘ Shift Z redo (anything: UNDO, 25 Oct)
 //   (19 Oct, Purvi: "cmd/ctrl + should open a fresh row but cmd/ctrl d should open a copy row"; D used to copy one box from above)
 //   Enter, ↓  same box, next row      ↑  same box, row above        ← →  previous / next box (at the edge of the text)
 //   Space or Alt + ↓  open a dropdown's list
 // Drag a row by its number. The row follows the pointer, the others slide; Esc cancels; the page scrolls near the edges.
-// Undo puts back only that one change (rows typed in since are left alone). Ctrl/⌘ Z is the box's own undo once you type.
+// Ctrl/⌘ Z / Ctrl/⌘ Shift Z are the whole app's undo / redo (UNDO, 25 Oct): typing in one box is one step.
 var rowDragging = false;   // var: refreshSheet may ask before this line has run
 const isAddKey = e => e.key === '+' || e.key === '=' || e.code === 'Equal' || e.code === 'NumpadAdd';
 const isDelKey = e => e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract';
@@ -2706,7 +2806,7 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), sel(), setSel(i), 
   const S = {};
   const idx = id => o.list().findIndex(r => r.id === id);
   const did = (what, undo) => { undoL.push({what, undo}); if (undoL.length > 30) undoL.shift(); typed = false; };
-  S.undo = () => { const u = undoL.pop(); if (!u) { toast('Nothing to undo'); return; } u.undo(); o.after(); toast(u.what + ' undone'); };
+  S.undo = () => UNDO.undo();   // 25 Oct: one undo for the whole app (UNDO); the add / delete / move / copy are steps in it like everything else
   const focus = (r, f) => {
     const tr = o.tbody.querySelector(`tr[data-id="${r.id}"]`); if (!tr) return;
     const x = (f && o.box(tr, f)) || o.box(tr, o.first); if (!x) return;
@@ -2746,7 +2846,6 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), sel(), setSel(i), 
     if (isAddKey(e)) { e.preventDefault(); if (!e.repeat) add(i); }
     else if (isDelKey(e)) { e.preventDefault(); if (!e.repeat) del(i); }
     else if (!e.shiftKey && e.key.toLowerCase() === 'd') { e.preventDefault(); if (!e.repeat) dup(i); }
-    else if (!e.shiftKey && e.key.toLowerCase() === 'z' && undoL.length) { e.preventDefault(); S.undo(); }
   });
   o.tbody.addEventListener('input', e => { if (e.isTrusted) typed = true; e.target._nav = false; });
   o.tbody.addEventListener('focusin', e => { e.target._nav = false; });
@@ -2757,7 +2856,6 @@ function sheetRows(o){   // o: {view, tbody, list(), blank(), sel(), setSel(i), 
     if (mod && isAddKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); add(i, f); } return; }   // held down: one row, not twenty
     if (mod && isDelKey(e)) { e.preventDefault(); if (!e.repeat) { closeSugg(); del(i, f); } return; }
     if (mod && !e.shiftKey && k.toLowerCase() === 'd') { e.preventDefault(); if (!e.repeat) { closeSugg(); dup(i, f); } return; }
-    if (mod && !e.shiftKey && k.toLowerCase() === 'z' && undoL.length && !typed) { e.preventDefault(); closeSugg(); S.undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !f) return;
     if (k === 'ArrowRight' || k === 'ArrowLeft') {   // 19 Oct (Purvi): ← → go to the box before / after, as in Excel; inside text only at its edge
       const txt = t.tagName === 'INPUT' && typeof t.selectionStart === 'number', all = txt && t.selectionStart === 0 && t.selectionEnd === t.value.length;
@@ -4245,7 +4343,7 @@ function renderQuoteHead(){
   if (!q.no) { const d = q.date.split('-'); q.no = `${d[2]}${d[1]}${d[0].slice(2)}/`; }
   if (q.accounts == null) q.accounts = 'Rohit Singh - 9001576636';
   // Executive = the client's executive from People, "Name - mobile" (Purvi, 3 Oct). Typing over it keeps the typed text (execOwn).
-  if (!q.execOwn) { const a = execOf(state.clientId); if (a) q.exec = a; else if (!q.exec) { try { q.exec = localStorage.getItem(EXKEY) || ''; } catch(_){} } }
+  if (!q.execOwn) { const a = execOf(state.clientId); if (a) q.exec = a; else if (!q.exec) { try { q.exec = (PF ? '' : localStorage.getItem(exKey())) || myName(); } catch(_){} } }
   $('#q-head').innerHTML = QFIELDS.filter(([k]) => k !== 'ref').map(([k, l]) => {   // 22 Oct (Purvi): the reference stays on the client details only
     const val = esc(k === 'bill' ? state.house || '' : q[k] || '');
     if (k === 'ddate') { const d = parseDay(q.ddate), bad = q.ddate && !d;
@@ -4270,7 +4368,7 @@ $('#q-head').addEventListener('click', e => { if (e.target.closest('[data-exec]'
 $('#q-head').addEventListener('input', e => {
   const k = e.target.dataset.q; if (!k) return;
   if (k === 'bill') { state.house = e.target.value; $('#house').value = state.house; } else state.quote[k] = e.target.value;
-  if (k === 'exec') { try { localStorage.setItem(EXKEY, e.target.value); } catch(_){} state.quote.execOwn = !!e.target.value.trim() && e.target.value !== execOf(state.clientId); e.target.classList.toggle('ovr', state.quote.execOwn); }
+  if (k === 'exec') { try { localStorage.setItem(exKey(), e.target.value); } catch(_){} state.quote.execOwn = !!e.target.value.trim() && e.target.value !== execOf(state.clientId); e.target.classList.toggle('ovr', state.quote.execOwn); }
   save(); renderPaper();
 });
 // The orange button on a line with no price: takes you to where the price comes from.
@@ -4995,7 +5093,7 @@ async function connectPrices(){
   try { d = await window.claude.use('db'); } catch(_){}
   if (!d) return;
   try { user = await window.claude.use('user'); } catch(_){}
-  db = d; shared = true;
+  db = UNDO.wrap(d); shared = true;   // 25 Oct: every write can be undone (UNDO)
   // Dealer prices, costs, margins and the price sheets are Purvi's alone (the artifact's owner); the store's rules enforce it too.
   let own = null;
   try { own = user ? await user.isOwner() : null; } catch(_){}
@@ -5126,20 +5224,20 @@ function refreshAll(){
 const Store = {
   watchClients: (fn, err) => scoped(db.collection('clients')).onSnapshot(s => fn(s.docs.map(d => Object.assign({id: d.id}, d.data()))), err),
   getClient: async cid => { const d = await db.doc('clients/' + cid).get(); return d.exists ? Object.assign({id: d.id}, d.data()) : null; },
-  async mergeClient(cid, fields){ const ref = db.doc('clients/' + cid); fields = clone(fields);   // clone drops undefined (Firebase refuses it)
+  async mergeClient(cid, fields, auto){ const ref = (auto ? UNDO.raw() : db).doc('clients/' + cid); fields = clone(Object.assign({}, fields, stampMe()));   // clone drops undefined (Firebase refuses it); auto = the sheet's own copy, not an undo step
     if (CL.byId.has(cid) || (await ref.get()).exists) await ref.update(fields);
     else await ref.set(Object.assign({latest: 0, sig: '', at: '', created: new Date().toISOString(), by: UID}, ME_EMAIL ? {ownerEmail: ME_EMAIL} : {}, fields)); },
   getDraft: async cid => { const d = await db.doc('drafts/' + cid).get(); return d.exists ? d.data() : null; },
-  setDraft: (cid, body) => db.doc('drafts/' + cid).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
+  setDraft: (cid, body, auto) => (auto ? UNDO.raw() : db).doc('drafts/' + cid).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
   watchDraft: (cid, fn) => db.doc('drafts/' + cid).onSnapshot(s => { if (s.exists && !(s.metadata && s.metadata.hasPendingWrites)) fn(s.data()); }, () => {}),
   // qversions holds the quotations (<client>_v<n>) and, since 19 Oct, the measurement sheets (<client>_m<n>, kind 'ms')
   listDocs: async cid => (await scoped(db.collection('qversions').where('cid', '==', cid)).get()).docs.map(d => Object.assign({_id: d.id}, d.data())),
   listVersions: async cid => (await Store.listDocs(cid)).filter(x => x.kind !== 'ms').sort((a, b) => b.n - a.n),
   listSheets: async cid => (await Store.listDocs(cid)).filter(x => x.kind === 'ms').sort((a, b) => b.n - a.n),
   versionExists: async (cid, n) => (await db.doc(`qversions/${cid}_v${n}`).get()).exists,
-  addVersion: (cid, n, body) => db.doc(`qversions/${cid}_v${n}`).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
+  addVersion: (cid, n, body) => db.doc(`qversions/${cid}_v${n}`).set(Object.assign(body, stampMe(), ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
   sheetExists: async (cid, n) => (await db.doc(`qversions/${cid}_m${n}`).get()).exists,
-  addSheet: (cid, n, body) => db.doc(`qversions/${cid}_m${n}`).set(Object.assign(body, ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
+  addSheet: (cid, n, body) => db.doc(`qversions/${cid}_m${n}`).set(Object.assign(body, stampMe(), ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
 };
 const CL = {state: 'none', list: [], byId: new Map(), vers: {}, msv: {}};   // msv: measurement sheet versions per client
 let cpId = null, UID = null;
@@ -5193,9 +5291,9 @@ async function saveDraft(){
   if (CAT.state === 'ready') { const t = quoteTotals(); total = t.final; dsig = quoteSig(t); }   // before the price lists load, the total would be short
   draftBusy = true; renderCbar();
   try {
-    await Store.setDraft(cid, clone({cid, at, dev: DEV, by: UID, sheet}));
+    await Store.setDraft(cid, clone(Object.assign({cid, at, dev: DEV, by: UID, sheet}, stampMe())), true);
     draftLast = body; draftSeen = at; state.savedAt = at; keepLocal();
-    await Store.mergeClient(cid, Object.assign({name: sheet.house, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', edited: at, dsig, total, cats: sheetCats(sheet)}, q.city ? {city: q.city} : {}));
+    await Store.mergeClient(cid, Object.assign({name: sheet.house, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', edited: at, dsig, total, cats: sheetCats(sheet)}, q.city ? {city: q.city} : {}), true);
     draftErr = '';
   } catch (e) { draftErr = e && e.code === 'invalid_argument' ? 'perm' : 'net'; }
   draftBusy = false; renderCbar(); renderNote();
@@ -5218,7 +5316,7 @@ function applyDraft(d, remote){
   state = {house: s.house || '', example: false, sel: remote ? sel : 0, bsel: remote ? bsel : 0, clientId: d.cid, savedAt: d.at, rows: s.rows || [], blinds: s.blinds || [], more: s.more, quote: s.quote || {}};
   state.rows.forEach(migrate); state.blinds.forEach(bMigrate); bSplitQty(); if (!state.rows.length) state.rows.push(blank());
   if (state.sel >= state.rows.length) state.sel = 0;
-  draftSeen = d.at; draftLast = JSON.stringify(sheetOf()); keepLocal();
+  draftSeen = d.at; draftLast = JSON.stringify(sheetOf()); keepLocal(); UNDO.rebase();
   refreshSheet();
   if (remote) toast('Updated with changes from another device');
 }
@@ -5263,10 +5361,10 @@ function fromVersion(c, x, quiet){   // the sent version becomes the live sheet 
 }
 async function createClient(f, opts = {}){
   await flushDraft();
-  const exec = f.exec || (PF ? PF.name : (() => { try { return localStorage.getItem(EXKEY) || ''; } catch(_) { return ''; } })());
-  if (f.exec) { try { localStorage.setItem(EXKEY, f.exec); } catch(_){} }
+  const exec = f.exec || (PF ? PF.name : (() => { try { return localStorage.getItem(exKey()) || ''; } catch(_) { return ''; } })());
+  if (f.exec) { try { localStorage.setItem(exKey(), f.exec); } catch(_){} }
   state = {house: f.name, example: false, sel: 0, bsel: 0, clientId: newClientId(), rows: [blank()], blinds: [], quote: {phone: f.phone || '', addr: f.addr || '', city: f.city || '', exec}};
-  draftLast = ''; draftSeen = ''; renderQuoteHead(); refreshSheet(); keepLocal();
+  draftLast = ''; draftSeen = ''; renderQuoteHead(); refreshSheet(); keepLocal(); UNDO.rebase();
   watchDraft(); await saveDraft();
   if (opts.stay) return state.clientId;
   go('c-measure'); toast(`${f.name} added. Start measuring.`);
@@ -5437,7 +5535,7 @@ async function deleteClient(cid){
   if (cid === state.clientId) {   // open on this device: stop saving it, or the next save would bring it back
     clearTimeout(draftTimer); draftTimer = null; draftPending = null;
     if (draftUnsub) { try { draftUnsub(); } catch(_){} draftUnsub = null; }
-    state = {house: '', example: false, sel: 0, bsel: 0, quote: {}, rows: [blank()], blinds: []}; ensureMore(true); draftLast = ''; keepLocal();
+    state = {house: '', example: false, sel: 0, bsel: 0, quote: {}, rows: [blank()], blinds: []}; ensureMore(true); draftLast = ''; keepLocal(); UNDO.rebase();
   }
   for (const v of await Store.listDocs(cid)) await db.doc(`qversions/${v._id || cid + '_v' + v.n}`).delete();   // quotations and measurement sheets
   try { await db.doc('drafts/' + cid).delete(); } catch(_){}
@@ -5447,7 +5545,7 @@ async function deleteClient(cid){
   delete CL.vers[cid];
 }
 async function setOutcome(c, o){
-  try { await Store.mergeClient(c.id, {outcome: o ? Object.assign({at: new Date().toISOString(), by: UID, who: (state.quote || {}).exec || ''}, o) : null}); }
+  try { await Store.mergeClient(c.id, {outcome: o ? Object.assign({at: new Date().toISOString(), by: UID, byEmail: ME_EMAIL || '', who: myName()}, o) : null}); }   // 25 Oct: who = the signed-in person (was the open quotation's executive)
   catch (e) { toast(e && e.code === 'invalid_argument' ? 'Not saved: ask Purvi to make you a Contributor on this page.' : 'Not saved. Check the internet.'); }
 }
 async function downloadVersion(x, btn){
@@ -5490,12 +5588,12 @@ const sheetCats = sh => [(sh.rows || []).some(r => +r.W || +r.H) && 'curtains', 
 const catsTried = new Set();
 async function backfillCats(){
   if (!PF || !IS_ADMIN || CL.state !== 'ready') return;
-  for (const c of CL.list.filter(c => !Array.isArray(c.cats) && !catsTried.has(c.id))) { catsTried.add(c.id); try { const d = await Store.getDraft(c.id); await db.doc('clients/' + c.id).update({cats: sheetCats((d && d.sheet) || {})}); } catch(_){} }
+  for (const c of CL.list.filter(c => !Array.isArray(c.cats) && !catsTried.has(c.id))) { catsTried.add(c.id); try { const d = await Store.getDraft(c.id); await UNDO.raw().doc('clients/' + c.id).update({cats: sheetCats((d && d.sheet) || {})}); } catch(_){} }
 }
 function askNewClient(){
   if (!shared) { newLocalSheet(); return; }
   return newEnquiry();   // 17 Oct: a new client starts as a New enquiry page (crm.js); the dialog below is no longer used
-  let ex = ''; try { ex = localStorage.getItem(EXKEY) || ''; } catch(_){} if (!ex && PF) ex = PF.name || '';
+  let ex = PF ? myName() : ''; if (!ex) { try { ex = localStorage.getItem(exKey()) || ''; } catch(_){} }
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">New client</h2><p class="sub">Their name first. You can add the rest later.</p>
     ${fld('n-name', 'Name', '', 'autofocus placeholder="e.g. Kavita Sharma" autocomplete="off"')}
     ${fld('n-phone', 'Phone <small>(optional)</small>', '', 'inputmode="tel" placeholder="98290 12345" autocomplete="off"')}
@@ -5657,6 +5755,17 @@ function newLocalSheet(){
 // {email, name, role, admin, owner, signOut(), createPasswordUser(email, pw)}. Firebase's rules (app/firestore.rules)
 // enforce the same split on the server: a sales executive only ever receives their own clients; costs only reach Purvi.
 let PF = null, ME_EMAIL = null, IS_ADMIN = true;
+// 25 Oct (Purvi: "our devices are shared amongst everyone … whichever id is logged in the actions from that id are accounted for by
+// that person's name only"): every name the app writes comes from the signed-in login, never from a box or from this device's memory.
+const myName = () => PF ? PF.name || PF.email || '' : '';
+const stampMe = () => PF ? {lastBy: ME_EMAIL, lastByName: myName(), lastAt: new Date().toISOString()} : {};   // on every client, sheet and quotation write
+const WHOKEY = 'charpai-sheet-who';   // whose sheet this device keeps (KEY)
+const exKey = () => ME_EMAIL ? EXKEY + '|' + ME_EMAIL : EXKEY;   // the last executive typed, per login (was per device)
+async function signOutHere(){   // save what is typed, then leave nothing of this person's sheet on the shared device
+  try { await flushDraft(); } catch(_){}
+  try { localStorage.removeItem(KEY); localStorage.removeItem(WHOKEY); } catch(_){}
+  PF.signOut();
+}
 const PEOPLE = new Map();   // id → {name, job, phone, role, active, pw}. id = their email; someone without an email yet gets 'p_…' (can't sign in)
 // Job is what they do (any number of kinds, add to JOBS); role is what they may see ('sales' = own clients, 'admin' = everything). Kept apart so new kinds of staff need no new code.
 const JOBS = ['Sales executive', 'Accounts', 'Store', 'Site supervisor', 'Installer', 'Production', 'Designer', 'Manager'];
@@ -5676,11 +5785,14 @@ const unpack = d => { const x = d.data(); return x && typeof x.json === 'string'
 function setupPlatform(){
   PF = window.CHARPAI_PLATFORM || null; if (!PF) return;
   ME_EMAIL = PF.email; IS_ADMIN = !!PF.admin;
+  // the sheet left on this device by someone else (or from before 25 Oct, owner unknown) is not shown to this login: a clean one
+  try { const was = localStorage.getItem(WHOKEY); if (was !== ME_EMAIL) { if (was || state.clientId || state.house) { state = {house: '', example: false, sel: 0, bsel: 0, quote: {}, rows: [blank()], blinds: []}; ensureMore(true); keepLocal(); refreshSheet(); }
+    localStorage.setItem(WHOKEY, ME_EMAIL); UNDO.clear(); } } catch(_){}
   document.body.classList.add('platform');
   const acct = document.createElement('div'); acct.className = 'acct';
   acct.innerHTML = `<span><b>${esc(PF.name || PF.email)}</b><small>${IS_ADMIN ? 'Admin' : 'Sales'}</small></span><button class="btn" id="signout">Sign out</button>`;
   document.querySelector('.tape-in').appendChild(acct);
-  $('#signout').onclick = () => PF.signOut();
+  $('#signout').onclick = () => signOutHere();
   $('#tab-d').hidden = false; $('#tab-s-s').textContent = IS_ADMIN ? 'prices, people' : 'your account'; $('#tab-d-s').textContent = IS_ADMIN ? 'the whole team' : 'your day';
   $('#tab-h-b').textContent = IS_ADMIN ? 'Clients' : 'My Clients';
   if (IS_ADMIN) {
@@ -5808,7 +5920,7 @@ document.addEventListener('change', async e => {
   const msg = t => { const m = $('#imp-msg'); if (m) m.textContent = t; };
   try {
     const B = JSON.parse(await e.target.files[0].text()), all = Object.entries(B).flatMap(([c, docs]) => Object.entries(docs).map(([id, d]) => [c, id, d]));
-    let n = 0; for (const [c, id, d] of all) { await db.doc(c + '/' + id).set(d); msg(`Copying… ${++n} of ${all.length}`); }
+    let n = 0; for (const [c, id, d] of all) { await UNDO.raw().doc(c + '/' + id).set(d); msg(`Copying… ${++n} of ${all.length}`); }
     await db.doc('catalog/index').set({ver: Date.now()}, {merge: true});   // tells every device to download the lists again
     msg(`Done: ${n} items copied. Reload the page to see everything.`);
   } catch (er) { msg('Stopped: ' + (er && er.message || er)); }
@@ -7191,12 +7303,14 @@ async function addTodo(t){
   if (!shared || !db) return null;
   const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const body = clone({cid: t.cid || '', cname: t.cname || '', type: t.type || 'other', due: t.due || dayPlus(0), time: t.time || '', dueTo: t.dueTo || '', timeTo: t.timeTo || '', note: t.note || '',
-    ownerEmail: t.owner || ME_EMAIL || null, by: ME_EMAIL || UID || '', byName: PF ? PF.name || '' : '', at: new Date().toISOString(), state: 'todo', doneAt: '', auto: t.auto || '',
+    ownerEmail: t.owner || ME_EMAIL || null, by: ME_EMAIL || UID || '', byName: myName(), at: new Date().toISOString(), state: 'todo', doneAt: '', auto: t.auto || '',
     cphone: t.cphone || '', caddr: t.caddr || ''});
   await db.doc('todos/' + id).set(body);
   return id;
 }
-const setTodo = (id, patch) => db.doc('todos/' + id).update(clone(patch));
+// 25 Oct (Purvi: devices are shared): every change to a to-do says who made it, and a done one who did it (the signed-in login)
+const setTodo = (id, patch) => db.doc('todos/' + id).update(clone(Object.assign({}, patch, PF ? {editBy: ME_EMAIL, editByName: myName(), editAt: new Date().toISOString()} : {},
+  patch.state === 'done' ? {doneBy: ME_EMAIL || '', doneByName: myName()} : 'state' in patch ? {doneBy: '', doneByName: ''} : {})));
 async function todoDone(t, done){ await setTodo(t.id, done ? {state: 'done', doneAt: new Date().toISOString()} : {state: 'todo', doneAt: ''}); }
 // The automatic to-dos (suggested 17 Oct, accepted): quietly skipped if the store refuses (e.g. before the todos rule is live).
 const quiet = p => Promise.resolve(p).catch(() => null);
@@ -7588,7 +7702,7 @@ function renderEnquiryPage(){
         <span class="vinfo"><b>${rs(x.total)}</b><small>${esc(whenTxt(x.at))}${x.exec ? ' · ' + esc(x.exec) : ''}${s === 'won' && o.n === x.n ? ' · <b style="font:inherit;color:var(--good)">final</b>' : x.n === c.latest ? ' · latest' : ''}</small></span>
         <span class="vacts"><button class="btn" data-act="view" data-n="${x.n}">View</button><button class="btn" data-act="pdf" data-n="${x.n}">PDF</button><button class="link" data-act="from" data-n="${x.n}">Start from this</button></span></div>`).join('');
   const T = isNew ? [] : (TD.byCid.get(c.id) || []), Topen = T.filter(t => t.state !== 'done').sort(tdSort), Tdone = T.filter(t => t.state === 'done').sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)));
-  const tdRow = t => `<button class="tdrow${t.state === 'done' ? ' done' : ''}" data-todo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${t.state === 'done' ? 'Done ' + esc(agoTxt(t.doneAt)) : esc(dueTxt(t))}${PF && (IS_ADMIN || t.ownerEmail !== ME_EMAIL) && t.ownerEmail ? ' · ' + esc(personName(t.ownerEmail).split(' ')[0]) : ''}</span></button>`;
+  const tdRow = t => `<button class="tdrow${t.state === 'done' ? ' done' : ''}" data-todo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${t.state === 'done' ? 'Done ' + esc(agoTxt(t.doneAt)) + (t.doneByName ? ' · ' + esc(t.doneByName.split(' ')[0]) : '') : esc(dueTxt(t))}${PF && (IS_ADMIN || t.ownerEmail !== ME_EMAIL) && t.ownerEmail ? ' · ' + esc(personName(t.ownerEmail).split(' ')[0]) : ''}</span></button>`;
   const todos = isNew ? '' : `<div class="card"><div class="card-h"><h3>To-dos</h3><button class="btn" data-sched="${esc(c.id)}">${TD_CAL_SVG} Add a to-do</button></div>
     ${TD.state === 'error' ? '<p class="hint" style="margin:0">To-dos are not switched on yet.</p>' : Topen.length ? Topen.map(tdRow).join('') : '<p class="hint" style="margin:0">Nothing planned.</p>'}
     ${Tdone.length ? `<details class="tdone"><summary>Done (${Tdone.length})</summary>${Tdone.map(tdRow).join('')}</details>` : ''}</div>`;
@@ -7800,7 +7914,7 @@ function watchNotes(cid){
 const cpTyping = () => { const a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.closest('#cp-body') && a.id !== 'cp-note'); };
 async function addNote(c, text, kind = 'note'){
   const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await db.doc('notes/' + id).set(clone({cid: c.id, ownerEmail: c.ownerEmail || null, by: String(ME_EMAIL || UID || '').toLowerCase(), who: PF ? PF.name || '' : '', at: new Date().toISOString(), text, kind}));
+  await db.doc('notes/' + id).set(clone({cid: c.id, ownerEmail: c.ownerEmail || null, by: String(ME_EMAIL || UID || '').toLowerCase(), who: myName(), at: new Date().toISOString(), text, kind}));
 }
 // links typed in a note become tappable; everything else stays plain text
 function linkify(t){
@@ -7926,7 +8040,7 @@ function cpActivity(c, V){
         <small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''}</small>
         ${x.hid ? `<p class="qe-ban n-part"><b>Part sheet.</b> ${esc(x.hid)}</p>` : ''}
         ${!prev ? (x.snap ? `<p class="n-chgnote">First measurement sheet: ${esc((sheetCounts(x.snap) || []).join(', '))}</p>` : '') : G && G.length ? verChangeGroups(G) : ''}</div></li>`; }
-    if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${who(e.t.ownerEmail)}</small></button></li>`;
+    if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${e.t.doneByName ? ' · by ' + esc(e.t.doneByName) : who(e.t.ownerEmail)}</small></button></li>`;
     if (e.k === 'ch') return `<li class="n-ev"><span class="n-evd ch">${tdIcon('revise', 14)}</span><div class="n-evm"><p>They asked for changes${c.changeReq.note ? `<span class="n-evn">${esc(c.changeReq.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></div></li>`;
     if (e.k === 'won' || e.k === 'lost') return `<li class="n-ev"><span class="n-evd ${e.k}">${e.k === 'won' ? '✓' : '×'}</span><div class="n-evm"><p>${e.k === 'won' ? `Marked as won, v${o.n}` : `Marked as lost${o.reason ? ': ' + esc(o.reason) : ''}`}${o.note ? `<span class="n-evn">${esc(o.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${o.who ? ', ' + esc(o.who) : ''}</small></div></li>`;
     return `<li class="n-ev"><span class="n-evd">${cpIcon('plus', 12)}</span><div class="n-evm"><p>Enquiry added</p><small>${esc(agoTxt(e.at))}</small></div></li>`;
@@ -8001,7 +8115,7 @@ function askChanges(c){
     <label class="f" for="ch-note">What do they want changed?</label><textarea id="ch-note" rows="3" autofocus placeholder="e.g. a lighter fabric in the bedroom, remove the blinds"></textarea>
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Save</button></div></div>`, false, async d => {
     const note = d.querySelector('#ch-note').value.trim();
-    try { await Store.mergeClient(c.id, {changeReq: {at: new Date().toISOString(), by: ME_EMAIL || UID || '', who: PF ? PF.name : '', note}}); }
+    try { await Store.mergeClient(c.id, {changeReq: {at: new Date().toISOString(), by: ME_EMAIL || UID || '', who: myName(), note}}); }
     catch (e) { toast('Not saved. Check the internet.'); return false; }
     await quiet(addTodo({cid: c.id, cname: c.name, type: 'revise', due: dayPlus(1), note, owner: c.ownerEmail, auto: 'asked'}));
     toast('Saved. Revise quotation is on the to-do list.');
@@ -8116,7 +8230,7 @@ function showTodo(t){
       <div class="cp-acts">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="${WA_TAB}">WhatsApp</a>` : ''}${addr ? `<a class="btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}" target="_blank" rel="noopener">Map</a>` : ''}</div>
       <span class="hint">${esc(t.byName || 'A teammate')}'s client: ask them for anything else.</span></div>`
       : t.cname ? `<p class="hint">${esc(t.cname)} (not in your client list)</p>` : ''}
-    <p class="hint" style="margin:10px 0 0">Added ${esc(agoTxt(t.at))}${t.byName ? ' by ' + esc(t.byName) : ''}${t.auto ? ' (automatically)' : ''}.</p>
+    <p class="hint" style="margin:10px 0 0">Added ${esc(agoTxt(t.at))}${t.byName ? ' by ' + esc(t.byName) : ''}${t.auto ? ' (automatically)' : ''}.${t.state === 'done' && t.doneByName ? ` Done ${esc(agoTxt(t.doneAt))} by ${esc(t.doneByName)}.` : ''}${t.editByName && t.editByName !== t.byName && t.editByName !== t.doneByName ? ` Last changed by ${esc(t.editByName)}.` : ''}</p>
     <div class="dlg-acts">${mine ? '<button class="btn ghost" data-tdo="del">Delete</button><button class="btn ghost" data-tdo="edit">Change</button>' : ''}<span style="flex:1"></span>${mine ? next : '<button class="btn" data-dlg="close">Close</button>'}</div></div>`);
   dlg._todo = t;
 }
@@ -8154,7 +8268,7 @@ function renderTodo(){
       <div class="tc-type">${tdIcon(t.type, 15)}<span>${esc(tdName(t.type))}</span></div>
       <b class="kc-name">${esc(c ? c.name || mobile(c.phone) || 'No name yet' : t.cname || (t.note ? '' : 'To-do'))}</b>
       ${t.note ? `<div class="kc-sub tc-note">${esc(t.note)}</div>` : ''}
-      <div class="kc-foot"><span class="kc-next${overdue(t) ? ' late' : ''}">${t.state === 'done' ? 'Done ' + esc(agoTxt(t.doneAt)) : esc(dueTxt(t))}</span>
+      <div class="kc-foot"><span class="kc-next${overdue(t) ? ' late' : ''}">${t.state === 'done' ? 'Done ' + esc(agoTxt(t.doneAt)) + (t.doneByName ? ' · ' + esc(t.doneByName.split(' ')[0]) : '') : esc(dueTxt(t))}</span>
         <span class="kc-r">${c && cityOf(c) ? `<span class="hint">${esc(cityOf(c))}</span>` : ''}${(admin || t.ownerEmail !== ME_EMAIL) && t.ownerEmail ? `<span class="av" title="${esc(personName(t.ownerEmail))}">${esc(initials(personName(t.ownerEmail)))}</span>` : ''}</span></div></div>`; };
   const col = ([k, n]) => `<section class="kcol" data-tcol="${k}"${tCol === k ? ' data-on="1"' : ''} aria-label="${n}"><header class="kcol-h"><b>${n}</b><span class="kcnt">${by[k].length}</span>${k === 'done' ? '<span class="ksum">last 7 days</span>' : ''}</header>
     ${k === 'todo' ? '<button class="kadd" data-tnew="1">+ New to-do</button>' : ''}
@@ -8202,7 +8316,7 @@ function renderSettings(){
   const sw = document.querySelector('.tape .theme-sw');
   if (sw) { const c = sw.cloneNode(true); c.onclick = e => { const b = e.target.closest('button'); if (b) { sw.querySelector(`[data-t="${b.dataset.t}"]`).click(); renderSettings(); } }; el.querySelector('.set-theme').appendChild(c); }
 }
-$('#settings-body').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (!b) return; const v = b.dataset.set; if (v === 'out') { if (PF) PF.signOut(); return; } go(v === 'c-prices' ? lastPrices : v); });
+$('#settings-body').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (!b) return; const v = b.dataset.set; if (v === 'out') { if (PF) signOutHere(); return; } go(v === 'c-prices' ? lastPrices : v); });
 
 // ---- a sales executive's Home: what to do today (overdue first), then their numbers (renderDash)
 function todayCard(){
@@ -8800,4 +8914,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261024-194430 -->
+<!-- build 20261025-123959 -->
