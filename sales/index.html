@@ -5240,7 +5240,7 @@ const Store = {
   sheetExists: async (cid, n) => (await db.doc(`qversions/${cid}_m${n}`).get()).exists,
   addSheet: (cid, n, body) => db.doc(`qversions/${cid}_m${n}`).set(Object.assign(body, stampMe(), ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
 };
-const CL = {state: 'none', list: [], byId: new Map(), vers: {}, msv: {}};   // msv: measurement sheet versions per client
+const CL = {state: 'none', list: [], all: [], practice: [], byId: new Map(), vers: {}, msv: {}};   // msv: measurement sheet versions per client
 let cpId = null, UID = null;
 const newClientId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const DEV = (() => { try { let d = localStorage.getItem('charpai-device'); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem('charpai-device', d); } return d; } catch(_) { return 'x' + Math.random().toString(36).slice(2, 8); } })();
@@ -5252,6 +5252,13 @@ function agoTxt(iso){
 }
 const sheetView = () => state.rows.some(r => r.W || r.H) || !state.blinds.some(b => b.W || b.H) ? 'c-measure' : 'b-measure';
 // Status of a client: draft (nothing sent) · quoted (a version sent; "changed" if the sheet moved on since) · won · lost.
+// 25 Oct (Purvi): "any client that i am creating through purvi tatiya account (admin account), consider that as dummy data and dont show it
+// on dashboard or include it in any type of calculations or even in the client list … only show it to me if i specifically go and look for
+// that filter". Practice client = owned by Purvi's account (or by nobody: from before logins). Handed to a salesperson = real from then on.
+// CL.list = real clients only (the dashboard, board, list, counts, suggestions all read it); CL.practice = hers; CL.all / CL.byId = everything.
+const OWNER_EMAIL = 'tatiyapurvi@gmail.com';
+const isPractice = c => !!c && (!c.ownerEmail || c.ownerEmail === OWNER_EMAIL);
+const practiceCid = cid => !!cid && isPractice(CL.byId.get(cid));   // a to-do on a practice client is practice too
 const statusOf = c => c.outcome && c.outcome.s === 'won' ? 'won' : c.outcome && c.outcome.s === 'lost' ? 'lost' : c.latest ? 'quoted' : 'draft';
 function pillHTML(c){
   const s = statusOf(c);
@@ -5264,7 +5271,8 @@ const amountOf = c => statusOf(c) === 'won' && c.outcome.total != null ? c.outco
 function watchClients(){
   CL.state = 'loading';
   Store.watchClients(list => {
-    CL.list = list; CL.byId = new Map(list.map(c => [c.id, c])); CL.state = 'ready'; backfillCats();
+    CL.all = list; CL.list = list.filter(c => !isPractice(c)); CL.practice = list.filter(isPractice);
+    CL.byId = new Map(list.map(c => [c.id, c])); CL.state = 'ready'; backfillCats();
     const typing = document.activeElement && document.activeElement.id === 'cl-q';
     if (current === 'clients' && !typing) renderClients();
     if (current === 'client' && !(document.activeElement && document.activeElement.closest('#cp-body') && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))) renderClientPage();
@@ -5408,7 +5416,7 @@ async function recordVersion(v, sig, t){
 // survives a reload and can be sent to someone. Filters work on the client CARD (clients/<id>), which carries summary
 // fields (city, cats, total, outcome, dates) written when the sheet saves: lists never open every sheet.
 // Filters combine with AND. Each one is {k, chip(v), match(c, v)}: future lists (orders, purchases, stock) reuse the same shape.
-const CF0 = {q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent', view: 'board', won: '', lost: '', why: '', lcol: ''};   // lcol: lost board columns, '' = by reason, exec = by salesperson   // view: board | list; lost: '1' = only lost clients, in both views; why: lost reason (18 Oct)   // view: board (17 Oct, default) or list; won: '1' = every won card, not just 60 days
+const CF0 = {practice: '', q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent', view: 'board', won: '', lost: '', why: '', lcol: ''};   // lcol: lost board columns, '' = by reason, exec = by salesperson   // view: board | list; lost: '1' = only lost clients, in both views; why: lost reason (18 Oct)   // view: board (17 Oct, default) or list; won: '1' = every won card, not just 60 days
 let CF = Object.assign({}, CF0), cfOpen = false;
 const tidyCity = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s-])\S/g, m => m.toUpperCase());
 const cityOf = c => tidyCity(c.city);
@@ -5432,7 +5440,8 @@ const CFILTERS = [
   {k: 'added', chip: v => 'Added ' + (ADDED[v] || v).toLowerCase(), match: inAdded},
   {k: 'has', chip: v => 'Has ' + ((HAS().find(x => x[0] === v) || [])[1] || v).toLowerCase(), match: (c, v) => (c.cats || []).some(x => x === v || (v === 'uph' && (x === 'fabric' || x === 'foam')) || (v === 'mattress' && x === 'hcp'))},   // cards saved before 6 Oct say fabric / foam
   {k: 'follow', chip: () => 'Needs follow-up', match: c => followDue(c)},
-  {k: 'lost', chip: () => 'Lost clients', match: c => statusOf(c) === 'lost'},   // 18 Oct: lost is a filter, shown on the board and in the list
+  {k: 'lost', chip: () => 'Lost clients', match: c => statusOf(c) === 'lost'},
+  {k: 'practice', chip: () => 'My practice clients', match: () => true},   // 25 Oct: the base list is swapped (clBase), so every client in it matches   // 18 Oct: lost is a filter, shown on the board and in the list
   {k: 'why', chip: v => 'Lost: ' + v, match: (c, v) => statusOf(c) === 'lost' && ((c.outcome || {}).reason || 'No reason given') === v},
 ];
 const cfActive = () => CFILTERS.filter(f => has(CF[f.k]) && CF[f.k] !== '');
@@ -5440,6 +5449,7 @@ const cfSearch = (c, ql) => !ql || [c.name, c.no, c.exec, c.phone, c.addr, c.cit
 function cfQuery(){ const p = new URLSearchParams(); for (const k in CF0) if (CF[k] !== CF0[k] && k !== 'q') p.set(k, CF[k]); const s = p.toString(); return s ? '?' + s : ''; }
 function cfFromQuery(qs){ CF = Object.assign({}, CF0); try { new URLSearchParams(qs || '').forEach((v, k) => { if (k in CF0 && k !== 'q') CF[k] = v; }); } catch(_){} }
 function cfSet(patch){ Object.assign(CF, patch); try { history.replaceState(null, '', '#clients' + cfQuery()); } catch(_){} renderClients(); }
+const clBase = () => CF.practice ? CL.practice : CL.list;   // real clients, or only the practice ones when that filter is on
 function renderClients(){
   const el = $('#cl-body');
   const board = CF.view !== 'list';
@@ -5449,14 +5459,14 @@ function renderClients(){
   if (CL.state !== 'ready') { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty">${CL.state === 'error' ? '<b>Could not load the clients.</b>Reload the page.' : 'Loading the clients…'}</div></div>`; return; }
   const admin = PF && IS_ADMIN; if (!admin) CF.exec = '';
   const ql = CF.q.trim().toLowerCase(), act = cfActive();
-  const base = CL.list.filter(c => cfSearch(c, ql) && act.every(f => f.match(c, CF[f.k])));   // everything but status, so the pills count what you'd get
+  const base = clBase().filter(c => cfSearch(c, ql) && act.every(f => f.match(c, CF[f.k])));   // everything but status, so the pills count what you'd get
   const counts = {all: base.length, draft: 0, quoted: 0, won: 0, lost: 0}; base.forEach(c => counts[statusOf(c)]++);
   const recent = c => String(c.edited || c.at || c.created || ''), made = c => String(c.created || c.at || c.edited || '');
   const SORTF = {recent: (a, b) => recent(b).localeCompare(recent(a)), new: (a, b) => made(b).localeCompare(made(a)), high: (a, b) => (amountOf(b) || 0) - (amountOf(a) || 0),
     low: (a, b) => (amountOf(a) ?? Infinity) - (amountOf(b) ?? Infinity), name: (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'en', {sensitivity: 'base'})};
   const list = base.filter(c => CF.status === 'all' || statusOf(c) === CF.status).sort(SORTF[CF.sort] || SORTF.recent);
   const sum = list.reduce((a, c) => a + (amountOf(c) || 0), 0);
-  const cities = uniq(CL.list.map(cityOf).filter(Boolean)).sort(), noCity = CL.list.some(c => !cityOf(c));
+  const cities = uniq(clBase().map(cityOf).filter(Boolean)).sort(), noCity = clBase().some(c => !cityOf(c));
   const sel = (id, label, opts, v) => `<label class="ff"><span>${label}</span><select id="${id}" class="search">${opts.map(([k, n]) => `<option value="${esc(k)}"${String(v) === String(k) ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
   const panel = `<div class="fpanel" id="cl-fpanel"${cfOpen ? '' : ' hidden'}>
     ${admin ? sel('cf-exec', 'Sales executive', [['', 'Anyone'], ...[...PEOPLE].filter(([e, p]) => sells(p) || CF.exec === e).map(([e, p]) => [e, p.name || e]), ['-', 'Not assigned']], CF.exec) : ''}
@@ -5467,8 +5477,9 @@ function renderClients(){
     ${sel('cf-added', 'Added', [['', 'Any time'], ...Object.entries(ADDED)], CF.added)}
     ${sel('cf-has', 'Has in the sheet', [['', 'Anything'], ...HAS()], CF.has)}
     <div class="ff"><span>Show</span><div class="seg" role="group" aria-label="Open or lost"><button data-lostf="" aria-pressed="${!CF.lost}">Open clients</button><button data-lostf="1" aria-pressed="${!!CF.lost}">Lost clients</button></div></div>
-    ${CF.lost ? sel('cf-why', 'Why lost', [['', 'Any reason'], ...uniq([...LOST_WHY, ...CL.list.filter(c => statusOf(c) === 'lost').map(c => (c.outcome || {}).reason || 'No reason given')]).map(w => [w, w])], CF.why) : ''}
+    ${CF.lost ? sel('cf-why', 'Why lost', [['', 'Any reason'], ...uniq([...LOST_WHY, ...clBase().filter(c => statusOf(c) === 'lost').map(c => (c.outcome || {}).reason || 'No reason given')]).map(w => [w, w])], CF.why) : ''}
     <label class="ff ff-check"><input type="checkbox" id="cf-follow"${CF.follow ? ' checked' : ''}><span><b>Needs follow-up</b><small>Quoted, nothing changed for 7+ days</small></span></label>
+    ${PF && PF.owner ? `<label class="ff ff-check"><input type="checkbox" id="cf-practice"${CF.practice ? ' checked' : ''}><span><b>My practice clients</b><small>Only the clients made on your account (${CL.practice.length}). Never on the dashboard or in any total.</small></span></label>` : ''}
   </div>`;
   const chips = act.length ? `<div class="fchips">${act.map(f => `<button class="fchip" data-clear="${f.k}" title="Remove this filter">${esc(f.chip(CF[f.k]))}<span aria-hidden="true">×</span></button>`).join('')}<button class="linkbtn" data-clear="*">Clear all</button></div>` : '';
   const row = c => { const city = cityOf(c), addr = c.addr && city && String(c.addr).toLowerCase().includes(city.toLowerCase()) ? c.addr : [c.addr, city].filter(Boolean).join(', ');
@@ -5494,7 +5505,7 @@ const clb = $('#cl-body');
 clb.addEventListener('change', e => {
   const t = e.target, id = t.id;
   if (id === 'cf-exec') cfSet({exec: t.value}); else if (id === 'cf-city') cfSet({city: t.value}); else if (id === 'cf-added') cfSet({added: t.value});
-  else if (id === 'cf-has') cfSet({has: t.value}); else if (id === 'cf-why') cfSet({why: t.value}); else if (id === 'cf-sort') cfSet({sort: t.value}); else if (id === 'cf-follow') cfSet({follow: t.checked ? '1' : ''});
+  else if (id === 'cf-has') cfSet({has: t.value}); else if (id === 'cf-why') cfSet({why: t.value}); else if (id === 'cf-sort') cfSet({sort: t.value}); else if (id === 'cf-practice') cfSet({practice: t.checked ? '1' : ''}); else if (id === 'cf-follow') cfSet({follow: t.checked ? '1' : ''});
   else if (id === 'cf-min' || id === 'cf-max') { const v = String(Math.round(+t.value.replace(/[^\d.]/g, '') || 0) || ''); cfSet({[id.slice(3)]: v}); }
 });
 clb.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.id === 'cf-min' || e.target.id === 'cf-max')) e.target.blur(); });
@@ -5589,7 +5600,7 @@ const sheetCats = sh => [(sh.rows || []).some(r => +r.W || +r.H) && 'curtains', 
 const catsTried = new Set();
 async function backfillCats(){
   if (!PF || !IS_ADMIN || CL.state !== 'ready') return;
-  for (const c of CL.list.filter(c => !Array.isArray(c.cats) && !catsTried.has(c.id))) { catsTried.add(c.id); try { const d = await Store.getDraft(c.id); await UNDO.raw().doc('clients/' + c.id).update({cats: sheetCats((d && d.sheet) || {})}); } catch(_){} }
+  for (const c of CL.all.filter(c => !Array.isArray(c.cats) && !catsTried.has(c.id))) { catsTried.add(c.id); try { const d = await Store.getDraft(c.id); await UNDO.raw().doc('clients/' + c.id).update({cats: sheetCats((d && d.sheet) || {})}); } catch(_){} }
 }
 function askNewClient(){
   if (!shared) { newLocalSheet(); return; }
@@ -5963,7 +5974,7 @@ function askPerson(id){
       await db.doc('users/' + newId).set(data);
       if (pass) { try { await PF.createPasswordUser(email, pass); } catch (er) { if (!(er && er.code === 'auth/email-already-in-use')) { if (newId !== id) await db.doc('users/' + newId).delete(); return msg('Could not create the login: ' + (er && er.message || er)); } } }
       if (id && newId !== id) {   // an email added for someone who had none: their clients follow them, then the old entry goes
-        for (const c of CL.list.filter(c => c.ownerEmail === id)) await reassign(c.id, newId);
+        for (const c of CL.all.filter(c => c.ownerEmail === id)) await reassign(c.id, newId);
         await db.doc('users/' + id).delete();
       }
     } catch (er) { return msg('Not saved: ' + (er && er.message || er)); }
@@ -7351,7 +7362,7 @@ function renderBoard(el, base, admin, tools){
   if (CF.lost) return renderLostBoard(el, base, admin, tools);
   const recent = c => String(c.edited || c.at || c.created || '');
   const wonCut = Date.now() - 60 * 864e5;
-  const by = {draft: [], quoted: [], won: []}, lost = CL.list.filter(c => statusOf(c) === 'lost').length;
+  const by = {draft: [], quoted: [], won: []}, lost = clBase().filter(c => statusOf(c) === 'lost').length;
   for (const c of base) { let s = statusOf(c); if (s === 'lost') { if (!CF.lost) continue; s = c.latest ? 'quoted' : 'draft'; }   // lost cards sit where they were lost (18 Oct)
     if (s === 'won' && !CF.won && Date.parse((c.outcome || {}).at || recent(c)) < wonCut) continue; if (by[s]) by[s].push(c); }
   const ord = (a, b) => (changeAsked(b) ? 1 : 0) - (changeAsked(a) ? 1 : 0) || (b.stars || 0) - (a.stars || 0) || recent(b).localeCompare(recent(a));
@@ -8132,7 +8143,7 @@ function askTodo(pre = {}, edit){
   const people = PF ? [...TEAM].filter(([e, p]) => canLogin(e) && p.active !== false) : [];
   const pick = people.length > 1;   // 19 Oct (Purvi): sales give to-dos to each other too
   const own = t.ownerEmail || (c0 && c0.ownerEmail) || ME_EMAIL || '';
-  const clientOpts = `<datalist id="tdclients">${CL.list.filter(c => statusOf(c) !== 'lost').map(c => `<option value="${esc(c.name || mobile(c.phone))}">${esc([cityOf(c), c.phone].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
+  const clientOpts = `<datalist id="tdclients">${CL.all.filter(c => statusOf(c) !== 'lost').map(c => `<option value="${esc(c.name || mobile(c.phone))}">${esc([cityOf(c), c.phone].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">${edit ? 'Change the to-do' : 'New to-do'}</h2>
     <div class="tdtypes" role="group" aria-label="What">${TD_TYPES.map(([k, n]) => `<button type="button" class="tdt" data-tt="${k}" aria-pressed="${type === k}">${tdIcon(k, 20)}<span>${n}</span></button>`).join('')}</div>
     <label class="f" for="td-client">Client <small>(optional)</small></label>
@@ -8143,7 +8154,7 @@ function askTodo(pre = {}, edit){
     <label class="f" for="td-note">Note <small>(optional)</small></label><textarea id="td-note" rows="2" placeholder="e.g. measure the bedrooms, take the AP fabric book">${esc(t.note || '')}</textarea>
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">${edit ? 'Save' : 'Add to-do'}</button></div></div>`, false, async d => {
     const name = d.querySelector('#td-client').value.trim();
-    const c = name ? CL.list.find(x => (x.name || mobile(x.phone)) === name) || CL.list.find(x => String(x.name || '').toLowerCase() === name.toLowerCase()) : null;
+    const c = name ? CL.all.find(x => (x.name || mobile(x.phone)) === name) || CL.all.find(x => String(x.name || '').toLowerCase() === name.toLowerCase()) : null;
     if (name && !c) { const n = d.querySelector('#td-client'); n.focus(); n.style.borderColor = 'var(--warn)'; toast('Pick the client from the list, or leave it empty'); return false; }
     const who = pick ? d.querySelector('#td-who').value : (c && c.ownerEmail) || ME_EMAIL;
     const v = {type: d.querySelector('[data-tt][aria-pressed="true"]').dataset.tt, due: WH.due || dayPlus(0), time: WH.time || '', dueTo: WH.dRange && WH.dueTo > WH.due ? WH.dueTo : '', timeTo: WH.time && WH.tRange && WH.timeTo ? WH.timeTo : '',
@@ -8163,7 +8174,7 @@ function tdDlgClick(e){
 dlg.addEventListener('close', () => dlg.removeEventListener('click', tdDlgClick));
 dlg.addEventListener('input', e => {   // picking a client hands the to-do to that client's salesperson (admin can still change it)
   if (e.target.id !== 'td-client') return; const w = dlg.querySelector('#td-who'), v = e.target.value.trim(); if (!w || !v) return;
-  const c = CL.list.find(x => (x.name || mobile(x.phone)) === v); if (c && c.ownerEmail && [...w.options].some(o => o.value === c.ownerEmail)) w.value = c.ownerEmail; });
+  const c = CL.all.find(x => (x.name || mobile(x.phone)) === v); if (c && c.ownerEmail && [...w.options].some(o => o.value === c.ownerEmail)) w.value = c.ownerEmail; });
 // ---- When (Purvi, 21 Oct: "the time putting ui is difficult … super simple and clearly in am pm format"; "time and date both should be
 // simple"; "date can be a range also … even time can be a range, but filling range is not compulsory"). Quick days + a big month
 // calendar; time = am / pm hour buttons, then minutes; "+ Till …" turns either into a range. One line says what will be saved.
@@ -8249,7 +8260,7 @@ dlg.addEventListener('close', () => { dlg._todo = null; });
 
 // ---- To Do board (Purvi: Jira-style; as the Odoo demo's To-do board: To do · In progress · Done, Done = last 7 days)
 const TCOLS = [['todo', 'To do'], ['doing', 'In progress'], ['done', 'Done']];
-let TF = {when: 'all', type: '', who: ''}, tCol = 'todo';
+let TF = {when: 'all', type: '', who: '', practice: false}, tCol = 'todo';   // practice: 25 Oct, only the to-dos of Purvi's practice clients
 function renderTodo(){
   const el = $('#todo-body'); if (!el) return;
   const admin = PF && IS_ADMIN;
@@ -8258,7 +8269,7 @@ function renderTodo(){
   if (TD.state === 'error') { el.innerHTML = `<div class="kb-wrap"><div class="cl-head"><h2>To Do</h2></div><div class="clist cl-empty"><b>To-dos are not switched on yet.</b>${PF && PF.owner ? 'Paste the to-dos rule in Firebase → Firestore → Rules (Claude has it ready), then reload.' : 'Ask Purvi to switch them on.'}</div></div>`; return; }
   if (TD.state !== 'ready') { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty">Loading…</div></div>`; return; }
   const today = dayPlus(0), week = dayPlus(7), wk = Date.now() - 7 * 864e5;
-  const base = TD.list.filter(t => (!TF.type || t.type === TF.type) && (!TF.who || (TF.who === '-' ? !t.ownerEmail : t.ownerEmail === TF.who)));
+  const base = TD.list.filter(t => practiceCid(t.cid) === !!TF.practice && (!TF.type || t.type === TF.type) && (!TF.who || (TF.who === '-' ? !t.ownerEmail : t.ownerEmail === TF.who)));
   const when = t => TF.when === 'all' || (TF.when === 'late' ? overdue(t) : TF.when === 'today' ? t.due <= today : t.due <= week);
   const by = {todo: [], doing: [], done: []};
   for (const t of base) { if (t.state === 'done') { if (Date.parse(t.doneAt || t.at) >= wk) by.done.push(t); } else if (when(t)) (by[t.state] || by.todo).push(t); }
@@ -8278,7 +8289,7 @@ function renderTodo(){
   const who = admin ? `<label class="fsort"><span>Person</span><select id="tf-who" class="search"><option value="">Everyone</option>${[...PEOPLE].filter(([e, p]) => canLogin(e) && (p.active !== false || TF.who === e)).map(([e, p]) => `<option value="${esc(e)}"${TF.who === e ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select></label>` : '';
   el.innerHTML = `<div class="kb-wrap">${head}
     <div class="cl-tools"><div class="fpills" role="group" aria-label="When">${pill('all', 'All')}${pill('late', 'Overdue', nLate)}${pill('today', 'Today', nToday)}${pill('week', 'Next 7 days')}</div>
-      <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}</div>
+      <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}${PF && PF.owner ? `<label class="fsort"><input type="checkbox" id="tf-practice"${TF.practice ? ' checked' : ''}> <span>My practice clients</span></label>` : ''}</div>
     <div class="kb-tabs" role="tablist">${TCOLS.map(([k, n]) => `<button role="tab" data-tcoltab="${k}" aria-selected="${tCol === k}">${n}<b>${by[k].length}</b></button>`).join('')}</div>
     <div class="kb">${TCOLS.map(col).join('')}</div></div>`;
 }
@@ -8290,7 +8301,7 @@ tdb.addEventListener('click', e => {
   const c = e.target.closest('[data-tid]'); if (c) { const t = TD.list.find(x => x.id === c.dataset.tid); if (t) showTodo(t); }
 });
 tdb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tid) { const t = TD.list.find(x => x.id === e.target.dataset.tid); if (t) showTodo(t); } });
-tdb.addEventListener('change', e => { if (e.target.id === 'tf-type') { TF.type = e.target.value; renderTodo(); } if (e.target.id === 'tf-who') { TF.who = e.target.value; renderTodo(); } });
+tdb.addEventListener('change', e => { if (e.target.id === 'tf-type') { TF.type = e.target.value; renderTodo(); } if (e.target.id === 'tf-who') { TF.who = e.target.value; renderTodo(); } if (e.target.id === 'tf-practice') { TF.practice = e.target.checked; renderTodo(); } });
 let dragTid = null;
 tdb.addEventListener('dragstart', e => { const k = e.target.closest && e.target.closest('.tc'); if (!k) return; dragTid = k.dataset.tid; try { e.dataTransfer.setData('text/plain', dragTid); } catch(_){} k.classList.add('drag'); });
 tdb.addEventListener('dragend', e => { const k = e.target.closest && e.target.closest('.tc'); if (k) k.classList.remove('drag'); tdb.querySelectorAll('.kcol.over').forEach(x => x.classList.remove('over')); });
@@ -8321,7 +8332,7 @@ $('#settings-body').addEventListener('click', e => { const b = e.target.closest(
 
 // ---- a sales executive's Home: what to do today (overdue first), then their numbers (renderDash)
 function todayCard(){
-  const today = dayPlus(0), L = TD.list.filter(t => t.state !== 'done' && t.ownerEmail === ME_EMAIL && t.due <= today).sort(tdSort);
+  const today = dayPlus(0), L = TD.list.filter(t => t.state !== 'done' && t.ownerEmail === ME_EMAIL && t.due <= today && !practiceCid(t.cid)).sort(tdSort);
   const row = t => { const c = CL.byId.get(t.cid);
     return `<button class="tdrow" data-hometodo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}${c || t.cname ? ' · ' + esc(c ? c.name || mobile(c.phone) : t.cname) : ''}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${esc(dueTxt(t))}</span></button>`; };
   return `<div class="card"><div class="card-h"><h3>Today</h3><button class="btn" data-hometo="todo">Open To Do</button></div>
@@ -8915,4 +8926,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261025-130006 -->
+<!-- build 20261025-132958 -->
