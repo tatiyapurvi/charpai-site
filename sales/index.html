@@ -4220,8 +4220,9 @@ function manTag(r, short){ return r && r.man && Object.keys(r.man).length ? `<sp
 // {sec: [section keys], row: [line keys], col: [column keys]}; it stays until shown again (a yellow line on the quotation says so).
 // Hidden things are taken out here, before anything is drawn, so the paper, PDF, Excel, Print, total, version number and the
 // WhatsApp message always match. Hiding the Amount column also leaves out every total and the amount in words.
-const QCOLS = [['area', 'AREA'], ['product', 'PRODUCT'], ['what', 'FABRIC DETAILS'], ['hsn', 'HSN'], ['qty', 'Qty'], ['unit', 'Unit'], ['mrp', 'MRP'], ['amt', 'Amount']];
-const QALL = QCOLS.map(c => c[0]), QCOL_NAME = {area: 'Area', product: 'Product', what: 'Fabric details', hsn: 'HSN', qty: 'Qty', unit: 'Unit', mrp: 'MRP', amt: 'Amount'};
+// 25 Oct (Purvi): the details column is just DETAILS (was FABRIC DETAILS: blinds, wallpaper, mattresses… aren't fabric)
+const QCOLS = [['area', 'AREA'], ['product', 'PRODUCT'], ['what', 'DETAILS'], ['hsn', 'HSN'], ['qty', 'Qty'], ['unit', 'Unit'], ['mrp', 'MRP'], ['amt', 'Amount']];
+const QALL = QCOLS.map(c => c[0]), QCOL_NAME = {area: 'Area', product: 'Product', what: 'Details', hsn: 'HSN', qty: 'Qty', unit: 'Unit', mrp: 'MRP', amt: 'Amount'};
 const lineKey = (k, l) => l.okey || [k, l.area || '', l.product || '', l.what || '', l.unit || ''].join('|');   // okey: the key before anything was typed over it (22 Oct)
 const qHide = () => { const h = (state.quote || {}).hide || {}; return {sec: h.sec || [], row: h.row || [], col: h.col || []}; };
 function qShown(S){ const h = qHide(), out = {}; for (const k of Object.keys(S)) out[k] = h.sec.includes(k) ? [] : S[k].filter(l => !h.row.includes(lineKey(k, l))); return out; }
@@ -8914,4 +8915,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261025-123959 -->
+<!-- build 20261025-130006 -->
