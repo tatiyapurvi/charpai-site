@@ -9331,8 +9331,10 @@ function themeSwitch(){
 }
 themeSwitch(); langSwitch();   // 21 Oct: English | हिंदी
 fillLists(); renderNote(); renderTable(); renderTotals(); renderSide();
-let startTab = 'clients';
-try { const [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); if (h === 'clients') cfFromQuery(qs); if (/^client\/./.test(h)) { cpId = h.slice(7); startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'clients'; } catch(_){}
+// 26 Oct (Purvi): "anytime the link is opened, first dashboard, similar to how other software open home pages first". The plain link
+// (or one this page doesn't know) opens Home; a link to a page (#clients, #client/…, a reload) still opens that page. Without a login Home falls back to Clients (go).
+let startTab = 'dash';
+try { const [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); if (h === 'clients') cfFromQuery(qs); if (/^client\/./.test(h)) { cpId = h.slice(7); startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'dash'; } catch(_){}
 go(startTab);
 connectPrices();
 </script>
@@ -9340,4 +9342,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-110811 -->
+<!-- build 20261026-111217 -->
