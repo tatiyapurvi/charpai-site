@@ -5539,6 +5539,9 @@ function sheetMerge(base, mine, theirs){
 // redraw the sheet without losing the box someone is typing in (same row id, same box)
 function refreshKeepFocus(){
   const a = document.activeElement, tr = a && a.closest && a.closest('tr[data-id]'), box = tr && tr.closest('[id]');
+  if (a && a.id && !tr && /^(INPUT|TEXTAREA)$/.test(a.tagName)) {   // a box with its own id (the quotation's header boxes): same box, same text
+    const id = a.id, v = a.value, s0 = a.selectionStart, s1 = a.selectionEnd; refreshSheet();
+    const n = document.getElementById(id); if (n) { n.focus(); n.value = v; try { n.setSelectionRange(s0, s1); } catch (_) {} } return; }
   if (!tr || !box || !/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) { refreshSheet(); return; }
   const sel = `#${box.id} tr[data-id="${tr.dataset.id}"] ${a.tagName}` + [...a.attributes].filter(x => x.name.startsWith('data-') && x.name !== 'data-start').map(x => `[${x.name}="${CSS.escape(x.value)}"]`).join('');
   const v = a.value, s0 = a.selectionStart, s1 = a.selectionEnd; refreshSheet();
@@ -6083,7 +6086,17 @@ const canLogin = id => String(id).includes('@');
 const mobile = v => { const d = String(v || '').replace(/\D/g, ''); return d.length === 12 && d.startsWith('91') ? d.slice(2) : d.length === 11 && d.startsWith('0') ? d.slice(1) : d; };
 const nameKey = n => { const w = String(n || '').toLowerCase().split(/\s+/).filter(Boolean); return w.length ? w[0] + ' ' + w[w.length - 1] : ''; };
 const execOf = cid => { if (!PF) return ''; const p = PEOPLE.get(ownerOf(cid)); return p && p.name ? p.name + (p.phone ? ' - ' + p.phone : '') : ''; };
-function syncExec(){ if (!state.clientId || (state.quote || {}).execOwn) return; if (current === 'quote') { renderQuoteHead(); renderPaper(); } }
+// 26 Oct (Purvi: "when Hanuman ji is typing the mail id and GST number, if he stops writing for even a second, he has to reselect and
+// reclick in the box"): every save updates the client, the client list fires, and this redrew the header boxes under his cursor.
+// Now only when the executive really changed, and the box being typed in is left alone.
+function syncExec(){
+  if (!state.clientId || (state.quote || {}).execOwn || current !== 'quote') return;
+  const a = execOf(state.clientId); if (!a || a === state.quote.exec) return;
+  state.quote.exec = a;
+  const box = $('#q-exec'), typing = document.activeElement && document.activeElement.closest && document.activeElement.closest('#q-head');
+  if (typing) { if (box && box !== document.activeElement) box.value = a; } else renderQuoteHead();
+  renderPaper();
+}
 const scoped = q => ME_EMAIL && !IS_ADMIN ? q.where('ownerEmail', '==', ME_EMAIL) : q;
 const ownerOf = cid => (CL.byId.get(cid) || {}).ownerEmail || ME_EMAIL || null;
 const TEAM = new Map();   // 19 Oct: everyone who can be given a to-do (admin: = PEOPLE; sales: read once the team rule is published, else empty)
@@ -9534,4 +9547,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-174427 -->
+<!-- build 20261026-175334 -->
