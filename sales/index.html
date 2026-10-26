@@ -3493,6 +3493,9 @@ function bCalc(b){
   if (c.rollMm && c.mmW > c.rollMm) { c.parts = Math.ceil(c.mmW / c.rollMm - 1e-9); c.partMm = Math.round(c.mmW / c.parts);
     c.warn.push(`Wider than the ${fmt(c.rollMm / 1000)} m roll: made in ${c.parts} equal parts of ${c.partMm} mm (${fmt(Math.round(c.partMm / 25.4 * 10) / 10)}″) each. Tell the client.`); }
   c.lim = bLimit(b, c);   // D'Decor's size chart (20 Oct)
+  // 26 Oct (Purvi): "the company said they'll do it for us … a manual override button, it needs to record the name of the person".
+  // Kept only while the problem is the same one (same blind, same size): change the size or type and the chart stops it again.
+  if (c.lim && c.lim.bad && b.limOk && b.limOk.bad === c.lim.bad) c.lim = {over: c.lim.bad, note: `Outside D'Decor's size chart. Allowed by ${b.limOk.by} on ${new Date(b.limOk.at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}: D'Decor said they will make it.`};
   { const mb = bMotorBrands(b); if (mb.length) for (const x of b.adds || []) { const a = BL.addons.find(y => y.key === x.k); const rb = a && bAddKind(a) === 'remote' ? bBrand(a) : '';
       if (rb && !mb.includes(rb)) c.warn.push(`${a.name} is for ${B_BRAND_N[rb]} motors, not the ${mb.map(m => B_BRAND_N[m]).join(' / ')} motor picked: change the remote`); } }   // 22 Oct
   if (c.lim && c.lim.bad) c.warn.unshift('Size not possible. ' + c.lim.bad + ' Change the size, or ask D\'Decor\'s CC team before quoting.');
@@ -3924,7 +3927,7 @@ function renderBSide(){
       : `<input id="bo-${f.k}" data-bo="${f.k}" value="${esc(v)}" placeholder="${esc(f.text || '')}">`}</div>`;
   };
   el.innerHTML = head + `
-    ${c.lim && c.lim.bad ? `<div class="blim-ban" style="margin:6px 14px 0">${esc(c.lim.bad)} Change the size, or ask D'Decor's CC team before quoting.</div>` : ''}   <!-- 20 Oct (Purvi): size / charged / amount cards removed: the table shows them -->
+    ${c.lim && c.lim.bad ? `<div class="blim-ban" style="margin:6px 14px 0">${esc(c.lim.bad)} Change the size, or ask D'Decor's CC team before quoting.<div style="margin-top:8px"><button class="btn" data-limok="${b.id}">D'Decor will make it: allow</button></div></div>` : ''}   <!-- 20 Oct (Purvi): size / charged / amount cards removed: the table shows them -->
     ${isRomanMaking(c.p) ? romanSideHTML(b, c) : ''}
     <div class="sec-h bsec"><h2>${b.sup === 'LOC' ? 'Details for our tailor' : 'Order details for ' + esc(BSUPS[b.sup])}</h2><p>${c.done}/${c.need} filled</p></div>
     <div class="bform">${t.fields.map(fld).join('')}</div>
@@ -4606,7 +4609,7 @@ function paperHTML(q, house, t, showC, ro, ed){
 // 20 Oct: a blind D'Decor can't make stops the quotation going out (PDF, Excel, Print, WhatsApp) until its size is fixed
 function blindBanHTML(){ const B = blindsBad(); if (!B.length) return '';
   return `<div class="blim-ban"><b>${B.length === 1 ? '1 blind is' : B.length + ' blinds are'} a size D'Decor can't make.</b> Fix ${B.length === 1 ? 'it' : 'them'} on the Blinds sheet before sending:
-    <ul>${B.map(x => `<li>${esc(x.b.room || 'Blind ' + (x.i + 1))}: ${esc(x.c.lim.bad)}</li>`).join('')}</ul><button class="btn" data-ct="b-measure">Open the Blinds sheet</button></div>`; }
+    <ul>${B.map(x => `<li>${esc(x.b.room || 'Blind ' + (x.i + 1))}: ${esc(x.c.lim.bad)} <button class="btn" data-limok="${x.b.id}">D'Decor will make it: allow</button></li>`).join('')}</ul><button class="btn" data-ct="b-measure">Open the Blinds sheet</button></div>`; }
 document.addEventListener('click', e => {
   const btn = e.target.closest('#q-pdf, #q-xlsx, #q-wa, #q-print'); if (!btn) return;
   const B = blindsBad(); if (!B.length) return;
@@ -4614,6 +4617,17 @@ document.addEventListener('click', e => {
   toast(`Not sent: ${B.length === 1 ? 'a blind is' : B.length + ' blinds are'} a size D'Decor can't make. Fix ${B.length === 1 ? 'it' : 'them'} on the Blinds sheet first.`);
 }, true);
 document.addEventListener('click', e => { const b = e.target.closest('.blim-ban [data-ct]'); if (b) go(b.dataset.ct); });
+// 26 Oct: the override. Asks once, saves who allowed it and when on the blind (Ctrl Z takes it back, like any sheet edit)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-limok]'); if (!btn) return;
+  const b = state.blinds.find(x => x.id === +btn.dataset.limok), c = b && bCalc(b); if (!c || !c.lim || !c.lim.bad) return;
+  const who = myName() || 'you', name = b.room || 'Blind ' + (state.blinds.indexOf(b) + 1);
+  confirmDlg('Allow this blind size?', `<b>${esc(name)}</b>: ${esc(c.lim.bad)}<br><br>Only if D'Decor has said they will make it. Your name (${esc(who)}) is saved on this blind and shown on the Blinds sheet.`, "Yes, D'Decor will make it", () => {
+    b.limOk = {bad: c.lim.bad, by: who, byEmail: ME_EMAIL || '', at: new Date().toISOString()};
+    save(); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders();
+    renderQuote(); renderQuoteSum(); toast(`${name}: size allowed by ${who}. The quotation can be sent.`);
+  });
+});
 function renderQuoteSum(t = quoteTotals()){
   if (qmOn()) { renderQuoteSumM(t); const h = blindBanHTML(); if (h) $('#q-sum').insertAdjacentHTML('afterbegin', h); return; }   // phones: the same red note on top
   const q = state.quote, marginNet = t.netAfter - t.cost;
@@ -9303,7 +9317,7 @@ const HI = {
   'Saved as you type. Done takes you back to their page.': 'लिखते ही सेव होता है। "हो गया" दबाकर उनके पेज पर वापस जाएँ।',
   'Change': 'बदलें', 'Cancel': 'रहने दें',
   'Updated today · not sent': 'आज बदला · भेजा नहीं', 'Part quotation': 'आधा कोटेशन', 'Part quotation, amounts were hidden': 'आधा कोटेशन, रकम छुपी थी',
-  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें',
+  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
   // To Do + the to-do window
   'New to-do': 'नया काम', '+ New to-do': '+ नया काम', 'Change the to-do': 'काम बदलें', 'Add to-do': 'काम जोड़ें', 'Add a to-do': 'काम जोड़ें', 'Save': 'सेव करें',
   'Site / measurement visit': 'साइट / नाप विज़िट', 'Make quotation': 'कोटेशन बनाना', 'Revise quotation': 'कोटेशन बदलना', 'Follow-up call': 'फ़ॉलो-अप कॉल',
@@ -9337,6 +9351,7 @@ const HI = {
 };
 // a few lines with a number or a name inside
 const HI_RE = [
+  [/^Outside D'Decor's size chart\. Allowed by (.+) on (\d{1,2} \w{3}): D'Decor said they will make it\.$/, (m, w, d) => `D'Decor के साइज़ चार्ट से बाहर। ${w} ने ${d} को मंज़ूर किया: D'Decor ने कहा वो बना देगा।`],
   [/^v(\d+) sent today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} आज ${hiTime(t, p)} भेजा`], [/^v(\d+) sent yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} कल ${hiTime(t, p)} भेजा`],
   [/^v(\d+) sent (\d{1,2} \w{3}(?: \d{4})?)$/, (m, n, d) => `v${n} ${d} को भेजा`],
   [/^v(\d+) confirmed today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} आज ${hiTime(t, p)} पक्का हुआ`], [/^v(\d+) confirmed yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} कल ${hiTime(t, p)} पक्का हुआ`],
@@ -9453,4 +9468,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-141625 -->
+<!-- build 20261026-160125 -->
