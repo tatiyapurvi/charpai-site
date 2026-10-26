@@ -2288,7 +2288,7 @@ function load(){
 // note being written) keeps the browser's own undo of its letters. Not undone: a quotation or measurement sheet already sent or
 // downloaded (the client has it), the automatic sheet copies (drafts), sign-in, theme / language and moving between pages.
 const UNDO = (() => {
-  const U = [], R = [], MAX = 200; let evt = 0, cur = null, applying = false, busy = false, base = null, raw = null;
+  const U = [], R = [], MAX = 200; let evt = 0, cur = null, applying = false, busy = false, base = null, raw = null, unsent = 0;
   const txt = el => !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|file|range|color)$/i.test(el.type)) || !!el.isContentEditable);
   document.addEventListener('pointerdown', () => { evt++; }, true);
   document.addEventListener('keydown', e => { if (!/^(Control|Meta|Shift|Alt)$/.test(e.key)) evt++; }, true);
@@ -2324,7 +2324,7 @@ const UNDO = (() => {
     const now = op === 'delete' ? null : args[1] && args[1].merge ? Object.assign({}, prev || {}, data) : data;
     if (old && old.op !== 'update') { old.op = op; old.now = now; return; }   // the same record saved again: keep the first "before"
     const part = {kind: 'db', path, op, had, prev, now};
-    if (op === 'set' && !had && /^qversions\//.test(path)) part.sent = /_m\d+$/.test(path) ? 'measurement sheet' : 'quotation';
+    if (op === 'set' && !had && /^qversions\//.test(path) && !unsent) part.sent = /_m\d+$/.test(path) ? 'measurement sheet' : 'quotation';
     e.parts.push(part);
   }
   const DEL = () => window.firebase && firebase.firestore && firebase.firestore.FieldValue ? firebase.firestore.FieldValue.delete() : null;
@@ -2374,7 +2374,9 @@ const UNDO = (() => {
       const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; }});
     return new Proxy(d, {get(t, k){ if (k === 'doc') return path => ref(t.doc(path), path); const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; }});
   }
-  return {sheet, rebase, wrap, raw: () => raw || db, undo: () => run(-1), redo: () => run(1), clear(){ U.length = R.length = 0; cur = null; rebase(); }};
+  // notSent: a version saved without a PDF leaving the app (Won on the sheet's price, 26 Oct), so Ctrl Z may take it back.
+  const notSent = async fn => { unsent++; try { return await fn(); } finally { unsent--; } };
+  return {sheet, rebase, wrap, notSent, raw: () => raw || db, undo: () => run(-1), redo: () => run(1), clear(){ U.length = R.length = 0; cur = null; rebase(); }};
 })();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} UNDO.sheet(); queueDraft(); }   // and, with the shared store, for the team (clients section)
 let state = load() || sample();
@@ -5535,7 +5537,7 @@ async function recordVersion(v, sig, t){
   await flushDraft();
   if (!state.clientId) { state.clientId = newClientId(); keepLocal(); watchDraft(); }
   const cid = state.clientId, c = CL.byId.get(cid);
-  if (c && c.latest === v && c.sig === sig) return;   // the same version downloaded again
+  if (c && c.latest === v && c.sig === sig) return true;   // the same version downloaded again
   const q = clone(state.quote); delete q.pdf;
   const strip = l => { const x = Object.assign({}, l); delete x.cost; delete x.camt; return x; };   // our costs never go into the shared list
   const S = Object.fromEntries(Object.entries(t.S).map(([k, L]) => [k, L.map(strip)]));
@@ -5547,6 +5549,7 @@ async function recordVersion(v, sig, t){
     await Store.mergeClient(cid, Object.assign({name, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', latest: v, sig, at, total, dsig: sig, edited: at, cats: sheetCats(sheetOf()), changeReq: null}, q.city ? {city: q.city} : {}));
     delete CL.vers[cid]; autoAfterVersion(cid);
     toast(`Kept as v${v} in ${name || 'this client'}'s quotations`);
+    return true;
   } catch (e) {
     toast(e && e.code === 'invalid_argument' ? 'PDF saved, but not kept in Clients: ask Purvi to make you a Contributor on this page.' : 'PDF saved, but not kept in Clients. Check the internet and download again.');
   }
@@ -5779,12 +5782,36 @@ function askDetails(c){
 async function askWon(c){
   const V = c.latest ? await versionsOf(c.id) : [];
   if (!V.length) { openDlg(`<div class="dlg-in"><h2 id="dlg-title">Send a quotation first</h2><p class="sub">Won needs the quotation they accepted. Open their sheet, go to the Quotation and download its PDF. Then mark it won.</p><div class="dlg-acts"><button class="btn solid" data-dlg="close">OK</button></div></div>`); return; }
+  // 26 Oct (Purvi: "after discount, the final qtn, on which it is marked as won, needs to be displayed"): Hanuman typed the
+  // discount into the sheet and marked Won without sending a new PDF, so Won took the old, undiscounted version. Now, when the
+  // sheet has changed since the last version, its price today is the first (ticked) choice; picking it saves the sheet as the
+  // next version first (sent quotations stay frozen) and Won points at that version.
+  const S = c.dsig && c.dsig !== c.sig ? await wonSheet(c) : null;
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">Mark ${esc(c.name)} as won</h2><p class="sub">Which quotation did they accept? It becomes the final one.</p>
-    ${V.map((x, i) => `<label class="opt"><input type="radio" name="wv" value="${x.n}"${i ? '' : ' checked'}><span><b>v${x.n} · ${rs(x.total)}</b><small>${esc(whenTxt(x.at))}${i ? '' : ' · latest'}</small></span></label>`).join('')}
+    ${S ? `<label class="opt"><input type="radio" name="wv" value="sheet" checked><span><b>v${S.v} · ${rs(S.t.final)}</b><small>The sheet now, with every change and discount · not sent yet, saved as v${S.v}</small></span></label>` : ''}
+    ${V.map((x, i) => `<label class="opt"><input type="radio" name="wv" value="${x.n}"${i || S ? '' : ' checked'}><span><b>v${x.n} · ${rs(x.total)}</b><small>${esc(whenTxt(x.at))}${i ? '' : ' · latest sent'}</small></span></label>`).join('')}
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Mark as won</button></div></div>`, false, async d => {
-    const n = +d.querySelector('input[name=wv]:checked').value, x = V.find(v => v.n === n);
+    const pick = d.querySelector('input[name=wv]:checked').value;
+    if (pick === 'sheet') {
+      if (state.clientId !== c.id) { toast('Another client was opened. Try again.'); return false; }
+      const t = quoteTotals(), v = nextVersion(t), sig = quoteSig(t);
+      state.quote.pdf = {n: v, sig}; save();
+      if (!await UNDO.notSent(() => recordVersion(v, sig, t))) return false;
+      await setOutcome(c, {s: 'won', n: v, total: t.final}); toast(`${c.name}: won with v${v} · ${rs(t.final)}`); return;
+    }
+    const n = +pick, x = V.find(v => v.n === n);
     await setOutcome(c, {s: 'won', n, total: x ? x.total : null}); toast(`${c.name}: won with v${n}`);
   });
+}
+// The client's live sheet, opened in place (no page change) so its totals can be saved as a version. null if it can't be read.
+async function wonSheet(c){
+  try {
+    if (state.clientId !== c.id) { await flushDraft(); const d = await Store.getDraft(c.id); if (!d) return null; applyDraft(d, false); watchDraft(); }
+    for (let i = 0; i < 40 && CAT.state !== 'ready'; i++) await new Promise(r => setTimeout(r, 500));   // totals are short until the price lists load
+    if (CAT.state !== 'ready') return null;
+    const t = quoteTotals(), v = nextVersion(t);
+    return v > (c.latest || 0) ? {t, v} : null;
+  } catch (e) { return null; }
 }
 // 18 Oct: the Odoo demo's loss reasons (ODOO-DEMO-HANDOVER §4.5). Clients lost before keep their old reason (Price too high, No reply…).
 const LOST_WHY = ['Too expensive', 'Could not meet the delivery date', 'Shade / material not available', 'Bought from another shop', 'Project postponed', 'Only wanted a rate to compare', 'Went direct to the mill / dealer', 'Stopped replying', 'Duplicate enquiry', 'Other'];
@@ -9243,6 +9270,7 @@ const HI = {
 };
 // a few lines with a number or a name inside
 const HI_RE = [
+  [/^The sheet now, with every change and discount · not sent yet, saved as v(\d+)$/, (m, n) => `अभी की शीट, सारे बदलाव और डिस्काउंट के साथ · अभी भेजी नहीं, v${n} बनकर सेव होगी`],
   [/^(\d+) clients?$/, (m, n) => `${n} क्लाइंट`], [/^(\d+) clients? · any date$/, (m, n) => `${n} क्लाइंट · कोई भी तारीख़`],
   [/^(\d+) won · (\d+) lost$/, (m, a, b) => `${a} मिले · ${b} नहीं मिले`],
   [/^Added just now by (.+) \(automatically\)\.$/, (m, w) => `अभी ${w} ने जोड़ा (अपने आप)।`],
@@ -9342,4 +9370,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-111217 -->
+<!-- build 20261026-133026 -->
