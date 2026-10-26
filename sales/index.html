@@ -37,6 +37,7 @@ body{margin:0}
 // The Firebase settings below are public by design; the security is in firestore.rules.
 const FIREBASE_CONFIG = {"apiKey": "AIzaSyCI2oZoqbYmVuWhDoXeT_HgJEJsvG7rEko", "authDomain": "charpai-sales.firebaseapp.com", "projectId": "charpai-sales", "storageBucket": "charpai-sales.firebasestorage.app", "messagingSenderId": "116272251297", "appId": "1:116272251297:web:753e336452c64b78b2cbe0"};
 const OWNER = 'tatiyapurvi@gmail.com';
+const CO_OWNERS = ['jtatiya16@gmail.com'];   // 26 Oct (Purvi): her father has every capability she has (costs, prices, delete); matches owner() in firestore.rules
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth(), fs = firebase.firestore();
 let ready, USER = null; const whenReady = new Promise(r => ready = r);
@@ -58,12 +59,12 @@ auth.onAuthStateChanged(async u => {
   } else if (email === OWNER) { p = null; }
   const ok = p && p.active !== false && (viaGoogle ? u.emailVerified : p.pw === true);
   if (!ok) { gateShow('g-denied', email === OWNER ? 'Purvi, please sign in with the Google button.' : `${email} is not on Charpai’s team list${p && p.active === false ? ' any more' : ''}. Ask Purvi to add you.`); return; }
-  const admin = email === OWNER || p.role === 'admin';
-  window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, job: p.job || '', phone: p.phone || '', admin, owner: email === OWNER,
+  const owner = email === OWNER || CO_OWNERS.includes(email), admin = owner || p.role === 'admin';
+  window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, job: p.job || '', phone: p.phone || '', admin, owner,
     signOut: () => auth.signOut().then(() => location.reload()),
     async createPasswordUser(em, pw){ const sec = firebase.apps.find(a => a.name === 'add') || firebase.initializeApp(FIREBASE_CONFIG, 'add');
       await sec.auth().createUserWithEmailAndPassword(em, pw); await sec.auth().signOut(); }};
-  USER = {isOwner: async () => email === OWNER, canEdit: async () => admin, id: async () => u.uid, can: async () => true};
+  USER = {isOwner: async () => owner, canEdit: async () => admin, id: async () => u.uid, can: async () => true};
   document.getElementById('gate').hidden = true;
   ready();
 });
@@ -5613,7 +5614,7 @@ function renderClients(){
     <div class="ff"><span>Show</span><div class="seg" role="group" aria-label="Open or lost"><button data-lostf="" aria-pressed="${!CF.lost}">Open clients</button><button data-lostf="1" aria-pressed="${!!CF.lost}">Lost clients</button></div></div>
     ${CF.lost ? sel('cf-why', 'Why lost', [['', 'Any reason'], ...uniq([...LOST_WHY, ...clBase().filter(c => statusOf(c) === 'lost').map(c => (c.outcome || {}).reason || 'No reason given')]).map(w => [w, w])], CF.why) : ''}
     <label class="ff ff-check"><input type="checkbox" id="cf-follow"${CF.follow ? ' checked' : ''}><span><b>Needs follow-up</b><small>Quoted, nothing changed for 7+ days</small></span></label>
-    ${PF && PF.owner ? `<label class="ff ff-check"><input type="checkbox" id="cf-practice"${CF.practice ? ' checked' : ''}><span><b>My practice clients</b><small>Only the clients made on your account (${CL.practice.length}). Never on the dashboard or in any total.</small></span></label>` : ''}
+    ${PF && ME_EMAIL === OWNER_EMAIL ? `<label class="ff ff-check"><input type="checkbox" id="cf-practice"${CF.practice ? ' checked' : ''}><span><b>My practice clients</b><small>Only the clients made on your account (${CL.practice.length}). Never on the dashboard or in any total.</small></span></label>` : ''}
   </div>`;
   const chips = act.length ? `<div class="fchips">${act.map(f => `<button class="fchip" data-clear="${f.k}" title="Remove this filter">${esc(f.chip(CF[f.k]))}<span aria-hidden="true">×</span></button>`).join('')}<button class="linkbtn" data-clear="*">Clear all</button></div>` : '';
   const row = c => { const city = cityOf(c), addr = c.addr && city && String(c.addr).toLowerCase().includes(city.toLowerCase()) ? c.addr : [c.addr, city].filter(Boolean).join(', ');
@@ -8425,7 +8426,7 @@ function renderTodo(){
   const who = admin ? `<label class="fsort"><span>Person</span><select id="tf-who" class="search"><option value="">Everyone</option>${[...PEOPLE].filter(([e, p]) => canLogin(e) && (p.active !== false || TF.who === e)).map(([e, p]) => `<option value="${esc(e)}"${TF.who === e ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select></label>` : '';
   el.innerHTML = `<div class="kb-wrap">${head}
     <div class="cl-tools"><div class="fpills" role="group" aria-label="When">${pill('all', 'All')}${pill('late', 'Overdue', nLate)}${pill('today', 'Today', nToday)}${pill('week', 'Next 7 days')}</div>
-      <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}${PF && PF.owner ? `<label class="fsort"><input type="checkbox" id="tf-practice"${TF.practice ? ' checked' : ''}> <span>My practice clients</span></label>` : ''}</div>
+      <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}${PF && ME_EMAIL === OWNER_EMAIL ? `<label class="fsort"><input type="checkbox" id="tf-practice"${TF.practice ? ' checked' : ''}> <span>My practice clients</span></label>` : ''}</div>
     <div class="kb-tabs" role="tablist">${TCOLS.map(([k, n]) => `<button role="tab" data-tcoltab="${k}" aria-selected="${tCol === k}">${n}<b>${by[k].length}</b></button>`).join('')}</div>
     <div class="kb">${TCOLS.map(col).join('')}</div></div>`;
 }
@@ -9333,4 +9334,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-105032 -->
+<!-- build 20261026-110349 -->
