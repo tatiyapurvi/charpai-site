@@ -2259,7 +2259,12 @@ try { const p = JSON.parse(localStorage.getItem(PKEY)); if (p && p.prices) { pri
 const findFabric = name => prices.fabrics.find(f => f.n.toLowerCase() === String(name || '').trim().toLowerCase());
 
 // ================= the sheet: kept on this device
-let uid = 1;
+// 26 Oct (Purvi: "for nazraana aabid and i both tried to manually type the fabric name in row number 2 … it is again and again either
+// going in row 1 or getting removed entirely"): two devices on one client each saved the WHOLE sheet, and every device renumbered the
+// rows on each load, so one device's copy wiped the other's typing. Now a row keeps its id on every device (new ids start from a random
+// number per device, so two devices never make the same one) and the two copies are merged row by row, box by box (sheetMerge).
+let uid = Math.floor(Math.random() * 9e5 + 1e5) * 1e6;
+const keepId = (x, seen) => { if (!(+x.id > 0) || seen.has(+x.id)) x.id = uid++; else x.id = +x.id; seen.add(x.id); };
 function blank(){ return {id: uid++, room:'', layer:'Main', sup:'', key:'', fabric:'', lining:'', roll:140, rollOwn:'', repeat:'', turn:'Yes', style:'American Pleat', W:'', H:'', track:'', remote:'', motor:'', extras:[], fixing:'', stitchBy:'Local', parts:'', remarks:'', panelTxt:'', allowTxt:'', hand:'', turn300:''}; }
 function fillFabric(row){
   const f = findFabric(row.fabric);
@@ -2277,6 +2282,7 @@ function sample(){
   ];
   return {house:'Example house', example:true, sel:0, quote:{}, rows: rows.map(r => Object.assign(blank(), r))};
 }
+function migSheet(){ migrate.seen = new Set(); bMigrate.seen = new Set(); state.rows.forEach(migrate); state.blinds.forEach(bMigrate); migrate.seen = bMigrate.seen = null; }
 function migrate(r){
   if (!(+r.roll > 0)) r.roll = 140;
   if (r.rollOwn === undefined) r.rollOwn = '';
@@ -2290,10 +2296,10 @@ function migrate(r){
   if (r.motor === undefined) r.motor = '';
   if (!Array.isArray(r.extras)) r.extras = [];
   for (const f of ['fixing', 'parts', 'remarks']) if (r[f] === undefined) r[f] = '';
-  r.id = uid++;
+  keepId(r, migrate.seen || (migrate.seen = new Set()));
 }
 function load(){
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.rows)) { s.rows.forEach(migrate); s.quote = s.quote || {}; return s; } } catch(e){}
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.rows)) { migrate.seen = new Set(); s.rows.forEach(migrate); migrate.seen = null; s.quote = s.quote || {}; return s; } } catch(e){}
   return null;
 }
 // ---- Undo / redo everywhere (Purvi, 25 Oct 2026: "the entire application … needs to have ctrl z functionality at every action no
@@ -3356,7 +3362,7 @@ function bBlank(){ return {id: uid++, room: '', sup: 'SAN', fam: '', sys: '', pi
 function bSplitQty(){ if (!state.blinds.some(b => (parseInt(b.qty, 10) || 1) > 1)) return;
   const out = []; for (const b of state.blinds) { const n = Math.min(50, Math.max(1, parseInt(b.qty, 10) || 1)); b.qty = 1; out.push(b); for (let i = 1; i < n; i++) out.push(Object.assign(clone(b), {id: uid++})); }
   state.blinds.splice(0, state.blinds.length, ...out); }
-function bMigrate(b){ b.id = uid++; if (!b.o) b.o = {}; for (const k of ['shade', 'series', 'motor']) if (b[k] === undefined) b[k] = '';
+function bMigrate(b){ keepId(b, bMigrate.seen || (bMigrate.seen = new Set())); if (!b.o) b.o = {}; for (const k of ['shade', 'series', 'motor']) if (b[k] === undefined) b[k] = '';
   if (!Array.isArray(b.adds)) { b.adds = b.addon ? [{k: b.addon, q: has(b.addonQty) ? String(b.addonQty) : ''}] : []; } delete b.addon; delete b.addonQty; }
 // Which box an add-on goes in: motors, remotes and controls, everything else (brackets, chargers, side channels, Roman fabric…)
 const bAddKind = a => a.uom !== 'each' ? 'extra' : /motor/i.test(a.group) ? 'motor'
@@ -5470,8 +5476,11 @@ async function flushDraft(){ if (draftTimer) { clearTimeout(draftTimer); await s
 async function saveDraft(){
   draftTimer = null;
   if (!shared || !db || !state.clientId) return;
+  if (draftPending && draftPending.cid === state.clientId && draftPending.at > draftSeen) { const d = draftPending; draftPending = null; applyDraft(d, true); return; }   // 26 Oct: merge first, then save the merged copy
   const sheet = sheetOf(), body = JSON.stringify(sheet);
   if (body === draftLast) { renderCbar(); return; }
+  try { const cur = await Store.getDraft(state.clientId);   // 26 Oct: someone saved since this device last looked: merge with theirs, then save
+    if (cur && cur.at && cur.at > draftSeen && cur.dev !== DEV && cur.cid === state.clientId) { draftPending = null; applyDraft(cur, true); return; } } catch (_) {}
   const cid = state.clientId, c = CL.byId.get(cid), at = new Date().toISOString(), q = sheet.quote;
   let total = c ? c.total : null, dsig = c ? c.dsig : '';
   if (CAT.state === 'ready') { const t = quoteTotals(); total = t.final; dsig = quoteSig(t); }   // before the price lists load, the total would be short
@@ -5483,6 +5492,50 @@ async function saveDraft(){
     draftErr = '';
   } catch (e) { draftErr = e && e.code === 'invalid_argument' ? 'perm' : 'net'; }
   draftBusy = false; renderCbar(); renderNote();
+}
+// 26 Oct: a three-way merge. base = the copy both devices last agreed on, mine = this device now, theirs = the other device's save.
+// A box changed here keeps this device's value, anything else takes theirs; rows match by id; a row added on either side stays, a
+// row deleted on one side goes (unless the other side changed it); the row order follows whichever side moved rows.
+const jEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function mergeObj(b, m, t){ b = b || {}; m = m || {}; t = t || {}; const o = {};
+  for (const k of new Set([...Object.keys(m), ...Object.keys(t), ...Object.keys(b)])) { const v = !jEq(m[k], b[k]) ? m[k] : t[k]; if (v !== undefined) o[k] = v; }
+  return o; }
+function mergeList(B, M, T){
+  B = Array.isArray(B) ? B : []; M = Array.isArray(M) ? M : []; T = Array.isArray(T) ? T : [];
+  const bm = new Map(B.map(x => [x.id, x])), mm = new Map(M.map(x => [x.id, x])), tm = new Map(T.map(x => [x.id, x]));
+  const ids = L => L.map(x => x.id).join(','), mineLeads = ids(T) === ids(B.filter(x => tm.has(x.id))) && ids(M) !== ids(B.filter(x => mm.has(x.id)));
+  const [P, S] = mineLeads ? [M, T] : [T, M], pm = mineLeads ? mm : tm, out = [];
+  const keep = id => { const b = bm.get(id), m = mm.get(id), t = tm.get(id);
+    if (m && t) return b ? mergeObj(b, m, t) : m;
+    const one = m || t; if (!b) return one;                     // added on one side
+    return jEq(one, b) ? null : one;                             // deleted on the other side: gone, unless this side changed it
+  };
+  for (const x of P) { const v = keep(x.id); if (v) out.push(v); }
+  S.forEach((x, i) => { if (pm.has(x.id)) return; const v = keep(x.id); if (!v) return;   // only on the other side: after its neighbour there
+    const prev = i ? S[i - 1].id : null, j = prev == null ? -1 : out.findIndex(y => y.id === prev); out.splice(prev == null ? 0 : j >= 0 ? j + 1 : out.length, 0, v); });
+  return out;
+}
+// a saved sheet in the same shape sheetOf() gives (defaults filled in), so it can be compared box by box
+function normSheet(sh){
+  const x = clone(sh || {}), q = clone(x.quote || {}); delete q.pdf;
+  migrate.seen = new Set(); bMigrate.seen = new Set(); (x.rows || []).forEach(migrate); (x.blinds || []).forEach(bMigrate); migrate.seen = bMigrate.seen = null;
+  const more = x.more && typeof x.more === 'object' ? x.more : {};
+  for (const k of MP_ORDER) { if (!Array.isArray(more[k])) more[k] = []; more[k].forEach(r => { const b = MP[k].blank(); for (const f in b) if (r[f] === undefined) r[f] = b[f]; }); }
+  return {house: x.house || '', rows: x.rows || [], blinds: x.blinds || [], more, quote: q};
+}
+function sheetMerge(base, mine, theirs){
+  const o = {house: !jEq(mine.house, base.house) ? mine.house : theirs.house, rows: mergeList(base.rows, mine.rows, theirs.rows), blinds: mergeList(base.blinds, mine.blinds, theirs.blinds),
+    quote: mergeObj(base.quote, mine.quote, theirs.quote), more: {}};
+  for (const k of new Set([...Object.keys(mine.more || {}), ...Object.keys(theirs.more || {})])) o.more[k] = mergeList((base.more || {})[k], (mine.more || {})[k], (theirs.more || {})[k]);
+  return o;
+}
+// redraw the sheet without losing the box someone is typing in (same row id, same box)
+function refreshKeepFocus(){
+  const a = document.activeElement, tr = a && a.closest && a.closest('tr[data-id]'), box = tr && tr.closest('[id]');
+  if (!tr || !box || !/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) { refreshSheet(); return; }
+  const sel = `#${box.id} tr[data-id="${tr.dataset.id}"] ${a.tagName}` + [...a.attributes].filter(x => x.name.startsWith('data-') && x.name !== 'data-start').map(x => `[${x.name}="${CSS.escape(x.value)}"]`).join('');
+  const v = a.value, s0 = a.selectionStart, s1 = a.selectionEnd; refreshSheet();
+  const n = document.querySelector(sel); if (n) { n.focus(); if (n.value !== v && a.tagName !== 'SELECT') n.value = v; try { n.setSelectionRange(s0, s1); } catch (_) {} }
 }
 // Another device changed the open client: take its changes, unless someone is typing here (then once they stop).
 function watchDraft(){
@@ -5498,12 +5551,15 @@ function watchDraft(){
 const typingHere = () => { const a = document.activeElement; return !!a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && !!a.closest('#v-measure, #v-blinds, #v-product, #v-quote'); };
 document.addEventListener('focusout', () => setTimeout(() => { if (draftPending && !draftTimer && !typingHere() && draftPending.cid === state.clientId) { const d = draftPending; draftPending = null; if (d.at > draftSeen) applyDraft(d, true); } }, 300));
 function applyDraft(d, remote){
-  const s = clone(d.sheet || {}), sel = state.sel, bsel = state.bsel;
+  let s = clone(d.sheet || {}); const sel = state.sel, bsel = state.bsel;
+  const mine = remote && draftLast && state.clientId === d.cid ? JSON.parse(JSON.stringify(sheetOf())) : null, unsaved = !!mine && JSON.stringify(mine) !== draftLast;
+  if (unsaved) s = sheetMerge(JSON.parse(draftLast), mine, s);   // 26 Oct: keep what was typed here, take the rest from the other device
   state = {house: s.house || '', example: false, sel: remote ? sel : 0, bsel: remote ? bsel : 0, clientId: d.cid, savedAt: d.at, rows: s.rows || [], blinds: s.blinds || [], more: s.more, quote: s.quote || {}};
-  state.rows.forEach(migrate); state.blinds.forEach(bMigrate); bSplitQty(); if (!state.rows.length) state.rows.push(blank());
+  migSheet(); bSplitQty(); if (!state.rows.length) state.rows.push(blank());
   if (state.sel >= state.rows.length) state.sel = 0;
-  draftSeen = d.at; draftLast = JSON.stringify(sheetOf()); keepLocal(); UNDO.rebase();
-  refreshSheet();
+  draftSeen = d.at; draftLast = JSON.stringify(unsaved ? normSheet(d.sheet) : sheetOf()); keepLocal(); UNDO.rebase();   // unsaved: the base is what the other device saved
+  if (remote) refreshKeepFocus(); else refreshSheet();
+  if (unsaved) queueDraft();   // the merged copy goes back up
   if (remote) toast('Updated with changes from another device');
 }
 function refreshSheet(){
@@ -5541,7 +5597,7 @@ function fromVersion(c, x, quiet){   // the sent version becomes the live sheet 
   const s = clone(x.snap);
   state = {house: s.house || '', example: false, sel: 0, bsel: 0, clientId: c.id, rows: s.rows || [], blinds: s.blinds || [], more: s.more,
     quote: Object.assign(s.q || {}, {date: new Date().toISOString().slice(0, 10)})};
-  state.rows.forEach(migrate); state.blinds.forEach(bMigrate); bSplitQty(); if (!state.rows.length) state.rows.push(blank());
+  migSheet(); bSplitQty(); if (!state.rows.length) state.rows.push(blank());
   draftLast = ''; refreshSheet(); save(); watchDraft(); go(sheetView());
   if (!quiet) toast(`Started again from v${x.n}. The next PDF will be v${(c.latest || 0) + 1}.`);
 }
@@ -7214,11 +7270,11 @@ $('#pside').addEventListener('input', e => {
 });
 
 const mpTabOf = k => MP_TABS.find(t => (t[2] || [t[0]]).includes(k)) || [k];
-function ensureMore(fresh){   // fresh = the sheet was just loaded: give every row a new id (ids from other devices can clash)
+function ensureMore(fresh){   // fresh = the sheet was just loaded (26 Oct: ids are kept now, only missing or repeated ones are renewed)
   if (!state.more || typeof state.more !== 'object') state.more = {};
   uphFromOld(); mtFromOld();
   (state.more.wallpaper || []).forEach(r => { if (r.sup === "D'Decor") r.sup = "D'Decor FabriCare"; });   // the list was called "D'Decor" for an hour on 7 Oct
-  for (const k of MP_ORDER) { if (!Array.isArray(state.more[k])) state.more[k] = []; state.more[k].forEach(r => { const b = MP[k].blank(); for (const f in b) if (r[f] === undefined) r[f] = b[f]; if (fresh || r.id == null) r.id = uid++; }); }
+  for (const k of MP_ORDER) { if (!Array.isArray(state.more[k])) state.more[k] = []; const seen = new Set(); state.more[k].forEach(r => { const b = MP[k].blank(); for (const f in b) if (r[f] === undefined) r[f] = b[f]; keepId(r, seen); }); }
   state.more.wallpaper.forEach(r => wpRoll(r.roll));
   if (!state.msel || typeof state.msel !== 'object') state.msel = {};
 }
@@ -9471,4 +9527,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-162722 -->
+<!-- build 20261026-170241 -->
