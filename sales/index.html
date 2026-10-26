@@ -1207,6 +1207,7 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .kc-name{font:700 17px/1.2 var(--num);letter-spacing:.01em;min-width:0;overflow-wrap:anywhere}
 .kc-sub{color:var(--muted);font-size:13px}
 .kc-int{font-size:12.5px;color:var(--ink);opacity:.8}
+.kc-add{font-size:12.5px;color:var(--muted)}
 .kc-tag{justify-self:start;display:inline-block;background:var(--warn-soft);color:var(--warn);font:600 12px var(--body);border-radius:12px;padding:2px 9px}
 .kc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
 .kc-next{display:inline-flex;align-items:center;gap:5px;font:600 12.5px var(--body);color:var(--muted);background:var(--line2);border-radius:12px;padding:3px 9px;white-space:nowrap}
@@ -7564,6 +7565,13 @@ let bCol = 'draft';
 const changeAsked = c => statusOf(c) === 'quoted' && c.changeReq && c.changeReq.at;
 const interestTxt = c => { const k = Array.isArray(c.interest) && c.interest.length ? c.interest : (c.cats || []);
   return k.map(x => ((INTEREST.find(i => i[0] === x) || HAS().find(i => i[0] === x) || [])[1] || '')).filter(Boolean).join(' · '); };
+// When the enquiry came in, on the New Enquiry card (Purvi, 26 Oct): "Added today, 2:15 pm" · "Added yesterday, 6:40 pm" · "Added 24 Oct".
+function addedTxt(c){
+  const iso = c.created || c.at; if (!iso) return '';
+  const d = new Date(iso), day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), n = Math.round((day(new Date()) - day(d)) / 864e5);
+  const time = d.toLocaleTimeString('en-IN', {hour: 'numeric', minute: '2-digit'}).replace(/\s*([ap])\.?m\.?$/i, (m, p) => ' ' + p.toLowerCase() + 'm');
+  return 'Added ' + (n === 0 ? 'today, ' + time : n === 1 ? 'yesterday, ' + time : d.toLocaleDateString('en-GB', Object.assign({day: 'numeric', month: 'short'}, d.getFullYear() !== new Date().getFullYear() ? {year: 'numeric'} : {})));
+}
 function boardCard(c, admin, showWhy = true){
   const s = statusOf(c), nx = openTodos(c.id)[0], city = cityOf(c), amt = amountOf(c);
   return `<div class="kc${changeAsked(c) ? ' asked' : ''}${s === 'lost' ? ' lost' : ''}" data-cid="${esc(c.id)}" role="button" tabindex="0"${s === 'quoted' ? ' draggable="true"' : ''}>
@@ -7571,6 +7579,7 @@ function boardCard(c, admin, showWhy = true){
     ${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}
     <div class="kc-sub">${[city, c.phone && c.name ? c.phone : ''].filter(Boolean).map(esc).join(' · ') || '&nbsp;'}</div>
     ${interestTxt(c) ? `<div class="kc-int">${esc(interestTxt(c))}</div>` : ''}
+    ${s === 'draft' && addedTxt(c) ? `<div class="kc-add" title="${esc(whenTxt(c.created || c.at))}">${esc(addedTxt(c))}</div>` : ''}
     <div class="kc-foot">
       ${s === 'lost' ? `<span class="kc-next lostr" title="${esc((c.outcome || {}).note || '')}">${showWhy ? 'Lost · ' + esc((c.outcome || {}).reason || 'no reason') : 'Lost ' + esc(agoTxt((c.outcome || {}).at))}</span>` : nx ? `<span class="kc-next${overdue(nx) ? ' late' : ''}" title="${esc(tdName(nx.type))}">${tdIcon(nx.type, 14)}${esc(TD_SHORT[nx.type] || 'To-do')} · ${esc(dueTxt(nx))}</span>` : '<span class="kc-next none">No to-do</span>'}
       <span class="kc-r">${amt ? `<b class="kc-amt">${rs(amt)}</b>` : ''}${admin ? `<span class="av" title="${esc(ownerName(c) || 'Not assigned')}">${esc(initials(ownerName(c)))}</span>` : ''}
@@ -7586,7 +7595,8 @@ function renderBoard(el, base, admin, tools){
     if (s === 'won' && !CF.won && Date.parse((c.outcome || {}).at || recent(c)) < wonCut) continue; if (by[s]) by[s].push(c); }
   const ord = (a, b) => (changeAsked(b) ? 1 : 0) - (changeAsked(a) ? 1 : 0) || (b.stars || 0) - (a.stars || 0) || recent(b).localeCompare(recent(a));
   const oldWon = base.filter(c => statusOf(c) === 'won').length - by.won.length;
-  const col = ([k, n]) => { const L = by[k].sort(ord), sum = L.reduce((a, c) => a + (amountOf(c) || 0), 0);
+  const made = c => String(c.created || c.at || '');   // New Enquiry: the latest added on top (Purvi, 26 Oct)
+  const col = ([k, n]) => { const L = by[k].sort(k === 'draft' ? (a, b) => made(b).localeCompare(made(a)) : ord), sum = L.reduce((a, c) => a + (amountOf(c) || 0), 0);
     return `<section class="kcol" data-col="${k}"${bCol === k ? ' data-on="1"' : ''} aria-label="${n}">
       <header class="kcol-h"><b>${n}</b><span class="kcnt">${L.length}</span>${sum ? `<span class="ksum">${rs(sum)}</span>` : ''}</header>
       ${k === 'draft' && !CF.lost ? '<button class="kadd" data-act="new">+ New enquiry</button>' : ''}
@@ -9321,6 +9331,8 @@ const HI = {
 };
 // a few lines with a number or a name inside
 const HI_RE = [
+  [/^Added today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, t, p) => `आज ${hiTime(t, p)} जुड़ा`], [/^Added yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, t, p) => `कल ${hiTime(t, p)} जुड़ा`],
+  [/^Added (\d{1,2} \w{3}(?: \d{4})?)$/, (m, d) => `${d} को जुड़ा`],
   [/^Quotation v(\d+) saved at Won, not sent$/, (m, n) => `कोटेशन v${n} Won पर सेव हुआ, भेजा नहीं`],
   [/^Mark (.+) as won$/, (m, w) => `${w} को मिला हुआ (Won) मार्क करें`],
   [/^Which quotation did (.+) agree to\? It becomes the final one\.$/, (m, w) => `${w} ने कौन-सा कोटेशन माना? वही फ़ाइनल बनेगा।`],
@@ -9431,4 +9443,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-140452 -->
+<!-- build 20261026-141035 -->
