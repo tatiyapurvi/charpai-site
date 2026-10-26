@@ -1016,6 +1016,25 @@ tr.dash-r:hover td{background:var(--sel)}
 .opt:has(input:checked){border-color:var(--ink);background:var(--sel)}
 .opt input{width:18px;height:18px;accent-color:var(--ink)}
 .opt small{color:var(--muted);display:block}
+.dlg.wn-dlg{width:min(660px,calc(100vw - 32px));--soft:color-mix(in srgb,var(--ink) 6%,transparent);--soft2:color-mix(in srgb,var(--ink) 10%,transparent)}
+.wn-warn{display:flex;gap:10px;background:var(--tape-soft);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px;margin:0 0 14px}
+.wn-warn b{display:block}
+.wn-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.wn-ch{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer}
+.wn-ch:has(input:checked){border-color:var(--ink);background:var(--sel)}
+.wn-ch input{width:18px;height:18px;margin-top:2px;accent-color:var(--ink);flex:none}
+.wn-ch>span{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.wn-ch small{color:var(--muted);font-size:13px}
+.wn-amt{font:700 26px/1.1 var(--num)}
+.wn-ch .n-diff{margin-left:0}
+.wn-pill{font-style:normal;font-size:12.5px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--soft2);color:var(--muted)}
+.wn-chg{border-top:1px solid var(--line2);padding-top:12px}
+.wn-chg summary{cursor:pointer;font-size:14.5px}.wn-chg summary span{color:var(--muted);margin-left:4px}
+.wn-chg .n-chgs{max-height:34vh;overflow:auto}
+.wn-oldq{font-size:13.5px;color:var(--muted);margin:12px 0 0}
+.wn-old{margin-top:4px}
+.wn [data-dlg="ok"]:disabled{opacity:.4;cursor:default}
+@media (max-width:600px){.wn-two{grid-template-columns:1fr}.wn .dlg-acts{flex-direction:column-reverse}.wn .dlg-acts .btn{width:100%}}
 .dlg-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .dlg-body{max-height:70vh;overflow:auto}
 .bp-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
@@ -5783,25 +5802,55 @@ async function askWon(c){
   const V = c.latest ? await versionsOf(c.id) : [];
   if (!V.length) { openDlg(`<div class="dlg-in"><h2 id="dlg-title">Send a quotation first</h2><p class="sub">Won needs the quotation they accepted. Open their sheet, go to the Quotation and download its PDF. Then mark it won.</p><div class="dlg-acts"><button class="btn solid" data-dlg="close">OK</button></div></div>`); return; }
   // 26 Oct (Purvi: "after discount, the final qtn, on which it is marked as won, needs to be displayed"): Hanuman typed the
-  // discount into the sheet and marked Won without sending a new PDF, so Won took the old, undiscounted version. Now, when the
-  // sheet has changed since the last version, its price today is the first (ticked) choice; picking it saves the sheet as the
-  // next version first (sent quotations stay frozen) and Won points at that version.
+  // discount into the sheet and marked Won without sending a new PDF, so Won took the old, undiscounted version. When the sheet
+  // has changed since the last version, a window of its own asks which one the client agreed to (askWonChanged).
   const S = c.dsig && c.dsig !== c.sig ? await wonSheet(c) : null;
+  if (S) return askWonChanged(c, V, S);
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">Mark ${esc(c.name)} as won</h2><p class="sub">Which quotation did they accept? It becomes the final one.</p>
-    ${S ? `<label class="opt"><input type="radio" name="wv" value="sheet" checked><span><b>v${S.v} · ${rs(S.t.final)}</b><small>The sheet now, with every change and discount · not sent yet, saved as v${S.v}</small></span></label>` : ''}
-    ${V.map((x, i) => `<label class="opt"><input type="radio" name="wv" value="${x.n}"${i || S ? '' : ' checked'}><span><b>v${x.n} · ${rs(x.total)}</b><small>${esc(whenTxt(x.at))}${i ? '' : ' · latest sent'}</small></span></label>`).join('')}
+    ${V.map((x, i) => `<label class="opt"><input type="radio" name="wv" value="${x.n}"${i ? '' : ' checked'}><span><b>v${x.n} · ${rs(x.total)}</b><small>${esc(whenTxt(x.at))}${i ? '' : ' · latest'}</small></span></label>`).join('')}
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Mark as won</button></div></div>`, false, async d => {
-    const pick = d.querySelector('input[name=wv]:checked').value;
-    if (pick === 'sheet') {
+    const n = +d.querySelector('input[name=wv]:checked').value, x = V.find(v => v.n === n);
+    await setOutcome(c, {s: 'won', n, total: x ? x.total : null}); toast(`${c.name}: won with v${n}`);
+  });
+}
+// Won after the sheet changed (Purvi, 26 Oct, option A of two drawn: "is the last sent qtn final or is this updated one final …
+// show the difference in qtn"). A warning that the updated quotation hasn't been sent, the last sent and the updated one side by
+// side, what changed between them, and nothing ticked, so a quick click can't pick the wrong one. The updated one is saved as the
+// next version first (sent quotations stay frozen); the timeline then says it wasn't sent before Won.
+function askWonChanged(c, V, S){
+  const L = V[0], who = (w => w ? w.charAt(0) + w.slice(1).toLowerCase() : 'the client')(String(c.name || '').trim().split(/\s+/)[0] || '');
+  const d = Math.round(S.t.final) - Math.round(L.total || 0), hid = L.hid || ((L.snap || {}).t || {}).hid || '';
+  const G = L.snap ? verChanges(L.snap, {house: state.house, q: state.quote, t: S.t, rows: state.rows, blinds: state.blinds, more: state.more}).sort((x, y) => (y.room === 'Quotation') - (x.room === 'Quotation')) : [];   // the discount first
+  const old = V.slice(1), wide = matchMedia('(min-width: 700px)').matches;
+  openDlg(`<div class="dlg-in wn"><h2 id="dlg-title">Mark ${esc(c.name)} as won</h2><p class="sub">Which quotation did ${esc(who)} agree to? It becomes the final one.</p>
+    <div class="wn-warn" role="note"><span aria-hidden="true">⚠️</span><span><b>The updated quotation hasn't been sent to ${esc(who)} yet.</b><span>You changed the sheet after v${L.n} was sent on ${esc(whenTxt(L.at))}.</span></span></div>
+    <div class="wn-two">
+      <label class="wn-ch"><input type="radio" name="wv" value="${L.n}"><span><small>Last sent · v${L.n}</small><b class="wn-amt">${rs(L.total)}</b>${hid ? `<em class="wn-pill">${/amount/i.test(hid) ? 'Part quotation, amounts were hidden' : 'Part quotation'}</em>` : ''}</span></label>
+      <label class="wn-ch"><input type="radio" name="wv" value="sheet"><span><small>Updated today · not sent</small><b class="wn-amt">${rs(S.t.final)}</b>${d ? `<span class="n-diff ${d < 0 ? 'down' : 'up'}">${rs(Math.abs(d))} ${d < 0 ? 'less' : 'more'} than v${L.n}</span>` : `<span class="n-diff">Same as v${L.n}</span>`}<em class="wn-pill">Will be saved as v${S.v}</em></span></label>
+    </div>
+    <details class="wn-chg"${wide ? ' open' : ''}><summary><b>What's different in the updated one</b> <span>${G.length} change${G.length === 1 ? '' : 's'}</span></summary>${G.length ? verChangeGroups(G) : '<p class="n-chgnote">Nothing in the sheet changed. The price list rates changed.</p>'}</details>
+    ${old.length ? `<p class="wn-oldq"><span>They agreed to an older one?</span> <button class="linkbtn" data-wn="old">Show ${old.length > 1 ? `v${old[old.length - 1].n}–v${old[0].n}` : `v${old[0].n}`}</button></p>
+    <div class="wn-old" hidden>${old.map(x => `<label class="opt"><input type="radio" name="wv" value="${x.n}"><span><b>v${x.n} · ${rs(x.total)}</b><small>${esc(whenTxt(x.at))}</small></span></label>`).join('')}</div>` : ''}
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn" data-wn="send">Send updated first</button><button class="btn solid" data-dlg="ok" disabled>Pick one to mark won</button></div></div>`, false, async dg => {
+    const r = dg.querySelector('input[name=wv]:checked'); if (!r) return false;
+    if (r.value === 'sheet') {
       if (state.clientId !== c.id) { toast('Another client was opened. Try again.'); return false; }
       const t = quoteTotals(), v = nextVersion(t), sig = quoteSig(t);
       state.quote.pdf = {n: v, sig}; save();
       if (!await UNDO.notSent(() => recordVersion(v, sig, t))) return false;
-      await setOutcome(c, {s: 'won', n: v, total: t.final}); toast(`${c.name}: won with v${v} · ${rs(t.final)}`); return;
+      await setOutcome(c, {s: 'won', n: v, total: t.final, unsent: true}); toast(`${c.name}: won with v${v} · ${rs(t.final)}`); return;
     }
-    const n = +pick, x = V.find(v => v.n === n);
+    const n = +r.value, x = V.find(v => v.n === n);
     await setOutcome(c, {s: 'won', n, total: x ? x.total : null}); toast(`${c.name}: won with v${n}`);
   });
+  dlg.classList.add('wn-dlg');
+  const box = dlg.querySelector('.wn'), ok = box.querySelector('[data-dlg="ok"]');
+  box.addEventListener('change', () => { const r = box.querySelector('input[name=wv]:checked'); if (!r) return;
+    const x = r.value === 'sheet' ? {n: S.v, total: S.t.final} : V.find(v => v.n === +r.value);
+    ok.disabled = false; ok.textContent = `Mark won with v${x.n} · ${rs(x.total)}`; });
+  box.addEventListener('click', e => { const b = e.target.closest('[data-wn]'); if (!b) return;
+    if (b.dataset.wn === 'old') { box.querySelector('.wn-old').hidden = false; b.parentElement.remove(); }
+    if (b.dataset.wn === 'send') { closeDlg(); openClient(c.id, 'quote'); } });
 }
 // The client's live sheet, opened in place (no page change) so its totals can be saved as a version. null if it can't be read.
 async function wonSheet(c){
@@ -8209,7 +8258,7 @@ function cpActivity(c, V){
     if (e.k === 'log') return `<li class="n-ev"><span class="n-evd">${cpIcon('user', 13)}</span><div class="n-evm"><p>${esc(e.n.text || '')}</p><small>${esc(agoTxt(e.n.at))}${e.n.who ? ', ' + esc(e.n.who) : ''}</small></div></li>`;
     if (e.k === 'v') { const x = e.v, fin = s === 'won' && o.n === x.n;
       return `<li class="n-ev n-ver"><span class="n-evd v${fin ? ' fin' : ''}">v${x.n}</span><div class="n-evm">
-        <div class="n-vh"><p class="n-vt">Quotation v${x.n} sent <b>${rs(x.total)}</b>${fin ? ' <span class="n-stat won">Accepted</span>' : ''}</p>
+        <div class="n-vh"><p class="n-vt">Quotation v${x.n} ${fin && o.unsent ? 'saved at Won, not sent' : 'sent'} <b>${rs(x.total)}</b>${fin ? ' <span class="n-stat won">Accepted</span>' : ''}</p>
           <span class="n-evb"><button class="n-btn sm" data-act="view" data-n="${x.n}">View</button><button class="n-btn sm" data-act="pdf" data-n="${x.n}">PDF</button></span></div>
         <small>${esc(whenTxt(x.at))}${x.exec ? ', ' + esc(x.exec) : ''} ${amtDiff(x, V)}</small>
         ${x.hid ? `<p class="qe-ban n-part"><b>Part quotation.</b> ${esc(x.hid)}</p>` : ''}
@@ -8224,7 +8273,7 @@ function cpActivity(c, V){
         ${!prev ? (x.snap ? `<p class="n-chgnote">First measurement sheet: ${esc((sheetCounts(x.snap) || []).join(', '))}</p>` : '') : G && G.length ? verChangeGroups(G) : ''}</div></li>`; }
     if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${e.t.doneByName ? ' · by ' + esc(e.t.doneByName) : who(e.t.ownerEmail)}</small></button></li>`;
     if (e.k === 'ch') return `<li class="n-ev"><span class="n-evd ch">${tdIcon('revise', 14)}</span><div class="n-evm"><p>They asked for changes${c.changeReq.note ? `<span class="n-evn">${esc(c.changeReq.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></div></li>`;
-    if (e.k === 'won' || e.k === 'lost') return `<li class="n-ev"><span class="n-evd ${e.k}">${e.k === 'won' ? '✓' : '×'}</span><div class="n-evm"><p>${e.k === 'won' ? `Marked as won, v${o.n}` : `Marked as lost${o.reason ? ': ' + esc(o.reason) : ''}`}${o.note ? `<span class="n-evn">${esc(o.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${o.who ? ', ' + esc(o.who) : ''}</small></div></li>`;
+    if (e.k === 'won' || e.k === 'lost') return `<li class="n-ev"><span class="n-evd ${e.k}">${e.k === 'won' ? '✓' : '×'}</span><div class="n-evm"><p>${e.k === 'won' ? `Marked as won, v${o.n}${o.unsent ? ' (not sent before Won)' : ''}` : `Marked as lost${o.reason ? ': ' + esc(o.reason) : ''}`}${o.note ? `<span class="n-evn">${esc(o.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${o.who ? ', ' + esc(o.who) : ''}</small></div></li>`;
     return `<li class="n-ev"><span class="n-evd">${cpIcon('plus', 12)}</span><div class="n-evm"><p>Enquiry added</p><small>${esc(agoTxt(e.at))}</small></div></li>`;
   };
   const upRow = t => `<button class="n-up${overdue(t) ? ' late' : ''}" data-todo="${esc(t.id)}">${tdIcon(t.type, 16)}<span>${esc(tdName(t.type))}${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><em>${esc(dueTxt(t))}${who(t.ownerEmail)}</em></button>`;
@@ -9237,6 +9286,8 @@ const HI = {
   'Saved as you type. It is on the board under New Enquiry once you type something.': 'लिखते ही सेव होता है। कुछ लिखते ही बोर्ड पर "नई इन्क्वायरी" में दिखेगा।',
   'Saved as you type. Done takes you back to their page.': 'लिखते ही सेव होता है। "हो गया" दबाकर उनके पेज पर वापस जाएँ।',
   'Change': 'बदलें', 'Cancel': 'रहने दें',
+  'Updated today · not sent': 'आज बदला · भेजा नहीं', 'Part quotation': 'आधा कोटेशन', 'Part quotation, amounts were hidden': 'आधा कोटेशन, रकम छुपी थी',
+  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें',
   // To Do + the to-do window
   'New to-do': 'नया काम', '+ New to-do': '+ नया काम', 'Change the to-do': 'काम बदलें', 'Add to-do': 'काम जोड़ें', 'Add a to-do': 'काम जोड़ें', 'Save': 'सेव करें',
   'Site / measurement visit': 'साइट / नाप विज़िट', 'Make quotation': 'कोटेशन बनाना', 'Revise quotation': 'कोटेशन बदलना', 'Follow-up call': 'फ़ॉलो-अप कॉल',
@@ -9270,6 +9321,16 @@ const HI = {
 };
 // a few lines with a number or a name inside
 const HI_RE = [
+  [/^Quotation v(\d+) saved at Won, not sent$/, (m, n) => `कोटेशन v${n} Won पर सेव हुआ, भेजा नहीं`],
+  [/^Mark (.+) as won$/, (m, w) => `${w} को मिला हुआ (Won) मार्क करें`],
+  [/^Which quotation did (.+) agree to\? It becomes the final one\.$/, (m, w) => `${w} ने कौन-सा कोटेशन माना? वही फ़ाइनल बनेगा।`],
+  [/^The updated quotation hasn't been sent to (.+) yet\.$/, (m, w) => `बदला हुआ कोटेशन अभी ${w} को भेजा नहीं गया है।`],
+  [/^You changed the sheet after v(\d+) was sent on (.+)\.$/, (m, n, d) => `v${n} ${d} को भेजने के बाद शीट बदली गई।`],
+  [/^Last sent · v(\d+)$/, (m, n) => `आख़िरी भेजा · v${n}`], [/^Will be saved as v(\d+)$/, (m, n) => `v${n} बनकर सेव होगा`],
+  [/^(₹[\d,]+) less than v(\d+)$/, (m, a, n) => `v${n} से ${a} कम`], [/^(₹[\d,]+) more than v(\d+)$/, (m, a, n) => `v${n} से ${a} ज़्यादा`],
+  [/^(\d+) changes?$/, (m, n) => `${n} बदलाव`], [/^Show (v\d+(?:–v\d+)?)$/, (m, v) => `${v} दिखाएँ`],
+  [/^Mark won with v(\d+) · (₹[\d,]+)$/, (m, n, a) => `v${n} · ${a} पर Won मार्क करें`],
+  [/^Marked as won, v(\d+) \(not sent before Won\)$/, (m, n) => `Won मार्क हुआ, v${n} (Won से पहले भेजा नहीं)`],
   [/^The sheet now, with every change and discount · not sent yet, saved as v(\d+)$/, (m, n) => `अभी की शीट, सारे बदलाव और डिस्काउंट के साथ · अभी भेजी नहीं, v${n} बनकर सेव होगी`],
   [/^(\d+) clients?$/, (m, n) => `${n} क्लाइंट`], [/^(\d+) clients? · any date$/, (m, n) => `${n} क्लाइंट · कोई भी तारीख़`],
   [/^(\d+) won · (\d+) lost$/, (m, a, b) => `${a} मिले · ${b} नहीं मिले`],
@@ -9370,4 +9431,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-133026 -->
+<!-- build 20261026-140452 -->
