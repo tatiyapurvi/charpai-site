@@ -7565,12 +7565,18 @@ let bCol = 'draft';
 const changeAsked = c => statusOf(c) === 'quoted' && c.changeReq && c.changeReq.at;
 const interestTxt = c => { const k = Array.isArray(c.interest) && c.interest.length ? c.interest : (c.cats || []);
   return k.map(x => ((INTEREST.find(i => i[0] === x) || HAS().find(i => i[0] === x) || [])[1] || '')).filter(Boolean).join(' · '); };
-// When the enquiry came in, on the New Enquiry card (Purvi, 26 Oct): "Added today, 2:15 pm" · "Added yesterday, 6:40 pm" · "Added 24 Oct".
-function addedTxt(c){
-  const iso = c.created || c.at; if (!iso) return '';
-  const d = new Date(iso), day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), n = Math.round((day(new Date()) - day(d)) / 864e5);
+// The one date each board card shows (Purvi, 26 Oct): New Enquiry "Added today, 2:15 pm" (when the enquiry came in),
+// Quotation Given "v3 sent yesterday, 6:40 pm" (the last version shared), Won "v7 confirmed 24 Oct" (when it was marked won).
+function cardDay(iso){
+  if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return '';
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), n = Math.round((day(new Date()) - day(d)) / 864e5);
   const time = d.toLocaleTimeString('en-IN', {hour: 'numeric', minute: '2-digit'}).replace(/\s*([ap])\.?m\.?$/i, (m, p) => ' ' + p.toLowerCase() + 'm');
-  return 'Added ' + (n === 0 ? 'today, ' + time : n === 1 ? 'yesterday, ' + time : d.toLocaleDateString('en-GB', Object.assign({day: 'numeric', month: 'short'}, d.getFullYear() !== new Date().getFullYear() ? {year: 'numeric'} : {})));
+  return n === 0 ? 'today, ' + time : n === 1 ? 'yesterday, ' + time : d.toLocaleDateString('en-GB', Object.assign({day: 'numeric', month: 'short'}, d.getFullYear() !== new Date().getFullYear() ? {year: 'numeric'} : {}));
+}
+function cardDate(c, s){
+  const o = c.outcome || {};
+  const [iso, txt] = s === 'draft' ? [c.created || c.at, 'Added'] : s === 'quoted' ? [c.at, `v${c.latest} sent`] : s === 'won' ? [o.at, `v${o.n} confirmed`] : [];
+  const t = cardDay(iso); return t ? {iso, txt: `${txt} ${t}`} : null;
 }
 function boardCard(c, admin, showWhy = true){
   const s = statusOf(c), nx = openTodos(c.id)[0], city = cityOf(c), amt = amountOf(c);
@@ -7579,7 +7585,7 @@ function boardCard(c, admin, showWhy = true){
     ${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}
     <div class="kc-sub">${[city, c.phone && c.name ? c.phone : ''].filter(Boolean).map(esc).join(' · ') || '&nbsp;'}</div>
     ${interestTxt(c) ? `<div class="kc-int">${esc(interestTxt(c))}</div>` : ''}
-    ${s === 'draft' && addedTxt(c) ? `<div class="kc-add" title="${esc(whenTxt(c.created || c.at))}">${esc(addedTxt(c))}</div>` : ''}
+    ${(d => d ? `<div class="kc-add" title="${esc(whenTxt(d.iso))}">${esc(d.txt)}</div>` : '')(cardDate(c, s))}
     <div class="kc-foot">
       ${s === 'lost' ? `<span class="kc-next lostr" title="${esc((c.outcome || {}).note || '')}">${showWhy ? 'Lost · ' + esc((c.outcome || {}).reason || 'no reason') : 'Lost ' + esc(agoTxt((c.outcome || {}).at))}</span>` : nx ? `<span class="kc-next${overdue(nx) ? ' late' : ''}" title="${esc(tdName(nx.type))}">${tdIcon(nx.type, 14)}${esc(TD_SHORT[nx.type] || 'To-do')} · ${esc(dueTxt(nx))}</span>` : '<span class="kc-next none">No to-do</span>'}
       <span class="kc-r">${amt ? `<b class="kc-amt">${rs(amt)}</b>` : ''}${admin ? `<span class="av" title="${esc(ownerName(c) || 'Not assigned')}">${esc(initials(ownerName(c)))}</span>` : ''}
@@ -9331,6 +9337,10 @@ const HI = {
 };
 // a few lines with a number or a name inside
 const HI_RE = [
+  [/^v(\d+) sent today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} आज ${hiTime(t, p)} भेजा`], [/^v(\d+) sent yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} कल ${hiTime(t, p)} भेजा`],
+  [/^v(\d+) sent (\d{1,2} \w{3}(?: \d{4})?)$/, (m, n, d) => `v${n} ${d} को भेजा`],
+  [/^v(\d+) confirmed today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} आज ${hiTime(t, p)} पक्का हुआ`], [/^v(\d+) confirmed yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} कल ${hiTime(t, p)} पक्का हुआ`],
+  [/^v(\d+) confirmed (\d{1,2} \w{3}(?: \d{4})?)$/, (m, n, d) => `v${n} ${d} को पक्का हुआ`],
   [/^Added today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, t, p) => `आज ${hiTime(t, p)} जुड़ा`], [/^Added yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, t, p) => `कल ${hiTime(t, p)} जुड़ा`],
   [/^Added (\d{1,2} \w{3}(?: \d{4})?)$/, (m, d) => `${d} को जुड़ा`],
   [/^Quotation v(\d+) saved at Won, not sent$/, (m, n) => `कोटेशन v${n} Won पर सेव हुआ, भेजा नहीं`],
@@ -9443,4 +9453,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-141035 -->
+<!-- build 20261026-141625 -->
