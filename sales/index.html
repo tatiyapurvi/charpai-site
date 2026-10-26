@@ -4337,8 +4337,13 @@ function qAmt(l){
 }
 function qApplyMan(S){
   const M = new Map(qMan().map(x => [x.k, x.f || {}])), G = gstRates();
+  // 26 Oct (Purvi: NAZRAANA, "he is not able to type it in 2nd row … is it because the first two columns of the 1st and 2nd row are the
+  // same?"): yes. Two lines with the same room, product and details had the same key, so a box typed on line 2 was kept on line 1.
+  // The first keeps its key (what was typed or hidden before stays put); the next ones get #2, #3.
+  const seenK = new Map();
   for (const k of Object.keys(S)) S[k].forEach(l => {
-    l.okey = lineKey(k, l); l.orig = {}; QM_F.forEach(f => l.orig[f] = l[f] ?? null); l.man = [];
+    const k0 = lineKey(k, l), nK = (seenK.get(k0) || 0) + 1; seenK.set(k0, nK);
+    l.okey = nK > 1 ? `${k0}#${nK}` : k0; l.orig = {}; QM_F.forEach(f => l.orig[f] = l[f] ?? null); l.man = [];
     const src = qmSrc(l), o = src ? src.man || {} : M.get(l.okey) || {}, nm = f => src ? qmName(k, f) : f;
     QM_F.forEach(f => { let v = o[nm(f)]; if (v == null) return; if (QM_NUM.has(f)) { v = qmNum(v); if (v == null) return; } l[f] = v; l.man.push(f); });
     if (l.typed && l.man.includes('mrp') && !l.man.includes('what')) { l.what = l.typed; l.man.push('what'); }   // not on the company's list: its typed name
@@ -9527,4 +9532,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-170241 -->
+<!-- build 20261026-170955 -->
