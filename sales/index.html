@@ -860,6 +860,140 @@ body.shared .house{display:none}
 tr.dash-r{cursor:pointer}
 tr.dash-r:hover td{background:var(--sel)}
 .dash-2{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start}
+/* ---- admin dashboard (25 Oct, dash.js): a bento of cards, each titled with a plain question. Chart colours: the validated
+   categorical set (fixed order = fixed product), checked against --paper in light and dark; labels sit in text colours, never the series colour. */
+.dbx{--pp-fabric:#2a78d6;--pp-stitch:#184f95;--pp-hw:#86b6ef;--p-cur:#2a78d6;--p-bli:#eb6834;--p-wal:#1baf7a;--p-uph:#eda100;--p-flo:#e87ba4;--p-mat:#008300;--p-bed:#6250d6;--p-oth:#98A19C;--acc:#2a78d6;
+  --soft:color-mix(in srgb,var(--ink) 5%,transparent);--soft2:color-mix(in srgb,var(--ink) 9%,transparent);--grid:color-mix(in srgb,var(--ink) 9%,transparent);
+  max-width:1240px;margin:0 auto;font-family:var(--body);display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+.dbx > *{min-width:0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dbx{--pp-fabric:#3987e5;--pp-stitch:#1c5cab;--pp-hw:#86b6ef;--p-cur:#3987e5;--p-bli:#d95926;--p-wal:#199e70;--p-uph:#c98500;--p-flo:#d55181;--p-mat:#008300;--p-bed:#9085e9;--p-oth:#6E7872;--acc:#3987e5}}
+:root[data-theme="dark"] .dbx{--pp-fabric:#3987e5;--pp-stitch:#1c5cab;--pp-hw:#86b6ef;--p-cur:#3987e5;--p-bli:#d95926;--p-wal:#199e70;--p-uph:#c98500;--p-flo:#d55181;--p-mat:#008300;--p-bed:#9085e9;--p-oth:#6E7872;--acc:#3987e5}
+.dbx .num{font-family:var(--body);font-variant-numeric:normal}
+.db-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.db-top h2{margin:0;font:600 30px/1.15 var(--body);letter-spacing:-.015em}
+.db-ctl{min-width:0;display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.db-seg{display:inline-flex;gap:2px;padding:3px;border-radius:12px;background:var(--soft2);max-width:100%;overflow-x:auto;scrollbar-width:none}
+.db-seg::-webkit-scrollbar{display:none}
+.db-seg button{border:0;background:none;color:var(--muted);font:500 14.5px var(--body);padding:8px 14px;border-radius:9px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.db-seg button:hover{color:var(--ink)}
+.db-seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 .5px rgba(0,0,0,.04)}
+.db-seg.sm button{padding:6px 12px;font-size:13.5px}
+.db-bento{display:grid;gap:14px;grid-template-columns:repeat(12,minmax(0,1fr))}
+.db-card{background:var(--paper);border:1px solid var(--line2);border-radius:18px;padding:22px;min-width:0}
+.db-q{margin:0;font:600 16px/1.3 var(--body);color:var(--ink);letter-spacing:-.005em}
+.db-hint{margin:4px 0 0;font-size:13.5px;line-height:1.4;color:var(--muted)}
+.db-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.db-h > .db-hint{flex-basis:100%;margin-top:-8px}
+.db-empty{margin:6px 0 0;color:var(--muted);font-size:14.5px;padding:22px 0;text-align:center;background:var(--soft);border-radius:12px}
+.db-sub{margin:6px 0 0;color:var(--muted);font-size:14.5px}
+.db-sub b{color:var(--ink);font-weight:600}
+/* hero */
+.db-hero{grid-column:span 5;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(160deg,var(--tape-soft),var(--paper) 70%)}
+.db-big{margin:10px 0 2px;font:600 clamp(44px,5.2vw,64px)/1 var(--body);letter-spacing:-.03em;color:var(--ink)}
+.db-delta{display:inline-flex;align-self:flex-start;gap:6px;align-items:center;margin:14px 0 4px;padding:6px 12px;border-radius:20px;font-size:14px;background:var(--soft2);color:var(--muted)}
+.db-delta b{font-weight:600}
+.db-delta.up{background:var(--good-soft);color:var(--good)}
+.db-delta.down{background:var(--warn-soft);color:var(--warn)}
+.db-arr{font-weight:700}
+/* the four small numbers */
+.db-tiles{grid-column:span 7;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.db-tile{padding:18px 20px}
+.db-tile .db-q{font-size:14.5px;font-weight:500;color:var(--muted)}
+.db-num{margin:8px 0 0;font:600 30px/1.05 var(--body);letter-spacing:-.02em}
+.db-meter{margin-top:12px;height:8px;border-radius:4px;background:var(--soft2);overflow:hidden}
+.db-meter i{display:block;height:100%;background:var(--good);border-radius:4px}
+/* who sold the most */
+.db-mix{grid-column:span 7}.db-who{grid-column:span 5}.db-trend{grid-column:span 7}.db-fun{grid-column:span 5}
+.db-team{grid-column:span 12}.db-lost{grid-column:span 5}.db-wait{grid-column:span 7}
+.db-bar{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:22px minmax(90px,1.1fr) 2fr auto;gap:12px;align-items:center;padding:9px 8px;margin:0 -8px;width:calc(100% + 16px);border-radius:10px;cursor:pointer;transition:background .15s}
+.db-bar:hover,.db-bar:focus-visible{background:var(--soft)}
+.db-rank{font-size:13px;color:var(--faint);text-align:center}
+.db-bn{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-track{height:12px;border-radius:0 4px 4px 0;background:var(--soft);overflow:hidden}
+.db-track i{display:block;height:100%;background:var(--acc);border-radius:0 4px 4px 0}
+.db-bv{text-align:right;line-height:1.15}.db-bv b{display:block;font-size:15px;font-weight:600}.db-bv small{font-size:12.5px;color:var(--muted)}
+.db-bar.dim .db-track i{background:var(--faint);opacity:.45}.db-bar.dim .db-bn,.db-bar.dim .db-bv b{color:var(--muted);font-weight:500}
+.db-bar.me{background:var(--soft)}
+/* what we sold: the box chart */
+.db-tree{position:relative;height:300px;border-radius:12px;overflow:hidden}
+.db-cell{position:absolute;box-sizing:border-box;border-radius:6px;padding:10px 12px;color:#fff;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:default;transition:filter .15s}
+.db-cell:hover,.db-cell:focus-visible{filter:brightness(1.08)}
+.db-cell.ink{color:#0b0b0b}
+.db-nest{padding:0;background:none;border-radius:0;overflow:visible}
+.db-nest > .db-cell{border-radius:6px}
+.db-part.p-fabric{background:var(--pp-fabric)}.db-part.p-stitch{background:var(--pp-stitch)}.db-part.p-hw{background:var(--pp-hw);color:#0b0b0b}
+.db-cell b{font-size:14px;font-weight:600;white-space:nowrap;width:max-content}
+.db-cell span,.db-cell small{white-space:nowrap;width:max-content}
+.db-cell span{font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.db-cell small{font-size:12.5px;opacity:.9}
+.db-cell:not(.roomy) small{display:none}
+.db-cell.tiny b,.db-cell.tiny span{display:none}
+.db-legend{display:grid;gap:2px;margin-top:14px}
+.db-lrow{display:grid;grid-template-columns:10px 1fr auto 44px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line2);font-size:14.5px}
+.db-lrow:last-child{border-bottom:0}
+.db-lrow i{width:10px;height:10px;border-radius:3px}
+.db-lrow b{font-weight:600}.db-lp{color:var(--muted);text-align:right}
+.db-lrow.sub{padding:5px 0 5px 22px;font-size:13.5px;color:var(--muted);border-bottom:0}
+.db-lrow.sub:has(+ .db-lrow:not(.sub)){border-bottom:1px solid var(--line2);padding-bottom:9px}
+.db-lrow i.p-fabric{background:var(--pp-fabric)}.db-lrow i.p-stitch{background:var(--pp-stitch)}.db-lrow i.p-hw{background:var(--pp-hw)}
+/* are sales going up: columns */
+.db-cols{position:relative;height:236px;padding-top:16px !important;box-sizing:border-box;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:4px;padding:0 0 0 46px}
+.db-grid{position:absolute;inset:16px 0 26px 0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.db-grid div{border-top:1px solid var(--grid);height:0;position:relative}
+.db-grid div:last-child{border-top-color:var(--line)}
+.db-grid span{position:absolute;left:0;top:-17px;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
+.db-col{display:flex;flex-direction:column;align-items:center;min-width:0;outline:none;border-radius:8px}
+.db-col:focus-visible{background:var(--soft)}
+.db-cbar{flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;z-index:1}
+.db-cbar i{display:block;width:min(24px,70%);background:var(--acc);border-radius:4px 4px 0 0;opacity:.55;transition:opacity .15s}
+.db-col.now .db-cbar i,.db-col:hover .db-cbar i{opacity:1}
+.db-cbar em{font-style:normal;font-size:12.5px;font-weight:600;margin-bottom:4px;white-space:nowrap}
+.db-cl{height:26px;line-height:26px;font-size:12px;color:var(--muted);white-space:nowrap}
+.db-col.now .db-cl{color:var(--ink);font-weight:600}
+/* enquiry to sale */
+.db-step{margin-bottom:14px}
+.db-sl{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;font-size:14.5px}
+.db-sl b{margin-left:auto;font-size:18px;font-weight:600}.db-sl small{color:var(--muted);font-size:13px;min-width:36px;text-align:right}
+.db-sbar{height:14px;border-radius:0 5px 5px 0;background:var(--soft)}
+.db-sbar i{display:block;height:100%;background:var(--acc);border-radius:0 5px 5px 0}
+.db-say{margin:18px 0 0;padding:12px 14px;border-radius:12px;background:var(--soft);font-size:14.5px;color:var(--muted)}
+.db-say b{color:var(--ink);font-size:17px;font-weight:600}
+/* the team */
+.db-t{width:100%;border-collapse:collapse;font-size:14.5px}
+.db-t th{font-weight:500;color:var(--muted);font-size:13px;text-align:left;padding:0 10px 10px;border-bottom:1px solid var(--line2)}
+.db-t td{padding:12px 10px;border-bottom:1px solid var(--line2);vertical-align:baseline}
+.db-t tr:last-child td{border-bottom:0}
+.db-t .r{text-align:right}
+.db-t td b{font-weight:600}.db-t td small{display:block;color:var(--muted);font-size:12.5px}
+.db-t td.num,.db-t td b.num{font-variant-numeric:tabular-nums}
+.db-t tbody tr{cursor:pointer;transition:background .15s}.db-t tbody tr:hover td{background:var(--soft)}
+.db-ago{color:var(--muted);font-size:13.5px}
+.db-pcards{display:none;gap:10px}
+.db-pc{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:14px;border-radius:14px;background:var(--soft);cursor:pointer}
+.db-pcn{font-size:15.5px;font-weight:600}
+.db-pcg{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.db-pcg small{display:block;color:var(--muted);font-size:12.5px}.db-pcg b{font-size:16px;font-weight:600}
+/* lost, call back */
+.db-lr{display:grid;grid-template-columns:minmax(110px,1fr) 2fr 28px;gap:12px;align-items:center;padding:7px 0;font-size:14.5px}
+.db-lr .db-track i{background:var(--faint)}.db-lr b{text-align:right;font-weight:600}
+.db-wr{all:unset;box-sizing:border-box;width:calc(100% + 16px);margin:0 -8px;display:flex;justify-content:space-between;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:background .15s}
+.db-wr:hover,.db-wr:focus-visible{background:var(--soft)}
+.db-wm,.db-wv{display:flex;flex-direction:column;gap:2px;min-width:0}.db-wv{text-align:right;flex:none}
+.db-wm b{font-weight:500;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.db-wv b{font-weight:600;font-size:15px}
+.db-wr small{color:var(--muted);font-size:13px}
+.db-tip{position:fixed;z-index:60;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;background:var(--ink);color:var(--paper);font:500 13px/1.35 var(--body);box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:240px}
+.db-tip b{font-size:14px;font-weight:600}.db-tip span{opacity:.8}
+/* iPad: two cards a row; phone: one */
+@media (max-width:1023px){.db-bento{grid-auto-flow:dense}.db-fun,.db-lost{grid-column:span 6}.db-hero,.db-tiles,.db-mix,.db-who,.db-trend,.db-wait{grid-column:span 12}.db-big{font-size:56px}}
+@media (max-width:720px){
+  .dbx{gap:14px}.db-bento{gap:12px}.db-bento > *{grid-column:1/-1 !important}
+  .db-card{padding:18px;border-radius:16px}.db-tile{padding:14px 16px}.db-tiles{gap:12px}
+  .db-big{font-size:46px}.db-num{font-size:24px}.db-top h2{font-size:26px}
+  .db-ctl{display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}.db-ctl .db-seg{width:100%;box-sizing:border-box}.db-ctl .db-seg button{flex:1 0 auto}
+  .db-tree{height:240px}.db-cols{height:190px;padding-left:40px}
+  .db-bar{grid-template-columns:18px minmax(70px,1fr) 1.2fr auto;gap:10px}
+  .db-t{display:none}.db-pcards{display:grid}
+}
 .bar-r{display:grid;grid-template-columns:minmax(120px,1fr) 2fr 30px;gap:10px;align-items:center;padding:6px 0;font-size:14px}
 .bar-r b{font:600 16px var(--num);text-align:right}
 .hbar{height:12px;background:var(--line2);border-radius:4px;overflow:hidden}
@@ -5839,7 +5973,9 @@ function inPeriod(iso){
 function renderDash(){
   const el = $('#dash-body'); if (!el) return;
   if (CL.state !== 'ready') { el.innerHTML = '<div class="cl-wrap"><div class="clist cl-empty">Loading…</div></div>'; return; }
-  const mine = PF && !IS_ADMIN;   // 17 Oct: a sales executive's Home = their own numbers + today's to-dos (the rules give them only their clients)
+  const mine = PF && !IS_ADMIN;
+  if (!mine) return renderAdminDash(el);   // 25 Oct: the admin's dashboard is its own page (dash.js); the sales executive's Home below is unchanged
+  // 17 Oct: a sales executive's Home = their own numbers + today's to-dos (the rules give them only their clients)
   const per = new Map(), row = e => { if (!per.has(e)) per.set(e, {e, n: 0, q: 0, qv: 0, w: 0, wv: 0, l: 0, open: 0, ov: 0, last: ''}); return per.get(e); };
   for (const [e, p] of PEOPLE) if (sells(p)) row(e);
   const why = new Map(), follow = [], wk = Date.now() - 7 * 864e5;
@@ -8764,6 +8900,245 @@ document.addEventListener('click', e => {
   if (b.dataset.msv === 'view') msShowVersion(c, x); else msDownloadVersion(x, b);
 });
 
+// ================= Admin dashboard (Purvi, 25 Oct 2026): "my father wants to start looking at a dashboard … he will mostly looking
+// through a phone/ipad … he has absolutely no tech experience … two types of dashboards - one is overall and the other one is per sales
+// person … product mix … a box which had multiple different sized rectangles inside it". The sales executive's Home (renderDash, mine)
+// is unchanged. Every number reads CL.list (real clients only: practice clients never count). Each card asks a plain question as its
+// title. What we sold comes from the quotation version the client accepted (qversions/<cid>_v<n>: snap.t.sub, the amount of every
+// section), read once per version and kept in DBV; the client cards hold only the total.
+let dashWho = '';   // '' = the whole team, else a salesperson's email
+let dashMix = 'won';   // What we sold: 'won' (sold) or 'quoted'
+const DBV = new Map();   // qversions id → its section amounts (t.sub), or null when it can't be read
+const DB_PROD = [   // fixed order = fixed colour: a product keeps its colour whatever its rank
+  ['cur', 'Curtains', ['fabric', 'stitch', 'hw']], ['bli', 'Blinds', ['blinds']], ['wal', 'Wallpaper', ['wallpaper']],
+  ['uph', 'Upholstery', ['uph', 'foam']], ['flo', 'Flooring', ['flooring']], ['mat', 'Mattress', ['mattress', 'hcp']],
+  ['bed', 'Bed & bath', ['bedbath']], ['oth', 'Other', ['other']]];
+const DB_PART = [['fabric', 'Fabric'], ['stitch', 'Stitching'], ['hw', 'Tracks & fittings']];
+const rsK = v => { v = Math.round(+v || 0); const a = Math.abs(v), f = (n, u) => '₹' + (+(v / n).toFixed(v / n >= 10 || Number.isInteger(v / n) ? 0 : 1)).toLocaleString('en-IN') + u;
+  return a >= 1e7 ? f(1e7, ' Cr') : a >= 1e5 ? f(1e5, 'L') : a >= 1e3 ? f(1e3, 'k') : '₹' + v; };
+const firstName = e => String(personName(e) || 'Not assigned').split(/\s+/)[0];
+
+// ---- periods: this month · last month · this year · all time, and the one before it (for "more than last month")
+function dbRange(p, back){
+  const n = new Date(), y = n.getFullYear(), m = n.getMonth();
+  if (p === 'all') return back ? null : [new Date(0), new Date(8.64e15)];
+  if (p === 'year') return [new Date(y - back, 0, 1), new Date(y - back + 1, 0, 1)];
+  const k = p === 'last' ? 1 + back : back;
+  return [new Date(y, m - k, 1), new Date(y, m - k + 1, 1)];
+}
+const inR = (iso, r) => { if (!iso || !r) return false; const d = new Date(iso); return d >= r[0] && d < r[1]; };
+const DB_PREV = {month: 'last month', last: 'the month before', year: 'last year'};
+const DB_WHEN = {month: 'this month', last: 'last month', year: 'this year', all: 'so far'};
+function dbBuckets(p, r){   // the columns of "Are sales going up?": weeks of a month, months of a year
+  const B = [], mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  if (p === 'month' || p === 'last') {
+    const s = r[0], last = new Date(s.getFullYear(), s.getMonth() + 1, 0).getDate();
+    for (let d = 1; d <= last; d += 7) { const e = Math.min(d + 6, last); B.push({lab: `${d}–${e}`, sub: mon[s.getMonth()], s: new Date(s.getFullYear(), s.getMonth(), d), e: new Date(s.getFullYear(), s.getMonth(), e + 1)}); }
+  } else {
+    const now = new Date(); let s, e;
+    if (p === 'year') { s = new Date(r[0]); e = new Date(now.getFullYear(), now.getMonth() + 1, 1); }
+    else { const t = CL.list.map(c => c.created).filter(Boolean).sort()[0]; const f = t ? new Date(t) : now; s = new Date(f.getFullYear(), f.getMonth(), 1); e = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      if ((e.getFullYear() - s.getFullYear()) * 12 + e.getMonth() - s.getMonth() > 12) s = new Date(e.getFullYear(), e.getMonth() - 12, 1); }
+    for (let d = new Date(s); d < e; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) B.push({lab: mon[d.getMonth()], sub: String(d.getFullYear()), s: d, e: new Date(d.getFullYear(), d.getMonth() + 1, 1)});
+  }
+  return B;
+}
+
+// ---- what we sold: the accepted (or latest) version's section amounts, scaled to the amount the client agreed
+function dbNeed(ids){
+  const miss = ids.filter(id => !DBV.has(id)); if (!miss.length) return;
+  miss.forEach(id => DBV.set(id, undefined));
+  Promise.all(miss.map(id => db.doc('qversions/' + id).get().then(d => { const x = d.exists ? d.data() : null; DBV.set(id, x && x.snap && x.snap.t && x.snap.t.sub || null); }, () => DBV.set(id, null))))
+    .then(() => { if (current === 'dash') renderDash(); });
+}
+function dbMix(items){   // items: [{vid, amt}] → {groups: [[key, name, amt]], parts: {fabric, stitch, hw}, total, wait, miss}
+  const g = Object.fromEntries(DB_PROD.map(p => [p[0], 0])), parts = {fabric: 0, stitch: 0, hw: 0};
+  let wait = 0, miss = 0, total = 0;
+  for (const it of items) {
+    const s = DBV.get(it.vid);
+    if (s === undefined) { wait++; continue; }
+    const sum = s ? Object.values(s).reduce((a, b) => a + (+b || 0), 0) : 0;
+    if (!sum) { miss++; continue; }
+    const f = it.amt / sum;
+    for (const [k, v] of Object.entries(s)) { if (!v) continue; const p = DB_PROD.find(x => x[2].includes(k)) || DB_PROD[DB_PROD.length - 1]; g[p[0]] += v * f; if (k in parts) parts[k] += v * f; }
+    total += it.amt;
+  }
+  return {groups: DB_PROD.map(p => [p[0], p[1], g[p[0]]]).filter(x => x[2] > 0.5).sort((a, b) => b[2] - a[2]), parts, total, wait, miss};
+}
+function squarify(items, x, y, w, h){   // items sorted biggest first: [{v, …}] → each gets {x, y, w, h}
+  const out = [], tot = items.reduce((a, b) => a + b.v, 0); if (!tot) return out;
+  const scale = w * h / tot; let rest = items.map(i => Object.assign({}, i, {a: i.v * scale}));
+  const worst = (row, s) => { const sum = row.reduce((a, b) => a + b.a, 0), mx = Math.max(...row.map(r => r.a)), mn = Math.min(...row.map(r => r.a)); return Math.max(s * s * mx / (sum * sum), sum * sum / (s * s * mn)); };
+  while (rest.length) {
+    const side = Math.min(w, h); let row = [rest[0]], i = 1;
+    while (i < rest.length && worst(row.concat(rest[i]), side) <= worst(row, side)) row.push(rest[i++]);
+    const sum = row.reduce((a, b) => a + b.a, 0);
+    if (w >= h) { const rw = sum / h; let yy = y; row.forEach(r => { const rh = r.a / rw; out.push(Object.assign(r, {x, y: yy, w: rw, h: rh})); yy += rh; }); x += rw; w -= rw; }
+    else { const rh = sum / w; let xx = x; row.forEach(r => { const rw = r.a / rh; out.push(Object.assign(r, {x: xx, y, w: rw, h: rh})); xx += rw; }); y += rh; h -= rh; }
+    rest = rest.slice(i);
+  }
+  return out;
+}
+function layTree(box){   // drawn after the card is on the screen (it needs its real size), and again when the screen turns
+  if (!box || !box.isConnected) return;
+  lay(box, box.clientWidth, box.clientHeight);
+}
+function lay(box, W, H){   // one level: products; Curtains holds its own boxes (fabric, stitching, tracks) in shades of its colour
+  const cells = [...box.children].filter(c => c.classList.contains('db-cell'));
+  const R = squarify(cells.map(c => ({v: +c.dataset.v, c})), 0, 0, W, H);
+  for (const r of R) {
+    const g = 1;   // half of the 2px surface gap between boxes
+    Object.assign(r.c.style, {left: r.x + g + 'px', top: r.y + g + 'px', width: Math.max(0, r.w - 2 * g) + 'px', height: Math.max(0, r.h - 2 * g) + 'px'});
+    r.c.classList.toggle('roomy', r.w >= 110 && r.h >= 64); r.c.classList.toggle('tiny', r.w < 64 || r.h < 40);
+    if (r.c.classList.contains('db-nest')) { lay(r.c, Math.max(0, r.w - 2), Math.max(0, r.h - 2)); continue; }
+    // a label that doesn't fit is hidden, never cut: the list under the boxes and the tap-for-details carry it
+    r.c.querySelectorAll('b, span, small').forEach(t => { t.style.display = ''; });
+    r.c.querySelectorAll('b, span, small').forEach(t => { if (t.scrollWidth > r.c.clientWidth - 20 || r.c.scrollHeight > r.c.clientHeight + 1) t.style.display = 'none'; });
+  }
+}
+let dbRO = null;
+
+// ---- the page
+function renderAdminDash(el){
+  const R = dbRange(dashP, 0), P = dbRange(dashP, 1), who = dashWho;
+  const sellers = new Set(); for (const [e, p] of PEOPLE) if (sells(p)) sellers.add(e);
+  CL.list.forEach(c => sellers.add(c.ownerEmail || ''));
+  if (who && !sellers.has(who)) dashWho = '';
+  const mineC = c => !dashWho || (c.ownerEmail || '') === dashWho, L = CL.list.filter(mineC);
+  const per = new Map(), row = e => { if (!per.has(e)) per.set(e, {e, n: 0, q: 0, qv: 0, w: 0, wv: 0, l: 0, open: 0, ov: 0, last: ''}); return per.get(e); };
+  [...sellers].forEach(row);
+  let W = 0, WV = 0, PWV = 0, Q = 0, QV = 0, Lo = 0, O = 0, OV = 0, N = 0, NQ = 0, NW = 0;
+  const why = new Map(), follow = [], wk = Date.now() - 7 * 864e5, won = [], quoted = [], buckets = dbBuckets(dashP, R);
+  buckets.forEach(b => b.v = 0);
+  for (const c of CL.list) {
+    const r = row(c.ownerEmail || ''), s = statusOf(c), o = c.outcome || {}, t = c.edited || c.at || c.created || '';
+    if (t > r.last) r.last = t;
+    if (inR(c.created, R)) r.n++;
+    if (c.latest && inR(c.at, R)) { r.q++; r.qv += c.total || 0; }
+    if (s === 'won' && inR(o.at, R)) { r.w++; r.wv += o.total || 0; }
+    if (s === 'lost' && inR(o.at, R)) r.l++;
+    if (s === 'quoted') { r.open++; r.ov += c.total || 0; }
+    if (!mineC(c)) continue;
+    if (inR(c.created, R)) { N++; if (c.latest) NQ++; if (s === 'won') NW++; }
+    if (c.latest && inR(c.at, R)) { Q++; QV += c.total || 0; quoted.push({vid: c.id + '_v' + c.latest, amt: c.total || 0}); }
+    if (s === 'won' && inR(o.at, R)) { W++; WV += o.total || 0; won.push({vid: c.id + '_v' + (o.n || c.latest), amt: o.total || 0}); const b = buckets.find(b => new Date(o.at) >= b.s && new Date(o.at) < b.e); if (b) b.v += o.total || 0; }
+    if (s === 'won' && inR(o.at, P)) PWV += o.total || 0;
+    if (s === 'lost' && inR(o.at, R)) { Lo++; why.set(o.reason || 'Other', (why.get(o.reason || 'Other') || 0) + 1); }
+    if (s === 'quoted') { O++; OV += c.total || 0; if (new Date(t) < wk) follow.push(c); }
+  }
+  const items = dashMix === 'won' ? won : quoted; dbNeed(items.map(i => i.vid));
+  const mix = dbMix(items);
+  const team = [...per.values()].filter(r => r.e || r.n || r.q || r.w || r.open).sort((a, b) => b.wv - a.wv || b.qv - a.qv || personName(a.e).localeCompare(personName(b.e)));
+  follow.sort((a, b) => String(a.edited || a.at).localeCompare(String(b.edited || b.at)));
+  const whoName = dashWho ? personName(dashWho) || dashWho : '';
+  const when = DB_WHEN[dashP];
+
+  // hero: how much did we sell
+  const diff = WV - PWV, prev = DB_PREV[dashP];
+  const delta = !prev ? '' : !WV && !PWV ? '' : !PWV ? `<p class="db-delta up"><span>Nothing was sold ${prev}</span></p>` : diff === 0 ? `<p class="db-delta"><span>Same as ${prev}</span></p>`
+    : `<p class="db-delta ${diff > 0 ? 'up' : 'down'}"><span class="db-arr" aria-hidden="true">${diff > 0 ? '↑' : '↓'}</span><b>${rs(Math.abs(diff))}</b> <span>${diff > 0 ? 'more than ' + prev : 'less than ' + prev}</span></p>`;
+  const hero = `<section class="db-card db-hero"><p class="db-q">${dashWho ? `How much did ${esc(firstName(dashWho))} sell?` : 'How much did we sell?'}</p>
+    <p class="db-big num">${rs(WV)}</p><p class="db-sub"><b>${W}</b> <span>${W === 1 ? 'client said yes' : 'clients said yes'}</span> · <span>${esc(when)}</span></p>${delta}
+    ${W ? `<p class="db-sub"><span>Average sale</span> <b>${rs(WV / W)}</b></p>` : ''}</section>`;
+  // the four small numbers
+  const decided = W + Lo, rate = decided ? Math.round(W / decided * 100) : null;
+  const tile = (q, big, sub, extra) => `<div class="db-card db-tile"><p class="db-q">${q}</p><p class="db-num num">${big}</p><p class="db-sub">${sub}</p>${extra || ''}</div>`;
+  const tiles = `<div class="db-tiles">
+    ${tile('Quotations sent', rs(QV), `<b>${Q}</b> <span>${Q === 1 ? 'client' : 'clients'}</span>`)}
+    ${tile('Waiting for an answer', rs(OV), `<b>${O}</b> <span>${O === 1 ? 'client · any date' : 'clients · any date'}</span>`)}
+    ${tile('New enquiries', String(N), `<span>${esc(when)}</span>`)}
+    ${tile('Win rate', rate === null ? '—' : rate + '%', decided ? `<b>${W}</b> <span>won</span> · <b>${Lo}</b> <span>lost</span>` : '<span>Nobody decided yet</span>',
+      decided ? `<div class="db-meter" role="img" aria-label="${W} won, ${Lo} lost"><i style="width:${rate}%"></i></div>` : '')}</div>`;
+
+  // who sold the most (team) / where does this person stand (one person: the same bars, them in colour, the rest grey)
+  const mx = Math.max(1, ...team.map(r => r.wv));
+  const bars = `<section class="db-card db-who"><div class="db-h"><p class="db-q">${dashWho ? `Where does ${esc(firstName(dashWho))} stand?` : 'Who sold the most?'}</p><p class="db-hint">${dashWho ? 'Sold ' + esc(when) + ', next to the rest of the team' : 'Sold ' + esc(when) + '. Tap a name to see only their numbers.'}</p></div>
+    ${team.length ? team.map((r, i) => `<button class="db-bar${dashWho && r.e !== dashWho ? ' dim' : ''}${dashWho && r.e === dashWho ? ' me' : ''}" data-who="${esc(r.e)}" data-tip="${esc(personName(r.e) || 'Not assigned')}\n${rs(r.wv)} sold · ${r.w} ${r.w === 1 ? 'client' : 'clients'}\n${rs(r.qv)} quoted">
+      <span class="db-rank">${i + 1}</span><span class="db-bn">${esc(personName(r.e) || 'Not assigned')}</span>
+      <span class="db-track">${r.wv ? `<i style="width:${Math.max(2, r.wv / mx * 100)}%"></i>` : ''}</span>
+      <span class="db-bv"><b>${r.wv ? rs(r.wv) : '—'}</b><small>${r.w ? r.w + (r.w === 1 ? ' client' : ' clients') : 'Nothing yet'}</small></span></button>`).join('')
+      : '<p class="db-empty">No salespeople yet. Add them under People.</p>'}</section>`;
+
+  // what we sold: the box chart
+  const clr = k => `var(--p-${k})`;
+  const mixTot = mix.groups.reduce((a, b) => a + b[2], 0);
+  const tree = `<section class="db-card db-mix"><div class="db-h"><div><p class="db-q">What did we sell?</p><p class="db-hint">Each box is one product. The bigger the box, the bigger its share.</p></div>
+      <div class="db-seg sm" role="group" aria-label="Sold or quoted"><button data-mix="won" aria-pressed="${dashMix === 'won'}">Sold</button><button data-mix="quoted" aria-pressed="${dashMix === 'quoted'}">Quoted</button></div></div>
+    ${mixTot ? `<div class="db-tree" role="img" aria-label="Share of each product">${mix.groups.map(([k, n, v]) => {
+        const pc = Math.round(v / mixTot * 100);
+        const parts = k === 'cur' ? DB_PART.filter(([q]) => mix.parts[q] > 0.5) : [];
+        if (parts.length > 1) return `<div class="db-cell db-nest" data-v="${v}">${parts.map(([q, qn]) => { const pv = mix.parts[q], pp = Math.round(pv / mixTot * 100);
+          return `<div class="db-cell db-part p-${q}" data-v="${pv}" tabindex="0" data-tip="${esc(qn === 'Fabric' ? 'Curtain fabric' : qn)}\n${rs(pv)} · ${pp}% of everything"><b>${esc(qn === 'Fabric' ? 'Curtain fabric' : qn)}</b><span class="num">${pp}%</span><small>${rsK(pv)}</small></div>`; }).join('')}</div>`;
+        return `<div class="db-cell${k === 'wal' || k === 'uph' ? ' ink' : ''}" style="background:${clr(k)}" data-v="${v}" tabindex="0" data-tip="${esc(n)}\n${rs(v)} · ${pc}%"><b>${esc(n)}</b><span class="num">${pc}%</span><small>${rsK(v)}</small></div>`; }).join('')}</div>
+      <div class="db-legend">${mix.groups.map(([k, n, v]) => { const sub = k === 'cur' ? DB_PART.filter(([q]) => mix.parts[q] > 0.5) : [];
+        return `<div class="db-lrow"><i style="background:${sub.length > 1 ? 'none' : clr(k)}"></i><span class="db-ln">${esc(n)}</span><b>${rs(v)}</b><span class="db-lp">${Math.round(v / mixTot * 100)}%</span></div>`
+          + (sub.length > 1 ? sub.map(([q, qn]) => `<div class="db-lrow sub"><i class="p-${q}"></i><span class="db-ln">${esc(qn)}</span><span>${rs(mix.parts[q])}</span><span class="db-lp">${Math.round(mix.parts[q] / mixTot * 100)}%</span></div>`).join('') : ''); }).join('')}</div>`
+      : `<p class="db-empty">${mix.wait ? 'Working it out…' : dashMix === 'won' ? 'Nothing sold ' + esc(when) + ' yet.' : 'No quotations sent ' + esc(when) + '.'}</p>`}
+    ${mix.miss ? `<p class="db-hint">${mix.miss} ${mix.miss === 1 ? 'sale is' : 'sales are'} not in the boxes: its quotation could not be opened.</p>` : ''}</section>`;
+
+  // are sales going up: columns
+  const bmx = Math.max(...buckets.map(b => b.v)), top = dbNice(bmx), nowB = buckets.findIndex(b => new Date() >= b.s && new Date() < b.e), hiB = bmx ? buckets.findIndex(b => b.v === bmx) : -1;
+  const trend = `<section class="db-card db-trend"><div class="db-h"><p class="db-q">Are sales going up?</p><p class="db-hint">${dashP === 'month' || dashP === 'last' ? 'Sold each week (dates of the month)' : 'Sold each month'}</p></div>
+    ${bmx ? `<div class="db-cols" style="--n:${buckets.length}">
+      <div class="db-grid" aria-hidden="true">${[1, .5, 0].map(f => `<div><span>${f ? rsK(top * f) : '₹0'}</span></div>`).join('')}</div>
+      ${buckets.map((b, i) => `<div class="db-col${i === nowB ? ' now' : ''}" tabindex="0" data-tip="${esc(b.lab)} ${esc(b.sub)}\n${rs(b.v)} sold"><div class="db-cbar">${b.v ? `${i === hiB || i === nowB ? `<em class="num">${rsK(b.v)}</em>` : ''}<i style="height:${b.v / top * 100}%"></i>` : ''}</div><span class="db-cl">${esc(b.lab)}</span></div>`).join('')}</div>`
+      : `<p class="db-empty">Nothing sold ${esc(when)} yet. The columns fill in as clients say yes.</p>`}</section>`;
+
+  // from enquiry to sale
+  const fun = [['Enquiries', N], ['Got a quotation', NQ], ['Said yes', NW]];
+  const funnel = `<section class="db-card db-fun"><div class="db-h"><p class="db-q">How many enquiries became sales?</p><p class="db-hint">Enquiries that came in ${esc(when)}, and how far they have got</p></div>
+    ${N ? fun.map(([n, v], i) => `<div class="db-step" data-tip="${esc(n)}\n${v} of ${N} enquiries"><div class="db-sl"><span>${n}</span><b class="num">${v}</b>${i ? `<small>${Math.round(v / N * 100)}%</small>` : ''}</div><div class="db-sbar"><i style="width:${Math.max(v ? 3 : 0, v / N * 100)}%;opacity:${[1, .72, .5][i]}"></i></div></div>`).join('')
+      + `<p class="db-say">${NW ? `<b>${Math.round(N / NW * 10) / 10}</b> <span>enquiries for every sale</span>` : '<span>No sale from these enquiries yet</span>'}</p>`
+      : `<p class="db-empty">No enquiries ${esc(when)}.</p>`}</section>`;
+
+  // the team, side by side (laptop: a table; phone: one card each)
+  const rt = (w, l) => w + l ? Math.round(w / (w + l) * 100) + '%' : '—';
+  const table = dashWho ? '' : `<section class="db-card db-team"><div class="db-h"><p class="db-q">The team, side by side</p><p class="db-hint">${esc(when[0].toUpperCase() + when.slice(1))}. Waiting = quotation sent, no answer yet (any date). Tap a person to see only their numbers.</p></div>
+    <table class="db-t"><thead><tr><th>Salesperson</th><th class="r">Enquiries</th><th class="r">Quotations sent</th><th class="r">Sold</th><th class="r">Win rate</th><th class="r">Waiting</th><th>Last active</th></tr></thead><tbody>
+    ${team.map(r => `<tr data-who="${esc(r.e)}"><td><b>${esc(personName(r.e) || 'Not assigned')}</b></td><td class="r num">${r.n}</td><td class="r"><b class="num">${r.q}</b><small>${rs(r.qv)}</small></td><td class="r"><b class="num">${r.w}</b><small>${rs(r.wv)}</small></td><td class="r num">${rt(r.w, r.l)}</td><td class="r"><b class="num">${r.open}</b><small>${rs(r.ov)}</small></td><td class="db-ago">${esc(agoTxt(r.last)) || '—'}</td></tr>`).join('')}</tbody></table>
+    <div class="db-pcards">${team.map(r => `<button class="db-pc" data-who="${esc(r.e)}"><b class="db-pcn">${esc(personName(r.e) || 'Not assigned')}</b><span class="db-ago">${esc(agoTxt(r.last)) || '—'}</span>
+      <span class="db-pcg"><span><small>Sold</small><b>${rs(r.wv)}</b></span><span><small>Quotations sent</small><b>${r.q}</b></span><span><small>Enquiries</small><b>${r.n}</b></span><span><small>Win rate</small><b>${rt(r.w, r.l)}</b></span></span></button>`).join('')}</div></section>`;
+
+  const maxWhy = Math.max(1, ...why.values());
+  const lost = `<section class="db-card db-lost"><div class="db-h"><p class="db-q">Why did we lose clients?</p><p class="db-hint">Clients marked Lost ${esc(when)}</p></div>
+    ${why.size ? [...why].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="db-lr"><span>${esc(k)}</span><span class="db-track"><i style="width:${n / maxWhy * 100}%"></i></span><b class="num">${n}</b></div>`).join('') : '<p class="db-empty">Nothing lost in this period.</p>'}</section>`;
+  const wait = `<section class="db-card db-wait"><div class="db-h"><p class="db-q">Who needs a call back?</p><p class="db-hint">Quotation sent, nothing has changed for 7 days or more</p></div>
+    ${follow.length ? follow.slice(0, 8).map(c => `<button class="db-wr" data-cid="${esc(c.id)}"><span class="db-wm"><b>${esc(c.name || 'No name')}</b><small>${esc(personName(c.ownerEmail) || c.exec || 'Not assigned')}</small></span><span class="db-wv"><b>${rs(c.total)}</b><small>${esc(agoTxt(c.edited || c.at))}</small></span></button>`).join('')
+      + (follow.length > 8 ? `<p class="db-hint">and ${follow.length - 8} more</p>` : '') : '<p class="db-empty">Nobody waiting. Good.</p>'}</section>`;
+
+  const names = [...sellers].filter(Boolean).sort((a, b) => personName(a).localeCompare(personName(b)));
+  el.innerHTML = `<div class="dbx">
+    <header class="db-top"><h2>${dashWho ? esc(whoName) : 'Dashboard'}</h2>${dashWho ? `<button class="n-btn sm" data-clients="${esc(dashWho)}">See their clients</button>` : ''}</header>
+    <div class="db-ctl">
+      <div class="db-seg db-people" role="group" aria-label="Whose numbers"><button data-who="" aria-pressed="${!dashWho}">Whole team</button>${names.map(e => `<button data-who="${esc(e)}" aria-pressed="${dashWho === e}">${esc(firstName(e))}</button>`).join('')}</div>
+      <div class="db-seg" role="group" aria-label="Period">${PERIODS.map(([k, n]) => `<button data-p="${k}" aria-pressed="${dashP === k}">${n}</button>`).join('')}</div>
+    </div>
+    <div class="db-bento">${hero}${tiles}${tree}${bars}${trend}${funnel}${table}${lost}${wait}</div></div>`;
+  const box = el.querySelector('.db-tree');
+  if (box) { layTree(box); if (window.ResizeObserver) { if (dbRO) dbRO.disconnect(); dbRO = new ResizeObserver(() => layTree(box)); dbRO.observe(box); } }
+}
+function dbNice(v){ if (!v) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
+
+// one tooltip for every chart: hover on a laptop, tap on a phone (every value is also written on the card or in the list)
+(function(){
+  let tip = null;
+  const show = t => { const s = t.dataset.tip; if (!s) return; if (!tip) { tip = document.createElement('div'); tip.className = 'db-tip'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
+    tip.textContent = ''; s.split('\n').forEach((l, i) => { const d = document.createElement(i ? 'span' : 'b'); d.textContent = l; tip.appendChild(d); });
+    const r = t.getBoundingClientRect(); tip.hidden = false; const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px'; tip.style.top = (r.top - h - 8 < 8 ? r.bottom + 8 : r.top - h - 8) + 'px'; };
+  const hide = () => { if (tip) tip.hidden = true; };
+  document.addEventListener('pointerover', e => { const t = e.target.closest && e.target.closest('.dbx [data-tip]'); if (t && e.pointerType === 'mouse') show(t); else if (e.pointerType === 'mouse') hide(); });
+  document.addEventListener('focusin', e => { const t = e.target.closest && e.target.closest('.dbx [data-tip]'); t ? show(t) : hide(); });
+  document.addEventListener('pointerdown', e => { const t = e.target.closest && e.target.closest('.dbx .db-cell, .dbx .db-col, .dbx .db-step'); if (t && e.pointerType !== 'mouse') show(t); else if (!t) hide(); });
+  addEventListener('scroll', hide, {passive: true});
+})();
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dbx')) return;
+  const m = e.target.closest('[data-mix]'); if (m) { dashMix = m.dataset.mix; renderDash(); return; }
+  const c = e.target.closest('[data-clients]'); if (c) { CF = Object.assign({}, CF0, {exec: c.dataset.clients}); go('clients'); return; }
+  const w = e.target.closest('[data-who]'); if (w) { e.stopPropagation(); dashWho = w.dataset.who; renderDash(); scrollTo({top: 0, behavior: 'smooth'}); }
+}, true);
+
 // ================= हिंदी (Purvi, 21 Oct 2026): "one more toggle button for english hindi", for the sales team and the people who
 // measure, install and deliver. Spoken Hindi, common English words kept (क्लाइंट, कोटेशन, पर्दे). The quotation PDF, Settings,
 // Prices and People stay English. How: the app keeps drawing its screens in English; when हिंदी is on, a watcher swaps every text,
@@ -8843,6 +9218,21 @@ const HI = {
   'Nothing to do here. Good.': 'यहाँ कोई काम नहीं। बढ़िया।', 'Priority': 'ज़रूरी', 'Sections': 'हिस्से', 'Type': 'किस तरह का', 'Added': 'जोड़ा',
   'Back to To do': 'वापस "करना है" में', 'Quotation': 'कोटेशन', 'Visit': 'विज़िट', 'Revise': 'कोटेशन बदलना', 'Follow-up': 'फ़ॉलो-अप', 'Not done yet': 'अभी नहीं हुआ', 'Measurement sheet': 'नाप शीट',
   'just now': 'अभी', 'Light or dark screen': 'लाइट या डार्क स्क्रीन', 'Yesterday': 'कल (बीता)', 'No date': 'तारीख़ नहीं',
+  // admin dashboard (25 Oct, dash.js): every card asks a plain question
+  'How much did we sell?': 'हमने कितना बेचा?', 'client said yes': 'क्लाइंट ने हाँ कहा', 'clients said yes': 'क्लाइंट ने हाँ कहा', 'Average sale': 'औसत बिक्री',
+  'Waiting for an answer': 'जवाब का इंतज़ार', 'client': 'क्लाइंट', 'clients': 'क्लाइंट',
+  'client · any date': 'क्लाइंट · कोई भी तारीख़', 'clients · any date': 'क्लाइंट · कोई भी तारीख़', 'New enquiries': 'नई इन्क्वायरी',
+  'won': 'मिले', 'lost': 'नहीं मिले', 'Nobody decided yet': 'अभी किसी ने फ़ैसला नहीं किया', 'Who sold the most?': 'सबसे ज़्यादा किसने बेचा?',
+  'Nothing yet': 'अभी कुछ नहीं', 'What did we sell?': 'हमने क्या बेचा?', 'Each box is one product. The bigger the box, the bigger its share.': 'हर डिब्बा एक प्रोडक्ट है। डिब्बा जितना बड़ा, उसका हिस्सा उतना बड़ा।',
+  'Sold': 'बिका', 'Fabric': 'कपड़ा', 'Stitching': 'सिलाई', 'Tracks & fittings': 'ट्रैक और फ़िटिंग',
+  'Curtain fabric': 'पर्दे का कपड़ा', 'Working it out…': 'हिसाब लग रहा है…', 'Are sales going up?': 'बिक्री बढ़ रही है?',
+  'Sold each week (dates of the month)': 'हर हफ़्ते की बिक्री (महीने की तारीख़ें)', 'Sold each month': 'हर महीने की बिक्री',
+  'How many enquiries became sales?': 'कितनी इन्क्वायरी बिक्री बनीं?', 'Enquiries': 'इन्क्वायरी', 'Got a quotation': 'कोटेशन गया', 'Said yes': 'हाँ कहा',
+  'enquiries for every sale': 'इन्क्वायरी पर एक बिक्री', 'No sale from these enquiries yet': 'इन इन्क्वायरी से अभी कोई बिक्री नहीं',
+  'The team, side by side': 'पूरी टीम, साथ-साथ', 'Salesperson': 'सेल्समैन', 'Waiting': 'इंतज़ार', 'Why did we lose clients?': 'क्लाइंट क्यों नहीं मिले?',
+  'Who needs a call back?': 'किसे दोबारा फ़ोन करना है?', 'Quotation sent, nothing has changed for 7 days or more': 'कोटेशन गया, 7 या ज़्यादा दिन से कुछ नहीं हुआ',
+  'this month': 'इस महीने', 'last month': 'पिछले महीने', 'this year': 'इस साल', 'so far': 'अब तक',
+  'Whole team': 'पूरी टीम', 'See their clients': 'इनके क्लाइंट देखें', 'Not assigned': 'किसी को नहीं दिया',
 };
 // a few lines with a number or a name inside
 const HI_RE = [
@@ -8859,6 +9249,23 @@ function hiTime(t, p){ const h = +t.split(':')[0]; return `${p === 'am' ? 'स�
 const hiWhen = s => s.replace(/\b(Today|Tomorrow|Yesterday)\b/g, w => HI[w]).replace(/(\d{1,2}(?::\d\d)?) (am|pm)\b/g, (m, t, p) => hiTime(t, p));
 HI_RE.push([/^(?:(?:Today|Tomorrow|Yesterday|\w{3}, \d{1,2} \w{3})(?: – (?:Today|Tomorrow|\w{3}, \d{1,2} \w{3}))?)(?: · .+)?$/, m => hiWhen(m)],
   [/^Next step: (.+)$/, (m, d) => `अगला काम: ${hiWhen(d)}`]);
+// dashboard lines with a period or a name inside
+const HI_P = {'this month': 'इस महीने', 'last month': 'पिछले महीने', 'this year': 'इस साल', 'so far': 'अब तक', 'the month before': 'उससे पिछले महीने'};
+const HI_PR = '(this month|last month|this year|so far|the month before)';
+HI_RE.push(
+  [/^How much did (.+) sell\?$/, (m, n) => `${n} ने कितना बेचा?`], [/^Where does (.+) stand\?$/, (m, n) => `${n} टीम में कहाँ हैं?`],
+  [new RegExp(`^Sold ${HI_PR}\\. Tap a name to see only their numbers\\.$`), (m, p) => `${HI_P[p]} की बिक्री। किसी नाम पर टैप करें, सिर्फ़ उनके नंबर दिखेंगे।`],
+  [new RegExp(`^Sold ${HI_PR}, next to the rest of the team$`), (m, p) => `${HI_P[p]} की बिक्री, बाकी टीम के साथ`],
+  [new RegExp(`^(more|less) than ${HI_PR}$`), (m, a, p) => `${HI_P[p]} से ${a === 'more' ? 'ज़्यादा' : 'कम'}`],
+  [new RegExp(`^Same as ${HI_PR}$`), (m, p) => `${HI_P[p]} जितना`], [new RegExp(`^Nothing was sold ${HI_PR}$`), (m, p) => `${HI_P[p]} कुछ नहीं बिका`],
+  [new RegExp(`^Nothing sold ${HI_PR} yet\\.$`), (m, p) => `${HI_P[p]} अभी कुछ नहीं बिका।`],
+  [new RegExp(`^Nothing sold ${HI_PR} yet\\. The columns fill in as clients say yes\\.$`), (m, p) => `${HI_P[p]} अभी कुछ नहीं बिका। क्लाइंट के हाँ कहते ही कॉलम भरेंगे।`],
+  [new RegExp(`^No quotations sent ${HI_PR}\\.$`), (m, p) => `${HI_P[p]} कोई कोटेशन नहीं गया।`],
+  [new RegExp(`^Enquiries that came in ${HI_PR}, and how far they have got$`), (m, p) => `${HI_P[p]} आई इन्क्वायरी, और वो कहाँ तक पहुँचीं`],
+  [new RegExp(`^No enquiries ${HI_PR}\\.$`), (m, p) => `${HI_P[p]} कोई इन्क्वायरी नहीं।`],
+  [new RegExp(`^Clients marked Lost ${HI_PR}$`), (m, p) => `${HI_P[p]} "नहीं मिला" किए गए क्लाइंट`],
+  [/^(This month|Last month|This year|So far)\. Waiting = quotation sent, no answer yet \(any date\)\. Tap a person to see only their numbers\.$/, (m, p) => `${HI_P[p.toLowerCase()]}। इंतज़ार = कोटेशन गया, अभी जवाब नहीं (कोई भी तारीख़)। किसी पर टैप करें, सिर्फ़ उनके नंबर दिखेंगे।`],
+  [/^and (\d+) more$/, (m, n) => `और ${n}`]);
 // the days of the week in the calendar: Hindi initials (सो मं बु गु शु श र) by position, not by letter
 const HI_WEEK = ['सो', 'मं', 'बु', 'गु', 'शु', 'श', 'र'];
 const HI_SKIP = '#v-measure, #v-blinds, #v-product, #v-quote, #q-paper, #ms-paper, #v-settings, #v-people, #v-c-prices, #v-b-prices, #v-p-prices, [id$="-prices"], .leaflet-container, script, style, [data-hi-skip]';   // text boxes: only their placeholder / title, never what is typed
@@ -8926,4 +9333,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261025-132958 -->
+<!-- build 20261026-105032 -->
