@@ -5394,6 +5394,12 @@ const sheetView = () => state.rows.some(r => r.W || r.H) || !state.blinds.some(b
 const OWNER_EMAIL = 'tatiyapurvi@gmail.com';
 const isPractice = c => !!c && (!c.ownerEmail || c.ownerEmail === OWNER_EMAIL);
 const practiceCid = cid => !!cid && isPractice(CL.byId.get(cid));   // a to-do on a practice client is practice too
+// 26 Oct (Purvi): "dont show rudresh or his data anywhere … he is a developer who has been given an account so that he can look at our tool".
+// A hidden login stays on People (to manage the account) and sees their own things when signed in; everyone else never sees them or their clients / to-dos.
+const HIDDEN = new Set(['rhv4748@gmail.com']);   // Rudresh
+const hiddenP = e => !!e && HIDDEN.has(e) && e !== ME_EMAIL;
+const hiddenC = c => !!c && hiddenP(c.ownerEmail);
+const hiddenT = t => hiddenP(t.ownerEmail) || hiddenP(t.by) || hiddenC(CL.byId.get(t.cid));
 const statusOf = c => c.outcome && c.outcome.s === 'won' ? 'won' : c.outcome && c.outcome.s === 'lost' ? 'lost' : c.latest ? 'quoted' : 'draft';
 function pillHTML(c){
   const s = statusOf(c);
@@ -5406,7 +5412,7 @@ const amountOf = c => statusOf(c) === 'won' && c.outcome.total != null ? c.outco
 function watchClients(){
   CL.state = 'loading';
   Store.watchClients(list => {
-    CL.all = list; CL.list = list.filter(c => !isPractice(c)); CL.practice = list.filter(isPractice);
+    CL.all = list; CL.list = list.filter(c => !isPractice(c) && !hiddenC(c)); CL.practice = list.filter(isPractice);
     CL.byId = new Map(list.map(c => [c.id, c])); CL.state = 'ready'; backfillCats();
     const typing = document.activeElement && document.activeElement.id === 'cl-q';
     if (current === 'clients' && !typing) renderClients();
@@ -5604,7 +5610,7 @@ function renderClients(){
   const cities = uniq(clBase().map(cityOf).filter(Boolean)).sort(), noCity = clBase().some(c => !cityOf(c));
   const sel = (id, label, opts, v) => `<label class="ff"><span>${label}</span><select id="${id}" class="search">${opts.map(([k, n]) => `<option value="${esc(k)}"${String(v) === String(k) ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
   const panel = `<div class="fpanel" id="cl-fpanel"${cfOpen ? '' : ' hidden'}>
-    ${admin ? sel('cf-exec', 'Sales executive', [['', 'Anyone'], ...[...PEOPLE].filter(([e, p]) => sells(p) || CF.exec === e).map(([e, p]) => [e, p.name || e]), ['-', 'Not assigned']], CF.exec) : ''}
+    ${admin ? sel('cf-exec', 'Sales executive', [['', 'Anyone'], ...[...PEOPLE].filter(([e, p]) => (sells(p) && !hiddenP(e)) || CF.exec === e).map(([e, p]) => [e, p.name || e]), ['-', 'Not assigned']], CF.exec) : ''}
     ${sel('cf-city', 'City', [['', 'Any city'], ...cities.map(c => [c, c]), ...(noCity ? [['-', 'No city yet']] : [])], CF.city)}
     <div class="ff ff-wide"><span>Value <small>latest quotation, or the won amount</small></span>
       <div class="frange"><input id="cf-min" class="search" inputmode="numeric" placeholder="From ₹" value="${esc(CF.min)}" aria-label="Value from"><span>to</span><input id="cf-max" class="search" inputmode="numeric" placeholder="Up to ₹" value="${esc(CF.max)}" aria-label="Value up to"></div>
@@ -5978,7 +5984,7 @@ function renderDash(){
   if (!mine) return renderAdminDash(el);   // 25 Oct: the admin's dashboard is its own page (dash.js); the sales executive's Home below is unchanged
   // 17 Oct: a sales executive's Home = their own numbers + today's to-dos (the rules give them only their clients)
   const per = new Map(), row = e => { if (!per.has(e)) per.set(e, {e, n: 0, q: 0, qv: 0, w: 0, wv: 0, l: 0, open: 0, ov: 0, last: ''}); return per.get(e); };
-  for (const [e, p] of PEOPLE) if (sells(p)) row(e);
+  for (const [e, p] of PEOPLE) if (sells(p) && !hiddenP(e)) row(e);
   const why = new Map(), follow = [], wk = Date.now() - 7 * 864e5;
   let N = 0, Q = 0, QV = 0, W = 0, WV = 0, Lo = 0, O = 0, OV = 0;
   for (const c of CL.list) {
@@ -7882,7 +7888,7 @@ function renderEnquiryPage(){
     <div class="cp-top">
       <div class="cp-id"><h2>${esc(c.name || (isNew ? 'New enquiry' : mobile(c.phone) || 'No name yet'))}</h2>
         <div class="cp-meta">${stage}${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}${starsHTML(c.stars || 0, true)}${ownerName(c) ? `<span class="hint">Handled by <b>${esc(ownerName(c))}</b></span>` : ''}<span id="cp-saved" class="cbar-save">${cpId === NEW ? 'Type anything to save' : 'Saved ✓'}</span></div>
-        ${PF && IS_ADMIN && !isNew ? `<label class="hint cp-own">Executive <select id="cp-owner" class="search"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => sells(p) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>
+        ${PF && IS_ADMIN && !isNew ? `<label class="hint cp-own">Executive <select id="cp-owner" class="search"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => (sells(p) && !hiddenP(e)) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></label>` : ''}</div>
       <div class="cp-reach">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="${WA_TAB}">WhatsApp</a>` : ''}</div>
     </div>
     ${isNew ? '' : `<div class="cp-big">
@@ -8030,7 +8036,7 @@ function cpProps(c){
     ['remarks', 'note', 'Remarks', c.remarks ? `<span class="n-pre">${esc(c.remarks)}</span>` : '', () => `<textarea data-k="remarks" id="cpf-remarks" rows="4" placeholder="Budget, timing, who decides, colours they like">${esc(c.remarks || '')}</textarea>`],
   ];
   const row = ([k, i, label, val, edit]) => {
-    if (k === 'owner') return admin ? `<div class="n-prop"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv"><select id="cp-owner" class="n-sel"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => sells(p) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></span></div>`
+    if (k === 'owner') return admin ? `<div class="n-prop"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv"><select id="cp-owner" class="n-sel"><option value="">Not assigned</option>${[...PEOPLE].filter(([e, p]) => (sells(p) && !hiddenP(e)) || c.ownerEmail === e || e === ME_EMAIL).map(([e, p]) => `<option value="${esc(e)}"${c.ownerEmail === e ? ' selected' : ''}>${esc(p.name || e)}</option>`).join('')}</select></span></div>`
       : `<div class="n-prop"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv">${val || '<span class="n-empty">Not assigned</span>'}</span></div>`;
     if (cpEd === k) return `<div class="n-prop editing" data-grp="${k}"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv n-pe">${edit()}<button class="n-btn dark" data-cpdone="1">Done</button></span></div>`;
     return `<button class="n-prop" data-cped="${k}"><span class="n-pi">${cpIcon(i)}</span><span class="n-pl">${label}</span><span class="n-pv">${val || '<span class="n-empty">Empty</span>'}</span></button>`;
@@ -8277,7 +8283,7 @@ function askTodo(pre = {}, edit){
   const c0 = CL.byId.get(pre.cid || t.cid);
   let type = t.type || pre.type || 'visit', due = t.due || dayPlus(1), time = t.time || '';
   WH = {due, dueTo: t.dueTo || '', time, timeTo: t.timeTo || '', dEnd: false, tEnd: false, month: due.slice(0, 7), dRange: !!t.dueTo, tRange: !!t.timeTo};
-  const people = PF ? [...TEAM].filter(([e, p]) => canLogin(e) && p.active !== false) : [];
+  const people = PF ? [...TEAM].filter(([e, p]) => canLogin(e) && p.active !== false && !hiddenP(e)) : [];
   const pick = people.length > 1;   // 19 Oct (Purvi): sales give to-dos to each other too
   const own = t.ownerEmail || (c0 && c0.ownerEmail) || ME_EMAIL || '';
   const clientOpts = `<datalist id="tdclients">${CL.all.filter(c => statusOf(c) !== 'lost').map(c => `<option value="${esc(c.name || mobile(c.phone))}">${esc([cityOf(c), c.phone].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
@@ -8406,7 +8412,7 @@ function renderTodo(){
   if (TD.state === 'error') { el.innerHTML = `<div class="kb-wrap"><div class="cl-head"><h2>To Do</h2></div><div class="clist cl-empty"><b>To-dos are not switched on yet.</b>${PF && PF.owner ? 'Paste the to-dos rule in Firebase → Firestore → Rules (Claude has it ready), then reload.' : 'Ask Purvi to switch them on.'}</div></div>`; return; }
   if (TD.state !== 'ready') { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty">Loading…</div></div>`; return; }
   const today = dayPlus(0), week = dayPlus(7), wk = Date.now() - 7 * 864e5;
-  const base = TD.list.filter(t => practiceCid(t.cid) === !!TF.practice && (!TF.type || t.type === TF.type) && (!TF.who || (TF.who === '-' ? !t.ownerEmail : t.ownerEmail === TF.who)));
+  const base = TD.list.filter(t => !hiddenT(t) && practiceCid(t.cid) === !!TF.practice && (!TF.type || t.type === TF.type) && (!TF.who || (TF.who === '-' ? !t.ownerEmail : t.ownerEmail === TF.who)));
   const when = t => TF.when === 'all' || (TF.when === 'late' ? overdue(t) : TF.when === 'today' ? t.due <= today : t.due <= week);
   const by = {todo: [], doing: [], done: []};
   for (const t of base) { if (t.state === 'done') { if (Date.parse(t.doneAt || t.at) >= wk) by.done.push(t); } else if (when(t)) (by[t.state] || by.todo).push(t); }
@@ -8423,7 +8429,7 @@ function renderTodo(){
     ${k === 'todo' ? '<button class="kadd" data-tnew="1">+ New to-do</button>' : ''}
     <div class="kcol-b">${by[k].map(card).join('') || `<p class="kempty">${k === 'todo' ? 'Nothing to do here. Good.' : k === 'doing' ? 'Drag a card here, or tap it and press Start.' : 'Finished to-dos stay here for 7 days.'}</p>`}</div></section>`;
   const pill = (k, n, cnt) => `<button class="fpill" data-tw="${k}" aria-pressed="${TF.when === k}">${n}${cnt != null ? `<b>${cnt}</b>` : ''}</button>`;
-  const who = admin ? `<label class="fsort"><span>Person</span><select id="tf-who" class="search"><option value="">Everyone</option>${[...PEOPLE].filter(([e, p]) => canLogin(e) && (p.active !== false || TF.who === e)).map(([e, p]) => `<option value="${esc(e)}"${TF.who === e ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select></label>` : '';
+  const who = admin ? `<label class="fsort"><span>Person</span><select id="tf-who" class="search"><option value="">Everyone</option>${[...PEOPLE].filter(([e, p]) => canLogin(e) && !hiddenP(e) && (p.active !== false || TF.who === e)).map(([e, p]) => `<option value="${esc(e)}"${TF.who === e ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select></label>` : '';
   el.innerHTML = `<div class="kb-wrap">${head}
     <div class="cl-tools"><div class="fpills" role="group" aria-label="When">${pill('all', 'All')}${pill('late', 'Overdue', nLate)}${pill('today', 'Today', nToday)}${pill('week', 'Next 7 days')}</div>
       <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}${PF && ME_EMAIL === OWNER_EMAIL ? `<label class="fsort"><input type="checkbox" id="tf-practice"${TF.practice ? ' checked' : ''}> <span>My practice clients</span></label>` : ''}</div>
@@ -9002,7 +9008,7 @@ let dbRO = null;
 // ---- the page
 function renderAdminDash(el){
   const R = dbRange(dashP, 0), P = dbRange(dashP, 1), who = dashWho;
-  const sellers = new Set(); for (const [e, p] of PEOPLE) if (sells(p)) sellers.add(e);
+  const sellers = new Set(); for (const [e, p] of PEOPLE) if (sells(p) && !hiddenP(e)) sellers.add(e);
   CL.list.forEach(c => sellers.add(c.ownerEmail || ''));
   if (who && !sellers.has(who)) dashWho = '';
   const mineC = c => !dashWho || (c.ownerEmail || '') === dashWho, L = CL.list.filter(mineC);
@@ -9334,4 +9340,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-110349 -->
+<!-- build 20261026-110811 -->
