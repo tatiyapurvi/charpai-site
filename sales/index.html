@@ -4476,7 +4476,7 @@ function words(n){
   return out.join(' ');
 }
 const inr = v => Math.round(+v || 0).toLocaleString('en-IN');
-const QFIELDS = [['bill', 'Billing name'], ['contact', 'Contact person'], ['phone', 'Contact number'], ['addr', 'Delivery address'], ['email', 'Email id'],
+const QFIELDS = [['bill', 'Billing name'], ['contact', 'Contact person'], ['phone', 'Contact number'], ['addr', 'Delivery address'], ['email', 'Email id'], ['gst', 'GST no. · on the quotation only if typed'],
   ['no', 'Performa invoice no.'], ['date', 'Date'], ['exec', 'Executive (name - phone)'], ['accounts', 'Accounts'], ['ddate', 'Delivery date (after booking)'], ['ref', 'Ref. if any · only for us, not on the PDF']];
 const EXKEY = 'charpai-executive';
 let showCost = false;
@@ -4507,6 +4507,7 @@ function parseDay(txt){
   if (noYear && out < today) out = new Date(y + 1, m - 1, d);
   return out;
 }
+const gstTxt = q => String((q || {}).gst || '').trim().toUpperCase();   // 26 Oct (Purvi): the client's GST no., printed only when typed
 const ddateTxt = v => { const d = parseDay(v); return d ? ddmmyy(d) : String(v || ''); };   // what the quotation prints, even if the box was never left
 const CAL_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="width:20px"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
 function renderQuoteHead(){
@@ -4606,7 +4607,7 @@ function paperHTML(q, house, t, showC, ro, ed){
       ${hdr(`<b>Contact Person :</b> ${esc(q.contact || '')}`, `<b>Date :</b> ${q.date ? q.date.split('-').reverse().join('-') : ''}`)}
       ${hdr(`<b>Contact Number :</b> ${esc(q.phone || '')}`, `<b>Executive :</b> ${esc(q.exec || '')}`)}
       ${hdr(`<b>Delivery Address :</b> ${esc(q.addr || '')}`, `<b>Delivery Date (After Booking) :</b> ${esc(ddateTxt(q.ddate))}`)}
-      ${hdr(`<b>Email Id :</b> ${esc(q.email || '')}`, `<b>Accounts :</b> ${esc(q.accounts || '')}`)}</table>
+      ${hdr(`<b>Email Id :</b> ${esc(q.email || '')}`, `<b>Accounts :</b> ${esc(q.accounts || '')}`)}${gstTxt(q) ? hdr(`<b>GST No. :</b> ${esc(gstTxt(q))}`, '') : ''}</table>
     <div class="q-scroll"><table class="paper${ed ? ' editing' : ''}"><thead><tr><th class="qc-no">Sr.No.</th>${vis.map(c => `<th class="qc-${c}"${off(c) ? ' data-off' : ''}>${QCOLS.find(x => x[0] === c)[1]}${ed ? qbtn('col', c, !off(c), 'Hide', 'Show') : ''}</th>`).join('')}${showC ? '<th class="cost">Our cost</th>' : ''}${ed ? '<th class="qe"></th>' : ''}</tr></thead>
       <tbody>${body}
       ${sumRow('tot', 'TOTAL', '₹ ' + inr(t.total), showC ? `<td class="r cost">${inr(t.cost)}</td>` : '')}
@@ -4806,13 +4807,14 @@ async function quoteXLSX(){
   merged(`${FIRM.addr}\nPhone : ${FIRM.phone}\nEmail : ${FIRM.email} , GSTIN : ${FIRM.gstin}`, {align: {horizontal: 'center'}, h: 40});
   const mid = Math.max(1, Math.round(NC * 4 / 9));   // 9 columns: 1–4 | 5–9
   const pair = (a, b) => { r++; mrg(1, mid); mrg(mid + 1, NC);
-    [[1, a], [mid + 1, b]].forEach(([col, [k, v]]) => { const c = ws.getCell(r, col); c.value = {richText: [{text: k + ' : ', font: {name: 'Arial', size: 9, bold: true}}, {text: v || '', font: {name: 'Arial', size: 9}}]}; c.alignment = {vertical: 'middle', wrapText: true}; });
+    [[1, a], [mid + 1, b]].forEach(([col, [k, v]]) => { const c = ws.getCell(r, col); c.value = {richText: [{text: k ? k + ' : ' : '', font: {name: 'Arial', size: 9, bold: true}}, {text: v || '', font: {name: 'Arial', size: 9}}]}; c.alignment = {vertical: 'middle', wrapText: true}; });
     for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = 16; };
   pair(['Billing Name', house], ['Performa invoice', q.no]);
   pair(['Contact Person', q.contact], ['Date', q.date ? q.date.split('-').reverse().join('-') : '']);
   pair(['Contact Number', q.phone], ['Executive', q.exec]);
   pair(['Delivery Address', q.addr], ['Delivery Date (After Booking)', ddateTxt(q.ddate)]);
   pair(['Email Id', q.email], ['Accounts', q.accounts]);
+  if (gstTxt(q)) pair(['GST No.', gstTxt(q)], ['', '']);
   r++; const head = r;
   ['Sr.No.', ...cols.map(c => QCOLS.find(x => x[0] === c)[1])].forEach((h, i) => { const c = ws.getCell(r, i + 1); c.value = h;
     c.font = {name: 'Arial', size: 9, bold: true}; c.fill = fill('FFDDEBF7'); c.border = box; c.alignment = {horizontal: 'center', vertical: 'middle'}; });
@@ -4948,7 +4950,7 @@ document.addEventListener('click', async e => {
 // The version goes up only when what the PDF prints has changed since the last download from this sheet;
 // downloading again with no change keeps the same number. Kept with the sheet, so Clear sheet starts again at v1.
 function quoteSig(t){
-  const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref').map(([k]) => q[k] || ''),
+  const q = state.quote || {}, txt = JSON.stringify([state.house || '', QFIELDS.filter(([k]) => k !== 'bill' && k !== 'ref' && k !== 'gst').map(([k]) => q[k] || ''), ...(gstTxt(q) ? [gstTxt(q)] : []),
     SECTIONS.filter(([k]) => !QOPT.includes(k) || (t.S[k] || []).length).map(([k]) => (t.S[k] || []).map(l => [l.area, l.product, l.what, l.hsn, l.qty, l.unit, l.mrp, l.amt])), t.total, t.disc, ...(t.disc2 ? [t.disc2] : []),
     ...(t.cols && t.cols.length < QALL.length ? [t.cols] : [])]);
   let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 ^ txt.charCodeAt(i)) >>> 0;
@@ -4976,7 +4978,7 @@ function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()})
     two(`Contact Person : ${q.contact || ''}`, `Date : ${q.date ? q.date.split('-').reverse().join('-') : ''}`),
     two(`Contact Number : ${q.phone || ''}`, `Executive : ${q.exec || ''}`),
     two(`Delivery Address : ${q.addr || ''}`, `Delivery Date (AFTER BOOKING) : ${ddateTxt(q.ddate)}`),
-    two(`Email Id : ${q.email || ''}`, `Accounts : ${q.accounts || ''}`)]}));   // Ref. is internal: never on the customer's copy
+    two(`Email Id : ${q.email || ''}`, `Accounts : ${q.accounts || ''}`), ...(gstTxt(q) ? [two(`GST No. : ${gstTxt(q)}`, '')] : [])]}));   // Ref. is internal: never on the customer's copy
   // only the columns the client gets (Edit quotation); with Amount hidden there are no totals and no amount in words
   const body = [], cols = t.cols || QALL, NC = 1 + cols.length, amt = cols.includes('amt'); let n = 0;
   const V = {area: l => (l.area || '').toUpperCase(), product: l => l.product.toUpperCase(), what: l => l.what.toUpperCase(), hsn: l => l.hsn || '', qty: l => cpF(r2(l.qty)), unit: l => l.unit,
@@ -8300,7 +8302,7 @@ function verChanges(A, B){
   }
   // the quotation itself
   const qa = A.q || {}, qb = B.q || {}, d = q => q.discAmt ? '₹' + q.discAmt : q.disc ? q.disc + '%' : 'none', d2 = q => q.odiscAmt ? '₹' + q.odiscAmt : q.odisc ? q.odisc + '%' : 'none';
-  const QL = {contact: 'Contact person', phone: 'Contact number', email: 'Email', addr: 'Delivery address', ddate: 'Delivery date', exec: 'Executive', accounts: 'Accounts', ref: 'Reference', no: 'Invoice no.'};
+  const QL = {contact: 'Contact person', phone: 'Contact number', email: 'Email', addr: 'Delivery address', ddate: 'Delivery date', exec: 'Executive', accounts: 'Accounts', gst: 'GST no.', ref: 'Reference', no: 'Invoice no.'};
   // Edit quotation (19 Oct): a part quotation says what was shared in its own yellow note, so here only the way back to the full one
   // (Purvi: "why is the same info written twice?")
   const hidA = ((A || {}).t || {}).hid, hidB = ((B || {}).t || {}).hid;
@@ -9381,7 +9383,7 @@ const HI = {
   'Saved as you type. Done takes you back to their page.': 'लिखते ही सेव होता है। "हो गया" दबाकर उनके पेज पर वापस जाएँ।',
   'Change': 'बदलें', 'Cancel': 'रहने दें',
   'Updated today · not sent': 'आज बदला · भेजा नहीं', 'Part quotation': 'आधा कोटेशन', 'Part quotation, amounts were hidden': 'आधा कोटेशन, रकम छुपी थी',
-  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
+  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'GST no. · on the quotation only if typed': 'GST नंबर · लिखा हो तभी कोटेशन पर', 'GST no.': 'GST नंबर', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
   // To Do + the to-do window
   'New to-do': 'नया काम', '+ New to-do': '+ नया काम', 'Change the to-do': 'काम बदलें', 'Add to-do': 'काम जोड़ें', 'Add a to-do': 'काम जोड़ें', 'Save': 'सेव करें',
   'Site / measurement visit': 'साइट / नाप विज़िट', 'Make quotation': 'कोटेशन बनाना', 'Revise quotation': 'कोटेशन बदलना', 'Follow-up call': 'फ़ॉलो-अप कॉल',
@@ -9532,4 +9534,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-170955 -->
+<!-- build 20261026-174427 -->
