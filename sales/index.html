@@ -861,6 +861,40 @@ body.shared .house{display:none}
 tr.dash-r{cursor:pointer}
 tr.dash-r:hover td{background:var(--sel)}
 .dash-2{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start}
+/* ---- Purchase (29 Oct, purchase.js): option A of the mock. One list grouped by client / company / product, a circle to tick. */
+.pu{--soft:color-mix(in srgb,var(--ink) 5%,transparent);--soft2:color-mix(in srgb,var(--ink) 9%,transparent);max-width:1180px;margin:0 auto;font-family:var(--body)}
+.pu-top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.pu-top h2{margin:0;font:600 30px/1.15 var(--body);letter-spacing:-.015em}.pu-top p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.pu-seg{display:inline-flex;gap:2px;padding:3px;border-radius:12px;background:var(--soft2);max-width:100%;overflow-x:auto}
+.pu-seg button{border:0;background:none;font:500 14px var(--body);color:var(--muted);padding:7px 14px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.pu-seg button.on{background:var(--paper);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.pu-kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.pu-k{background:var(--paper);border:1px solid var(--line2);border-radius:12px;padding:11px 16px;min-width:150px}.pu-k small{display:block;color:var(--muted);font-size:12.5px}.pu-k b{font:600 22px/1.25 var(--body);letter-spacing:-.01em}
+.pu-k.y{background:var(--tape-soft);border-color:transparent}
+.pu-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.pu-chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:5px 13px;font:500 13.5px var(--body);color:var(--muted);cursor:pointer}
+.pu-chip b{font-weight:600;margin-left:2px}.pu-chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pu-search{margin-left:auto;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font:14px var(--body);width:260px;max-width:100%;background:var(--field);color:var(--ink)}
+.pu-grp{background:var(--paper);border:1px solid var(--line2);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.pu-gh{display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid var(--line2)}
+.pu-t{font-weight:600;font-size:15.5px;color:var(--ink)}.pu-s{color:var(--muted);font-size:13px;margin-top:1px}.pu-s b{color:var(--ink);font-weight:600}
+.pu-link{border:0;background:none;padding:0;font:inherit;font-weight:600;font-size:15.5px;cursor:pointer;color:var(--ink);text-align:left}.pu-link:hover{text-decoration:underline}
+.pu-prog{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);white-space:nowrap}
+.pu-prog i{display:block;width:90px;height:6px;border-radius:9px;background:var(--soft2);overflow:hidden}.pu-prog u{display:block;height:100%;background:var(--good)}
+.pu-row{display:grid;grid-template-columns:28px minmax(0,1.1fr) minmax(0,1.6fr) minmax(0,.9fr) minmax(0,.7fr) minmax(0,1fr);gap:12px;align-items:center;padding:10px 16px;border-top:1px solid var(--line2);font-size:14px}
+.pu-hd{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:7px 16px;border-top:0}.pu-hd .r{text-align:right}
+.pu-tick{width:22px;height:22px;border-radius:50%;border:1.6px solid var(--faint);background:var(--field);display:grid;place-items:center;cursor:pointer;padding:0;color:#fff;font-size:12px;font-weight:700}
+.pu-tick:hover{border-color:var(--good)}
+.pu-row.done .pu-tick{background:var(--good);border-color:var(--good)}
+.pu-p{font-weight:550;color:var(--ink)}.pu-w{color:var(--ink)}.pu-p small,.pu-w small{display:block;color:var(--muted);font-size:12.5px;font-weight:400}
+.pu-row.done .pu-p,.pu-row.done .pu-w{color:var(--muted)}.pu-row.done .pu-p{text-decoration:line-through;text-decoration-color:var(--faint)}
+.pu-co{display:inline-block;font-size:12.5px;font-weight:500;border-radius:6px;padding:2px 8px;background:var(--soft2);color:var(--ink);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.pu-q{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;white-space:nowrap}
+.pu-st{font-size:12.5px;color:var(--muted)}.pu-row.done .pu-st{color:var(--good)}
+.pu-none,.pu-empty{background:var(--paper);border:1px dashed var(--line);border-radius:14px;padding:28px;text-align:center;color:var(--muted)}.pu-none b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+@media (max-width:760px){.pu-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.pu-k{min-width:0;padding:10px 12px}.pu-k b{font-size:18px}.pu-top h2{font-size:24px}.pu-search{width:100%;margin-left:0}.pu-hd{display:none}.pu-gh{flex-wrap:wrap}.pu-prog{margin-left:0}
+  .pu-row{grid-template-columns:26px minmax(0,1fr) auto;row-gap:3px}.pu-row .pu-p{grid-column:2}.pu-row .pu-q{grid-column:3;grid-row:1}
+  .pu-row .pu-w,.pu-row .pu-cocell,.pu-row .pu-st{grid-column:2/4}.pu-row > span:empty{display:none}}
 /* ---- admin dashboard (25 Oct, dash.js): a bento of cards, each titled with a plain question. Chart colours: the validated
    categorical set (fixed order = fixed product), checked against --paper in light and dark; labels sit in text colours, never the series colour. */
 .dbx{--pp-fabric:#2a78d6;--pp-stitch:#184f95;--pp-hw:#86b6ef;--p-cur:#2a78d6;--p-bli:#eb6834;--p-wal:#1baf7a;--p-uph:#eda100;--p-flo:#e87ba4;--p-mat:#008300;--p-bed:#6250d6;--p-oth:#98A19C;--acc:#2a78d6;
@@ -1598,6 +1632,7 @@ button.n-prop:hover{background:var(--soft)}
     <button class="tab" role="tab" id="tab-d" hidden><b>Home</b><small id="tab-d-s">the whole team</small></button>
     <button class="tab" role="tab" id="tab-h"><b id="tab-h-b">My Clients</b><small>enquiries to won</small></button>
     <button class="tab" role="tab" id="tab-t" hidden><b>To Do</b><small>visits, calls, quotations</small></button>
+    <button class="tab" role="tab" id="tab-p" hidden><b>Purchase</b><small>orders to place</small></button>
     <button class="tab" role="tab" id="tab-s"><b>Settings</b><small id="tab-s-s">prices, people</small></button>
   </div>
 </nav>
@@ -1620,6 +1655,7 @@ button.n-prop:hover{background:var(--soft)}
   <section id="v-people" hidden><div id="people-body"></div></section>
   <section id="v-todo" hidden><div id="todo-body"></div></section>
   <section id="v-settings" hidden><div id="settings-body"></div></section>
+  <section id="v-purchase" hidden><div id="pu-body"></div></section>
   <section id="v-none" hidden>
     <div class="panel none-box"><h2>No client open</h2><p>Open a client to continue their sheet, or start a new one.</p>
       <div class="none-acts"><button class="btn solid big" data-act="new">+ New enquiry</button><button class="btn big" data-act="clients">Open My Clients</button></div></div>
@@ -5294,7 +5330,7 @@ async function connectPrices(){
   refreshAll();
   loadCatalog();
   watchClients();
-  watchTodos(); $('#tab-t').hidden = false;
+  watchTodos(); $('#tab-t').hidden = false; $('#tab-p').hidden = false;
   db.doc('prices/current').onSnapshot(s => {
     if (s.metadata.hasPendingWrites || busyHere()) return;
     if (s.exists) prices = clone(s.data());
@@ -5468,6 +5504,7 @@ function watchClients(){
     if (current === 'client' && !(document.activeElement && document.activeElement.closest('#cp-body') && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))) renderClientPage();
     if (current === 'dash') renderDash();
     if (current === 'todo') renderTodo();
+    if (current === 'purchase' && !(document.activeElement && document.activeElement.id === 'pu-q')) renderPurchase();
     if (current === 'quote') renderQuoteSum();
     syncExec(); renderCbar();
   }, () => { CL.state = 'error'; if (current === 'clients') renderClients(); });
@@ -7445,14 +7482,14 @@ const productRows = sheetRows({view: () => !!MP[current] && current === mpCur, t
   suggestOnly: new Set(['room', 'wall']), label: r => r.room || r.p || ''});
 
 // ================= tabs, copy, start
-const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote', 'msheet': 'msheet',
+const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'purchase': 'purchase', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote', 'msheet': 'msheet',
   'wallpaper': 'product', 'flooring': 'product', 'mattress': 'product', 'uph': 'product', 'bedbath': 'product'};   // the four product sheets share one section (3 Oct)
 const OLD_VIEW = {measure: 'c-measure', blinds: 'b-measure', prices: 'c-prices', quote: 'quote', fabric: 'uph', foam: 'uph', hcp: 'mattress'};   // Fabric and Foam became Upholstery (6 Oct)   // tab names before 30 Sep
 let current = 'c-measure', lastMain = 'c';
 function go(v){
   v = OLD_VIEW[v] || v; if (!VIEWS[v] || v === 'none') v = 'c-measure';
   if (v === 'client' && !cpId) v = 'clients';
-  if ((v === 'people' && !(PF && IS_ADMIN)) || (v === 'dash' && !PF)) v = 'clients';
+  if ((v === 'people' && !(PF && IS_ADMIN)) || ((v === 'dash' || v === 'purchase') && !PF)) v = 'clients';
   if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';   // Purvi, 1 Oct: sales don't see the Prices page
   current = v;
   navWrite(v);   // the address remembers where you are (reload opens the same page, Purvi 2 Oct); a new page = a new history step (18 Oct)
@@ -7460,9 +7497,9 @@ function go(v){
   for (const id of new Set(Object.values(VIEWS))) $('#v-' + id).hidden = noClient ? id !== 'none' : id !== VIEWS[v];
   // Top bar (Purvi, 1 Oct): Dashboard · Clients · Prices · People. Curtains, Blinds and Quotation belong to one client,
   // so they are tabs inside the client (renderCbar), not in the top bar.
-  const main = ['quote', 'clients', 'client', 'dash', 'people', 'todo', 'settings'].includes(v) ? '' : v[0]; if (main) lastMain = main;
-  const prices = /prices$/.test(v), top = v === 'dash' ? 'd' : v === 'todo' ? 't' : v === 'people' || v === 'settings' || prices ? 's' : 'h';
-  for (const k of 'dhts') $('#tab-' + k).setAttribute('aria-selected', top === k ? 'true' : 'false');
+  const main = ['quote', 'clients', 'client', 'dash', 'people', 'todo', 'purchase', 'settings'].includes(v) ? '' : v[0]; if (main) lastMain = main;
+  const prices = /prices$/.test(v), top = v === 'dash' ? 'd' : v === 'todo' ? 't' : v === 'purchase' ? 'p' : v === 'people' || v === 'settings' || prices ? 's' : 'h';
+  for (const k of 'dhtps') $('#tab-' + k).setAttribute('aria-selected', top === k ? 'true' : 'false');
   if (prices) lastPrices = v;
   $('#subtabs').hidden = !prices;
   const sub = prices || v === 'people', sc = $('#setcrumb'); sc.hidden = !sub;   // Settings › Prices / People: the same ← and path as a client
@@ -7477,6 +7514,7 @@ function go(v){
   if (v === 'dash') renderDash();
   if (v === 'people') renderPeople();
   if (v === 'todo') renderTodo();
+  if (v === 'purchase') { PU.keep.clear(); renderPurchase(); }
   if (v === 'settings') renderSettings();
   renderCbar(); if (noClient) { try { localStorage.setItem(TKEY, v); } catch(_){} window.scrollTo({top: 0}); return; }
   if (v === 'c-prices') renderPrices();
@@ -7492,6 +7530,7 @@ function go(v){
 $('#tab-h').onclick = () => go('clients');
 $('#tab-d').onclick = () => go('dash');
 $('#tab-t').onclick = () => go('todo');
+$('#tab-p').onclick = () => go('purchase');   // 29 Oct: Purchase, for everyone
 $('#tab-s').onclick = () => go('settings');
 let lastPrices = 'c-prices';
 // ---- Back (Purvi, 18 Oct: "the back arrow button should take me to the page i was previously on … keep it standard figma/notion practice").
@@ -9331,6 +9370,122 @@ document.addEventListener('click', e => {
   const w = e.target.closest('[data-who]'); if (w) { e.stopPropagation(); dashWho = w.dataset.who; renderDash(); scrollTo({top: 0, behavior: 'smooth'}); }
 }, true);
 
+// ================= Purchase (Purvi, 29 Oct 2026: "add a purchase tab at the top before settings. show it to everyone. just like we did
+// in odoo, we need a purchase page which shows the qtns that are confirmed, a list of all products to be ordered for them, and a way for
+// my team to mark order placed for each item. 3 views … client wise … company wise … product wise"; "super easy and simple … like it has
+// been made by designers at figma/notion/anthropic"; she picked option A of the mock: one list, grouped, a circle to tick).
+// What to order = the lines of the quotation version the client confirmed (outcome.n), never the live sheet: a sent version never
+// changes, so line number i of version n is a stable name for the item ("v7_3"). Stitching and installation are work, not purchases.
+// Ticks live on the client as po: {"v7_3": {at, by, byEmail} | null} (no new collection, so the Firebase rules already cover it: a
+// salesperson ticks their own clients, an admin everyone's; Ctrl Z takes a tick back like any other change). Practice clients and
+// hidden logins are never here (CL.list).
+const PU = {view: 'client', show: 'open', q: '', sig: '', items: null, loading: false, keep: new Set()};   // keep: ticked here just now, stays in sight (greyed) until the view or filter changes
+const PU_U = {MTR: ['m', 'm'], RFT: ['ft', 'ft'], 'SQ FT': ['sq ft', 'sq ft'], 'SQ FIT': ['sq ft', 'sq ft'], PCS: ['pc', 'pcs'], SET: ['set', 'sets'], ROLL: ['roll', 'rolls'], BOX: ['box', 'boxes'], NOS: ['no.', 'nos.']};
+const puQty = (q, u) => { const n = Math.round((+q || 0) * 100) / 100, w = PU_U[String(u || '').toUpperCase()]; return `${n.toLocaleString('en-IN')} ${w ? w[n === 1 ? 0 : 1] : String(u || '').toLowerCase()}`.trim(); };
+const PU_CODE = {DD: "D'Decor FabriCare", SS: "D'Decor Sansaar", AP: 'Asian Paints', ASIAN: 'Asian Paints', SAROM: 'Sarom', 'F&F': 'F&F', MARVEL: 'Marvel', SLEEPWELL: 'Sleepwell', OBSESSIONS: 'Obsessions', EKO: 'Obsessions', FREELANCE: 'Freelance'};
+// the company to order from: the measured row when the line names it, else the company code the quotation starts the line with
+function puCompany(sec, l, snap){
+  const [kind, id] = String((l.srcs || [])[0] || '').split('|');
+  if (kind === 'curtains') { const r = (snap.rows || []).find(x => String(x.id) === id); if (r && SUPS[r.sup]) return SUPS[r.sup]; }
+  if (kind === 'blinds') { const b = (snap.blinds || []).find(x => String(x.id) === id); if (b && BSUPS[b.sup]) return b.sup === 'LOC' ? 'Our tailor' : BSUPS[b.sup]; }
+  const w = String(l.what || '').trim(), up = w.toUpperCase(), first = up.split(/\s+/)[0];
+  if (/lining/i.test(l.product || '')) return 'Lining';
+  for (const n of [...new Set([...Object.values(SUPS), ...Object.values(BSUPS)])]) if (up.startsWith(n.toUpperCase())) return n;
+  if (/^D'DECOR/.test(up)) return "D'Decor";
+  if (PU_CODE[first]) return PU_CODE[first];
+  if (sec === 'mattress' || sec === 'foam') return 'Sleepwell';
+  if (sec === 'hw') return 'Tracks & motors';
+  return 'Company not named';
+}
+const puWon = () => CL.list.filter(c => (c.outcome || {}).s === 'won' && c.outcome.n);
+async function puLoad(){
+  const won = puWon(), sig = won.map(c => c.id + ':' + c.outcome.n).sort().join(',');
+  if (PU.items && PU.sig === sig) return;
+  PU.loading = true; PU.sig = sig;
+  const items = [];
+  await Promise.all(won.map(async c => {
+    const V = await versionsOf(c.id), x = Array.isArray(V) && V.find(v => v.n === c.outcome.n); if (!x || !x.snap || !x.snap.t) return;
+    const S = x.snap.t.S || {}; let i = 0;
+    for (const sec of Object.keys(S)) for (const l of S[sec] || []) {
+      i++;
+      if (sec === 'stitch' || /^installation$/i.test(String(l.product || '').trim()) || !(l.product || l.what)) continue;
+      items.push({cid: c.id, v: x.n, key: `v${x.n}_${i}`, sec, product: String(l.product || '').trim(), what: String(l.what || '').trim(), area: String(l.area || '').trim(),
+        qty: +l.qty || 0, unit: l.unit || '', co: puCompany(sec, l, x.snap)});
+    }
+  }));
+  if (PU.sig === sig) { PU.items = items; PU.loading = false; }
+}
+const puMark = it => { const c = CL.byId.get(it.cid); return c && c.po ? c.po[it.key] || null : null; };
+const puWho = m => `${String(m.by || personName(m.byEmail) || 'someone').split(' ')[0]}, ${cardDay(m.at) || ''}`.replace(/, $/, '');   // first name: the line stays short
+async function puToggle(cid, key){
+  const c = CL.byId.get(cid); if (!c) return;
+  const val = c.po && c.po[key] ? null : {at: new Date().toISOString(), by: myName(), byEmail: ME_EMAIL || ''};
+  PU.keep.add(cid + '|' + key); c.po = Object.assign({}, c.po, {[key]: val}); renderPurchase();   // shown at once; the client list brings the saved copy back
+  try { await Store.mergeClient(cid, {po: {[key]: val}}); } catch (e) { toast('Not saved. Check the internet and tick it again.'); }
+}
+function renderPurchase(){
+  const el = $('#pu-body'); if (!el) return;
+  if (!PF || CL.state !== 'ready') { el.innerHTML = '<div class="pu"><p class="pu-empty">Loading…</p></div>'; return; }
+  if (!PU.items || PU.sig !== puWon().map(c => c.id + ':' + c.outcome.n).sort().join(',')) {
+    if (!PU.loading) puLoad().then(() => { if (current === 'purchase') renderPurchase(); });
+    if (!PU.items) { el.innerHTML = '<div class="pu"><div class="pu-top"><div><h2>Purchase</h2><p>Everything to order for the quotations clients confirmed.</p></div></div><p class="pu-empty">Loading the confirmed quotations…</p></div>'; return; }
+  }
+  const q = PU.q.trim().toLowerCase(), all = PU.items.filter(it => CL.byId.get(it.cid));
+  const isDone = it => !!puMark(it), open = all.filter(it => !isDone(it)), done = all.filter(isDone);
+  const match = it => { if (!q) return true; const c = CL.byId.get(it.cid); return [c.name, it.what, it.product, it.co, it.area, personName(c.ownerEmail)].join(' ').toLowerCase().includes(q); };
+  const shown = all.filter(it => (PU.show === 'all' || (PU.show === 'done') === isDone(it) || PU.keep.has(it.cid + '|' + it.key)) && match(it));
+  const waiting = new Set(open.map(it => it.cid)).size;
+  const seg = (k, l) => `<button data-puv="${k}" class="${PU.view === k ? 'on' : ''}" aria-pressed="${PU.view === k}">${l}</button>`;
+  const chip = (k, l, n) => `<button class="pu-chip${PU.show === k ? ' on' : ''}" data-pus="${k}">${l} <b>${n}</b></button>`;
+  let h = `<div class="pu"><div class="pu-top"><div><h2>Purchase</h2><p>Everything to order for the quotations clients confirmed. Tick an item once its order is placed.</p></div>
+    <div class="pu-seg" role="group" aria-label="Group by">${seg('client', 'By client')}${seg('company', 'By company')}${seg('product', 'By product')}</div></div>
+    <div class="pu-kpis"><div class="pu-k y"><small>To order</small><b>${open.length} item${open.length === 1 ? '' : 's'}</b></div><div class="pu-k"><small>Ordered</small><b>${done.length} item${done.length === 1 ? '' : 's'}</b></div><div class="pu-k"><small>Clients waiting</small><b>${waiting}</b></div></div>
+    <div class="pu-bar">${chip('open', 'To order', open.length)}${chip('done', 'Ordered', done.length)}${chip('all', 'All', all.length)}
+    <input id="pu-q" class="pu-search" type="search" placeholder="Search client, fabric, company…" value="${esc(PU.q)}" autocomplete="off" aria-label="Search"></div>`;
+  if (!all.length) h += `<div class="pu-none"><b>Nothing to order yet</b>When a client's quotation is marked Won, everything to order for it shows here.</div>`;
+  else if (!shown.length) h += `<div class="pu-none"><b>${q ? 'Nothing matches “' + esc(PU.q) + '”' : PU.show === 'open' ? 'Everything is ordered' : 'Nothing ticked yet'}</b>${q ? 'Try another word.' : PU.show === 'open' ? 'Every item for the confirmed quotations has been ordered.' : 'Ticked items show here with who placed the order and when.'}</div>`;
+  else h += puGroups(shown, all);
+  el.innerHTML = h + '</div>';
+}
+// the same items, grouped three ways; a group's progress counts every item in it, whatever the filter shows
+function puGroups(shown, all){
+  const key = PU.view === 'client' ? it => it.cid : PU.view === 'company' ? it => it.co : it => [it.co, it.what || it.product, String(it.unit).toUpperCase()].join('|');
+  const G = new Map(); for (const it of shown) { const k = key(it); if (!G.has(k)) G.set(k, []); G.get(k).push(it); }
+  const tot = new Map(); for (const it of all) { const k = key(it); const t = tot.get(k) || {n: 0, d: 0}; t.n++; if (puMark(it)) t.d++; tot.set(k, t); }
+  let keys = [...G.keys()];
+  if (PU.view === 'client') keys.sort((a, b) => String((CL.byId.get(b).outcome || {}).at || '').localeCompare(String((CL.byId.get(a).outcome || {}).at || '')));
+  else keys.sort((a, b) => (tot.get(b).n - tot.get(b).d) - (tot.get(a).n - tot.get(a).d) || a.localeCompare(b));
+  const cname = it => CL.byId.get(it.cid).name || 'Client';
+  return keys.map(k => {
+    const L = G.get(k), t = tot.get(k), f = L[0], pct = t.n ? Math.round(t.d / t.n * 100) : 0;
+    const prog = `<div class="pu-prog" title="${t.d} of ${t.n} ordered"><i><u style="width:${pct}%"></u></i>${t.d === t.n ? 'All ordered' : `${t.d} of ${t.n} ordered`}</div>`;
+    let head;
+    if (PU.view === 'client') { const c = CL.byId.get(k), o = c.outcome || {};
+      head = `<div><button class="pu-t pu-link" data-puc="${esc(k)}">${esc(c.name || 'Client')}</button><div class="pu-s">v${o.n} confirmed ${esc(cardDay(o.at) || '')} · ${esc(personName(c.ownerEmail) || c.ownerName || '')} · ${rs(amountOf(c))}</div></div>`; }
+    else if (PU.view === 'company') head = `<div><div class="pu-t">${esc(k)}</div><div class="pu-s">${new Set(L.map(it => it.cid)).size} client${new Set(L.map(it => it.cid)).size === 1 ? '' : 's'}</div></div>`;
+    else { const openQ = L.filter(it => !puMark(it)).reduce((a, it) => a + it.qty, 0), nc = new Set(L.map(it => it.cid)).size;
+      head = `<div><div class="pu-t">${esc(f.what || f.product)} <span class="pu-co">${esc(f.co)}</span></div><div class="pu-s">${esc(f.product)}${openQ ? ` · <b>${puQty(openQ, f.unit)} to order</b>` : ''} · ${nc} client${nc === 1 ? '' : 's'}</div></div>`; }
+    const rows = L.map(it => {
+      const m = puMark(it), c1 = PU.view === 'client' ? esc(it.product) : PU.view === 'company' ? `${esc(it.product)}<small>${esc(cname(it))}</small>` : esc(cname(it));
+      const c2 = PU.view === 'product' ? `${esc(it.area || '—')}<small>v${it.v} · ${esc(personName(CL.byId.get(it.cid).ownerEmail) || '')}</small>` : `${esc(it.what || '—')}${it.area ? `<small>${esc(it.area)}</small>` : ''}`;
+      return `<div class="pu-row${m ? ' done' : ''}"><button class="pu-tick" data-put="${esc(it.cid)}|${esc(it.key)}" role="checkbox" aria-checked="${!!m}" aria-label="${m ? 'Ordered. Tap to mark not ordered' : 'Mark ordered'}" title="${m ? 'Tap to mark not ordered' : 'Mark ordered'}">${m ? '✓' : ''}</button>
+        <span class="pu-p">${c1}</span><span class="pu-w">${c2}</span>${PU.view !== 'client' ? '<span></span>' : `<span class="pu-cocell"><span class="pu-co">${esc(it.co)}</span></span>`}
+        <span class="pu-q">${puQty(it.qty, it.unit)}</span><span class="pu-st">${m ? `Ordered · ${esc(puWho(m))}` : 'To order'}</span></div>`;
+    }).join('');
+    const hd = PU.view === 'client' ? ['Item', 'Details', 'Company'] : PU.view === 'company' ? ['Item', 'Details', ''] : ['Client', 'Room', ''];
+    return `<section class="pu-grp"><div class="pu-gh">${head}${prog}</div>
+      <div class="pu-row pu-hd"><span></span><span>${hd[0]}</span><span>${hd[1]}</span><span>${hd[2]}</span><span class="r">Qty</span><span>Status</span></div>${rows}</section>`;
+  }).join('');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest || !e.target.closest('#pu-body')) return;
+  const t = e.target.closest('[data-put]'); if (t) { const [cid, key] = t.dataset.put.split('|'); puToggle(cid, key); return; }
+  const v = e.target.closest('[data-puv]'); if (v) { PU.view = v.dataset.puv; PU.keep.clear(); renderPurchase(); return; }
+  const s = e.target.closest('[data-pus]'); if (s) { PU.show = s.dataset.pus; PU.keep.clear(); renderPurchase(); return; }
+  const c = e.target.closest('[data-puc]'); if (c) { openClient(c.dataset.puc, 'client'); }
+});
+document.addEventListener('input', e => { if (e.target.id !== 'pu-q') return; PU.q = e.target.value; const p = e.target.selectionStart; renderPurchase(); const n = $('#pu-q'); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (_) {} } });
+
 // ================= हिंदी (Purvi, 21 Oct 2026): "one more toggle button for english hindi", for the sales team and the people who
 // measure, install and deliver. Spoken Hindi, common English words kept (क्लाइंट, कोटेशन, पर्दे). The quotation PDF, Settings,
 // Prices and People stay English. How: the app keeps drawing its screens in English; when हिंदी is on, a watcher swaps every text,
@@ -9396,11 +9551,11 @@ const HI = {
   'Saved as you type. Done takes you back to their page.': 'लिखते ही सेव होता है। "हो गया" दबाकर उनके पेज पर वापस जाएँ।',
   'Change': 'बदलें', 'Cancel': 'रहने दें',
   'Updated today · not sent': 'आज बदला · भेजा नहीं', 'Part quotation': 'आधा कोटेशन', 'Part quotation, amounts were hidden': 'आधा कोटेशन, रकम छुपी थी',
-  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'GST no. · on the quotation only if typed': 'GST नंबर · लिखा हो तभी कोटेशन पर', 'GST no.': 'GST नंबर', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
+  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'Purchase': 'ख़रीद', 'orders to place': 'ऑर्डर देने हैं', 'Everything to order for the quotations clients confirmed. Tick an item once its order is placed.': 'जिन क्लाइंट ने कोटेशन पक्का किया, उनका सारा सामान जो ऑर्डर करना है। ऑर्डर दे दें तो उस आइटम पर टिक करें।', 'By client': 'क्लाइंट के हिसाब से', 'By company': 'कंपनी के हिसाब से', 'By product': 'सामान के हिसाब से', 'To order': 'ऑर्डर करना है', 'Ordered': 'ऑर्डर हो गया', 'Clients waiting': 'इंतज़ार में क्लाइंट', 'Search client, fabric, company…': 'क्लाइंट, कपड़ा, कंपनी ढूँढें…', 'Item': 'आइटम', 'Company': 'कंपनी', 'Qty': 'मात्रा', 'Status': 'स्थिति', 'Client': 'क्लाइंट', 'Room': 'कमरा', 'All ordered': 'सब ऑर्डर हो गया', 'Mark ordered': 'ऑर्डर हो गया लगाएँ', 'Nothing to order yet': 'अभी कुछ ऑर्डर नहीं करना', 'Everything is ordered': 'सब ऑर्डर हो गया', 'Loading the confirmed quotations…': 'पक्के कोटेशन खुल रहे हैं…', 'GST no. · on the quotation only if typed': 'GST नंबर · लिखा हो तभी कोटेशन पर', 'GST no.': 'GST नंबर', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
   // To Do + the to-do window
   'New to-do': 'नया काम', '+ New to-do': '+ नया काम', 'Change the to-do': 'काम बदलें', 'Add to-do': 'काम जोड़ें', 'Add a to-do': 'काम जोड़ें', 'Save': 'सेव करें',
   'Site / measurement visit': 'साइट / नाप विज़िट', 'Make quotation': 'कोटेशन बनाना', 'Revise quotation': 'कोटेशन बदलना', 'Follow-up call': 'फ़ॉलो-अप कॉल',
-  'Client': 'क्लाइंट', 'Type a name, or leave empty': 'नाम लिखें, या ख़ाली छोड़ें', 'Date': 'तारीख़', 'Time': 'समय', 'No time': 'समय नहीं',
+  'Type a name, or leave empty': 'नाम लिखें, या ख़ाली छोड़ें', 'Date': 'तारीख़', 'Time': 'समय', 'No time': 'समय नहीं',
   'In 2 days': '2 दिन बाद', 'Next week': 'अगले हफ़्ते', '+ Till another day': '+ किसी और दिन तक', '+ Till a time': '+ किसी समय तक',
   'From': 'से', 'Till': 'तक', 'pick a day': 'दिन चुनें', 'pick a time': 'समय चुनें', 'Morning': 'सुबह', 'Afternoon': 'दोपहर', 'Evening': 'शाम', 'Minutes': 'मिनट',
   'Add the time you told the customer.': 'ग्राहक को जो समय बताया, वो डालें।', 'Time is optional.': 'समय ज़रूरी नहीं।', 'Who does it': 'कौन करेगा', 'Note': 'नोट',
@@ -9430,6 +9585,7 @@ const HI = {
 };
 // a few lines with a number or a name inside
 const HI_RE = [
+  [/^(\d+) of (\d+) ordered$/, (m, a, b) => `${b} में से ${a} ऑर्डर हुए`], [/^(\d+) items?$/, (m, n) => `${n} आइटम`], [/^Ordered · (.+)$/, (m, w) => `ऑर्डर हुआ · ${w}`],
   [/^Outside D'Decor's size chart\. Allowed by (.+) on (\d{1,2} \w{3}): D'Decor said they will make it\.$/, (m, w, d) => `D'Decor के साइज़ चार्ट से बाहर। ${w} ने ${d} को मंज़ूर किया: D'Decor ने कहा वो बना देगा।`],
   [/^v(\d+) sent today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} आज ${hiTime(t, p)} भेजा`], [/^v(\d+) sent yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} कल ${hiTime(t, p)} भेजा`],
   [/^v(\d+) sent (\d{1,2} \w{3}(?: \d{4})?)$/, (m, n, d) => `v${n} ${d} को भेजा`],
@@ -9547,4 +9703,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261026-175334 -->
+<!-- build 20261029-153012 -->
