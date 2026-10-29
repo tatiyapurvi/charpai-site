@@ -4710,10 +4710,10 @@ function renderQuoteSum(t = quoteTotals()){
     <div class="rows">
       ${qDisp(t.S, t.sub).map(D => `<div class="srow"><span>${D.name}</span><b>${rs(D.sub)}</b></div>`).join('')}
       <div class="srow"><span>Total</span><b>${rs(t.total)}</b></div>
-      <div class="srow"><label for="q-disc">Discount on curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
+      <div class="srow"><label for="q-disc">Discount on curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${parseFloat(q.discAmt) > 0 ? ' disabled' : ''}></div>
       <div class="srow"><label for="q-discAmt">or discount ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
       ${t.disc ? `<div class="srow"><span>Discount on curtain fabric</span><b>− ${rs(t.disc)}</b></div>` : ''}
-      <div class="srow"><label for="q-odisc">Discount on the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${q.odiscAmt ? ' disabled' : ''}></div>
+      <div class="srow"><label for="q-odisc">Discount on the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${parseFloat(q.odiscAmt) > 0 ? ' disabled' : ''}></div>
       <div class="srow"><label for="q-odiscAmt">or discount ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>
       ${t.disc2 ? `<div class="srow"><span>${esc(t.disc2Txt)}</span><b>− ${rs(t.disc2)}</b></div>` : ''}
     </div>
@@ -4795,9 +4795,9 @@ function renderQuoteSumM(t){
     <div class="qm-sec">What’s in it</div>
     <div class="qm-list">
       ${qDisp(t.S, t.sub).map(D => `<div class="qm-li"><span>${D.name}</span><b>${rs(D.sub)}</b></div>`).join('')}
-      ${row('disc', 'Discount', t.disc || t.disc2 ? '− ' + rs((t.disc || 0) + (t.disc2 || 0)) : 'None', `<div class="srow"><label for="q-disc">On curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${q.discAmt ? ' disabled' : ''}></div>
+      ${row('disc', 'Discount', t.disc || t.disc2 ? '− ' + rs((t.disc || 0) + (t.disc2 || 0)) : 'None', `<div class="srow"><label for="q-disc">On curtain fabric %</label><input id="q-disc" inputmode="decimal" value="${esc(q.disc || '')}" placeholder="0"${parseFloat(q.discAmt) > 0 ? ' disabled' : ''}></div>
         <div class="srow"><label for="q-discAmt">or ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
-        <div class="srow"><label for="q-odisc">On the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${q.odiscAmt ? ' disabled' : ''}></div>
+        <div class="srow"><label for="q-odisc">On the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${parseFloat(q.odiscAmt) > 0 ? ' disabled' : ''}></div>
         <div class="srow"><label for="q-odiscAmt">or ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>`)}
       ${row('inst', 'Installation', q.noInstall ? 'Not added' : 'Added', `<label class="switch" style="padding:0"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>`)}
       ${canSeeCost ? row('cost', 'Our cost and margin', showCost ? rs(marginNet) + (t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : '') : 'Hidden', `<label class="switch" style="padding:0"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
@@ -4914,6 +4914,8 @@ document.addEventListener('click', async e => {
   catch (err) { toast('Could not make the Excel. Check the internet.'); }
   btn.disabled = false; btn.innerHTML = old;
 });
+// 29 Oct (Purvi: Sudhanshu Singhi, "i am not able to edit the discount"): the ₹ box held "0", and any text there locked the % box.
+// Now only a ₹ amount above 0 locks it.
 $('#q-sum').addEventListener('input', e => {
   const id = e.target.id; if (!['q-disc', 'q-discAmt', 'q-odisc', 'q-odiscAmt'].includes(id)) return;
   state.quote[id.slice(2)] = e.target.value; save();
@@ -5526,7 +5528,8 @@ function watchClients(){
     if (current === 'dash') renderDash();
     if (current === 'todo') renderTodo();
     if (typeof PU !== 'undefined' && PU.docs) puSync();   // a client just marked Won gets its purchase list
-    if (current === 'quote') renderQuoteSum();
+    // 29 Oct: not while someone types in the discount boxes (every save updates the client and redrew them under the cursor)
+    if (current === 'quote' && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#q-sum') && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))) renderQuoteSum();
     syncExec(); renderCbar();
   }, () => { CL.state = 'error'; if (current === 'clients') renderClients(); });
   syncOpenDraft();
@@ -9862,4 +9865,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261029-162416 -->
+<!-- build 20261029-164642 -->
