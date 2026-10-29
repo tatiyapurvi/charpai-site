@@ -894,7 +894,11 @@ tr.dash-r:hover td{background:var(--sel)}
 .pu-dots i{flex:1;height:1.5px;background:var(--line);margin:0 3px}.pu-dots i.on{background:var(--good)}
 .pu-lbl{display:flex;justify-content:space-between;width:150px;margin-left:-9px;font-size:10.5px;color:var(--faint);font-style:normal}.pu-lbl em{font-style:normal;width:50px;text-align:center}.pu-lbl em:first-child{text-align:left;margin-left:9px;width:41px}.pu-lbl em.on{color:var(--ink)}
 .pu-when{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pu-row.received .pu-when{color:var(--good)}
-.pu-act{text-align:right}.pu-btn{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:9px;padding:6px 11px;font:600 12.5px var(--body);cursor:pointer;white-space:nowrap}
+.pu-act{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.pu-mini{border:0;background:none;padding:0;font:500 12px var(--body);color:var(--muted);text-decoration:underline;cursor:pointer}
+.pu-dots b.half{background:linear-gradient(90deg,var(--good) 50%,var(--field) 50%);border-color:var(--good)}
+.pu-part{color:var(--warn);font-weight:600}.pu-close{margin:4px 0 2px;font-size:13px}
+.pu-recs{display:grid;gap:8px;margin:6px 0 12px}.pu-rec{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--line2);border-radius:10px}.pu-rec small{display:block;color:var(--muted);font-size:12.5px}.pu-btn{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:9px;padding:6px 11px;font:600 12.5px var(--body);cursor:pointer;white-space:nowrap}
 .pu-btn:hover{border-color:var(--faint)}.pu-btn.dk{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 /* receive: a sticker-shaped card, then the qty counted */
 .pu-dlg{max-width:440px}.pu-stk{border:1.5px solid var(--ink);border-radius:10px;padding:12px 14px;margin:4px 0 14px;background:var(--paper)}
@@ -9466,11 +9470,19 @@ async function puSync(){
 // marking Won / undoing it (setOutcome) keeps the shared list right away
 function puOnOutcome(){ PU.syncSig = ''; if (PU.docs) setTimeout(puSync, 800); }
 // ---- items
+// 29 Oct (Purvi: "add tracking for the rest of a short delivery"): an item can come in more than one delivery. Each delivery is its own
+// receipt with its own store number and sticker, kept as marks[item].rcv = {"CP-000004": {at, by, byEmail, qty, sno, s?}} (the first
+// receipts, made before this, sit in marks[item].r / .s and are read the same way). The item stays "Ordered, on the way" until what came
+// adds up to what was ordered, or someone closes it because the rest won't come (marks[item].c).
+const puRec = m => { const L = Object.values(m.rcv || {}).filter(Boolean); if (m.r && !L.some(x => x.sno === m.r.sno)) L.push(Object.assign({}, m.r, {s: m.r.s || m.s || null, legacy: true}));
+  return L.sort((a, b) => String(a.at).localeCompare(String(b.at))); };
 function puItems(){
   const out = [], pr = puOwner() && PU.practice;
   for (const d of PU.docs || []) { if (!!d.practice !== pr) continue; for (const it of d.items || []) {
-    const key = `v${d.n}_${it.i}`, m = (d.marks || {})[key] || {};
-    out.push(Object.assign({}, it, {did: d.id, cid: d.cid, v: d.n, key, name: d.name, owner: d.ownerName, amount: d.amount, at: d.confirmedAt, o: m.o || null, r: m.r || null, s: m.s || null}));
+    const key = `v${d.n}_${it.i}`, m = (d.marks || {})[key] || {}, rec = puRec(m), got = Math.round(rec.reduce((a, x) => a + (+x.qty || 0), 0) * 100) / 100;
+    const full = !!rec.length && (got >= (+it.qty || 0) - 0.005 || !!m.c), last = rec[rec.length - 1] || null;
+    out.push(Object.assign({}, it, {did: d.id, cid: d.cid, v: d.n, key, name: d.name, owner: d.ownerName, amount: d.amount, at: d.confirmedAt,
+      o: m.o || null, rec, got, closed: m.c || null, last, r: full ? last : null, part: !!rec.length && !full, s: rec.length && rec.every(x => x.s) ? rec[rec.length - 1].s : null}));
   } }
   return out;
 }
@@ -9478,46 +9490,65 @@ const puState = it => it.r ? 'received' : it.o ? 'ordered' : 'open';
 const puFirst = m => String(m.by || personName(m.byEmail) || 'someone').split(' ')[0];
 const puWho = m => `${puFirst(m)}, ${cardDay(m.at) || ''}`.replace(/, $/, '');   // first name: the line stays short
 const puStamp = () => ({at: new Date().toISOString(), by: myName(), byEmail: ME_EMAIL || ''});
-async function puMark(it, part, val, quiet){   // part: 'o' order placed, 'r' received, 's' sticker downloaded
+const puDeep = (a, b) => { const o = Object.assign({}, a); for (const k in b) o[k] = b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && o[k] && typeof o[k] === 'object' ? puDeep(o[k], b[k]) : b[k]; return o; };
+async function puWrite(it, patch, auto, quiet){   // patch: what changes on this item's marks, e.g. {o: stamp} or {rcv: {"CP-000004": receipt}}
   const d = (PU.docs || []).find(x => x.id === it.did); if (!d) return;
   if (!quiet) PU.keep.add(it.did + '|' + it.key);
-  d.marks = Object.assign({}, d.marks, {[it.key]: Object.assign({}, (d.marks || {})[it.key], {[part]: val})}); renderPurchase();   // shown at once
-  try { await Store.setPurchase(it.did, {marks: {[it.key]: {[part]: val}}}, part === 's'); } catch (e) { toast('Not saved. Check the internet and try again.'); }
+  d.marks = puDeep(d.marks || {}, {[it.key]: patch}); renderPurchase();   // shown at once
+  try { await Store.setPurchase(it.did, {marks: {[it.key]: patch}}, auto); } catch (e) { toast('Not saved. Check the internet and try again.'); }
 }
+const puMark = (it, part, val, quiet) => puWrite(it, {[part]: val}, part === 's', quiet);
 const puFind = (did, key) => puItems().find(x => x.did === did && x.key === key);
 // the next store number: one more than the highest so far (one store, one person receiving at a time)
-const puNextSno = () => { let mx = 0; for (const d of PU.docs || []) for (const m of Object.values(d.marks || {})) { const n = parseInt(String((m && m.r && m.r.sno) || '').replace(/\D/g, ''), 10); if (n > mx) mx = n; } return 'CP-' + String(mx + 1).padStart(6, '0'); };
-// ---- receiving: one item at a time (a parcel rarely brings all of an order), qty counted first (the ₹35,000 roll nobody counted)
+const puNextSno = () => { let mx = 0; for (const d of PU.docs || []) for (const m of Object.values(d.marks || {})) for (const x of puRec(m || {})) { const n = parseInt(String(x.sno || '').replace(/\D/g, ''), 10); if (n > mx) mx = n; } return 'CP-' + String(mx + 1).padStart(6, '0'); };
+const puLeft = it => Math.max(0, Math.round(((+it.qty || 0) - it.got) * 100) / 100);
+// ---- receiving: one delivery at a time (a parcel rarely brings all of an order), qty counted first (the ₹35,000 roll nobody counted)
 function puReceive(it){
-  const cards = [['Use', it.area || '—'], ['Item', it.product], ['Details', it.what || '—'], ['Supplier', it.co], ['Ordered', puQty(it.qty, it.unit)]];
+  const left = puLeft(it), cards = [['Use', it.area || '—'], ['Item', it.product], ['Details', it.what || '—'], ['Supplier', it.co], ['Ordered', puQty(it.qty, it.unit)]];
+  if (it.rec.length) cards.push(['Came so far', `${puQty(it.got, it.unit)} · ${it.rec.map(x => `${x.sno} (${puQty(x.qty, it.unit)}, ${cardDay(x.at)})`).join(', ')}`], ['Still to come', puQty(left, it.unit)]);
   const u = (PU_U[String(it.unit).toUpperCase()] || [, String(it.unit).toLowerCase()])[1] || '';
-  openDlg(`<div class="dlg-in pu-dlg"><h2 id="dlg-title">Received in the store?</h2><p class="sub">Count it, then mark it received. It gets the next store number (${puNextSno()}) and its sticker.</p>
+  openDlg(`<div class="dlg-in pu-dlg"><h2 id="dlg-title">${it.rec.length ? 'The rest came?' : 'Received in the store?'}</h2><p class="sub">Count what came, then mark it received. It gets the next store number (${puNextSno()}) and its own sticker.</p>
     <div class="pu-stk"><div class="pu-stk-n">${esc(it.name)}</div><div class="pu-stk-s">Quotation v${it.v}${it.owner ? ' · ' + esc(it.owner) : ''}</div>
       <dl>${cards.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
-    <label class="pu-qty"><span>Qty received</span><span class="pu-qin"><input id="pu-rq" inputmode="decimal" value="${esc(String(Math.round(it.qty * 100) / 100))}" autocomplete="off" aria-label="Qty received"> ${esc(u)}</span></label>
+    <label class="pu-qty"><span>Qty that came now</span><span class="pu-qin"><input id="pu-rq" inputmode="decimal" value="${esc(String(left || Math.round(it.qty * 100) / 100))}" autocomplete="off" aria-label="Qty that came now"> ${esc(u)}</span></label>
+    ${it.rec.length ? `<p class="pu-close"><button class="linkbtn" data-puclose="1">The rest won't come: close this item</button></p>` : ''}
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn" data-pur="only">Mark received</button><button class="btn solid" data-dlg="ok">Mark received and get sticker</button></div></div>`, false, async () => { await puDoReceive(it, true); });
   dlg._pu = it; setTimeout(() => { const q = $('#pu-rq'); if (q) { q.focus(); q.select(); } }, 40);
 }
 async function puDoReceive(it, sticker){
   const q = parseFloat(String(($('#pu-rq') || {}).value || '').replace(/,/g, ''));
-  const r = Object.assign(puStamp(), {qty: q > 0 ? q : it.qty, sno: puNextSno()});
-  if (!it.o) await puMark(it, 'o', puStamp());   // it came, so it was ordered
-  await puMark(it, 'r', r);
-  toast(`${it.name}: ${it.product} received · ${r.sno}${r.qty < it.qty ? ` · ${puQty(it.qty - r.qty, it.unit)} still to come` : ''}`);
-  if (sticker) await puSticker(Object.assign({}, it, {r}));
+  const rec = Object.assign(puStamp(), {qty: q > 0 ? q : puLeft(it) || it.qty, sno: puNextSno()});
+  await puWrite(it, Object.assign({rcv: {[rec.sno]: rec}}, it.o ? {} : {o: puStamp()}));   // it came, so it was ordered
+  const left = Math.max(0, Math.round(((+it.qty || 0) - it.got - rec.qty) * 100) / 100);
+  toast(`${it.name}: ${it.product} · ${puQty(rec.qty, it.unit)} received · ${rec.sno}${left ? ` · ${puQty(left, it.unit)} still to come` : it.rec.length ? ' · all of it has come' : ''}`);
+  if (sticker) await puSticker(puFind(it.did, it.key) || it, rec);
 }
-dlg.addEventListener('click', async e => { const b = e.target.closest('[data-pur]'); if (!b || !dlg._pu) return; const it = dlg._pu; b.disabled = true; await puDoReceive(it, false); dlg._pu = null; closeDlg(); });
-// ---- the sticker: 100 × 70 mm, as the Odoo store sticker
-async function puSticker(it){
+dlg.addEventListener('click', async e => {
+  const c = e.target.closest('[data-puclose]'); if (c && dlg._pu) { const it = dlg._pu; dlg._pu = null; closeDlg(); await puWrite(it, {c: puStamp()}); toast(`${it.name}: ${it.product} closed with ${puQty(it.got, it.unit)} of ${puQty(it.qty, it.unit)}. Ctrl Z takes it back.`); return; }
+  const b = e.target.closest('[data-pur]'); if (!b || !dlg._pu) return; const it = dlg._pu; b.disabled = true; await puDoReceive(it, false); dlg._pu = null; closeDlg();
+});
+// more than one delivery: pick which sticker to print
+function puStickers(it){
+  if (it.rec.length <= 1) { if (it.rec[0]) puSticker(it, it.rec[0]); return; }
+  openDlg(`<div class="dlg-in pu-dlg"><h2 id="dlg-title">Which sticker?</h2><p class="sub">${esc(it.name)} · ${esc(it.product)} came in ${it.rec.length} deliveries. Each has its own sticker.</p>
+    <div class="pu-recs">${it.rec.map(x => `<div class="pu-rec"><div><b>${esc(x.sno)}</b><small>${puQty(x.qty, it.unit)} · ${esc(puWho(x))}${x.s ? ' · printed' : ''}</small></div><button class="pu-btn" data-pusno="${esc(x.sno)}">${x.s ? 'Sticker again' : 'Get sticker'}</button></div>`).join('')}</div>
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Close</button></div></div>`, false);
+  dlg._pus = it;
+}
+dlg.addEventListener('click', e => { const b = e.target.closest('[data-pusno]'); if (!b || !dlg._pus) return; const it = dlg._pus, x = it.rec.find(y => y.sno === b.dataset.pusno); if (x) puSticker(it, x); });
+// ---- the sticker: 100 × 70 mm, as the Odoo store sticker; a part delivery says which part ("2 m of 10 m")
+async function puSticker(it, rec){
+  rec = rec || it.last || {};
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js');
-    const {jsPDF} = window.jspdf, doc = new jsPDF({unit: 'mm', format: [100, 70], orientation: 'landscape'}), r = it.r || {};
+    const {jsPDF} = window.jspdf, doc = new jsPDF({unit: 'mm', format: [100, 70], orientation: 'landscape'}), r = rec;
     const W = 100, M = 4, fit = (t, size, w) => { doc.setFontSize(size); const full = String(t || ''); let s = full; while (s.length > 3 && doc.getTextWidth(s + '…') > w) s = s.slice(0, -1); return s === full ? s : s.trim() + '…'; };
+    const partOf = (+r.qty || 0) < (+it.qty || 0) - 0.005 ? ` of ${puQty(it.qty, it.unit)}` : '';
     doc.setDrawColor(0); doc.setLineWidth(.4); doc.rect(1.5, 1.5, W - 3, 67);
     doc.setFont('helvetica', 'bold'); doc.setTextColor(0); doc.text(fit(String(it.name).toUpperCase(), 17, W - 2 * M), M, 10);
     doc.setFont('helvetica', 'normal'); doc.text(fit(`Quotation v${it.v}${it.owner ? ' · ' + it.owner : ''}`, 8.5, W - 2 * M), M, 15);
-    const rows = [['Use', it.area || '—', true], ['Item', it.product, false], ['Details', it.what || '—', true], ['Supplier', it.co, false], ['Qty', puQty(r.qty || it.qty, it.unit), false],
+    const rows = [['Use', it.area || '—', true], ['Item', it.product, false], ['Details', it.what || '—', true], ['Supplier', it.co, false], ['Qty', puQty(r.qty || it.qty, it.unit) + partOf, !!partOf],
       ['Received', new Date(r.at || Date.now()).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}), false], ['S. No.', r.sno || '', true]];
     let y = 18; const vx = 25, rh = 5.6;
     rows.forEach(([k, v, b]) => { doc.setLineWidth(.15); doc.rect(M, y, W - 2 * M, rh); doc.line(vx - 1.5, y, vx - 1.5, y + rh);
@@ -9526,15 +9557,20 @@ async function puSticker(it){
     if (r.sno && window.JsBarcode) { const cv = document.createElement('canvas'); JsBarcode(cv, r.sno, {format: 'CODE128', displayValue: false, margin: 0, height: 40, width: 2});
       doc.addImage(cv.toDataURL('image/png'), 'PNG', M + 4, y + 1.5, 52, 7.5); }
     await saveFile(`Sticker ${r.sno || ''} ${it.name}.pdf`.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' '), doc.output('blob'));
-    if (it.r && !it.s) puMark(it, 's', puStamp(), true);
+    if (r.sno && !r.s) await puWrite(it, r.legacy ? {s: puStamp()} : {rcv: {[r.sno]: {s: puStamp()}}}, true, true);   // the third step of the track
   } catch (e) { console.warn(e); toast('Could not make the sticker. Check the internet.'); }
 }
-// ---- the three-step track on each row: Ordered · Received · Sticker; the newest step's who and when under it
+// ---- the three-step track on each row: Ordered · Received · Sticker; the newest step's who and when under it. Part delivery: the
+// Received dot is half filled and the line says how much came and how much is still to come.
 function puTrack(it){
-  const steps = [['Ordered', it.o], ['Received', it.r], ['Sticker', it.s]], last = it.r ? steps[1] : it.o ? steps[0] : null;   // the sticker is a small step: Received stays the line
-  const dots = steps.map(([l, m], i) => `${i ? `<i class="${m ? 'on' : ''}"></i>` : ''}<b class="${m ? 'on' : ''}" title="${esc(l + (m ? ' · ' + puWho(m) : ' · not yet'))}"></b>`).join('');
+  const steps = [['Ordered', it.o, ''], ['Received', it.r || (it.part ? it.last : null), it.part ? 'half' : ''], ['Sticker', it.s, '']];
+  const dots = steps.map(([l, m, h], i) => `${i ? `<i class="${m && !h ? 'on' : ''}"></i>` : ''}<b class="${m ? 'on' : ''} ${h}" title="${esc(l + (m ? ' · ' + puWho(m) : ' · not yet'))}"></b>`).join('');
   const lbl = steps.map(([l, m]) => `<em class="${m ? 'on' : ''}">${l}</em>`).join('');
-  return `<span class="pu-trk"><span class="pu-dots">${dots}</span><span class="pu-lbl">${lbl}</span><span class="pu-when">${last ? `${esc(last[0])} · ${esc(puWho(last[1]))}${it.r && it.r.sno ? ' · ' + esc(it.r.sno) : ''}${it.r && it.r.qty != null && it.r.qty < it.qty ? ` · ${puQty(it.r.qty, it.unit)} came` : ''}` : ''}</span></span>`;
+  const sn = it.rec.map(x => x.sno).join(', ');
+  const line = it.part ? `<b class="pu-part">${puQty(it.got, it.unit)} of ${puQty(it.qty, it.unit)} came</b> · ${puQty(puLeft(it), it.unit)} to come · ${esc(sn)}`
+    : it.r ? `Received · ${esc(puWho(it.r))}${sn ? ' · ' + esc(sn) : ''}${it.closed ? ` · closed at ${puQty(it.got, it.unit)}` : ''}`
+    : it.o ? `Ordered · ${esc(puWho(it.o))}` : '';
+  return `<span class="pu-trk"><span class="pu-dots">${dots}</span><span class="pu-lbl">${lbl}</span><span class="pu-when">${line}</span></span>`;
 }
 // ---- the page
 function renderPurchase(){
@@ -9545,7 +9581,7 @@ function renderPurchase(){
   if (!PF || !PU.docs) { el.innerHTML = `<div class="pu">${top}</div><p class="pu-empty">Loading…</p></div>`; return; }
   const q = PU.q.trim().toLowerCase(), all = puItems();
   const cnt = {open: 0, ordered: 0, received: 0}; all.forEach(it => cnt[puState(it)]++);
-  const match = it => !q || [it.name, it.what, it.product, it.co, it.area, it.owner, (it.r || {}).sno].join(' ').toLowerCase().includes(q);
+  const match = it => !q || [it.name, it.what, it.product, it.co, it.area, it.owner, ...it.rec.map(x => x.sno)].join(' ').toLowerCase().includes(q);
   const shown = all.filter(it => (PU.show === 'all' || puState(it) === PU.show || PU.keep.has(it.did + '|' + it.key)) && match(it));
   const waiting = new Set(all.filter(it => !it.r).map(it => it.did)).size;
   const seg = (k, l) => `<button data-puv="${k}" class="${PU.view === k ? 'on' : ''}" aria-pressed="${PU.view === k}">${l}</button>`;
@@ -9567,7 +9603,7 @@ function renderPurchase(){
 function puGroups(shown, all){
   const key = PU.view === 'client' ? it => it.did : PU.view === 'company' ? it => it.co : it => [it.co, it.what || it.product, String(it.unit).toUpperCase()].join('|');
   const G = new Map(); for (const it of shown) { const k = key(it); if (!G.has(k)) G.set(k, []); G.get(k).push(it); }
-  const tot = new Map(); for (const it of all) { const k = key(it); const t = tot.get(k) || {n: 0, o: 0, r: 0}; t.n++; if (it.r) t.r++; else if (it.o) t.o++; tot.set(k, t); }
+  const tot = new Map(); for (const it of all) { const k = key(it); const t = tot.get(k) || {n: 0, o: 0, r: 0}; t.n++; if (it.r) t.r++; else if (it.o) t.o++; tot.set(k, t); }   // a part delivery counts as ordered, not received
   const keys = [...G.keys()];
   if (PU.view === 'client') keys.sort((a, b) => String(G.get(b)[0].at || '').localeCompare(String(G.get(a)[0].at || '')));
   else keys.sort((a, b) => (tot.get(b).n - tot.get(b).r) - (tot.get(a).n - tot.get(a).r) || a.localeCompare(b));
@@ -9583,7 +9619,9 @@ function puGroups(shown, all){
     const rows = L.map(it => {
       const st = puState(it), c1 = PU.view === 'client' ? esc(it.product) : PU.view === 'company' ? `${esc(it.product)}<small>${esc(it.name)}</small>` : esc(it.name);
       const c2 = PU.view === 'product' ? `${esc(it.area || '—')}<small>v${it.v}${it.owner ? ' · ' + esc(it.owner) : ''}</small>` : `${esc(it.what || '—')}${it.area ? `<small>${esc(it.area)}</small>` : ''}`;
-      const act = st === 'received' ? `<button class="pu-btn" data-pustk="${esc(it.did)}|${esc(it.key)}">${it.s ? 'Sticker again' : 'Get sticker'}</button>` : st === 'ordered' ? `<button class="pu-btn dk" data-purc="${esc(it.did)}|${esc(it.key)}">Received</button>` : '';   // the circle first, then Received: one next step at a time
+      const id = `${esc(it.did)}|${esc(it.key)}`, stk = it.rec.length ? `<button class="pu-mini" data-pustk="${id}">${it.rec.length > 1 ? 'Stickers' : it.s ? 'Sticker again' : 'Get sticker'}</button>` : '';
+      const act = st === 'received' ? `<button class="pu-btn" data-pustk="${id}">${it.rec.length > 1 ? 'Stickers' : it.s ? 'Sticker again' : 'Get sticker'}</button>`
+        : st === 'ordered' ? `<button class="pu-btn dk" data-purc="${id}">${it.part ? 'Rest came' : 'Received'}</button>${stk}` : '';   // the circle first, then Received: one next step at a time
       return `<div class="pu-row ${st}"><button class="pu-tick" data-put="${esc(it.did)}|${esc(it.key)}" role="checkbox" aria-checked="${st !== 'open'}" aria-label="${st === 'open' ? 'Mark ordered' : st === 'ordered' ? 'Ordered. Tap to mark not ordered' : 'Received'}" title="${st === 'open' ? 'Mark ordered' : st === 'ordered' ? 'Tap to mark not ordered' : 'Received in the store'}"${st === 'received' ? ' disabled' : ''}>${st === 'open' ? '' : '✓'}</button>
         <span class="pu-p">${c1}</span><span class="pu-w">${c2}</span>${PU.view !== 'client' ? '<span></span>' : `<span class="pu-cocell"><span class="pu-co">${esc(it.co)}</span></span>`}
         <span class="pu-q">${puQty(it.qty, it.unit)}</span>${puTrack(it)}<span class="pu-act">${act}</span></div>`;
@@ -9598,7 +9636,7 @@ document.addEventListener('click', e => {
   const one = a => { const b = e.target.closest(`[${a}]`); if (!b) return null; const [did, key] = b.getAttribute(a).split('|'); return puFind(did, key); };
   let it = one('data-put'); if (it) { if (!it.r) puMark(it, 'o', it.o ? null : puStamp()); return; }
   it = one('data-purc'); if (it) { puReceive(it); return; }
-  it = one('data-pustk'); if (it) { puSticker(it); return; }
+  it = one('data-pustk'); if (it) { puStickers(it); return; }
   const v = e.target.closest('[data-puv]'); if (v) { PU.view = v.dataset.puv; PU.keep.clear(); renderPurchase(); return; }
   const s = e.target.closest('[data-pus]'); if (s) { PU.show = s.dataset.pus; PU.keep.clear(); renderPurchase(); return; }
   const c = e.target.closest('[data-puc]'); if (c) { openClient(c.dataset.puc, 'client'); }
@@ -9671,7 +9709,7 @@ const HI = {
   'Saved as you type. Done takes you back to their page.': 'लिखते ही सेव होता है। "हो गया" दबाकर उनके पेज पर वापस जाएँ।',
   'Change': 'बदलें', 'Cancel': 'रहने दें',
   'Updated today · not sent': 'आज बदला · भेजा नहीं', 'Part quotation': 'आधा कोटेशन', 'Part quotation, amounts were hidden': 'आधा कोटेशन, रकम छुपी थी',
-  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'My practice clients': 'मेरे प्रैक्टिस क्लाइंट', 'Received': 'आ गया', 'Get sticker': 'स्टिकर लें', 'Sticker again': 'स्टिकर फिर से', 'Received in store': 'स्टोर में आ गया', 'Ordered, on the way': 'ऑर्डर हुआ, रास्ते में', 'Progress': 'प्रगति', 'Received in the store?': 'स्टोर में आ गया?', 'Mark received': 'आ गया लगाएँ', 'Mark received and get sticker': 'आ गया लगाएँ और स्टिकर लें', 'Qty received': 'कितना आया', 'Not ordered yet': 'अभी ऑर्डर नहीं हुआ', 'All received': 'सब आ गया', 'Sticker': 'स्टिकर', 'Purchase': 'ख़रीद', 'orders to place': 'ऑर्डर देने हैं', 'Everything to order for the quotations clients confirmed. Tick an item once its order is placed.': 'जिन क्लाइंट ने कोटेशन पक्का किया, उनका सारा सामान जो ऑर्डर करना है। ऑर्डर दे दें तो उस आइटम पर टिक करें।', 'By client': 'क्लाइंट के हिसाब से', 'By company': 'कंपनी के हिसाब से', 'By product': 'सामान के हिसाब से', 'To order': 'ऑर्डर करना है', 'Ordered': 'ऑर्डर हो गया', 'Clients waiting': 'इंतज़ार में क्लाइंट', 'Search client, fabric, company…': 'क्लाइंट, कपड़ा, कंपनी ढूँढें…', 'Item': 'आइटम', 'Company': 'कंपनी', 'Qty': 'मात्रा', 'Status': 'स्थिति', 'Client': 'क्लाइंट', 'Room': 'कमरा', 'All ordered': 'सब ऑर्डर हो गया', 'Mark ordered': 'ऑर्डर हो गया लगाएँ', 'Nothing to order yet': 'अभी कुछ ऑर्डर नहीं करना', 'Everything is ordered': 'सब ऑर्डर हो गया', 'Loading the confirmed quotations…': 'पक्के कोटेशन खुल रहे हैं…', 'GST no. · on the quotation only if typed': 'GST नंबर · लिखा हो तभी कोटेशन पर', 'GST no.': 'GST नंबर', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
+  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'Rest came': 'बाक़ी आ गया', 'Stickers': 'स्टिकर', 'The rest came?': 'बाक़ी आ गया?', 'Qty that came now': 'अभी कितना आया', "The rest won't come: close this item": 'बाक़ी नहीं आएगा: यह आइटम बंद करें', 'Which sticker?': 'कौन सा स्टिकर?', 'Came so far': 'अब तक आया', 'Still to come': 'अभी आना है', 'My practice clients': 'मेरे प्रैक्टिस क्लाइंट', 'Received': 'आ गया', 'Get sticker': 'स्टिकर लें', 'Sticker again': 'स्टिकर फिर से', 'Received in store': 'स्टोर में आ गया', 'Ordered, on the way': 'ऑर्डर हुआ, रास्ते में', 'Progress': 'प्रगति', 'Received in the store?': 'स्टोर में आ गया?', 'Mark received': 'आ गया लगाएँ', 'Mark received and get sticker': 'आ गया लगाएँ और स्टिकर लें', 'Qty received': 'कितना आया', 'Not ordered yet': 'अभी ऑर्डर नहीं हुआ', 'All received': 'सब आ गया', 'Sticker': 'स्टिकर', 'Purchase': 'ख़रीद', 'orders to place': 'ऑर्डर देने हैं', 'Everything to order for the quotations clients confirmed. Tick an item once its order is placed.': 'जिन क्लाइंट ने कोटेशन पक्का किया, उनका सारा सामान जो ऑर्डर करना है। ऑर्डर दे दें तो उस आइटम पर टिक करें।', 'By client': 'क्लाइंट के हिसाब से', 'By company': 'कंपनी के हिसाब से', 'By product': 'सामान के हिसाब से', 'To order': 'ऑर्डर करना है', 'Ordered': 'ऑर्डर हो गया', 'Clients waiting': 'इंतज़ार में क्लाइंट', 'Search client, fabric, company…': 'क्लाइंट, कपड़ा, कंपनी ढूँढें…', 'Item': 'आइटम', 'Company': 'कंपनी', 'Qty': 'मात्रा', 'Status': 'स्थिति', 'Client': 'क्लाइंट', 'Room': 'कमरा', 'All ordered': 'सब ऑर्डर हो गया', 'Mark ordered': 'ऑर्डर हो गया लगाएँ', 'Nothing to order yet': 'अभी कुछ ऑर्डर नहीं करना', 'Everything is ordered': 'सब ऑर्डर हो गया', 'Loading the confirmed quotations…': 'पक्के कोटेशन खुल रहे हैं…', 'GST no. · on the quotation only if typed': 'GST नंबर · लिखा हो तभी कोटेशन पर', 'GST no.': 'GST नंबर', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
   // To Do + the to-do window
   'New to-do': 'नया काम', '+ New to-do': '+ नया काम', 'Change the to-do': 'काम बदलें', 'Add to-do': 'काम जोड़ें', 'Add a to-do': 'काम जोड़ें', 'Save': 'सेव करें',
   'Site / measurement visit': 'साइट / नाप विज़िट', 'Make quotation': 'कोटेशन बनाना', 'Revise quotation': 'कोटेशन बदलना', 'Follow-up call': 'फ़ॉलो-अप कॉल',
@@ -9705,6 +9743,7 @@ const HI = {
 };
 // a few lines with a number or a name inside
 const HI_RE = [
+  [/^(.+) of (.+) came$/, (m, a, b) => `${b} में से ${a} आया`],
   [/^(\d+) of (\d+) ordered$/, (m, a, b) => `${b} में से ${a} ऑर्डर हुए`], [/^(\d+) items?$/, (m, n) => `${n} आइटम`], [/^Ordered · (.+)$/, (m, w) => `ऑर्डर हुआ · ${w}`],
   [/^Outside D'Decor's size chart\. Allowed by (.+) on (\d{1,2} \w{3}): D'Decor said they will make it\.$/, (m, w, d) => `D'Decor के साइज़ चार्ट से बाहर। ${w} ने ${d} को मंज़ूर किया: D'Decor ने कहा वो बना देगा।`],
   [/^v(\d+) sent today, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} आज ${hiTime(t, p)} भेजा`], [/^v(\d+) sent yesterday, (\d{1,2}(?::\d\d)?) (am|pm)$/, (m, n, t, p) => `v${n} कल ${hiTime(t, p)} भेजा`],
@@ -9823,4 +9862,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261029-155650 -->
+<!-- build 20261029-162416 -->
