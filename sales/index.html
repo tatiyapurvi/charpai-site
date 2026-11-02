@@ -60,7 +60,7 @@ auth.onAuthStateChanged(async u => {
   const ok = p && p.active !== false && (viaGoogle ? u.emailVerified : p.pw === true);
   if (!ok) { gateShow('g-denied', email === OWNER ? 'Purvi, please sign in with the Google button.' : `${email} is not on Charpai’s team list${p && p.active === false ? ' any more' : ''}. Ask Purvi to add you.`); return; }
   const owner = email === OWNER || CO_OWNERS.includes(email), admin = owner || p.role === 'admin';
-  window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, job: p.job || '', phone: p.phone || '', admin, owner,
+  window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, trial: !!p.trial, job: p.job || '', phone: p.phone || '', admin, owner,
     signOut: () => auth.signOut().then(() => location.reload()),
     async createPasswordUser(em, pw){ const sec = firebase.apps.find(a => a.name === 'add') || firebase.initializeApp(FIREBASE_CONFIG, 'add');
       await sec.auth().createUserWithEmailAndPassword(em, pw); await sec.auth().signOut(); }};
@@ -5474,7 +5474,7 @@ const Store = {
   // qversions holds the quotations (<client>_v<n>) and, since 19 Oct, the measurement sheets (<client>_m<n>, kind 'ms')
   listDocs: async cid => (await scoped(db.collection('qversions').where('cid', '==', cid)).get()).docs.map(d => Object.assign({_id: d.id}, d.data())),
   // 29 Oct: the shared purchase list (purchase.js); every login reads it (firestore.rules: match /purchase). auto = not an undo step
-  watchPurchase: (fn, err) => db.collection('purchase').where('active', '==', true).onSnapshot(s => fn(s.docs.map(d => Object.assign({id: d.id}, d.data()))), err),
+  watchPurchase: (fn, err) => (q => meTrial() ? q.where('ownerEmail', '==', ME_EMAIL) : q)(db.collection('purchase').where('active', '==', true)).onSnapshot(s => fn(s.docs.map(d => Object.assign({id: d.id}, d.data()))), err),
   setPurchase: (id, data, auto) => (auto ? UNDO.raw() : db).doc('purchase/' + id).set(clone(data), {merge: true}),
   listVersions: async cid => (await Store.listDocs(cid)).filter(x => x.kind !== 'ms').sort((a, b) => b.n - a.n),
   listSheets: async cid => (await Store.listDocs(cid)).filter(x => x.kind === 'ms').sort((a, b) => b.n - a.n),
@@ -5483,7 +5483,7 @@ const Store = {
   sheetExists: async (cid, n) => (await db.doc(`qversions/${cid}_m${n}`).get()).exists,
   addSheet: (cid, n, body) => db.doc(`qversions/${cid}_m${n}`).set(Object.assign(body, stampMe(), ME_EMAIL ? {ownerEmail: ownerOf(cid)} : {})),
 };
-const CL = {state: 'none', list: [], all: [], practice: [], byId: new Map(), vers: {}, msv: {}};   // msv: measurement sheet versions per client
+const CL = {state: 'none', list: [], all: [], practice: [], trial: [], byId: new Map(), vers: {}, msv: {}};   // msv: measurement sheet versions per client
 let cpId = null, UID = null;
 const newClientId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const DEV = (() => { try { let d = localStorage.getItem('charpai-device'); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem('charpai-device', d); } return d; } catch(_) { return 'x' + Math.random().toString(36).slice(2, 8); } })();
@@ -5505,7 +5505,15 @@ const practiceCid = cid => !!cid && isPractice(CL.byId.get(cid));   // a to-do o
 // 26 Oct (Purvi): "dont show rudresh or his data anywhere … he is a developer who has been given an account so that he can look at our tool".
 // A hidden login stays on People (to manage the account) and sees their own things when signed in; everyone else never sees them or their clients / to-dos.
 const HIDDEN = new Set(['rhv4748@gmail.com']);   // Rudresh
-const hiddenP = e => !!e && HIDDEN.has(e) && e !== ME_EMAIL;
+// 2 Nov (Purvi): "yashna, yashna2 and yashna3 … they are people who are just trying out my software, dont show their data anywhere, only show
+// it to me through a filter … only visible to admin … the filter should have the name as jaydurga" · "i dont want them in charpai basically".
+// Trial logins = users/{email}.trial (set on People) or these emails. Nobody else sees them or their clients / to-dos / orders; an admin sees
+// them only with the Jaydurga filter. A trial login sees only its own work and the other trial logins, never the Charpai team.
+const TRIAL = new Set(['yashnaagarwal1@gmail.com', 'jaydurgafurnishingspvtltd@gmail.com']);   // Yashna, Yashna2 (Yashna3: the flag)
+const trialP = e => !!e && (TRIAL.has(e) || !!(PEOPLE.get(e) || TEAM.get(e) || {}).trial);
+const meTrial = () => !!PF && (!!PF.trial || TRIAL.has(ME_EMAIL));
+const hiddenP = e => !!e && e !== ME_EMAIL && (HIDDEN.has(e) || (meTrial() ? !trialP(e) : trialP(e)));
+const trialC = c => !!c && !meTrial() && trialP(c.ownerEmail);
 const hiddenC = c => !!c && hiddenP(c.ownerEmail);
 const hiddenT = t => hiddenP(t.ownerEmail) || hiddenP(t.by) || hiddenC(CL.byId.get(t.cid));
 const statusOf = c => c.outcome && c.outcome.s === 'won' ? 'won' : c.outcome && c.outcome.s === 'lost' ? 'lost' : c.latest ? 'quoted' : 'draft';
@@ -5520,7 +5528,7 @@ const amountOf = c => statusOf(c) === 'won' && c.outcome.total != null ? c.outco
 function watchClients(){
   CL.state = 'loading';
   Store.watchClients(list => {
-    CL.all = list; CL.list = list.filter(c => !isPractice(c) && !hiddenC(c)); CL.practice = list.filter(isPractice);
+    CL.all = list; CL.list = list.filter(c => !isPractice(c) && !hiddenC(c)); CL.practice = list.filter(isPractice); CL.trial = PF && IS_ADMIN ? list.filter(trialC) : [];
     CL.byId = new Map(list.map(c => [c.id, c])); CL.state = 'ready'; backfillCats();
     const typing = document.activeElement && document.activeElement.id === 'cl-q';
     if (current === 'clients' && !typing) renderClients();
@@ -5721,7 +5729,7 @@ async function recordVersion(v, sig, t){
 // survives a reload and can be sent to someone. Filters work on the client CARD (clients/<id>), which carries summary
 // fields (city, cats, total, outcome, dates) written when the sheet saves: lists never open every sheet.
 // Filters combine with AND. Each one is {k, chip(v), match(c, v)}: future lists (orders, purchases, stock) reuse the same shape.
-const CF0 = {practice: '', q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent', view: 'board', won: '', lost: '', why: '', lcol: ''};   // lcol: lost board columns, '' = by reason, exec = by salesperson   // view: board | list; lost: '1' = only lost clients, in both views; why: lost reason (18 Oct)   // view: board (17 Oct, default) or list; won: '1' = every won card, not just 60 days
+const CF0 = {practice: '', q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent', view: 'board', jd: '', won: '', lost: '', why: '', lcol: ''};   // lcol: lost board columns, '' = by reason, exec = by salesperson   // view: board | list; lost: '1' = only lost clients, in both views; why: lost reason (18 Oct)   // view: board (17 Oct, default) or list; won: '1' = every won card, not just 60 days
 let CF = Object.assign({}, CF0), cfOpen = false;
 const tidyCity = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s-])\S/g, m => m.toUpperCase());
 const cityOf = c => tidyCity(c.city);
@@ -5746,7 +5754,8 @@ const CFILTERS = [
   {k: 'has', chip: v => 'Has ' + ((HAS().find(x => x[0] === v) || [])[1] || v).toLowerCase(), match: (c, v) => (c.cats || []).some(x => x === v || (v === 'uph' && (x === 'fabric' || x === 'foam')) || (v === 'mattress' && x === 'hcp'))},   // cards saved before 6 Oct say fabric / foam
   {k: 'follow', chip: () => 'Needs follow-up', match: c => followDue(c)},
   {k: 'lost', chip: () => 'Lost clients', match: c => statusOf(c) === 'lost'},
-  {k: 'practice', chip: () => 'My practice clients', match: () => true},   // 25 Oct: the base list is swapped (clBase), so every client in it matches   // 18 Oct: lost is a filter, shown on the board and in the list
+  {k: 'practice', chip: () => 'My practice clients', match: () => true},
+  {k: 'jd', chip: () => 'Jaydurga', match: () => true},   // 2 Nov: the trial logins' clients (base list swapped, as practice)   // 25 Oct: the base list is swapped (clBase), so every client in it matches   // 18 Oct: lost is a filter, shown on the board and in the list
   {k: 'why', chip: v => 'Lost: ' + v, match: (c, v) => statusOf(c) === 'lost' && ((c.outcome || {}).reason || 'No reason given') === v},
 ];
 const cfActive = () => CFILTERS.filter(f => has(CF[f.k]) && CF[f.k] !== '');
@@ -5754,7 +5763,7 @@ const cfSearch = (c, ql) => !ql || [c.name, c.no, c.exec, c.phone, c.addr, c.cit
 function cfQuery(){ const p = new URLSearchParams(); for (const k in CF0) if (CF[k] !== CF0[k] && k !== 'q') p.set(k, CF[k]); const s = p.toString(); return s ? '?' + s : ''; }
 function cfFromQuery(qs){ CF = Object.assign({}, CF0); try { new URLSearchParams(qs || '').forEach((v, k) => { if (k in CF0 && k !== 'q') CF[k] = v; }); } catch(_){} }
 function cfSet(patch){ Object.assign(CF, patch); try { history.replaceState(null, '', '#clients' + cfQuery()); } catch(_){} renderClients(); }
-const clBase = () => CF.practice ? CL.practice : CL.list;   // real clients, or only the practice ones when that filter is on
+const clBase = () => CF.jd && PF && IS_ADMIN ? CL.trial : CF.practice ? CL.practice : CL.list;   // real clients, or only the practice ones when that filter is on
 function renderClients(){
   const el = $('#cl-body');
   const board = CF.view !== 'list';
@@ -5774,7 +5783,7 @@ function renderClients(){
   const cities = uniq(clBase().map(cityOf).filter(Boolean)).sort(), noCity = clBase().some(c => !cityOf(c));
   const sel = (id, label, opts, v) => `<label class="ff"><span>${label}</span><select id="${id}" class="search">${opts.map(([k, n]) => `<option value="${esc(k)}"${String(v) === String(k) ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
   const panel = `<div class="fpanel" id="cl-fpanel"${cfOpen ? '' : ' hidden'}>
-    ${admin ? sel('cf-exec', 'Sales executive', [['', 'Anyone'], ...[...PEOPLE].filter(([e, p]) => (sells(p) && !hiddenP(e)) || CF.exec === e).map(([e, p]) => [e, p.name || e]), ['-', 'Not assigned']], CF.exec) : ''}
+    ${admin ? sel('cf-exec', 'Sales executive', [['', 'Anyone'], ...[...PEOPLE].filter(([e, p]) => (CF.jd ? trialP(e) : sells(p) && !hiddenP(e)) || CF.exec === e).map(([e, p]) => [e, p.name || e]), ['-', 'Not assigned']], CF.exec) : ''}
     ${sel('cf-city', 'City', [['', 'Any city'], ...cities.map(c => [c, c]), ...(noCity ? [['-', 'No city yet']] : [])], CF.city)}
     <div class="ff ff-wide"><span>Value <small>latest quotation, or the won amount</small></span>
       <div class="frange"><input id="cf-min" class="search" inputmode="numeric" placeholder="From ₹" value="${esc(CF.min)}" aria-label="Value from"><span>to</span><input id="cf-max" class="search" inputmode="numeric" placeholder="Up to ₹" value="${esc(CF.max)}" aria-label="Value up to"></div>
@@ -5785,6 +5794,7 @@ function renderClients(){
     ${CF.lost ? sel('cf-why', 'Why lost', [['', 'Any reason'], ...uniq([...LOST_WHY, ...clBase().filter(c => statusOf(c) === 'lost').map(c => (c.outcome || {}).reason || 'No reason given')]).map(w => [w, w])], CF.why) : ''}
     <label class="ff ff-check"><input type="checkbox" id="cf-follow"${CF.follow ? ' checked' : ''}><span><b>Needs follow-up</b><small>Quoted, nothing changed for 7+ days</small></span></label>
     ${PF && ME_EMAIL === OWNER_EMAIL ? `<label class="ff ff-check"><input type="checkbox" id="cf-practice"${CF.practice ? ' checked' : ''}><span><b>My practice clients</b><small>Only the clients made on your account (${CL.practice.length}). Never on the dashboard or in any total.</small></span></label>` : ''}
+    ${admin ? `<label class="ff ff-check"><input type="checkbox" id="cf-jd"${CF.jd ? ' checked' : ''}><span><b>Jaydurga</b><small>Only the clients of the trial logins (${CL.trial.length}). Hidden from everyone else, never on the dashboard or in any total.</small></span></label>` : ''}
   </div>`;
   const chips = act.length ? `<div class="fchips">${act.map(f => `<button class="fchip" data-clear="${f.k}" title="Remove this filter">${esc(f.chip(CF[f.k]))}<span aria-hidden="true">×</span></button>`).join('')}<button class="linkbtn" data-clear="*">Clear all</button></div>` : '';
   const row = c => { const city = cityOf(c), addr = c.addr && city && String(c.addr).toLowerCase().includes(city.toLowerCase()) ? c.addr : [c.addr, city].filter(Boolean).join(', ');
@@ -5810,7 +5820,7 @@ const clb = $('#cl-body');
 clb.addEventListener('change', e => {
   const t = e.target, id = t.id;
   if (id === 'cf-exec') cfSet({exec: t.value}); else if (id === 'cf-city') cfSet({city: t.value}); else if (id === 'cf-added') cfSet({added: t.value});
-  else if (id === 'cf-has') cfSet({has: t.value}); else if (id === 'cf-why') cfSet({why: t.value}); else if (id === 'cf-sort') cfSet({sort: t.value}); else if (id === 'cf-practice') cfSet({practice: t.checked ? '1' : ''}); else if (id === 'cf-follow') cfSet({follow: t.checked ? '1' : ''});
+  else if (id === 'cf-has') cfSet({has: t.value}); else if (id === 'cf-why') cfSet({why: t.value}); else if (id === 'cf-sort') cfSet({sort: t.value}); else if (id === 'cf-practice') cfSet({practice: t.checked ? '1' : '', jd: ''}); else if (id === 'cf-jd') cfSet({jd: t.checked ? '1' : '', practice: ''}); else if (id === 'cf-follow') cfSet({follow: t.checked ? '1' : ''});
   else if (id === 'cf-min' || id === 'cf-max') { const v = String(Math.round(+t.value.replace(/[^\d.]/g, '') || 0) || ''); cfSet({[id.slice(3)]: v}); }
 });
 clb.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.id === 'cf-min' || e.target.id === 'cf-max')) e.target.blur(); });
@@ -6270,8 +6280,8 @@ function renderPeople(){
       <td>${esc(jobOf(p))}</td>
       <td class="mono">${p.phone ? esc(p.phone) : `<span class="${sells(p) ? 'miss' : 'none'}">${sells(p) ? 'Add mobile' : '—'}</span>`}</td>
       <td class="hide-s">${canLogin(id) ? `${esc(id)}<div class="hint">${p.pw ? 'email + password' : 'Google'}</div>` : '<span class="none">No email yet: can’t sign in</span>'}</td>
-      <td class="hide-s">${canLogin(id) ? (p.role === 'admin' ? 'Every client' : 'Own clients') : '<span class="none">—</span>'}</td>
-      <td class="hide-s mono">${counts.get(id) || 0}</td>
+      <td class="hide-s">${canLogin(id) ? (trialP(id) ? 'Own clients · <span class="pill">Jaydurga</span>' : p.role === 'admin' ? 'Every client' : 'Own clients') : '<span class="none">—</span>'}</td>
+      <td class="hide-s mono">${trialP(id) ? CL.trial.filter(c => c.ownerEmail === id).length : counts.get(id) || 0}</td>
       <td class="r"><button class="btn" data-act="edit" data-e="${esc(id)}">Edit</button>${id === ME_EMAIL ? '' : ` <button class="btn" data-act="toggle" data-e="${esc(id)}">${p.active === false ? 'Switch on' : 'Switch off'}</button>`}</td></tr>`).join('')}
     </tbody></table></div>
     ${PF && PF.owner ? `<div class="card" style="margin-top:14px"><h3>Bring in a file from Claude</h3><p class="hint" style="margin:0 0 10px">Adds or replaces supplier lists, prices or costs from a file Claude made for you (for example a new price list). Only the lists in the file change; clients are not touched.</p>
@@ -6321,8 +6331,9 @@ function askPerson(id){
     <label class="f" for="p-email">Email <small>(optional: needed to sign in)</small></label><input type="text" id="p-email" inputmode="email" autocomplete="off" placeholder="their Gmail or work email" value="${hasEmail ? esc(id) : ''}"${hasEmail ? ' readonly' : ''}>
     ${hasEmail ? '<p class="hint" style="margin:4px 0 0">To change a sign-in email, add them again with the new email and switch this one off.</p>' : ''}
     <div id="p-access"${hasEmail ? '' : ' hidden'}>${me ? '' : `<label class="f">What they see</label>
-    <label class="opt"><input type="radio" name="p-role" value="sales"${p.role === 'admin' ? '' : ' checked'}><span><b>Own clients</b><small>Sees and works on only their own clients</small></span></label>
-    <label class="opt"><input type="radio" name="p-role" value="admin"${p.role === 'admin' ? ' checked' : ''}><span><b>Every client (admin)</b><small>Sees every client, the dashboard and People (not dealer prices)</small></span></label>`}
+    <label class="opt"><input type="radio" name="p-role" value="sales"${p.role === 'admin' || p.trial || trialP(id) ? '' : ' checked'}><span><b>Own clients</b><small>Sees and works on only their own clients</small></span></label>
+    <label class="opt"><input type="radio" name="p-role" value="admin"${p.role === 'admin' && !p.trial ? ' checked' : ''}><span><b>Every client (admin)</b><small>Sees every client, the dashboard and People (not dealer prices)</small></span></label>
+    <label class="opt"><input type="radio" name="p-role" value="trial"${p.trial || trialP(id) ? ' checked' : ''}><span><b>Trying the software (Jaydurga)</b><small>Sees only their own clients, never the Charpai team or orders. Hidden from everyone; admins see them with the Jaydurga filter.</small></span></label>`}
     ${hasEmail ? '' : `<label class="f">How they sign in</label>
     <label class="opt"><input type="radio" name="p-how" value="google" checked><span><b>Google account</b><small>No password to remember. Their email must be a Google account (Gmail).</small></span></label>
     <label class="opt"><input type="radio" name="p-how" value="pw"><span><b>Email + password</b><small>You set a first password and send it to them once</small></span></label>
@@ -6331,7 +6342,7 @@ function askPerson(id){
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">${id ? 'Save' : 'Add'}</button></div></div>`, false, async d => {
     const v = k => d.querySelector('#' + k).value.trim(), msg = t => { d.querySelector('#p-msg').textContent = t; return false; };
     const name = v('p-name'), email = v('p-email').toLowerCase(), jobSel = v('p-job'), jobV = jobSel === 'Other…' ? v('p-jobo') : jobSel, phone = mobile(v('p-phone'));
-    const roleEl = d.querySelector('input[name=p-role]:checked'), role = me ? (p.role || 'admin') : email && roleEl ? roleEl.value : 'sales';
+    const roleEl = d.querySelector('input[name=p-role]:checked'), roleV = me ? (p.role || 'admin') : email && roleEl ? roleEl.value : 'sales', role = roleV === 'trial' ? 'sales' : roleV;
     const howEl = d.querySelector('input[name=p-how]:checked'), pw = hasEmail ? !!p.pw : !!email && !!howEl && howEl.value === 'pw', pass = pw && !hasEmail ? v('p-pw') : '';
     if (!name) return msg('Type their name.'); if (!jobV) return msg('Type the job.');
     if (phone && phone.length !== 10) return msg('The mobile number should have 10 digits.');
@@ -6340,7 +6351,7 @@ function askPerson(id){
     if (!id && [...PEOPLE.values()].some(x => nameKey(x.name) === nameKey(name))) return msg(`${name} is already on the list: use Edit.`);
     if (pw && !hasEmail && pass.length < 8) return msg('The password needs at least 8 letters or numbers.');
     const newId = hasEmail ? id : email || id || 'p_' + name.toLowerCase().replace(/[^a-z]+/g, '-') + '-' + Math.random().toString(36).slice(2, 6);
-    const data = Object.assign({}, p, {name, job: jobV, phone, role, pw, active: p.active !== false});
+    const data = Object.assign({}, p, {name, job: jobV, phone, role, pw, active: p.active !== false, trial: roleV === 'trial'});
     if (!id) Object.assign(data, {added: new Date().toISOString(), addedBy: ME_EMAIL});
     try {
       await db.doc('users/' + newId).set(data);
@@ -8535,7 +8546,7 @@ function askTodo(pre = {}, edit){
   const people = PF ? [...TEAM].filter(([e, p]) => canLogin(e) && p.active !== false && !hiddenP(e)) : [];
   const pick = people.length > 1;   // 19 Oct (Purvi): sales give to-dos to each other too
   const own = t.ownerEmail || (c0 && c0.ownerEmail) || ME_EMAIL || '';
-  const clientOpts = `<datalist id="tdclients">${CL.all.filter(c => statusOf(c) !== 'lost').map(c => `<option value="${esc(c.name || mobile(c.phone))}">${esc([cityOf(c), c.phone].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
+  const clientOpts = `<datalist id="tdclients">${CL.all.filter(c => statusOf(c) !== 'lost' && !hiddenC(c)).map(c => `<option value="${esc(c.name || mobile(c.phone))}">${esc([cityOf(c), c.phone].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>`;
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">${edit ? 'Change the to-do' : 'New to-do'}</h2>
     <div class="tdtypes" role="group" aria-label="What">${TD_TYPES.map(([k, n]) => `<button type="button" class="tdt" data-tt="${k}" aria-pressed="${type === k}">${tdIcon(k, 20)}<span>${n}</span></button>`).join('')}</div>
     <label class="f" for="td-client">Client <small>(optional)</small></label>
@@ -8652,7 +8663,7 @@ dlg.addEventListener('close', () => { dlg._todo = null; });
 
 // ---- To Do board (Purvi: Jira-style; as the Odoo demo's To-do board: To do · In progress · Done, Done = last 7 days)
 const TCOLS = [['todo', 'To do'], ['doing', 'In progress'], ['done', 'Done']];
-let TF = {when: 'all', type: '', who: '', practice: false}, tCol = 'todo';   // practice: 25 Oct, only the to-dos of Purvi's practice clients
+let TF = {when: 'all', type: '', who: '', practice: false, jd: false}, tCol = 'todo';   // practice: 25 Oct, only the to-dos of Purvi's practice clients
 function renderTodo(){
   const el = $('#todo-body'); if (!el) return;
   const admin = PF && IS_ADMIN;
@@ -8661,7 +8672,8 @@ function renderTodo(){
   if (TD.state === 'error') { el.innerHTML = `<div class="kb-wrap"><div class="cl-head"><h2>To Do</h2></div><div class="clist cl-empty"><b>To-dos are not switched on yet.</b>${PF && PF.owner ? 'Paste the to-dos rule in Firebase → Firestore → Rules (Claude has it ready), then reload.' : 'Ask Purvi to switch them on.'}</div></div>`; return; }
   if (TD.state !== 'ready') { el.innerHTML = `<div class="kb-wrap">${head}<div class="clist cl-empty">Loading…</div></div>`; return; }
   const today = dayPlus(0), week = dayPlus(7), wk = Date.now() - 7 * 864e5;
-  const base = TD.list.filter(t => !hiddenT(t) && practiceCid(t.cid) === !!TF.practice && (!TF.type || t.type === TF.type) && (!TF.who || (TF.who === '-' ? !t.ownerEmail : t.ownerEmail === TF.who)));
+  const trialT = t => trialP(t.ownerEmail) || trialP(t.by) || trialC(CL.byId.get(t.cid));   // 2 Nov: Jaydurga
+  const base = TD.list.filter(t => (admin && TF.jd ? trialT(t) : !hiddenT(t) && practiceCid(t.cid) === !!TF.practice) && (!TF.type || t.type === TF.type) && (!TF.who || (TF.who === '-' ? !t.ownerEmail : t.ownerEmail === TF.who)));
   const when = t => TF.when === 'all' || (TF.when === 'late' ? overdue(t) : TF.when === 'today' ? t.due <= today : t.due <= week);
   const by = {todo: [], doing: [], done: []};
   for (const t of base) { if (t.state === 'done') { if (Date.parse(t.doneAt || t.at) >= wk) by.done.push(t); } else if (when(t)) (by[t.state] || by.todo).push(t); }
@@ -8678,10 +8690,10 @@ function renderTodo(){
     ${k === 'todo' ? '<button class="kadd" data-tnew="1">+ New to-do</button>' : ''}
     <div class="kcol-b">${by[k].map(card).join('') || `<p class="kempty">${k === 'todo' ? 'Nothing to do here. Good.' : k === 'doing' ? 'Drag a card here, or tap it and press Start.' : 'Finished to-dos stay here for 7 days.'}</p>`}</div></section>`;
   const pill = (k, n, cnt) => `<button class="fpill" data-tw="${k}" aria-pressed="${TF.when === k}">${n}${cnt != null ? `<b>${cnt}</b>` : ''}</button>`;
-  const who = admin ? `<label class="fsort"><span>Person</span><select id="tf-who" class="search"><option value="">Everyone</option>${[...PEOPLE].filter(([e, p]) => canLogin(e) && !hiddenP(e) && (p.active !== false || TF.who === e)).map(([e, p]) => `<option value="${esc(e)}"${TF.who === e ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select></label>` : '';
+  const who = admin ? `<label class="fsort"><span>Person</span><select id="tf-who" class="search"><option value="">Everyone</option>${[...PEOPLE].filter(([e, p]) => canLogin(e) && (TF.jd ? trialP(e) : !hiddenP(e)) && (p.active !== false || TF.who === e)).map(([e, p]) => `<option value="${esc(e)}"${TF.who === e ? ' selected' : ''}>${esc(p.name || e)}${e === ME_EMAIL ? ' (you)' : ''}</option>`).join('')}</select></label>` : '';
   el.innerHTML = `<div class="kb-wrap">${head}
     <div class="cl-tools"><div class="fpills" role="group" aria-label="When">${pill('all', 'All')}${pill('late', 'Overdue', nLate)}${pill('today', 'Today', nToday)}${pill('week', 'Next 7 days')}</div>
-      <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}${PF && ME_EMAIL === OWNER_EMAIL ? `<label class="fsort"><input type="checkbox" id="tf-practice"${TF.practice ? ' checked' : ''}> <span>My practice clients</span></label>` : ''}</div>
+      <label class="fsort"><span>Type</span><select id="tf-type" class="search"><option value="">All types</option>${TD_TYPES.map(([k, n]) => `<option value="${k}"${TF.type === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>${who}${PF && ME_EMAIL === OWNER_EMAIL ? `<label class="fsort"><input type="checkbox" id="tf-practice"${TF.practice ? ' checked' : ''}> <span>My practice clients</span></label>` : ''}${admin ? `<label class="fsort"><input type="checkbox" id="tf-jd"${TF.jd ? ' checked' : ''}> <span>Jaydurga</span></label>` : ''}</div>
     <div class="kb-tabs" role="tablist">${TCOLS.map(([k, n]) => `<button role="tab" data-tcoltab="${k}" aria-selected="${tCol === k}">${n}<b>${by[k].length}</b></button>`).join('')}</div>
     <div class="kb">${TCOLS.map(col).join('')}</div></div>`;
 }
@@ -8693,7 +8705,8 @@ tdb.addEventListener('click', e => {
   const c = e.target.closest('[data-tid]'); if (c) { const t = TD.list.find(x => x.id === c.dataset.tid); if (t) showTodo(t); }
 });
 tdb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tid) { const t = TD.list.find(x => x.id === e.target.dataset.tid); if (t) showTodo(t); } });
-tdb.addEventListener('change', e => { if (e.target.id === 'tf-type') { TF.type = e.target.value; renderTodo(); } if (e.target.id === 'tf-who') { TF.who = e.target.value; renderTodo(); } if (e.target.id === 'tf-practice') { TF.practice = e.target.checked; renderTodo(); } });
+tdb.addEventListener('change', e => { if (e.target.id === 'tf-type') { TF.type = e.target.value; renderTodo(); } if (e.target.id === 'tf-who') { TF.who = e.target.value; renderTodo(); } if (e.target.id === 'tf-practice') { TF.practice = e.target.checked; if (TF.practice) TF.jd = false; renderTodo(); }
+  if (e.target.id === 'tf-jd') { TF.jd = e.target.checked; if (TF.jd) { TF.practice = false; TF.who = ''; } else TF.who = ''; renderTodo(); } });
 let dragTid = null;
 tdb.addEventListener('dragstart', e => { const k = e.target.closest && e.target.closest('.tc'); if (!k) return; dragTid = k.dataset.tid; try { e.dataTransfer.setData('text/plain', dragTid); } catch(_){} k.classList.add('drag'); });
 tdb.addEventListener('dragend', e => { const k = e.target.closest && e.target.closest('.tc'); if (k) k.classList.remove('drag'); tdb.querySelectorAll('.kcol.over').forEach(x => x.classList.remove('over')); });
@@ -9413,7 +9426,7 @@ document.addEventListener('click', e => {
 // clients and hidden logins never get one. Stitching and installation are work, not purchases. Ctrl Z takes back a tick or a receipt.
 // The sticker is the Odoo store sticker (100 × 70 mm; brain: artefacts/store-sticker, processes/store-inward-and-stickering): client
 // first, then Use (the room), item, details, supplier, qty received, date received and the store number with its barcode.
-const PU = {view: 'client', show: 'open', q: '', practice: false, docs: null, err: '', keep: new Set(), syncing: false, syncSig: '', unsub: null};
+const PU = {view: 'client', show: 'open', q: '', practice: false, jd: false, docs: null, err: '', keep: new Set(), syncing: false, syncSig: '', unsub: null};
 const PU_U = {MTR: ['m', 'm'], RFT: ['ft', 'ft'], 'SQ FT': ['sq ft', 'sq ft'], 'SQ FIT': ['sq ft', 'sq ft'], PCS: ['pc', 'pcs'], SET: ['set', 'sets'], ROLL: ['roll', 'rolls'], BOX: ['box', 'boxes'], NOS: ['no.', 'nos.']};
 const puQty = (q, u) => { const n = Math.round((+q || 0) * 100) / 100, w = PU_U[String(u || '').toUpperCase()]; return `${n.toLocaleString('en-IN')} ${w ? w[n === 1 ? 0 : 1] : String(u || '').toLowerCase()}`.trim(); };
 const PU_CODE = {DD: "D'Decor FabriCare", SS: "D'Decor Sansaar", AP: 'Asian Paints', ASIAN: 'Asian Paints', SAROM: 'Sarom', 'F&F': 'F&F', MARVEL: 'Marvel', SLEEPWELL: 'Sleepwell', OBSESSIONS: 'Obsessions', EKO: 'Obsessions', FREELANCE: 'Freelance'};
@@ -9435,8 +9448,9 @@ function puCompany(sec, l, snap){
 const puId = c => `${c.id}_v${c.outcome.n}`;
 // 29 Oct (Purvi: "make sure it doesnt show my practice client's data unless i specifically go into filter and ask to see it, just like the
 // client's page"): practice clients get their document too, marked practice: true, and only the owner sees them, only with the filter on
-const puWon = () => (CL.all || CL.list).filter(c => (c.outcome || {}).s === 'won' && c.outcome.n && !hiddenC(c));
+const puWon = () => (CL.all || CL.list).filter(c => (c.outcome || {}).s === 'won' && c.outcome.n);   // 2 Nov: hidden / trial logins' too (hiding is done when showing), else an admin's sync retired their documents
 const puOwner = () => !!PF && ME_EMAIL === OWNER_EMAIL;
+const puAdmin = () => !!PF && IS_ADMIN && !meTrial();
 function puWatch(){
   if (PU.unsub || !Store.watchPurchase) return;
   PU.unsub = true;   // set first: the first copy can arrive before watchPurchase returns
@@ -9481,7 +9495,8 @@ const puRec = m => { const L = Object.values(m.rcv || {}).filter(Boolean); if (m
   return L.sort((a, b) => String(a.at).localeCompare(String(b.at))); };
 function puItems(){
   const out = [], pr = puOwner() && PU.practice;
-  for (const d of PU.docs || []) { if (!!d.practice !== pr) continue; for (const it of d.items || []) {
+  const jd = puAdmin() && PU.jd;   // 2 Nov: trial logins' orders only with the Jaydurga filter; a trial login sees only its own
+  for (const d of PU.docs || []) { if (jd ? !trialP(d.ownerEmail) || meTrial() : hiddenP(d.ownerEmail) || !!d.practice !== pr) continue; for (const it of d.items || []) {
     const key = `v${d.n}_${it.i}`, m = (d.marks || {})[key] || {}, rec = puRec(m), got = Math.round(rec.reduce((a, x) => a + (+x.qty || 0), 0) * 100) / 100;
     const full = !!rec.length && (got >= (+it.qty || 0) - 0.005 || !!m.c), last = rec[rec.length - 1] || null;
     out.push(Object.assign({}, it, {did: d.id, cid: d.cid, v: d.n, key, name: d.name, owner: d.ownerName, amount: d.amount, at: d.confirmedAt,
@@ -9593,7 +9608,7 @@ function renderPurchase(){
   let h = `<div class="pu">${top}<div class="pu-seg" role="group" aria-label="Group by">${seg('client', 'By client')}${seg('company', 'By company')}${seg('product', 'By product')}</div></div>
     <div class="pu-kpis"><div class="pu-k y"><small>To order</small><b>${its(cnt.open)}</b></div><div class="pu-k"><small>Ordered, on the way</small><b>${its(cnt.ordered)}</b></div><div class="pu-k g"><small>Received in store</small><b>${its(cnt.received)}</b></div><div class="pu-k"><small>Clients waiting</small><b>${waiting}</b></div></div>
     <div class="pu-bar">${chip('open', 'To order', cnt.open)}${chip('ordered', 'Ordered', cnt.ordered)}${chip('received', 'Received', cnt.received)}${chip('all', 'All', all.length)}
-    ${puOwner() ? `<label class="pu-pr"><input type="checkbox" id="pu-pr"${PU.practice ? ' checked' : ''}> My practice clients</label>` : ''}<input id="pu-q" class="pu-search" type="search" placeholder="Search client, fabric, company, CP no.…" value="${esc(PU.q)}" autocomplete="off" aria-label="Search"></div>`;
+    ${puOwner() ? `<label class="pu-pr"><input type="checkbox" id="pu-pr"${PU.practice ? ' checked' : ''}> My practice clients</label>` : ''}${puAdmin() ? `<label class="pu-pr"><input type="checkbox" id="pu-jd"${PU.jd ? ' checked' : ''}> Jaydurga</label>` : ''}<input id="pu-q" class="pu-search" type="search" placeholder="Search client, fabric, company, CP no.…" value="${esc(PU.q)}" autocomplete="off" aria-label="Search"></div>`;
   const none = {open: ['Everything is ordered', 'Every item for the confirmed quotations has been ordered.'], ordered: ['Nothing on the way', 'Items ticked as ordered wait here until the store marks them received.'],
     received: ['Nothing received yet', 'When the store marks an item received, it shows here with its store number and sticker.'], all: ['', '']}[PU.show];
   if (PU.practice && puOwner()) h += `<p class="pu-prn">Showing only your practice clients. They never show for anyone else, or in any count.</p>`;
@@ -9644,7 +9659,8 @@ document.addEventListener('click', e => {
   const s = e.target.closest('[data-pus]'); if (s) { PU.show = s.dataset.pus; PU.keep.clear(); renderPurchase(); return; }
   const c = e.target.closest('[data-puc]'); if (c) { openClient(c.dataset.puc, 'client'); }
 });
-document.addEventListener('change', e => { if (e.target.id !== 'pu-pr') return; PU.practice = e.target.checked; PU.keep.clear(); renderPurchase(); });
+document.addEventListener('change', e => { if (e.target.id === 'pu-pr') { PU.practice = e.target.checked; if (PU.practice) PU.jd = false; }
+  else if (e.target.id === 'pu-jd') { PU.jd = e.target.checked; if (PU.jd) PU.practice = false; } else return; PU.keep.clear(); renderPurchase(); });
 document.addEventListener('input', e => { if (e.target.id !== 'pu-q') return; PU.q = e.target.value; const p = e.target.selectionStart; renderPurchase(); const n = $('#pu-q'); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (_) {} } });
 
 // ================= हिंदी (Purvi, 21 Oct 2026): "one more toggle button for english hindi", for the sales team and the people who
@@ -9712,7 +9728,7 @@ const HI = {
   'Saved as you type. Done takes you back to their page.': 'लिखते ही सेव होता है। "हो गया" दबाकर उनके पेज पर वापस जाएँ।',
   'Change': 'बदलें', 'Cancel': 'रहने दें',
   'Updated today · not sent': 'आज बदला · भेजा नहीं', 'Part quotation': 'आधा कोटेशन', 'Part quotation, amounts were hidden': 'आधा कोटेशन, रकम छुपी थी',
-  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'Rest came': 'बाक़ी आ गया', 'Stickers': 'स्टिकर', 'The rest came?': 'बाक़ी आ गया?', 'Qty that came now': 'अभी कितना आया', "The rest won't come: close this item": 'बाक़ी नहीं आएगा: यह आइटम बंद करें', 'Which sticker?': 'कौन सा स्टिकर?', 'Came so far': 'अब तक आया', 'Still to come': 'अभी आना है', 'My practice clients': 'मेरे प्रैक्टिस क्लाइंट', 'Received': 'आ गया', 'Get sticker': 'स्टिकर लें', 'Sticker again': 'स्टिकर फिर से', 'Received in store': 'स्टोर में आ गया', 'Ordered, on the way': 'ऑर्डर हुआ, रास्ते में', 'Progress': 'प्रगति', 'Received in the store?': 'स्टोर में आ गया?', 'Mark received': 'आ गया लगाएँ', 'Mark received and get sticker': 'आ गया लगाएँ और स्टिकर लें', 'Qty received': 'कितना आया', 'Not ordered yet': 'अभी ऑर्डर नहीं हुआ', 'All received': 'सब आ गया', 'Sticker': 'स्टिकर', 'Purchase': 'ख़रीद', 'orders to place': 'ऑर्डर देने हैं', 'Everything to order for the quotations clients confirmed. Tick an item once its order is placed.': 'जिन क्लाइंट ने कोटेशन पक्का किया, उनका सारा सामान जो ऑर्डर करना है। ऑर्डर दे दें तो उस आइटम पर टिक करें।', 'By client': 'क्लाइंट के हिसाब से', 'By company': 'कंपनी के हिसाब से', 'By product': 'सामान के हिसाब से', 'To order': 'ऑर्डर करना है', 'Ordered': 'ऑर्डर हो गया', 'Clients waiting': 'इंतज़ार में क्लाइंट', 'Search client, fabric, company…': 'क्लाइंट, कपड़ा, कंपनी ढूँढें…', 'Item': 'आइटम', 'Company': 'कंपनी', 'Qty': 'मात्रा', 'Status': 'स्थिति', 'Client': 'क्लाइंट', 'Room': 'कमरा', 'All ordered': 'सब ऑर्डर हो गया', 'Mark ordered': 'ऑर्डर हो गया लगाएँ', 'Nothing to order yet': 'अभी कुछ ऑर्डर नहीं करना', 'Everything is ordered': 'सब ऑर्डर हो गया', 'Loading the confirmed quotations…': 'पक्के कोटेशन खुल रहे हैं…', 'GST no. · on the quotation only if typed': 'GST नंबर · लिखा हो तभी कोटेशन पर', 'GST no.': 'GST नंबर', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
+  "What's different in the updated one": 'बदले हुए कोटेशन में क्या अलग है', 'They agreed to an older one?': 'कोई पुराना कोटेशन माना?', 'Send updated first': 'पहले बदला हुआ भेजें', 'Pick one to mark won': 'Won के लिए एक चुनें', 'Rest came': 'बाक़ी आ गया', 'Stickers': 'स्टिकर', 'The rest came?': 'बाक़ी आ गया?', 'Qty that came now': 'अभी कितना आया', "The rest won't come: close this item": 'बाक़ी नहीं आएगा: यह आइटम बंद करें', 'Which sticker?': 'कौन सा स्टिकर?', 'Came so far': 'अब तक आया', 'Still to come': 'अभी आना है', 'My practice clients': 'मेरे प्रैक्टिस क्लाइंट', 'Trying the software (Jaydurga)': 'सॉफ़्टवेयर आज़मा रहे हैं (Jaydurga)', 'Sees only their own clients, never the Charpai team or orders. Hidden from everyone; admins see them with the Jaydurga filter.': 'सिर्फ़ अपने क्लाइंट देखते हैं, Charpai की टीम या ऑर्डर कभी नहीं। सबसे छिपे रहते हैं; एडमिन इन्हें Jaydurga फ़िल्टर से देखते हैं।', 'Received': 'आ गया', 'Get sticker': 'स्टिकर लें', 'Sticker again': 'स्टिकर फिर से', 'Received in store': 'स्टोर में आ गया', 'Ordered, on the way': 'ऑर्डर हुआ, रास्ते में', 'Progress': 'प्रगति', 'Received in the store?': 'स्टोर में आ गया?', 'Mark received': 'आ गया लगाएँ', 'Mark received and get sticker': 'आ गया लगाएँ और स्टिकर लें', 'Qty received': 'कितना आया', 'Not ordered yet': 'अभी ऑर्डर नहीं हुआ', 'All received': 'सब आ गया', 'Sticker': 'स्टिकर', 'Purchase': 'ख़रीद', 'orders to place': 'ऑर्डर देने हैं', 'Everything to order for the quotations clients confirmed. Tick an item once its order is placed.': 'जिन क्लाइंट ने कोटेशन पक्का किया, उनका सारा सामान जो ऑर्डर करना है। ऑर्डर दे दें तो उस आइटम पर टिक करें।', 'By client': 'क्लाइंट के हिसाब से', 'By company': 'कंपनी के हिसाब से', 'By product': 'सामान के हिसाब से', 'To order': 'ऑर्डर करना है', 'Ordered': 'ऑर्डर हो गया', 'Clients waiting': 'इंतज़ार में क्लाइंट', 'Search client, fabric, company…': 'क्लाइंट, कपड़ा, कंपनी ढूँढें…', 'Item': 'आइटम', 'Company': 'कंपनी', 'Qty': 'मात्रा', 'Status': 'स्थिति', 'Client': 'क्लाइंट', 'Room': 'कमरा', 'All ordered': 'सब ऑर्डर हो गया', 'Mark ordered': 'ऑर्डर हो गया लगाएँ', 'Nothing to order yet': 'अभी कुछ ऑर्डर नहीं करना', 'Everything is ordered': 'सब ऑर्डर हो गया', 'Loading the confirmed quotations…': 'पक्के कोटेशन खुल रहे हैं…', 'GST no. · on the quotation only if typed': 'GST नंबर · लिखा हो तभी कोटेशन पर', 'GST no.': 'GST नंबर', 'Colour / design': 'रंग / डिज़ाइन', 'Design not picked yet': 'डिज़ाइन अभी नहीं चुना', 'Soap dish': 'साबुनदानी', 'Toilet brush': 'टॉयलेट ब्रश', 'Bath accessory': 'बाथरूम का सामान', 'Shower mat': 'शावर मैट', 'Shower curtain': 'शावर पर्दा', 'Doormat': 'डोरमैट', 'Table cover': 'टेबल कवर', 'Table mat': 'टेबल मैट', 'Serving tray': 'सर्विंग ट्रे', 'Grip liner': 'ग्रिप लाइनर', 'Dining accessory': 'डाइनिंग का सामान', 'Apron & tea cosy': 'एप्रन और टी कोज़ी', "D'Decor will make it: allow": 'D\'Decor बना देगा: मंज़ूर करें', 'Allow this blind size?': 'यह ब्लाइंड साइज़ मंज़ूर करें?', "Yes, D'Decor will make it": 'हाँ, D\'Decor बना देगा',
   // To Do + the to-do window
   'New to-do': 'नया काम', '+ New to-do': '+ नया काम', 'Change the to-do': 'काम बदलें', 'Add to-do': 'काम जोड़ें', 'Add a to-do': 'काम जोड़ें', 'Save': 'सेव करें',
   'Site / measurement visit': 'साइट / नाप विज़िट', 'Make quotation': 'कोटेशन बनाना', 'Revise quotation': 'कोटेशन बदलना', 'Follow-up call': 'फ़ॉलो-अप कॉल',
@@ -9865,4 +9881,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261029-164642 -->
+<!-- build 20261102-115629 -->
