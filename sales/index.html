@@ -878,7 +878,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .pu-search{margin-left:auto;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font:14px var(--body);width:260px;max-width:100%;background:var(--field);color:var(--ink)}
 .pu-grp{background:var(--paper);border:1px solid var(--line2);border-radius:14px;margin-bottom:12px;overflow:hidden}
 .pu-gh{display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid var(--line2)}
-.pu-t{font-weight:600;font-size:15.5px;color:var(--ink)}.pu-s{color:var(--muted);font-size:13px;margin-top:1px}.pu-s b{color:var(--ink);font-weight:600}
+.pu-t{font-weight:600;font-size:15.5px;color:var(--ink)}.pu-s+.kc-tag{margin-top:5px}.pu-s{color:var(--muted);font-size:13px;margin-top:1px}.pu-s b{color:var(--ink);font-weight:600}
 .pu-link{border:0;background:none;padding:0;font:inherit;font-weight:600;font-size:15.5px;cursor:pointer;color:var(--ink);text-align:left}.pu-link:hover{text-decoration:underline}
 .pu-prog{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);white-space:nowrap}
 .pu-prog i{display:flex;width:90px;height:6px;border-radius:9px;background:var(--soft2);overflow:hidden}.pu-prog u{display:block;height:100%;background:var(--good)}.pu-prog s{display:block;height:100%;background:color-mix(in srgb,var(--good) 40%,transparent)}
@@ -1425,6 +1425,7 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .n-bookb{display:flex;gap:8px;flex-wrap:wrap}
 .n-book.won,.n-book.lost{padding:12px 16px;border-radius:12px;background:var(--good-soft);color:var(--good)}
 .n-book.lost{background:var(--soft);color:var(--ink)}
+.n-book.won-ch{padding:12px 16px;border-radius:12px;background:var(--warn-soft);color:var(--ink);margin-top:10px}.n-book.won-ch b{color:var(--warn)}
 .n-book small{color:var(--muted);font-size:13px}
 /* work list */
 /* details */
@@ -1488,6 +1489,7 @@ button.n-prop:hover{background:var(--soft)}
 .n-page .n-main>.n-next{margin-top:0;padding:20px 22px}
 .n-page .n-main>.n-book{margin-top:0;background:var(--paper);border:1px solid var(--line2);border-radius:var(--r);padding:14px 22px}
 .n-page .n-main>.n-book.won{background:var(--good-soft);border-color:transparent}
+.n-page .n-main>.n-book.won-ch{background:var(--warn-soft);border-color:transparent;margin-top:-6px}
 .n-page .n-side .n-sec{margin-top:26px;padding-top:22px;border-top:1px solid var(--line2)}
 .n-page .n-side .n-prop{grid-template-columns:22px 118px minmax(0,1fr)}
 @media (min-width:1000px){
@@ -5516,10 +5518,13 @@ const hiddenP = e => !!e && e !== ME_EMAIL && (HIDDEN.has(e) || (meTrial() ? !tr
 const trialC = c => !!c && !meTrial() && trialP(c.ownerEmail);
 const hiddenC = c => !!c && hiddenP(c.ownerEmail);
 const hiddenT = t => hiddenP(t.ownerEmail) || hiddenP(t.by) || hiddenC(CL.byId.get(t.cid));
+// 2 Nov (Purvi, SALONI JAIN: Won on v1 ₹55,960, then 7 hours later two Roman blinds and the lining were taken off the sheet, ₹35,638
+// now, and nothing said so): a Won client whose sheet no longer matches the quotation they accepted. The card keeps the accepted amount.
+const wonChanged = c => statusOf(c) === 'won' && !!c.dsig && !!c.sig && c.dsig !== c.sig;
 const statusOf = c => c.outcome && c.outcome.s === 'won' ? 'won' : c.outcome && c.outcome.s === 'lost' ? 'lost' : c.latest ? 'quoted' : 'draft';
 function pillHTML(c){
   const s = statusOf(c);
-  if (s === 'won') return `<span class="pill won">Won · v${c.outcome.n}</span>`;
+  if (s === 'won') return wonChanged(c) ? `<span class="pill changed" title="The sheet changed after they accepted v${c.outcome.n}">Won · v${c.outcome.n} · changed</span>` : `<span class="pill won">Won · v${c.outcome.n}</span>`;
   if (s === 'lost') return `<span class="pill lost">Lost${c.outcome.reason ? ' · ' + esc(c.outcome.reason) : ''}</span>`;
   if (s === 'quoted') return c.dsig && c.dsig !== c.sig ? `<span class="pill changed" title="The sheet has changes the customer hasn't been sent">v${c.latest} sent · changed</span>` : `<span class="pill quoted">v${c.latest} sent</span>`;
   return '<span class="pill">New enquiry</span>';   // was "Draft" until 17 Oct: the board's first column
@@ -5530,6 +5535,8 @@ function watchClients(){
   Store.watchClients(list => {
     CL.all = list; CL.list = list.filter(c => !isPractice(c) && !hiddenC(c)); CL.practice = list.filter(isPractice); CL.trial = PF && IS_ADMIN ? list.filter(trialC) : [];
     CL.byId = new Map(list.map(c => [c.id, c])); CL.state = 'ready'; backfillCats();
+    // 2 Nov: a remembered version list that no longer ends at the client's latest (Ctrl Z took a version back, another device saved one) is fetched again
+    for (const c of list) { const V = CL.vers[c.id]; if (Array.isArray(V) && ((V[0] || {}).n || 0) !== (c.latest || 0)) delete CL.vers[c.id]; }
     const typing = document.activeElement && document.activeElement.id === 'cl-q';
     if (current === 'clients' && !typing) renderClients();
     if (current === 'client' && !(document.activeElement && document.activeElement.closest('#cp-body') && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))) renderClientPage();
@@ -7750,7 +7757,7 @@ function boardCard(c, admin, showWhy = true){
   const s = statusOf(c), nx = openTodos(c.id)[0], city = cityOf(c), amt = amountOf(c);
   return `<div class="kc${changeAsked(c) ? ' asked' : ''}${s === 'lost' ? ' lost' : ''}" data-cid="${esc(c.id)}" role="button" tabindex="0"${s === 'quoted' ? ' draggable="true"' : ''}>
     <div class="kc-top"><b class="kc-name">${esc(c.name || mobile(c.phone) || 'No name yet')}</b>${c.stars ? starsHTML(c.stars) : ''}</div>
-    ${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}
+    ${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}${wonChanged(c) ? `<span class="kc-tag" title="The sheet now: ${rs(c.total || 0)}">Changed after Won</span>` : ''}
     <div class="kc-sub">${[city, c.phone && c.name ? c.phone : ''].filter(Boolean).map(esc).join(' · ') || '&nbsp;'}</div>
     ${interestTxt(c) ? `<div class="kc-int">${esc(interestTxt(c))}</div>` : ''}
     ${(d => d ? `<div class="kc-add" title="${esc(whenTxt(d.iso))}">${esc(d.txt)}</div>` : '')(cardDate(c, s))}
@@ -8272,7 +8279,11 @@ function cpNext(c){
 }
 function cpBook(c){
   const s = statusOf(c), o = c.outcome || {};
-  if (s === 'won') return `<div class="n-book won"><span><b>Won.</b> They accepted v${o.n}${o.total != null ? ' for ' + rs(o.total) : ''}. <small>Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}</small></span><button class="n-link" data-act="reopen">Undo</button></div>`;
+  if (s === 'won') { const d = Math.round(c.total || 0) - Math.round(o.total || 0);
+    // 2 Nov (Purvi: "if changes were made after the qtn was shared with the client then why doesnt it say anywhere"): the sheet no
+    // longer matches what they accepted. "Pick the final quotation" opens the Won window: last sent vs the sheet now, and what changed.
+    return `<div class="n-book won"><span><b>Won.</b> They accepted v${o.n}${o.total != null ? ' for ' + rs(o.total) : ''}. <small>Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}</small></span><button class="n-link" data-act="reopen">Undo</button></div>`
+      + (wonChanged(c) ? `<div class="n-book won-ch"><span><b>Changed after Won</b> <span>The sheet changed after they accepted v${o.n}. It is now ${rs(c.total || 0)}${d ? `, ${rs(Math.abs(d))} ${d < 0 ? 'less' : 'more'} than v${o.n}` : ''}. Purchase still orders v${o.n}.</span></span><button class="n-btn" data-act="won">Pick the final quotation</button></div>` : ''); }
   if (s === 'lost') return `<div class="n-book lost"><span><b>Lost${o.reason ? ': ' + esc(o.reason) : ''}.</b> ${o.note ? esc(o.note) + '. ' : ''}<small>Marked ${esc(agoTxt(o.at))}${o.who ? ' by ' + esc(o.who) : ''}</small></span><button class="n-link" data-act="reopen">Undo</button></div>`;
   return `<div class="n-book"><span class="n-bookq">${s === 'quoted' ? 'Did they book?' : 'Not interested any more?'}</span><span class="n-bookb">${s === 'quoted' ? '<button class="n-btn" data-act="asked">Asked for changes</button><button class="n-btn good" data-act="won">Won</button>' : ''}<button class="n-btn" data-act="lost">Lost</button></span></div>`;
 }
@@ -8431,6 +8442,7 @@ function cpActivity(c, V){
   for (const x of MV) ev.push({at: x.at, k: 'm', v: x});
   if (c.changeReq && c.changeReq.at) ev.push({at: c.changeReq.at, k: 'ch'});
   if (s === 'won' || s === 'lost') ev.push({at: o.at, k: s});
+  if (wonChanged(c) && String(c.edited || '') > String(o.at || '')) ev.push({at: c.edited, k: 'wch'});   // 2 Nov: the sheet changed after Won
   for (const t of T.filter(t => t.state === 'done')) ev.push({at: t.doneAt, k: 't', t});
   if (NT.cid === c.id) for (const n of NT.list) ev.push({at: n.at, k: n.kind === 'log' ? 'log' : 'note', n});
   ev.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
@@ -8457,6 +8469,8 @@ function cpActivity(c, V){
         ${!prev ? (x.snap ? `<p class="n-chgnote">First measurement sheet: ${esc((sheetCounts(x.snap) || []).join(', '))}</p>` : '') : G && G.length ? verChangeGroups(G) : ''}</div></li>`; }
     if (e.k === 't') return `<li class="n-ev"><span class="n-evd">${tdIcon(e.t.type, 14)}</span><button class="n-evm n-evbtn" data-todo="${esc(e.t.id)}"><p>${esc(tdName(e.t.type))} done${e.t.note ? `<span class="n-evn">${esc(e.t.note)}</span>` : ''}</p><small>${esc(agoTxt(e.t.doneAt))}${e.t.doneByName ? ' · by ' + esc(e.t.doneByName) : who(e.t.ownerEmail)}</small></button></li>`;
     if (e.k === 'ch') return `<li class="n-ev"><span class="n-evd ch">${tdIcon('revise', 14)}</span><div class="n-evm"><p>They asked for changes${c.changeReq.note ? `<span class="n-evn">${esc(c.changeReq.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></div></li>`;
+    if (e.k === 'wch') { const by = c.lastByName && Math.abs(Date.parse(c.lastAt || 0) - Date.parse(e.at)) < 5000 ? ', ' + esc(c.lastByName) : '';   // the client's last writer, only when that write was this save
+      return `<li class="n-ev"><span class="n-evd ch">${cpIcon('edit', 13)}</span><div class="n-evm"><p>Sheet changed after Won, now ${rs(c.total || 0)} (v${o.n} was ${rs(o.total || 0)})</p><small>${esc(agoTxt(e.at))}${by}</small></div></li>`; }
     if (e.k === 'won' || e.k === 'lost') return `<li class="n-ev"><span class="n-evd ${e.k}">${e.k === 'won' ? '✓' : '×'}</span><div class="n-evm"><p>${e.k === 'won' ? `Marked as won, v${o.n}${o.unsent ? ' (not sent before Won)' : ''}` : `Marked as lost${o.reason ? ': ' + esc(o.reason) : ''}`}${o.note ? `<span class="n-evn">${esc(o.note)}</span>` : ''}</p><small>${esc(agoTxt(e.at))}${o.who ? ', ' + esc(o.who) : ''}</small></div></li>`;
     return `<li class="n-ev"><span class="n-evd">${cpIcon('plus', 12)}</span><div class="n-evm"><p>Enquiry added</p><small>${esc(agoTxt(e.at))}</small></div></li>`;
   };
@@ -9630,7 +9644,7 @@ function puGroups(shown, all){
     const prog = `<div class="pu-prog" title="${t.r} received · ${t.o} ordered · ${t.n - t.r - t.o} to order"><i><u style="width:${pr}%"></u><s style="width:${po}%"></s></i>${t.r === t.n ? 'All received' : `${t.r + t.o} of ${t.n} ordered${t.r ? ` · ${t.r} received` : ''}`}</div>`;
     let head;
     if (PU.view === 'client') { const link = CL.byId.has(f.cid);
-      head = `<div>${link ? `<button class="pu-t pu-link" data-puc="${esc(f.cid)}">${esc(f.name)}</button>` : `<div class="pu-t">${esc(f.name)}</div>`}<div class="pu-s">v${f.v} confirmed ${esc(cardDay(f.at) || '')}${f.owner ? ' · ' + esc(f.owner) : ''}${f.amount ? ' · ' + rs(f.amount) : ''}</div></div>`; }
+      head = `<div>${link ? `<button class="pu-t pu-link" data-puc="${esc(f.cid)}">${esc(f.name)}</button>` : `<div class="pu-t">${esc(f.name)}</div>`}<div class="pu-s">v${f.v} confirmed ${esc(cardDay(f.at) || '')}${f.owner ? ' · ' + esc(f.owner) : ''}${f.amount ? ' · ' + rs(f.amount) : ''}</div>${wonChanged(CL.byId && CL.byId.get(f.cid)) ? '<span class="kc-tag" title="The sheet was changed after Won. Open the client and pick the final quotation.">Sheet changed after Won: check before ordering</span>' : ''}</div>`; }
     else if (PU.view === 'company') { const nc = new Set(L.map(it => it.did)).size; head = `<div><div class="pu-t">${esc(k)}</div><div class="pu-s">${nc} client${nc === 1 ? '' : 's'}</div></div>`; }
     else { const openQ = L.filter(it => !it.o && !it.r).reduce((a, it) => a + it.qty, 0), nc = new Set(L.map(it => it.did)).size;
       head = `<div><div class="pu-t">${esc(f.what || f.product)} <span class="pu-co">${esc(f.co)}</span></div><div class="pu-s">${esc(f.product)}${openQ ? ` · <b>${puQty(openQ, f.unit)} to order</b>` : ''} · ${nc} client${nc === 1 ? '' : 's'}</div></div>`; }
@@ -9677,6 +9691,7 @@ const HI = {
   'Sign out': 'साइन आउट', 'Admin': 'एडमिन', 'Sales': 'सेल्स', '☀ Light': '☀ लाइट', '☾ Dark': '☾ डार्क', 'Overview': 'जानकारी',
   'Measurement sheet form': 'नाप का फ़ॉर्म', 'View measurement sheet': 'नाप शीट देखें', 'View quotation': 'कोटेशन देखें',
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
+  'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'Sheet changed after Won: check before ordering': 'Won के बाद शीट बदली: ऑर्डर से पहले देखें',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
   // clients board / list / filters
   'Board': 'बोर्ड', 'List': 'लिस्ट', 'Filters': 'फ़िल्टर', '+ New enquiry': '+ नई इन्क्वायरी', 'New enquiry': 'नई इन्क्वायरी', 'New Enquiry': 'नई इन्क्वायरी',
@@ -9788,6 +9803,10 @@ const HI_RE = [
   [/^Removes (.+), their measurements and every quotation sent\. Only you see this\.$/, (m, w) => `${w}, उनके नाप और भेजे गए सारे कोटेशन हट जाएँगे। यह सिर्फ़ आपको दिखता है।`],
   [/^(\d{1,2}(?::\d\d)?) (am|pm)$/, (m, t, p) => hiTime(t, p)],
   [/^Delete (.+)$/, (m, w) => `${w} हटाएँ`],
+  [/^Won · v(\d+) · changed$/, (m, n) => `Won · v${n} · बदला`],
+  [/^The sheet changed after they accepted v(\d+)\. It is now (₹[\d,]+)(?:, (₹[\d,]+) (less|more) than v\d+)?\. Purchase still orders v\d+\.$/,
+    (m, n, b, d, w) => `v${n} मानने के बाद शीट बदली गई। अब ${b}${d ? `, v${n} से ${d} ${w === 'less' ? 'कम' : 'ज़्यादा'}` : ''}। परचेज़ में अभी भी v${n} का ऑर्डर है।`],
+  [/^Sheet changed after Won, now (₹[\d,]+) \(v(\d+) was (₹[\d,]+)\)$/, (m, a, n, b) => `Won के बाद शीट बदली, अब ${a} (v${n} ${b} का था)`],
 ];
 // "10 am" → "सुबह 10", "12 pm" → "दोपहर 12", "5:30 pm" → "शाम 5:30" (said the way people say it)
 function hiTime(t, p){ const h = +t.split(':')[0]; return `${p === 'am' ? 'सुबह' : h === 12 || h < 5 ? 'दोपहर' : 'शाम'} ${t}`; }
@@ -9881,4 +9900,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261102-120536 -->
+<!-- build 20261102-175839 -->
