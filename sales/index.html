@@ -4233,7 +4233,7 @@ const DD_DESK = {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'a
 const MAIL_TO = {SAN: DD_DESK, EXP: DD_DESK};
 // 3 Nov, later (Purvi: "i am okay with you even showing me a prefilled message and i click on send myself for phase 1"): Google's
 // unverified-app page answered 400, so phase 1 = PDF downloads + the email opens filled in; they attach and press Send. MAIL_DIRECT = phase 2.
-const MAIL_DIRECT = false;
+const MAIL_DIRECT = true;   // 3 Nov, LIVE for everyone (Purvi: "make it live") after her test arrived; the filled-in Gmail stays as the fallback
 let mailKey = null;   // {token, until}: Google's key lasts an hour, so a second form in the same hour needs no new window
 function orderMailParts(sup){
   const m = MAIL_TO[sup], sups = ordUnit(sup), house = String(state.house || '').toUpperCase();
@@ -4241,7 +4241,7 @@ function orderMailParts(sup){
   const test = (() => { try { return localStorage.getItem('charpai-mail-test') || ''; } catch (_) { return ''; } })();   // Claude's checks: only to this address
   return {to: test ? [test] : m.to, cc: test ? [] : m.cc, test, sups, desk: m.name, subj: `Blinds order · ${house} · Tatiya Industries, Jodhpur`,
     line: `Dear Sir, please find attached our blinds order for ${house} (${n} blind${n > 1 ? 's' : ''}).`,
-    sign: ['Regards,', ddWho(), 'Tatiya Industries, Jodhpur', FIRM.phone].filter(Boolean).join('\n'), file: `${m.name} blinds order · ${state.house || 'house'} · ${ddDate()}.pdf`};
+    sign: ['Regards,', 'Tatiya Industries, Jodhpur', FIRM.phone].join('\n'), file: `${m.name} blinds order · ${state.house || 'house'} · ${ddDate()}.pdf`};
 }
 function orderMailDlg(sup){
   const p = orderMailParts(sup), row = (k, v) => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line,#eee)"><span style="width:64px;flex:none;color:var(--muted,#777)">${k}</span><span style="min-width:0;overflow-wrap:anywhere">${v}</span></div>`;
@@ -10017,4 +10017,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-140315 -->
+<!-- build 20261103-140850 -->
