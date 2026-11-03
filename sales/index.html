@@ -4213,6 +4213,9 @@ $('#b-orders').addEventListener('click', async e => {
 const MAIL_FROM = 'tatiyaindustries@gmail.com';
 const MAIL_TO = {SAN: {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'awadhesh.kumar@ddecor.com'], what: 'Sansaar Folio'},
                  EXP: {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'awadhesh.kumar@ddecor.com'], what: 'Express'}};
+// 3 Nov, later (Purvi: "i am okay with you even showing me a prefilled message and i click on send myself for phase 1"): Google's
+// unverified-app page answered 400, so phase 1 = PDF downloads + the email opens filled in; they attach and press Send. MAIL_DIRECT = phase 2.
+const MAIL_DIRECT = false;
 let mailKey = null;   // {token, until}: Google's key lasts an hour, so a second form in the same hour needs no new window
 function orderMailParts(sup){
   const m = MAIL_TO[sup], house = String(state.house || '').toUpperCase(), n = orderSheets(sup).reduce((a, sh) => a + sh.rows.reduce((x, r) => x + (+r[r.length - 1] || 1), 0), 0);
@@ -4225,12 +4228,13 @@ function orderMailDlg(sup){
   const p = orderMailParts(sup), row = (k, v) => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line,#eee)"><span style="width:64px;flex:none;color:var(--muted,#777)">${k}</span><span style="min-width:0;overflow-wrap:anywhere">${v}</span></div>`;
   openDlg(`<div class="dlg-in"><h2 id="dlg-title">Email the order to ${esc(BSUPS[sup])}</h2>${p.test ? `<p class="sub">Test: goes only to ${esc(p.test)}</p>` : ''}
     <div style="margin:10px 0 14px;font-size:14px">${row('To', esc(p.to.join(', ')))}${p.cc.length ? row('Cc', esc(p.cc.join(', '))) : ''}${row('From', MAIL_FROM)}${row('Subject', esc(p.subj))}${row('Attached', '📄 ' + esc(p.file))}${row('Message', esc(p.line))}</div>
-    <p class="sub">Google may ask which account to use: pick ${MAIL_FROM}.</p>
-    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Send email</button></div></div>`, false,
+    <p class="sub">${MAIL_DIRECT ? `Google may ask which account to use: pick ${MAIL_FROM}.` : `The PDF downloads and the email opens with all of this filled in. Attach the PDF from Downloads, check it's sent from ${MAIL_FROM}, and press Send.`}</p>
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">${MAIL_DIRECT ? 'Send email' : 'Open email'}</button></div></div>`, false,
     d => orderMailSend(sup, p, d));
 }
 async function orderMailSend(sup, p, d){
   const say = t => { const s = d && d.querySelector('.dlg-acts [data-dlg="ok"]'); if (s) s.textContent = t; };
+  if (!MAIL_DIRECT) return orderMailOpen(sup, p);
   let key = mailKey && mailKey.until > Date.now() ? mailKey.token : null;
   try {
     if (!key) {   // first thing after the tap, so the phone lets Google's window open
@@ -4249,12 +4253,23 @@ async function orderMailSend(sup, p, d){
     if (err && err.code === 'auth/popup-closed-by-user') return false;   // they closed Google's window: nothing sent
     if (err && err.status === 401) mailKey = null;
     console.warn('[order mail]', err);
-    try { await saveFile(p.file, await ddOrderPdf(sup)); } catch (_) {}
-    const u = `https://mail.google.com/mail/?authuser=${encodeURIComponent(MAIL_FROM)}&view=cm&fs=1&to=${encodeURIComponent(p.to.join(','))}&cc=${encodeURIComponent(p.cc.join(','))}&su=${encodeURIComponent(p.subj)}&body=${encodeURIComponent(p.line + '\n\n' + p.sign)}`;
-    window.open(u, '_blank');
-    toast('Could not send it directly. Gmail is open with everything filled in: attach the PDF from Downloads and press Send.');
-    return true;
+    return orderMailOpen(sup, p, true);
   }
+}
+// phase 1: laptops get Gmail (tatiyaindustries) in a new tab, phones/tablets their mail app (Gmail) through mailto; the PDF is saved first.
+// The tab opens on the tap itself (before the PDF is made) so the browser doesn't block it.
+async function orderMailOpen(sup, p, failed){
+  const body = p.line + '\n\n' + p.sign, phone = typeof waOnApp === 'function' && waOnApp();
+  const gm = `https://mail.google.com/mail/?authuser=${encodeURIComponent(MAIL_FROM)}&view=cm&fs=1&to=${encodeURIComponent(p.to.join(','))}&cc=${encodeURIComponent(p.cc.join(','))}&su=${encodeURIComponent(p.subj)}&body=${encodeURIComponent(body)}`;
+  const mt = `mailto:${p.to.map(encodeURIComponent).join(',')}?${p.cc.length ? 'cc=' + p.cc.map(encodeURIComponent).join(',') + '&' : ''}subject=${encodeURIComponent(p.subj)}&body=${encodeURIComponent(body)}`;
+  const tab = !phone && !failed ? window.open('', '_blank') : null;
+  let saved = false; try { saved = await saveFile(p.file, await ddOrderPdf(sup)); } catch (_) {}
+  if (!saved) { if (tab) tab.close(); toast('Could not make the PDF. Check the internet.'); return false; }
+  if (phone) location.href = mt; else if (tab && !tab.closed) tab.location.href = gm; else window.open(gm, '_blank');
+  toast(`${failed ? 'Could not send it directly. ' : ''}The PDF is in Downloads: attach it to the email and press Send.`);
+  const c = state.clientId && CL.byId && CL.byId.get(state.clientId);
+  if (shared && db && c && !p.test) addNote(c, `${BSUPS[sup]} blind order form: email to ${p.to.join(', ')} opened (PDF attached by hand)`, 'log').catch(() => {});
+  return true;
 }
 // one email with the PDF attached, through Gmail's own sending service (the mail shows in tatiyaindustries' Sent box)
 async function gmailSend(token, p, pdf){
@@ -9773,7 +9788,7 @@ const HI = {
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
   'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'The sheet changed after this was confirmed: check before ordering': 'पक्का होने के बाद शीट बदली: ऑर्डर से पहले देखें', 'Changed after sending': 'भेजने के बाद बदला',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
-  'Send email': 'ईमेल भेजें', 'Making the PDF…': 'PDF बन रही है…', 'Sending…': 'भेज रहे हैं…',   // 3 Nov: order form email
+  'Send email': 'ईमेल भेजें', 'Open email': 'ईमेल खोलें', 'Making the PDF…': 'PDF बन रही है…', 'Sending…': 'भेज रहे हैं…',   // 3 Nov: order form email
   // clients board / list / filters
   'Board': 'बोर्ड', 'List': 'लिस्ट', 'Filters': 'फ़िल्टर', '+ New enquiry': '+ नई इन्क्वायरी', 'New enquiry': 'नई इन्क्वायरी', 'New Enquiry': 'नई इन्क्वायरी',
   'Quotation Given': 'कोटेशन दिया', 'Quotation given': 'कोटेशन दिया', 'Won': 'ऑर्डर मिला', 'Lost': 'नहीं मिला', 'Quoted': 'कोटेशन गया',
@@ -9983,4 +9998,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-132039 -->
+<!-- build 20261103-133927 -->
