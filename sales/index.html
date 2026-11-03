@@ -5640,7 +5640,8 @@ const hiddenC = c => !!c && hiddenP(c.ownerEmail);
 const hiddenT = t => hiddenP(t.ownerEmail) || hiddenP(t.by) || hiddenC(CL.byId.get(t.cid));
 // 2 Nov (Purvi, SALONI JAIN: Won on v1 ₹55,960, then 7 hours later two Roman blinds and the lining were taken off the sheet, ₹35,638
 // now, and nothing said so): a Won client whose sheet no longer matches the quotation they accepted. The card keeps the accepted amount.
-const wonChanged = c => statusOf(c) === 'won' && !!c.dsig && !!c.sig && c.dsig !== c.sig;
+const wonChanged = c => !!c && statusOf(c) === 'won' &&   // 3 Nov: !!c — Purchase lists other salespeople's orders, whose client a sales login can't read (was a blank Purchase page for sales)
+   !!c.dsig && !!c.sig && c.dsig !== c.sig;
 // changed after Won was pressed, or (before the 26 Oct Won window) changed after the PDF went and marked Won on the old version anyway
 const wonChangedAfter = c => wonChanged(c) && String(c.edited || '') > String(c.outcome.at || '');
 const statusOf = c => c.outcome && c.outcome.s === 'won' ? 'won' : c.outcome && c.outcome.s === 'lost' ? 'lost' : c.latest ? 'quoted' : 'draft';
@@ -10156,4 +10157,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-195139 -->
+<!-- build 20261103-200020 -->
