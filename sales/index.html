@@ -936,6 +936,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .db-seg button{border:0;background:none;color:var(--muted);font:500 14.5px var(--body);padding:8px 14px;border-radius:9px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
 .db-seg button:hover{color:var(--ink)}
 .db-seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 .5px rgba(0,0,0,.04)}
+.cl-ctl{margin:0 0 12px;--soft2:color-mix(in srgb,var(--ink) 9%,transparent)}
 .db-seg.sm button{padding:6px 12px;font-size:13.5px}
 .db-bento{display:grid;gap:14px;grid-template-columns:repeat(12,minmax(0,1fr))}
 .db-card{background:var(--paper);border:1px solid var(--line2);border-radius:18px;padding:22px;min-width:0}
@@ -963,6 +964,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .db-meter i{display:block;height:100%;background:var(--good);border-radius:4px}
 /* who sold the most */
 .db-mix{grid-column:span 7}.db-who{grid-column:span 5}.db-trend{grid-column:span 7}.db-fun{grid-column:span 5}
+.db-today{grid-column:span 5}.db-today .tdrow{width:100%}
 .db-team{grid-column:span 12}.db-lost{grid-column:span 5}.db-wait{grid-column:span 7}
 .db-bar{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:22px minmax(90px,1.1fr) 2fr auto;gap:12px;align-items:center;padding:9px 8px;margin:0 -8px;width:calc(100% + 16px);border-radius:10px;cursor:pointer;transition:background .15s}
 .db-bar:hover,.db-bar:focus-visible{background:var(--soft)}
@@ -1043,7 +1045,7 @@ tr.dash-r:hover td{background:var(--sel)}
 .db-tip{position:fixed;z-index:60;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;background:var(--ink);color:var(--paper);font:500 13px/1.35 var(--body);box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:240px}
 .db-tip b{font-size:14px;font-weight:600}.db-tip span{opacity:.8}
 /* iPad: two cards a row; phone: one */
-@media (max-width:1023px){.db-bento{grid-auto-flow:dense}.db-fun,.db-lost{grid-column:span 6}.db-hero,.db-tiles,.db-mix,.db-who,.db-trend,.db-wait{grid-column:span 12}.db-big{font-size:56px}}
+@media (max-width:1023px){.db-bento{grid-auto-flow:dense}.db-fun,.db-lost{grid-column:span 6}.db-hero,.db-tiles,.db-mix,.db-who,.db-today,.db-trend,.db-wait{grid-column:span 12}.db-big{font-size:56px}}
 @media (max-width:720px){
   .dbx{gap:14px}.db-bento{gap:12px}.db-bento > *{grid-column:1/-1 !important}
   .db-card{padding:18px;border-radius:16px}.db-tile{padding:14px 16px}.db-tiles{gap:12px}
@@ -5850,7 +5852,7 @@ async function recordVersion(v, sig, t){
 // survives a reload and can be sent to someone. Filters work on the client CARD (clients/<id>), which carries summary
 // fields (city, cats, total, outcome, dates) written when the sheet saves: lists never open every sheet.
 // Filters combine with AND. Each one is {k, chip(v), match(c, v)}: future lists (orders, purchases, stock) reuse the same shape.
-const CF0 = {practice: '', q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent', view: 'board', jd: '', won: '', lost: '', why: '', lcol: ''};   // lcol: lost board columns, '' = by reason, exec = by salesperson   // view: board | list; lost: '1' = only lost clients, in both views; why: lost reason (18 Oct)   // view: board (17 Oct, default) or list; won: '1' = every won card, not just 60 days
+const CF0 = {when: 'month', practice: '', q: '', status: 'all', exec: '', city: '', min: '', max: '', added: '', has: '', follow: '', sort: 'recent', view: 'board', jd: '', won: '', lost: '', why: '', lcol: ''};   // lcol: lost board columns, '' = by reason, exec = by salesperson   // view: board | list; lost: '1' = only lost clients, in both views; why: lost reason (18 Oct)   // view: board (17 Oct, default) or list; won: '1' = every won card, not just 60 days
 let CF = Object.assign({}, CF0), cfOpen = false;
 const tidyCity = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s-])\S/g, m => m.toUpperCase());
 const cityOf = c => tidyCity(c.city);
@@ -5884,6 +5886,17 @@ const cfSearch = (c, ql) => !ql || [c.name, c.no, c.exec, c.phone, c.addr, c.cit
 function cfQuery(){ const p = new URLSearchParams(); for (const k in CF0) if (CF[k] !== CF0[k] && k !== 'q') p.set(k, CF[k]); const s = p.toString(); return s ? '?' + s : ''; }
 function cfFromQuery(qs){ CF = Object.assign({}, CF0); try { new URLSearchParams(qs || '').forEach((v, k) => { if (k in CF0 && k !== 'q') CF[k] = v; }); } catch(_){} }
 function cfSet(patch){ Object.assign(CF, patch); try { history.replaceState(null, '', '#clients' + cfQuery()); } catch(_){} renderClients(); }
+// 3 Nov (Purvi): the dashboard's two switch rows under the search on Clients. Whose: Whole team / each salesperson (admin; = CF.exec).
+// When: This month · Last month · This year · All time (CF.when, default This month: Purvi 3 Nov), on the date each card
+// shows: New Enquiry = added, Quotation Given = last version sent, Won / Lost = when it was marked. So "This month" on the board
+// matches the dashboard's "sold this month" and "quotations sent this month".
+const stageAt = c => { const s = statusOf(c); return s === 'draft' ? c.created || c.at : s === 'quoted' ? c.at : (c.outcome || {}).at; };
+const cfWhen = (c, ql) => ql || !CF.when || CF.when === 'all' || inR(stageAt(c), dbRange(CF.when, 0));   // a search looks through every client, any date
+function clCtl(admin){
+  const names = admin ? [...PEOPLE].filter(([e, p]) => CF.jd ? trialP(e) : sells(p) && !hiddenP(e)).map(([e]) => e).sort((a, b) => personName(a).localeCompare(personName(b))) : [];
+  return `<div class="db-ctl cl-ctl">${admin ? `<div class="db-seg db-people" role="group" aria-label="Whose clients"><button data-cexec="" aria-pressed="${!CF.exec}">Whole team</button>${names.map(e => `<button data-cexec="${esc(e)}" aria-pressed="${CF.exec === e}">${esc(firstName(e))}</button>`).join('')}</div>` : '<span></span>'}
+    <div class="db-seg" role="group" aria-label="When">${PERIODS.map(([k, n]) => `<button data-cwhen="${k}" aria-pressed="${(CF.when || 'all') === k}">${n}</button>`).join('')}</div></div>`;
+}
 const clBase = () => CF.jd && PF && IS_ADMIN ? CL.trial : CF.practice ? CL.practice : CL.list;   // real clients, or only the practice ones when that filter is on
 function renderClients(){
   const el = $('#cl-body');
@@ -5894,7 +5907,7 @@ function renderClients(){
   if (CL.state !== 'ready') { el.innerHTML = `<div class="cl-wrap">${top}<div class="clist cl-empty">${CL.state === 'error' ? '<b>Could not load the clients.</b>Reload the page.' : 'Loading the clients…'}</div></div>`; return; }
   const admin = PF && IS_ADMIN; if (!admin) CF.exec = '';
   const ql = CF.q.trim().toLowerCase(), act = cfActive();
-  const base = clBase().filter(c => cfSearch(c, ql) && act.every(f => f.match(c, CF[f.k])));   // everything but status, so the pills count what you'd get
+  const base = clBase().filter(c => cfSearch(c, ql) && cfWhen(c, ql) && act.every(f => f.match(c, CF[f.k])));   // everything but status, so the pills count what you'd get
   const counts = {all: base.length, draft: 0, quoted: 0, won: 0, lost: 0}; base.forEach(c => counts[statusOf(c)]++);
   const recent = c => String(c.edited || c.at || c.created || ''), made = c => String(c.created || c.at || c.edited || '');
   const SORTF = {recent: (a, b) => recent(b).localeCompare(recent(a)), new: (a, b) => made(b).localeCompare(made(a)), high: (a, b) => (amountOf(b) || 0) - (amountOf(a) || 0),
@@ -5926,16 +5939,16 @@ function renderClients(){
   if (board) return renderBoard(el, base, admin, `${top}
     <div class="cl-tools"><input id="cl-q" class="search" value="${esc(CF.q)}" placeholder="Search name, phone, area, city, quotation no." aria-label="Search clients">
       <button class="btn fbtn" data-act="filters" aria-expanded="${cfOpen}"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Filters${act.length ? `<b class="fcount">${act.length}</b>` : ''}</button></div>
-    ${panel}${chips}`);
+    ${clCtl(admin)}${panel}${chips}`);
   el.innerHTML = `<div class="cl-wrap">${top}
     <div class="cl-tools"><input id="cl-q" class="search" value="${esc(CF.q)}" placeholder="Search name, phone, area, city, quotation no." aria-label="Search clients">
       <button class="btn fbtn" data-act="filters" aria-expanded="${cfOpen}"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Filters${act.length ? `<b class="fcount">${act.length}</b>` : ''}</button>
       <label class="fsort"><span>Sort</span><select id="cf-sort" class="search">${Object.entries(SORTS).map(([k, n]) => `<option value="${k}"${CF.sort === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label></div>
-    ${panel}
+    ${clCtl(admin)}${panel}
     <div class="cl-tools" style="justify-content:space-between"><div class="fpills" role="group" aria-label="Show">${(CF.lost ? [] : STATUSES).map(([k, n]) => `<button class="fpill" data-f="${k}" aria-pressed="${CF.status === k}">${n}<b>${counts[k]}</b></button>`).join('')}</div>
       <span class="fsum">${list.length} client${list.length === 1 ? '' : 's'}${sum ? ' · ' + rs(sum) : ''}</span></div>
     ${chips}
-    <div class="clist">${list.length ? list.map(row).join('') : `<div class="cl-empty">${CL.list.length ? `<b>No client matches.</b>${act.length || ql ? 'Remove a filter above, or <button class="linkbtn" data-clear="*">clear them all</button>.' : 'Try another word or show All.'}` : '<b>No clients yet.</b>Tap + New client, type their name, and start measuring.'}</div>`}</div></div>`;
+    <div class="clist">${list.length ? list.map(row).join('') : `<div class="cl-empty">${CL.list.length ? `<b>No client matches.</b>${act.length || ql ? 'Remove a filter above, or <button class="linkbtn" data-clear="*">clear them all</button>.' : (CF.when && CF.when !== 'all' ? `Nothing ${esc(DB_WHEN[CF.when] || '')}. <button class="linkbtn" data-cwhen="all">Show all time</button>` : 'Try another word or show All.')}` : '<b>No clients yet.</b>Tap + New client, type their name, and start measuring.'}</div>`}</div></div>`;
 }
 const clb = $('#cl-body');
 clb.addEventListener('change', e => {
@@ -5951,6 +5964,8 @@ clb.addEventListener('click', e => {
   if (t.closest('[data-act="new"]')) { newEnquiry(); return; }
   const sc = t.closest('[data-sched]'); if (sc) { askTodo({cid: sc.dataset.sched}); return; }
   const vw = t.closest('[data-view]'); if (vw) { cfSet({view: vw.dataset.view}); return; }
+  const cx = t.closest('[data-cexec]'); if (cx) { cfSet({exec: cx.dataset.cexec}); return; }
+  const cw = t.closest('[data-cwhen]'); if (cw) { cfSet({when: cw.dataset.cwhen}); return; }
   const ct = t.closest('[data-coltab]'); if (ct) { bCol = ct.dataset.coltab; renderClients(); return; }
   if (t.closest('[data-wonall]')) { cfSet({won: CF.won ? '' : '1'}); return; }
   if (t.closest('[data-lostlist]')) { cfSet({lost: '1'}); return; }
@@ -6341,7 +6356,7 @@ function renderDash(){
   const el = $('#dash-body'); if (!el) return;
   if (CL.state !== 'ready') { el.innerHTML = '<div class="cl-wrap"><div class="clist cl-empty">Loading…</div></div>'; return; }
   const mine = PF && !IS_ADMIN;
-  if (!mine) return renderAdminDash(el);   // 25 Oct: the admin's dashboard is its own page (dash.js); the sales executive's Home below is unchanged
+  if (true) return renderAdminDash(el);   // 3 Nov: everyone gets the dashboard page (dash.js); a sales login sees it about their own clients. The old sales Home below is kept, unused, for undo.   // 25 Oct: the admin's dashboard is its own page (dash.js); the sales executive's Home below is unchanged
   // 17 Oct: a sales executive's Home = their own numbers + today's to-dos (the rules give them only their clients)
   const per = new Map(), row = e => { if (!per.has(e)) per.set(e, {e, n: 0, q: 0, qv: 0, w: 0, wv: 0, l: 0, open: 0, ov: 0, last: ''}); return per.get(e); };
   for (const [e, p] of PEOPLE) if (sells(p) && !hiddenP(e)) row(e);
@@ -8864,17 +8879,21 @@ function renderSettings(){
 $('#settings-body').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (!b) return; const v = b.dataset.set; if (v === 'out') { if (PF) signOutHere(); return; } go(v === 'c-prices' ? lastPrices : v); });
 
 // ---- a sales executive's Home: what to do today (overdue first), then their numbers (renderDash)
-function todayCard(){
-  const today = dayPlus(0), L = TD.list.filter(t => t.state !== 'done' && t.ownerEmail === ME_EMAIL && t.due <= today && !practiceCid(t.cid)).sort(tdSort);
+function todayRows(){   // the signed-in login's open to-dos due today or late (3 Nov: shared by the old Today card and the dashboard)
+  const today = dayPlus(0), L = TD.state === 'error' ? [] : TD.list.filter(t => t.state !== 'done' && t.ownerEmail === ME_EMAIL && t.due <= today && !practiceCid(t.cid)).sort(tdSort);
   const row = t => { const c = CL.byId.get(t.cid);
     return `<button class="tdrow" data-hometodo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}${c || t.cname ? ' · ' + esc(c ? c.name || mobile(c.phone) : t.cname) : ''}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${esc(dueTxt(t))}</span></button>`; };
+  return {n: L.length, html: L.map(row).join('')};
+}
+function todayCard(){
+  const r = todayRows();
   return `<div class="card"><div class="card-h"><h3>Today</h3><button class="btn" data-hometo="todo">Open To Do</button></div>
-    ${TD.state === 'error' ? '<p class="hint" style="margin:0">To-dos are not switched on yet.</p>' : L.length ? L.map(row).join('') : '<p class="hint" style="margin:0">Nothing due today. Plan your next visits and calls from My Clients.</p>'}</div>`;
+    ${TD.state === 'error' ? '<p class="hint" style="margin:0">To-dos are not switched on yet.</p>' : r.n ? r.html : '<p class="hint" style="margin:0">Nothing due today. Plan your next visits and calls from My Clients.</p>'}</div>`;
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('#dash-body')) return;
   const t = e.target.closest('[data-hometodo]'); if (t) { const x = TD.list.find(y => y.id === t.dataset.hometodo); if (x) showTodo(x); return; }
-  if (e.target.closest('[data-hometo]')) go('todo');
+  const h = e.target.closest('[data-hometo]'); if (h) if (h.dataset.hometo === 'clients') { CF = Object.assign({}, CF0, {when: dashP}); go('clients'); } else go('todo');
 });
 
 // ================= Measurement sheet download (Purvi, 19 Oct 2026: "similar to how our qtn looks, i need a button to download a similar
@@ -9397,6 +9416,10 @@ let dbRO = null;
 
 // ---- the page
 function renderAdminDash(el){
+  // 3 Nov (Purvi): "just like the dashboard we did for the admin account, redo the dashboard for all salespeople". A sales login gets the
+  // same page about their own clients (the rules give them only theirs): "you" instead of "we", no team switch, no team ranking or table
+  // (they can't read the others' clients), and their to-dos for today (the old Home's Today card) where the team bars sit.
+  const me = !!(PF && !IS_ADMIN); if (me) dashWho = '';
   const R = dbRange(dashP, 0), P = dbRange(dashP, 1), who = dashWho;
   const sellers = new Set(); for (const [e, p] of PEOPLE) if (sells(p) && !hiddenP(e)) sellers.add(e);
   CL.list.forEach(c => sellers.add(c.ownerEmail || ''));
@@ -9434,7 +9457,7 @@ function renderAdminDash(el){
   const diff = WV - PWV, prev = DB_PREV[dashP];
   const delta = !prev ? '' : !WV && !PWV ? '' : !PWV ? `<p class="db-delta up"><span>Nothing was sold ${prev}</span></p>` : diff === 0 ? `<p class="db-delta"><span>Same as ${prev}</span></p>`
     : `<p class="db-delta ${diff > 0 ? 'up' : 'down'}"><span class="db-arr" aria-hidden="true">${diff > 0 ? '↑' : '↓'}</span><b>${rs(Math.abs(diff))}</b> <span>${diff > 0 ? 'more than ' + prev : 'less than ' + prev}</span></p>`;
-  const hero = `<section class="db-card db-hero"><p class="db-q">${dashWho ? `How much did ${esc(firstName(dashWho))} sell?` : 'How much did we sell?'}</p>
+  const hero = `<section class="db-card db-hero"><p class="db-q">${me ? 'How much did you sell?' : dashWho ? `How much did ${esc(firstName(dashWho))} sell?` : 'How much did we sell?'}</p>
     <p class="db-big num">${rs(WV)}</p><p class="db-sub"><b>${W}</b> <span>${W === 1 ? 'client said yes' : 'clients said yes'}</span> · <span>${esc(when)}</span></p>${delta}
     ${W ? `<p class="db-sub"><span>Average sale</span> <b>${rs(WV / W)}</b></p>` : ''}</section>`;
   // the four small numbers
@@ -9449,7 +9472,7 @@ function renderAdminDash(el){
 
   // who sold the most (team) / where does this person stand (one person: the same bars, them in colour, the rest grey)
   const mx = Math.max(1, ...team.map(r => r.wv));
-  const bars = `<section class="db-card db-who"><div class="db-h"><p class="db-q">${dashWho ? `Where does ${esc(firstName(dashWho))} stand?` : 'Who sold the most?'}</p><p class="db-hint">${dashWho ? 'Sold ' + esc(when) + ', next to the rest of the team' : 'Sold ' + esc(when) + '. Tap a name to see only their numbers.'}</p></div>
+  const bars = me ? todayDash() : `<section class="db-card db-who"><div class="db-h"><p class="db-q">${dashWho ? `Where does ${esc(firstName(dashWho))} stand?` : 'Who sold the most?'}</p><p class="db-hint">${dashWho ? 'Sold ' + esc(when) + ', next to the rest of the team' : 'Sold ' + esc(when) + '. Tap a name to see only their numbers.'}</p></div>
     ${team.length ? team.map((r, i) => `<button class="db-bar${dashWho && r.e !== dashWho ? ' dim' : ''}${dashWho && r.e === dashWho ? ' me' : ''}" data-who="${esc(r.e)}" data-tip="${esc(personName(r.e) || 'Not assigned')}\n${rs(r.wv)} sold · ${r.w} ${r.w === 1 ? 'client' : 'clients'}\n${rs(r.qv)} quoted">
       <span class="db-rank">${i + 1}</span><span class="db-bn">${esc(personName(r.e) || 'Not assigned')}</span>
       <span class="db-track">${r.wv ? `<i style="width:${Math.max(2, r.wv / mx * 100)}%"></i>` : ''}</span>
@@ -9459,7 +9482,7 @@ function renderAdminDash(el){
   // what we sold: the box chart
   const clr = k => `var(--p-${k})`;
   const mixTot = mix.groups.reduce((a, b) => a + b[2], 0);
-  const tree = `<section class="db-card db-mix"><div class="db-h"><div><p class="db-q">What did we sell?</p><p class="db-hint">Each box is one product. The bigger the box, the bigger its share.</p></div>
+  const tree = `<section class="db-card db-mix"><div class="db-h"><div><p class="db-q">${me ? 'What did you sell?' : 'What did we sell?'}</p><p class="db-hint">Each box is one product. The bigger the box, the bigger its share.</p></div>
       <div class="db-seg sm" role="group" aria-label="Sold or quoted"><button data-mix="won" aria-pressed="${dashMix === 'won'}">Sold</button><button data-mix="quoted" aria-pressed="${dashMix === 'quoted'}">Quoted</button></div></div>
     ${mixTot ? `<div class="db-tree" role="img" aria-label="Share of each product">${mix.groups.map(([k, n, v]) => {
         const pc = Math.round(v / mixTot * 100);
@@ -9475,7 +9498,7 @@ function renderAdminDash(el){
 
   // are sales going up: columns
   const bmx = Math.max(...buckets.map(b => b.v)), top = dbNice(bmx), nowB = buckets.findIndex(b => new Date() >= b.s && new Date() < b.e), hiB = bmx ? buckets.findIndex(b => b.v === bmx) : -1;
-  const trend = `<section class="db-card db-trend"><div class="db-h"><p class="db-q">Are sales going up?</p><p class="db-hint">${dashP === 'month' || dashP === 'last' ? 'Sold each week (dates of the month)' : 'Sold each month'}</p></div>
+  const trend = `<section class="db-card db-trend"><div class="db-h"><p class="db-q">${me ? 'Are your sales going up?' : 'Are sales going up?'}</p><p class="db-hint">${dashP === 'month' || dashP === 'last' ? 'Sold each week (dates of the month)' : 'Sold each month'}</p></div>
     ${bmx ? `<div class="db-cols" style="--n:${buckets.length}">
       <div class="db-grid" aria-hidden="true">${[1, .5, 0].map(f => `<div><span>${f ? rsK(top * f) : '₹0'}</span></div>`).join('')}</div>
       ${buckets.map((b, i) => `<div class="db-col${i === nowB ? ' now' : ''}" tabindex="0" data-tip="${esc(b.lab)} ${esc(b.sub)}\n${rs(b.v)} sold"><div class="db-cbar">${b.v ? `${i === hiB || i === nowB ? `<em class="num">${rsK(b.v)}</em>` : ''}<i style="height:${b.v / top * 100}%"></i>` : ''}</div><span class="db-cl">${esc(b.lab)}</span></div>`).join('')}</div>`
@@ -9483,36 +9506,42 @@ function renderAdminDash(el){
 
   // from enquiry to sale
   const fun = [['Enquiries', N], ['Got a quotation', NQ], ['Said yes', NW]];
-  const funnel = `<section class="db-card db-fun"><div class="db-h"><p class="db-q">How many enquiries became sales?</p><p class="db-hint">Enquiries that came in ${esc(when)}, and how far they have got</p></div>
+  const funnel = `<section class="db-card db-fun"><div class="db-h"><p class="db-q">${me ? 'How many of your enquiries became sales?' : 'How many enquiries became sales?'}</p><p class="db-hint">Enquiries that came in ${esc(when)}, and how far they have got</p></div>
     ${N ? fun.map(([n, v], i) => `<div class="db-step" data-tip="${esc(n)}\n${v} of ${N} enquiries"><div class="db-sl"><span>${n}</span><b class="num">${v}</b>${i ? `<small>${Math.round(v / N * 100)}%</small>` : ''}</div><div class="db-sbar"><i style="width:${Math.max(v ? 3 : 0, v / N * 100)}%;opacity:${[1, .72, .5][i]}"></i></div></div>`).join('')
       + `<p class="db-say">${NW ? `<b>${Math.round(N / NW * 10) / 10}</b> <span>enquiries for every sale</span>` : '<span>No sale from these enquiries yet</span>'}</p>`
       : `<p class="db-empty">No enquiries ${esc(when)}.</p>`}</section>`;
 
   // the team, side by side (laptop: a table; phone: one card each)
   const rt = (w, l) => w + l ? Math.round(w / (w + l) * 100) + '%' : '—';
-  const table = dashWho ? '' : `<section class="db-card db-team"><div class="db-h"><p class="db-q">The team, side by side</p><p class="db-hint">${esc(when[0].toUpperCase() + when.slice(1))}. Waiting = quotation sent, no answer yet (any date). Tap a person to see only their numbers.</p></div>
+  const table = dashWho || me ? '' : `<section class="db-card db-team"><div class="db-h"><p class="db-q">The team, side by side</p><p class="db-hint">${esc(when[0].toUpperCase() + when.slice(1))}. Waiting = quotation sent, no answer yet (any date). Tap a person to see only their numbers.</p></div>
     <table class="db-t"><thead><tr><th>Salesperson</th><th class="r">Enquiries</th><th class="r">Quotations sent</th><th class="r">Sold</th><th class="r">Win rate</th><th class="r">Waiting</th><th>Last active</th></tr></thead><tbody>
     ${team.map(r => `<tr data-who="${esc(r.e)}"><td><b>${esc(personName(r.e) || 'Not assigned')}</b></td><td class="r num">${r.n}</td><td class="r"><b class="num">${r.q}</b><small>${rs(r.qv)}</small></td><td class="r"><b class="num">${r.w}</b><small>${rs(r.wv)}</small></td><td class="r num">${rt(r.w, r.l)}</td><td class="r"><b class="num">${r.open}</b><small>${rs(r.ov)}</small></td><td class="db-ago">${esc(agoTxt(r.last)) || '—'}</td></tr>`).join('')}</tbody></table>
     <div class="db-pcards">${team.map(r => `<button class="db-pc" data-who="${esc(r.e)}"><b class="db-pcn">${esc(personName(r.e) || 'Not assigned')}</b><span class="db-ago">${esc(agoTxt(r.last)) || '—'}</span>
       <span class="db-pcg"><span><small>Sold</small><b>${rs(r.wv)}</b></span><span><small>Quotations sent</small><b>${r.q}</b></span><span><small>Enquiries</small><b>${r.n}</b></span><span><small>Win rate</small><b>${rt(r.w, r.l)}</b></span></span></button>`).join('')}</div></section>`;
 
   const maxWhy = Math.max(1, ...why.values());
-  const lost = `<section class="db-card db-lost"><div class="db-h"><p class="db-q">Why did we lose clients?</p><p class="db-hint">Clients marked Lost ${esc(when)}</p></div>
+  const lost = `<section class="db-card db-lost"><div class="db-h"><p class="db-q">${me ? 'Why did you lose clients?' : 'Why did we lose clients?'}</p><p class="db-hint">Clients marked Lost ${esc(when)}</p></div>
     ${why.size ? [...why].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="db-lr"><span>${esc(k)}</span><span class="db-track"><i style="width:${n / maxWhy * 100}%"></i></span><b class="num">${n}</b></div>`).join('') : '<p class="db-empty">Nothing lost in this period.</p>'}</section>`;
   const wait = `<section class="db-card db-wait"><div class="db-h"><p class="db-q">Who needs a call back?</p><p class="db-hint">Quotation sent, nothing has changed for 7 days or more</p></div>
-    ${follow.length ? follow.slice(0, 8).map(c => `<button class="db-wr" data-cid="${esc(c.id)}"><span class="db-wm"><b>${esc(c.name || 'No name')}</b><small>${esc(personName(c.ownerEmail) || c.exec || 'Not assigned')}</small></span><span class="db-wv"><b>${rs(c.total)}</b><small>${esc(agoTxt(c.edited || c.at))}</small></span></button>`).join('')
+    ${follow.length ? follow.slice(0, 8).map(c => `<button class="db-wr" data-cid="${esc(c.id)}"><span class="db-wm"><b>${esc(c.name || 'No name')}</b><small>${esc(me ? 'v' + c.latest + ' · ' + (cityOf(c) || mobile(c.phone) || '') : personName(c.ownerEmail) || c.exec || 'Not assigned').replace(/ · $/, '')}</small></span><span class="db-wv"><b>${rs(c.total)}</b><small>${esc(agoTxt(c.edited || c.at))}</small></span></button>`).join('')
       + (follow.length > 8 ? `<p class="db-hint">and ${follow.length - 8} more</p>` : '') : '<p class="db-empty">Nobody waiting. Good.</p>'}</section>`;
 
   const names = [...sellers].filter(Boolean).sort((a, b) => personName(a).localeCompare(personName(b)));
   el.innerHTML = `<div class="dbx">
-    <header class="db-top"><h2>${dashWho ? esc(whoName) : 'Dashboard'}</h2>${dashWho ? `<button class="n-btn sm" data-clients="${esc(dashWho)}">See their clients</button>` : ''}</header>
+    <header class="db-top"><h2>${me ? (PF.name && !/@/.test(PF.name) ? 'Hello, ' + esc(String(PF.name).split(' ')[0]) : 'Hello') : dashWho ? esc(whoName) : 'Dashboard'}</h2>${me ? '<button class="n-btn sm" data-hometo="clients">See my clients</button>' : dashWho ? `<button class="n-btn sm" data-clients="${esc(dashWho)}">See their clients</button>` : ''}</header>
     <div class="db-ctl">
-      <div class="db-seg db-people" role="group" aria-label="Whose numbers"><button data-who="" aria-pressed="${!dashWho}">Whole team</button>${names.map(e => `<button data-who="${esc(e)}" aria-pressed="${dashWho === e}">${esc(firstName(e))}</button>`).join('')}</div>
+      ${me ? '<span></span>' : `<div class="db-seg db-people" role="group" aria-label="Whose numbers"><button data-who="" aria-pressed="${!dashWho}">Whole team</button>${names.map(e => `<button data-who="${esc(e)}" aria-pressed="${dashWho === e}">${esc(firstName(e))}</button>`).join('')}</div>`}
       <div class="db-seg" role="group" aria-label="Period">${PERIODS.map(([k, n]) => `<button data-p="${k}" aria-pressed="${dashP === k}">${n}</button>`).join('')}</div>
     </div>
-    <div class="db-bento">${hero}${tiles}${tree}${bars}${trend}${funnel}${table}${lost}${wait}</div></div>`;
+    <div class="db-bento${me ? ' db-me' : ''}">${hero}${tiles}${me ? bars + tree : tree + bars}${trend}${funnel}${table}${lost}${wait}</div></div>`;
   const box = el.querySelector('.db-tree');
   if (box) { layTree(box); if (window.ResizeObserver) { if (dbRO) dbRO.disconnect(); dbRO = new ResizeObserver(() => layTree(box)); dbRO.observe(box); } }
+}
+// a salesperson's to-dos for today (and overdue), in the dashboard's card shape: the same list the old Home showed (todayRows, crm.js)
+function todayDash(){
+  const r = todayRows();
+  return `<section class="db-card db-today"><div class="db-h"><div><p class="db-q">What do you have today?</p><p class="db-hint">Your to-dos due today, and any that are late</p></div><button class="n-btn sm" data-hometo="todo">Open To Do</button></div>
+    ${r.n ? r.html : `<p class="db-empty">${TD.state === 'error' ? 'To-dos are not switched on yet.' : 'Nothing due today. Plan your next visits and calls from My Clients.'}</p>`}</section>`;
 }
 function dbNice(v){ if (!v) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
 
@@ -9532,7 +9561,7 @@ function dbNice(v){ if (!v) return 1; const p = Math.pow(10, Math.floor(Math.log
 document.addEventListener('click', e => {
   if (!e.target.closest('.dbx')) return;
   const m = e.target.closest('[data-mix]'); if (m) { dashMix = m.dataset.mix; renderDash(); return; }
-  const c = e.target.closest('[data-clients]'); if (c) { CF = Object.assign({}, CF0, {exec: c.dataset.clients}); go('clients'); return; }
+  const c = e.target.closest('[data-clients]'); if (c) { CF = Object.assign({}, CF0, {exec: c.dataset.clients, when: dashP}); go('clients'); return; }
   const w = e.target.closest('[data-who]'); if (w) { e.stopPropagation(); dashWho = w.dataset.who; renderDash(); scrollTo({top: 0, behavior: 'smooth'}); }
 }, true);
 
@@ -9889,6 +9918,11 @@ const HI = {
   'Who needs a call back?': 'किसे दोबारा फ़ोन करना है?', 'Quotation sent, nothing has changed for 7 days or more': 'कोटेशन गया, 7 या ज़्यादा दिन से कुछ नहीं हुआ',
   'this month': 'इस महीने', 'last month': 'पिछले महीने', 'this year': 'इस साल', 'so far': 'अब तक',
   'Whole team': 'पूरी टीम', 'See their clients': 'इनके क्लाइंट देखें', 'Not assigned': 'किसी को नहीं दिया',
+  // salesperson dashboard (3 Nov)
+  'How much did you sell?': 'आपने कितना बेचा?', 'What did you sell?': 'आपने क्या बेचा?', 'Are your sales going up?': 'आपकी बिक्री बढ़ रही है?',
+  'How many of your enquiries became sales?': 'आपकी कितनी इन्क्वायरी बिक्री बनीं?', 'Why did you lose clients?': 'आपको क्लाइंट क्यों नहीं मिले?',
+  'What do you have today?': 'आज आपको क्या करना है?', 'Your to-dos due today, and any that are late': 'आज के काम, और जो देर से चल रहे हैं', 'See my clients': 'मेरे क्लाइंट देखें',
+  'Show all time': 'सब समय का दिखाएँ', 'Nothing this month.': 'इस महीने कुछ नहीं।', 'Nothing last month.': 'पिछले महीने कुछ नहीं।', 'Nothing this year.': 'इस साल कुछ नहीं।',
 };
 // a few lines with a number or a name inside
 const HI_RE = [
@@ -10017,4 +10051,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-140850 -->
+<!-- build 20261103-190823 -->
