@@ -9664,7 +9664,8 @@ function greeting(){
   }
   if (!line) line = pick(slot);
   const fill = (t, hi) => first ? t.replace(/\{N\}/g, first + (hi ? ' जी' : '')) : t.replace(/,? ?\{N\}('s)?/g, '').replace(/^\s+/, '') || (hi ? 'नमस्ते' : 'Hello');
-  const en = fill(line[0], false), hi = fill(line[1], true);
+  const bang = t => /[?!.…]$|\p{Extended_Pictographic}$/u.test(t) ? t : t + '!';   // 3 Nov, Purvi: "do use ! marks, i like them" (questions keep their ?)
+  const en = bang(fill(line[0], false)), hi = bang(fill(line[1], true));
   try { HI[en] = hi; if (sub) HI[sub] = `आज ${others.join(' और ')} का जन्मदिन है 🎉`; } catch(_){}   // the हिंदी switch swaps it like any other text
   return `<span class="db-gi" aria-hidden="true">${GICON[icon] || GICON[slot]}</span><span class="db-gt">${esc(en)}</span>${sub ? `<span class="db-gs">· ${esc(sub)}</span>` : ''}`;
 }
@@ -10155,4 +10156,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-194805 -->
+<!-- build 20261103-195139 -->
