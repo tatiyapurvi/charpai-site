@@ -925,7 +925,12 @@ tr.dash-r:hover td{background:var(--sel)}
   --soft:color-mix(in srgb,var(--ink) 5%,transparent);--soft2:color-mix(in srgb,var(--ink) 9%,transparent);--grid:color-mix(in srgb,var(--ink) 9%,transparent);
   max-width:1500px;margin:0 auto;font-family:var(--body);display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 .dbx > *{min-width:0}
-.db-topbar{margin-bottom:-14px}.db-topbar .cl-head{min-height:47.5px}   /* heading, search, switch rows spaced exactly as on Clients; the bento starts 12px under the rows, as the board does */   /* 3 Nov: same width, heading and switch rows as the Clients board (.kb-wrap 1500) */
+.db-topbar{margin-bottom:-14px}
+.db-greet{display:flex;align-items:center;gap:10px;min-width:0;white-space:nowrap}.db-gt{overflow:hidden;text-overflow:ellipsis}.db-gi{flex:none;width:30px;height:30px;color:#B8860B;display:inline-flex}.db-gi svg{width:100%;height:100%}
+.db-gs{font:500 17px var(--body);color:var(--muted);overflow:hidden;text-overflow:ellipsis;min-width:0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .db-gi{color:var(--tape)}}:root[data-theme="dark"] .db-gi{color:var(--tape)}
+.cl-head:has(.db-greet){flex-wrap:nowrap}.cl-head .db-greet{flex:1 1 auto}
+@media (max-width:720px){.db-greet{flex-wrap:wrap;row-gap:2px;white-space:normal}.db-gi{width:26px;height:26px}.db-gs{flex-basis:100%;font-size:15px;padding-left:36px}.cl-head:has(.db-greet){flex-wrap:wrap}}.db-topbar .cl-head{min-height:47.5px}   /* heading, search, switch rows spaced exactly as on Clients; the bento starts 12px under the rows, as the board does */   /* 3 Nov: same width, heading and switch rows as the Clients board (.kb-wrap 1500) */
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dbx{--pp-fabric:#3987e5;--pp-stitch:#1c5cab;--pp-hw:#86b6ef;--p-cur:#3987e5;--p-bli:#d95926;--p-wal:#199e70;--p-uph:#c98500;--p-flo:#d55181;--p-mat:#008300;--p-bed:#9085e9;--p-oth:#6E7872;--acc:#3987e5}}
 :root[data-theme="dark"] .dbx{--pp-fabric:#3987e5;--pp-stitch:#1c5cab;--pp-hw:#86b6ef;--p-cur:#3987e5;--p-bli:#d95926;--p-wal:#199e70;--p-uph:#c98500;--p-flo:#d55181;--p-mat:#008300;--p-bed:#9085e9;--p-oth:#6E7872;--acc:#3987e5}
 .dbx .num{font-family:var(--body);font-variant-numeric:normal}
@@ -9530,7 +9535,7 @@ function renderAdminDash(el){
 
   const names = [...sellers].filter(Boolean).sort((a, b) => personName(a).localeCompare(personName(b)));
   el.innerHTML = `<div class="dbx">
-    <div class="db-topbar"><div class="cl-head"><h2>${me ? (PF.name && !/@/.test(PF.name) ? 'Hello, ' + esc(String(PF.name).split(' ')[0]) : 'Hello') : dashWho ? esc(whoName) : 'Dashboard'}</h2><div class="cl-hr">${me ? '<button class="btn big" data-hometo="clients">See my clients</button>' : dashWho ? `<button class="btn big" data-clients="${esc(dashWho)}">See their clients</button>` : ''}</div></div>
+    <div class="db-topbar"><div class="cl-head"><h2${dashWho ? '' : ' class="db-greet"'}>${dashWho ? esc(whoName) : greeting()}</h2><div class="cl-hr">${me ? '<button class="btn big" data-hometo="clients">See my clients</button>' : dashWho ? `<button class="btn big" data-clients="${esc(dashWho)}">See their clients</button>` : ''}</div></div>
     <div class="cl-tools"><input id="db-q" class="search" placeholder="Search name, phone, area, city, quotation no." aria-label="Search clients" autocomplete="off"></div>
     <div class="db-ctl cl-ctl">
       ${me ? '<span></span>' : `<div class="db-seg db-people" role="group" aria-label="Whose numbers"><button data-who="" aria-pressed="${!dashWho}">Whole team</button>${names.map(e => `<button data-who="${esc(e)}" aria-pressed="${dashWho === e}">${esc(firstName(e))}</button>`).join('')}</div>`}
@@ -9575,6 +9580,94 @@ document.addEventListener('click', e => {
   const c = e.target.closest('[data-clients]'); if (c) { CF = Object.assign({}, CF0, {exec: c.dataset.clients, when: dashP}); go('clients'); return; }
   const w = e.target.closest('[data-who]'); if (w) { e.stopPropagation(); dashWho = w.dataset.who; renderDash(); scrollTo({top: 0, behavior: 'smooth'}); }
 }, true);
+
+// ================= The greeting on Home (Purvi, 3 Nov 2026): "a cute/fun greeting … just like anthropic's dashboard does on claude …
+// time aware" → option A (a small drawn icon that changes with the time + one short line), "wish them on special days … birthdays as well"
+// and fun "a little aware" lines like Claude's "Purvi returns!". She approved every line in groups 1–5 except the to-do ones ("get rid of
+// to do lines and dont count that as a factor"). Order: own birthday → festival → aware line → weekday → normal time-of-day line. One line
+// is picked per person per day per time of day (it doesn't change on reload). One line only, so Home's top stays level with Clients.
+// Read-only: the only thing kept is this device's "last opened" time per login (localStorage), for "{N} returns!" / "Back so soon?".
+const BIRTHDAYS = {};   // email → 'MM-DD'. Purvi will send the dates (3 Nov). e.g. 'hanuman7264@gmail.com': '08-14'
+const JOINED = {};      // email → 'YYYY-MM-DD' for work anniversaries (only if Purvi sends joining dates)
+const FESTIVALS = {     // 'YYYY-MM-DD' → [English, Hindi, icon]. Fixed dates are added for every year below. Add new years here.
+  '2026-11-06': ['Shubh Dhanteras, {N}', 'शुभ धनतेरस, {N}', 'diya'],
+  '2026-11-07': ['Happy Diwali, {N}', 'दीपावली की शुभकामनाएँ, {N}', 'diya'], '2026-11-08': ['Happy Diwali, {N}', 'दीपावली की शुभकामनाएँ, {N}', 'diya'],
+  '2026-11-09': ['Happy Diwali, {N}', 'दीपावली की शुभकामनाएँ, {N}', 'diya'], '2026-11-10': ['Happy Diwali, {N}', 'दीपावली की शुभकामनाएँ, {N}', 'diya'],
+  '2026-11-11': ['Happy Diwali, {N}', 'दीपावली की शुभकामनाएँ, {N}', 'diya'],
+  '2027-03-22': ['Happy Holi, {N}!', 'होली की शुभकामनाएँ, {N}!', 'spark'],
+};
+const FIXED_FEST = {'01-01': ['Happy New Year, {N}!', 'नया साल मुबारक, {N}!', 'spark'], '01-14': ['Happy Sankranti, {N}', 'मकर संक्रांति की शुभकामनाएँ, {N}', 'morning'],
+  '01-26': ['Jai Hind, {N}', 'जय हिंद, {N}', 'spark'], '08-15': ['Jai Hind, {N}', 'जय हिंद, {N}', 'spark']};
+const GL = {   // [English, Hindi]; {N} = first name (Hindi adds जी)
+  morning: [['Good morning, {N}', 'सुप्रभात, {N}'], ['Rise and measure, {N}', 'उठिए, नाप लेने चलें, {N}'], ['Chai first, then curtains?', 'पहले चाय, फिर पर्दे?'], ['Fresh start, {N}', 'नई शुरुआत, {N}'], ['Morning, sunshine', 'सुप्रभात, धूप जैसे {N}']],
+  afternoon: [['Good afternoon, {N}', 'नमस्ते, {N}'], ['Post-lunch push, {N}', 'खाने के बाद थोड़ा ज़ोर, {N}'], ["Lunch done? Let's close one", 'खाना हो गया? एक डील पक्की करें'], ['Halfway there, {N}', 'आधा दिन हो गया, {N}'], ['Afternoon, {N}', 'दोपहर की राम-राम, {N}']],
+  evening: [['Good evening, {N}', 'शुभ संध्या, {N}'], ['Evening, {N}', 'शाम की राम-राम, {N}'], ['Golden hour, {N}', 'सुनहरी शाम, {N}'], ['One more call, {N}?', 'एक और कॉल, {N}?'], ['Almost home time, {N}', 'घर जाने का समय आया, {N}']],
+  night: [['Working late, {N}?', 'देर तक काम, {N}?'], ['Night shift, {N}?', 'रात की शिफ़्ट, {N}?'], ['Still here, {N}?', 'अभी भी यहीं, {N}?'], ['Burning the midnight oil?', 'आधी रात तक मेहनत?'], ['Hello, night owl', 'नमस्ते, रात के राही']],
+  back: [['{N} returns!', '{N} लौट आए!'], ["Look who's back", 'देखो कौन लौटा'], ['Welcome back, {N}', 'फिर से स्वागत है, {N}'], ['Missed you, {N}', 'आपकी याद आई, {N}']],
+  first: [['Welcome aboard, {N}', 'स्वागत है, {N}'], ["Namaste, {N}! Let's begin", 'नमस्ते, {N}! चलिए शुरू करें']],
+  soon: [['Back so soon, {N}?', 'इतनी जल्दी वापस, {N}?'], ['Hello again, {N}', 'फिर से नमस्ते, {N}'], ["Can't stay away, huh?", 'रहा नहीं गया, है ना?']],
+  sale: [['{N} is on fire', '{N} तो छा गए'], ['Look at you go, {N}', 'क्या बात है, {N}'], ["That's a yes! Nice, {N}", 'हाँ हो गई! बढ़िया, {N}']],
+  saleTeam: [['The team is on fire', 'टीम तो छा गई'], ["That's a yes! Nice, {N}", 'हाँ हो गई! बढ़िया, {N}']],
+  streak: [["{N}'s hot streak", '{N} का जलवा'], ['Unstoppable, {N}', 'कोई रोक नहीं सकता, {N}']],
+  streakTeam: [["The team's hot streak", 'टीम का जलवा'], ['Unstoppable, {N}', 'कोई रोक नहीं सकता, {N}']],
+  monthEnd: [['Month-end sprint, {N}', 'महीने के आख़िरी दिन, पूरा ज़ोर, {N}'], ['Last lap of the month', 'महीने का आख़िरी चक्कर']],
+  monthStart: [['New month, new numbers', 'नया महीना, नए आँकड़े'], ['Fresh month, {N}', 'नया महीना, {N}']],
+  summer: [['Stay cool, {N}', 'ठंडे रहिए, {N}'], ['Pani piyo, {N}', 'पानी पीते रहिए, {N}']],
+  winter: [['Chilly one, {N}', 'आज ठंड है, {N}'], ['Chai weather, {N}', 'चाय वाला मौसम, {N}']],
+  mon: [['Fresh week, {N}', 'नया हफ़्ता, {N}'], ['Monday mode, {N}', 'सोमवार वाला जोश, {N}']],
+  fri: [['Happy Friday, {N}', 'शुक्रवार मुबारक, {N}'], ['Finish strong, {N}', 'हफ़्ता दमदार ख़त्म करें, {N}']],
+  sat: [['Saturday hustle, {N}', 'शनिवार की मेहनत, {N}']],
+  sun: [['Working Sunday? Respect, {N}', 'रविवार को भी काम? सलाम, {N}']],
+  bday: [['Happy birthday, {N}! 🎂', 'जन्मदिन मुबारक, {N}! 🎂'], ["It's your day, {N}!", 'आज आपका दिन है, {N}!']],
+};
+const GICON = {
+  morning: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="16" cy="16" r="5.5"/><path d="M16 3.5v3.2M16 25.3v3.2M3.5 16h3.2M25.3 16h3.2M7.2 7.2l2.2 2.2M22.6 22.6l2.2 2.2M7.2 24.8l2.2-2.2M22.6 9.4l2.2-2.2"/></svg>',
+  afternoon: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13h15v6a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6z"/><path d="M22 15h2.5a3 3 0 0 1 0 6H21"/><path d="M11 4.5c-1 1.5 1 2.5 0 4M15.5 4.5c-1 1.5 1 2.5 0 4"/></svg>',
+  evening: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 21a7 7 0 0 1 14 0"/><path d="M4 25h24M16 6v4M7 11.5l2.5 2.5M25 11.5 22.5 14"/></svg>',
+  night: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23.5 19.5A9.5 9.5 0 0 1 12.5 8.5a9.5 9.5 0 1 0 11 11z"/><path d="M23 5v4M21 7h4"/></svg>',
+  spark: '<svg viewBox="0 0 32 32" fill="currentColor"><path d="M16 3c.8 6.2 2.8 8.4 9 13-6.2 4.6-8.2 6.8-9 13-.8-6.2-2.8-8.4-9-13 6.2-4.6 8.2-6.8 9-13z"/></svg>',
+  diya: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h24c-1.5 5-6 8-12 8S5.5 23 4 18z"/><path d="M16 15c-2.5-2-2.5-5 0-9 2.5 4 2.5 7 0 9z" fill="currentColor"/></svg>',
+  cake: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 27V17h20v10M4 27h24M6 21c2.5 2 4.5 2 6.7 0 2.2 2 4.4 2 6.6 0 2.2 2 4.2 2 6.7 0M11 17v-4M16 17v-4M21 17v-4"/><path d="M11 9.5c-.8-1 0-2.2 0-3 .8.8.8 2 0 3zM16 9.5c-.8-1 0-2.2 0-3 .8.8.8 2 0 3zM21 9.5c-.8-1 0-2.2 0-3 .8.8.8 2 0 3z"/></svg>'};
+let GREET_PREV;   // this device's last "opened" time for this login, read once per page load (undefined = not read yet)
+const gYmd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function greeting(){
+  const now = new Date(), h = now.getHours(), md = gYmd(now).slice(5), today = gYmd(now);
+  const slot = h >= 5 && h < 12 ? 'morning' : h >= 12 && h < 17 ? 'afternoon' : h >= 17 && h < 21 ? 'evening' : 'night';
+  const key = 'charpai-seen:' + (ME_EMAIL || '');
+  if (GREET_PREV === undefined) { try { GREET_PREV = +localStorage.getItem(key) || 0; localStorage.setItem(key, String(Date.now())); } catch(_) { GREET_PREV = 0; } }
+  const me = !!(PF && !IS_ADMIN), first = String((PF && PF.name && !/@/.test(PF.name) ? PF.name : '') || '').trim().split(/\s+/)[0] || '';
+  let seed = 0; for (const ch of today + slot + (ME_EMAIL || '')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const pick = g => GL[g][seed % GL[g].length];
+  let line = null, icon = slot, sub = '';
+  // birthdays: mine first; a teammate's goes after the line, in grey, for everyone (hidden + trial logins never)
+  const bdays = Object.entries(BIRTHDAYS).filter(([e, d]) => d === md && !hiddenP(e) && !(typeof trialP === 'function' && trialP(e)));
+  if (bdays.some(([e]) => e === ME_EMAIL)) { line = pick('bday'); icon = 'cake'; }
+  const others = bdays.filter(([e]) => e !== ME_EMAIL).map(([e]) => firstName(e));
+  if (others.length) sub = `Today is ${others.join(' & ')}'s birthday 🎉`;
+  const j = JOINED[ME_EMAIL]; if (!line && j && j.slice(5) === md && +today.slice(0, 4) > +j.slice(0, 4)) { const y = +today.slice(0, 4) - +j.slice(0, 4); line = [`${y} ${y === 1 ? 'year' : 'years'} with Charpai, {N}!`, `Charpai के साथ ${y} साल, {N}!`]; icon = 'spark'; }
+  const fest = FESTIVALS[today] || FIXED_FEST[md]; if (!line && fest) { line = [fest[0], fest[1]]; icon = fest[2]; }
+  if (!line) {   // the "a little aware" lines
+    const L = CL.list.filter(c => statusOf(c) === 'won' && (c.outcome || {}).at), wonOn = c => gYmd(new Date(c.outcome.at));
+    const wk = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getDay() + 6) % 7);   // this week from Monday
+    const saleToday = L.some(c => wonOn(c) === today), week = L.filter(c => new Date(c.outcome.at) >= wk).length;
+    const gap = GREET_PREV ? Date.now() - GREET_PREV : 0, lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(), m = now.getMonth() + 1;
+    if (!GREET_PREV && me && !CL.list.length) line = pick('first');
+    else if (saleToday) line = pick(me ? 'sale' : 'saleTeam');
+    else if (week >= 3) line = pick(me ? 'streak' : 'streakTeam');
+    else if (GREET_PREV && gap >= 2 * 864e5) line = pick('back');
+    else if (GREET_PREV && gap >= 5 * 6e4 && gap < 36e5) line = pick('soon');
+    else if (now.getDate() > lastDay - 3) line = pick('monthEnd');
+    else if (now.getDate() === 1) line = pick('monthStart');
+    else if (slot === 'afternoon' && m >= 4 && m <= 6) line = pick('summer');
+    else if (slot === 'morning' && (m === 12 || m === 1)) line = pick('winter');
+    else { const wd = now.getDay(); line = wd === 1 ? pick('mon') : wd === 5 ? pick('fri') : wd === 6 ? pick('sat') : wd === 0 ? pick('sun') : null; }
+  }
+  if (!line) line = pick(slot);
+  const fill = (t, hi) => first ? t.replace(/\{N\}/g, first + (hi ? ' जी' : '')) : t.replace(/,? ?\{N\}('s)?/g, '').replace(/^\s+/, '') || (hi ? 'नमस्ते' : 'Hello');
+  const en = fill(line[0], false), hi = fill(line[1], true);
+  try { HI[en] = hi; if (sub) HI[sub] = `आज ${others.join(' और ')} का जन्मदिन है 🎉`; } catch(_){}   // the हिंदी switch swaps it like any other text
+  return `<span class="db-gi" aria-hidden="true">${GICON[icon] || GICON[slot]}</span><span class="db-gt">${esc(en)}</span>${sub ? `<span class="db-gs">· ${esc(sub)}</span>` : ''}`;
+}
 
 // ================= Purchase (Purvi, 29 Oct 2026: "add a purchase tab at the top before settings. show it to everyone. just like we did
 // in odoo, we need a purchase page which shows the qtns that are confirmed, a list of all products to be ordered for them, and a way for
@@ -10062,4 +10155,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-192501 -->
+<!-- build 20261103-194805 -->
