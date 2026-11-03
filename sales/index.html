@@ -5352,7 +5352,7 @@ async function connectPrices(){
   refreshAll();
   loadCatalog();
   watchClients();
-  watchTodos(); $('#tab-t').hidden = false; $('#tab-p').hidden = false; setTimeout(puWatch, 0);   // 29 Oct: the purchase list follows Won from the start
+  watchTodos(); $('#tab-t').hidden = false; $('#tab-p').hidden = !canPurchase(); if (canPurchase()) setTimeout(puWatch, 0);   // 29 Oct: the purchase list follows Won from the start
   db.doc('prices/current').onSnapshot(s => {
     if (s.metadata.hasPendingWrites || busyHere()) return;
     if (s.exists) prices = clone(s.data());
@@ -5516,6 +5516,9 @@ const trialP = e => !!e && (TRIAL.has(e) || !!(PEOPLE.get(e) || TEAM.get(e) || {
 const meTrial = () => !!PF && (!!PF.trial || TRIAL.has(ME_EMAIL));
 const hiddenP = e => !!e && e !== ME_EMAIL && (HIDDEN.has(e) || (meTrial() ? !trialP(e) : trialP(e)));
 const trialC = c => !!c && !meTrial() && trialP(c.ownerEmail);
+// 3 Nov (Purvi): Purchase is for the whole Charpai team ("hanuman ji, neeta ji, aabid ji, sharif bhaiya … mahipal singh, rohit sankhla"),
+// blocked for the trial logins (Jaydurga: every Yashna) and Rudresh. Rule: firestore.rules noPurchase().
+const canPurchase = () => !!PF && !meTrial() && !HIDDEN.has(ME_EMAIL);
 const hiddenC = c => !!c && hiddenP(c.ownerEmail);
 const hiddenT = t => hiddenP(t.ownerEmail) || hiddenP(t.by) || hiddenC(CL.byId.get(t.cid));
 // 2 Nov (Purvi, SALONI JAIN: Won on v1 ₹55,960, then 7 hours later two Roman blinds and the lining were taken off the sheet, ₹35,638
@@ -7534,7 +7537,7 @@ let current = 'c-measure', lastMain = 'c';
 function go(v){
   v = OLD_VIEW[v] || v; if (!VIEWS[v] || v === 'none') v = 'c-measure';
   if (v === 'client' && !cpId) v = 'clients';
-  if ((v === 'people' && !(PF && IS_ADMIN)) || ((v === 'dash' || v === 'purchase') && !PF)) v = 'clients';
+  if ((v === 'people' && !(PF && IS_ADMIN)) || ((v === 'dash' || v === 'purchase') && !PF) || (v === 'purchase' && !canPurchase())) v = 'clients';
   if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';   // Purvi, 1 Oct: sales don't see the Prices page
   current = v;
   navWrite(v);   // the address remembers where you are (reload opens the same page, Purvi 2 Oct); a new page = a new history step (18 Oct)
@@ -7575,7 +7578,7 @@ function go(v){
 $('#tab-h').onclick = () => go('clients');
 $('#tab-d').onclick = () => go('dash');
 $('#tab-t').onclick = () => go('todo');
-$('#tab-p').onclick = () => go('purchase');   // 29 Oct: Purchase, for everyone
+$('#tab-p').onclick = () => go('purchase');   // 29 Oct: Purchase; 3 Nov: not for trial logins or Rudresh (canPurchase)
 $('#tab-s').onclick = () => go('settings');
 let lastPrices = 'c-prices';
 // ---- Back (Purvi, 18 Oct: "the back arrow button should take me to the page i was previously on … keep it standard figma/notion practice").
@@ -9904,4 +9907,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261102-180413 -->
+<!-- build 20261103-114626 -->
