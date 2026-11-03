@@ -4056,10 +4056,12 @@ function orderCell(col, x){
 }
 const OPTIONAL = new Set(['motor', 'shade2', 'bottomColour', 'ladderShade', 'patti']);
 function renderOrders(){
-  const groups = orderGroups(), sups = uniq(groups.map(g => g.sup));
+  const groups = orderGroups(), sups = uniq(groups.map(g => g.sup)).filter(sup => ordUnit(sup)[0] === sup);   // 3 Nov: Folio + Express = one D'Decor section
+  // the same blind type from both catalogues = one table (as in the PDF)
+  const unitGroups = sup => { const out = []; for (const gr of groups.filter(g => ordUnit(sup).includes(g.sup))) { const cols = orderCols(gr).join(), same = out.find(o => o.fam === gr.fam && orderCols(o).join() === cols); if (same) same.list = same.list.concat(gr.list); else out.push(Object.assign({}, gr)); } return out; };
   $('#b-orders').innerHTML = !groups.length ? '<div class="empty">Add a blind with its type, height and width first.</div>' : sups.map(sup => `
-    <div class="sec"><div class="sec-h"><h2>${esc(BSUPS[sup])}</h2><div class="dl-pair"><button class="btn solid dl" data-opdf="${sup}" title="Download ${esc(BSUPS[sup])}'s order as a PDF">${DL_ICON}PDF</button>${DD_SUPS.includes(sup) ? `<button class="btn dl" data-omail="${sup}" title="${MAIL_TO[sup] ? `Email the PDF to ${esc(BSUPS[sup])}` : `Download the Excel and open an email to ${esc(BSUPS[sup])}`}">✉ Email</button>` : ''}<button class="btn solid dl" data-xl="${sup}" title="Download ${esc(BSUPS[sup])}'s order as an Excel file">${DL_ICON}Excel</button></div></div>
-    ${groups.filter(g => g.sup === sup).map(gr => { const cols = orderCols(gr); return `
+    <div class="sec"><div class="sec-h"><h2>${esc(ordName(sup))}</h2><div class="dl-pair"><button class="btn solid dl" data-opdf="${sup}" title="Download ${esc(ordName(sup))}'s order as a PDF">${DL_ICON}PDF</button>${DD_SUPS.includes(sup) ? `<button class="btn dl" data-omail="${sup}" title="${MAIL_TO[sup] ? `Email the blinds order to ${MAIL_TO[sup].name}` : `Download the Excel and open an email to ${esc(BSUPS[sup])}`}">✉ Email</button>` : ''}<button class="btn solid dl" data-xl="${sup}" title="Download ${esc(ordName(sup))}'s order as an Excel file">${DL_ICON}Excel</button></div></div>
+    ${unitGroups(sup).map(gr => { const cols = orderCols(gr); return `
       <h3 class="ord-h">${esc(gr.fam)} blinds · ${gr.list.reduce((a, x) => a + x.c.q, 0)}</h3>
       <div class="q-scroll"><table class="pr ord"><thead><tr><th>Sr.</th>${cols.map(c => `<th>${esc(orderHead(gr, c))}</th>`).join('')}</tr></thead><tbody>
       ${gr.list.map((x, j) => `<tr><td>${j + 1}</td>${cols.map(c => { const v = orderCell(c, x); return `<td${!has(v) && !OPTIONAL.has(c) ? ' class="gap"' : ''}>${has(v) ? esc(v) : (OPTIONAL.has(c) ? '' : 'missing')}</td>`; }).join('')}</tr>`).join('')}
@@ -4091,7 +4093,7 @@ async function ddOrderXLSX(sup){
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
   const wb = new ExcelJS.Workbook(), cust = String(state.house || '').toUpperCase(), who = ddWho().toUpperCase(), used = new Set();
   const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin}, F = (o = {}) => Object.assign({name: 'Calibri', size: 11}, o);
-  for (const sh of orderSheets(sup)) {
+  for (const sh of ddSheets(sup)) {
     let name = (sh.title || sh.fam).replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31); while (used.has(name)) name = name.slice(0, 28) + ' ' + used.size; used.add(name);
     const ws = wb.addWorksheet(name, {pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0}}), N = sh.cols.length + 1;
     ws.columns = [{width: 7}, ...sh.cols.map(k => ({width: k === 'shade' ? 38 : /^hc|system|op$/.test(k) ? 20 : k === 'loc' ? 18 : 12}))];
@@ -4115,13 +4117,26 @@ async function ddOrderXLSX(sup){
   }
   return new Blob([await wb.xlsx.writeBuffer()], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
+// 3 Nov (Purvi): Folio and Express are only catalogues of one D'Decor desk, so their forms go as one PDF; the same blind type (same columns)
+// from both becomes one page, numbered through. ddOrderPdf('SAN') still makes one company's form.
+const ordUnit = sup => { const d = MAIL_TO[sup]; return d ? d.sups.filter(x => orderGroups().some(g => g.sup === x)) : [sup]; };   // SAN or EXP → every Folio + Express blind
+const ordName = sup => MAIL_TO[sup] ? MAIL_TO[sup].name : BSUPS[sup];
+function ddSheets(sups){
+  const out = [];
+  for (const sh of [...new Set([].concat(sups).flatMap(ordUnit))].flatMap(s => orderSheets(s))) {
+    const same = out.find(o => (o.title || o.fam) === (sh.title || sh.fam) && o.cols.join() === sh.cols.join());
+    if (same) same.rows.push(...sh.rows); else out.push(Object.assign({}, sh, {rows: sh.rows.slice()}));
+  }
+  out.forEach(o => o.rows = o.rows.map((r, j) => [j + 1, ...r.slice(1)]));
+  return out;
+}
 async function ddOrderPdf(sup){
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
   const {jsPDF} = window.jspdf, doc = new jsPDF({unit: 'pt', format: 'a4', orientation: 'landscape'}), cust = String(state.house || '').toUpperCase(), who = ddWho().toUpperCase();
   const line = {lineColor: [0, 0, 0], lineWidth: .6, textColor: [0, 0, 0]}, base = {theme: 'grid', margin: {left: 28, right: 28}, styles: Object.assign({fontSize: 9, cellPadding: 4, valign: 'middle'}, line)};
   const b = t => ({content: t, styles: {fontStyle: 'bold'}});
-  orderSheets(sup).forEach((sh, i) => {
+  ddSheets(sup).forEach((sh, i) => {
     if (i) doc.addPage();
     const N = sh.cols.length + 1, half = Math.ceil(N / 2);
     doc.autoTable(Object.assign({}, base, {startY: 28, body: [
@@ -4140,7 +4155,7 @@ async function ddOrderPdf(sup){
   });
   return doc.output('blob');
 }
-const ddFileName = (sup, ext) => `${BSUPS[sup]} blind order · ${state.house || 'house'} · ${ddDate()}.${ext}`;
+const ddFileName = (sup, ext) => `${ordName(sup)} blind${MAIL_TO[sup] ? 's' : ''} order · ${state.house || 'house'} · ${ddDate()}.${ext}`;
 async function orderPdf(sup){
   if (DD_SUPS.includes(sup)) { await saveFile(ddFileName(sup, 'pdf'), await ddOrderPdf(sup)); return; }   // 22 Oct: D'Decor's own layout
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -4211,23 +4226,26 @@ $('#b-orders').addEventListener('click', async e => {
 // so nothing goes before Send (no Ctrl Z for it, as with WhatsApp). The client's timeline says who sent which form. If Google or the internet
 // says no, Gmail opens in tatiyaindustries with everything filled in and the PDF downloads, to attach by hand.
 const MAIL_FROM = 'tatiyaindustries@gmail.com';
-const MAIL_TO = {SAN: {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'awadhesh.kumar@ddecor.com'], what: 'Sansaar Folio'},
-                 EXP: {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'awadhesh.kumar@ddecor.com'], what: 'Express'}};
+// 3 Nov (Purvi, after the first test): "dont write sansaar folio or express … just write blinds order and the mail for both folio and express
+// will go together … these are just catalogue categories" → one email, one PDF for every Folio + Express blind; footer on separate lines.
+const DD_DESK = {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'awadhesh.kumar@ddecor.com'], sups: ['SAN', 'EXP'], name: "D'Decor Sansaar"}   // Purvi: heading D'Decor Sansaar, FabriCare is a different desk;
+const MAIL_TO = {SAN: DD_DESK, EXP: DD_DESK};
 // 3 Nov, later (Purvi: "i am okay with you even showing me a prefilled message and i click on send myself for phase 1"): Google's
 // unverified-app page answered 400, so phase 1 = PDF downloads + the email opens filled in; they attach and press Send. MAIL_DIRECT = phase 2.
 const MAIL_DIRECT = false;
 let mailKey = null;   // {token, until}: Google's key lasts an hour, so a second form in the same hour needs no new window
 function orderMailParts(sup){
-  const m = MAIL_TO[sup], house = String(state.house || '').toUpperCase(), n = orderSheets(sup).reduce((a, sh) => a + sh.rows.reduce((x, r) => x + (+r[r.length - 1] || 1), 0), 0);
+  const m = MAIL_TO[sup], sups = ordUnit(sup), house = String(state.house || '').toUpperCase();
+  const n = sups.flatMap(s => orderSheets(s)).reduce((a, sh) => a + sh.rows.reduce((x, r) => x + (+r[r.length - 1] || 1), 0), 0);
   const test = (() => { try { return localStorage.getItem('charpai-mail-test') || ''; } catch (_) { return ''; } })();   // Claude's checks: only to this address
-  return {to: test ? [test] : m.to, cc: test ? [] : m.cc, test, subj: `Blind order (${m.what}) · ${house} · Tatiya Industries, Jodhpur`,
-    line: `Dear Sir, please find attached our ${m.what} blind order for ${house} (${n} blind${n > 1 ? 's' : ''}).`,
-    sign: `${ddWho() ? ddWho() + ', ' : ''}${FIRM.name}, Jodhpur · ${FIRM.phone}`, file: ddFileName(sup, 'pdf')};
+  return {to: test ? [test] : m.to, cc: test ? [] : m.cc, test, sups, desk: m.name, subj: `Blinds order · ${house} · Tatiya Industries, Jodhpur`,
+    line: `Dear Sir, please find attached our blinds order for ${house} (${n} blind${n > 1 ? 's' : ''}).`,
+    sign: ['Regards,', ddWho(), 'Tatiya Industries, Jodhpur', FIRM.phone].filter(Boolean).join('\n'), file: `${m.name} blinds order · ${state.house || 'house'} · ${ddDate()}.pdf`};
 }
 function orderMailDlg(sup){
   const p = orderMailParts(sup), row = (k, v) => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line,#eee)"><span style="width:64px;flex:none;color:var(--muted,#777)">${k}</span><span style="min-width:0;overflow-wrap:anywhere">${v}</span></div>`;
-  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Email the order to ${esc(BSUPS[sup])}</h2>${p.test ? `<p class="sub">Test: goes only to ${esc(p.test)}</p>` : ''}
-    <div style="margin:10px 0 14px;font-size:14px">${row('To', esc(p.to.join(', ')))}${p.cc.length ? row('Cc', esc(p.cc.join(', '))) : ''}${row('From', MAIL_FROM)}${row('Subject', esc(p.subj))}${row('Attached', '📄 ' + esc(p.file))}${row('Message', esc(p.line))}</div>
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Email the blinds order to ${esc(p.desk)}</h2>${p.test ? `<p class="sub">Test: goes only to ${esc(p.test)}</p>` : ''}
+    <div style="margin:10px 0 14px;font-size:14px">${row('To', esc(p.to.join(', ')))}${p.cc.length ? row('Cc', esc(p.cc.join(', '))) : ''}${row('From', MAIL_FROM)}${row('Subject', esc(p.subj))}${row('Attached', '📄 ' + esc(p.file))}${row('Message', `<span style="white-space:pre-line">${esc(p.line + '\n\n' + p.sign)}</span>`)}</div>
     <p class="sub">${MAIL_DIRECT || p.test ? `Google may ask which account to use: pick ${MAIL_FROM}.` : `The PDF downloads and the email opens with all of this filled in. Attach the PDF from Downloads, check it's sent from ${MAIL_FROM}, and press Send.`}</p>
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">${MAIL_DIRECT || p.test ? 'Send email' : 'Open email'}</button></div></div>`, false,
     d => orderMailSend(sup, p, d));
@@ -4243,11 +4261,11 @@ async function orderMailSend(sup, p, d){
       if (g.email !== MAIL_FROM) { toast(`That was ${g.email}. Please pick ${MAIL_FROM}.`); return false; }
       key = g.token; mailKey = {token: key, until: Date.now() + 50 * 60 * 1000};
     }
-    say('Making the PDF…'); const pdf = await ddOrderPdf(sup);
+    say('Making the PDF…'); const pdf = await ddOrderPdf(p.sups);
     say('Sending…'); await gmailSend(key, p, pdf);
-    toast(`Sent to ${BSUPS[sup]}${p.test ? ' (test)' : ''}`);
+    toast(`Sent to ${p.desk}${p.test ? ' (test)' : ''}`);
     const c = state.clientId && CL.byId && CL.byId.get(state.clientId);
-    if (shared && db && c && !p.test) addNote(c, `${BSUPS[sup]} blind order form emailed to ${p.to.join(', ')} from ${MAIL_FROM}`, 'log').catch(() => {});
+    if (shared && db && c && !p.test) addNote(c, `Blinds order form emailed to ${p.desk} (${p.to.join(', ')}) from ${MAIL_FROM}`, 'log').catch(() => {});
     return true;
   } catch (err) {
     if (err && err.code === 'auth/popup-closed-by-user') return false;   // they closed Google's window: nothing sent
@@ -4263,12 +4281,12 @@ async function orderMailOpen(sup, p, failed){
   const gm = `https://mail.google.com/mail/?authuser=${encodeURIComponent(MAIL_FROM)}&view=cm&fs=1&to=${encodeURIComponent(p.to.join(','))}&cc=${encodeURIComponent(p.cc.join(','))}&su=${encodeURIComponent(p.subj)}&body=${encodeURIComponent(body)}`;
   const mt = `mailto:${p.to.map(encodeURIComponent).join(',')}?${p.cc.length ? 'cc=' + p.cc.map(encodeURIComponent).join(',') + '&' : ''}subject=${encodeURIComponent(p.subj)}&body=${encodeURIComponent(body)}`;
   const tab = !phone && !failed ? window.open('', '_blank') : null;
-  let saved = false; try { saved = await saveFile(p.file, await ddOrderPdf(sup)); } catch (_) {}
+  let saved = false; try { saved = await saveFile(p.file, await ddOrderPdf(p.sups)); } catch (_) {}
   if (!saved) { if (tab) tab.close(); toast('Could not make the PDF. Check the internet.'); return false; }
   if (phone) location.href = mt; else if (tab && !tab.closed) tab.location.href = gm; else window.open(gm, '_blank');
   toast(`${failed ? 'Could not send it directly. ' : ''}The PDF is in Downloads: attach it to the email and press Send.`);
   const c = state.clientId && CL.byId && CL.byId.get(state.clientId);
-  if (shared && db && c && !p.test) addNote(c, `${BSUPS[sup]} blind order form: email to ${p.to.join(', ')} opened (PDF attached by hand)`, 'log').catch(() => {});
+  if (shared && db && c && !p.test) addNote(c, `Blinds order form: email to ${p.desk} (${p.to.join(', ')}) opened (PDF attached by hand)`, 'log').catch(() => {});
   return true;
 }
 // one email with the PDF attached, through Gmail's own sending service (the mail shows in tatiyaindustries' Sent box)
@@ -9998,4 +10016,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-134443 -->
+<!-- build 20261103-135928 -->
