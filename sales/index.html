@@ -63,7 +63,13 @@ auth.onAuthStateChanged(async u => {
   window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, trial: !!p.trial, job: p.job || '', phone: p.phone || '', admin, owner,
     signOut: () => auth.signOut().then(() => location.reload()),
     async createPasswordUser(em, pw){ const sec = firebase.apps.find(a => a.name === 'add') || firebase.initializeApp(FIREBASE_CONFIG, 'add');
-      await sec.auth().createUserWithEmailAndPassword(em, pw); await sec.auth().signOut(); }};
+      await sec.auth().createUserWithEmailAndPassword(em, pw); await sec.auth().signOut(); },
+    // 3 Nov (Purvi): order forms mailed from tatiyaindustries@gmail.com. A second Firebase sign-in (its own app, so the person's own
+    // login is untouched) asks Google for permission to send mail only (gmail.send) and hands back a 1-hour key; then signs out again.
+    async gmailToken(hint){ const sec = firebase.apps.find(a => a.name === 'mail') || firebase.initializeApp(FIREBASE_CONFIG, 'mail');
+      const pr = new firebase.auth.GoogleAuthProvider(); pr.addScope('https://www.googleapis.com/auth/gmail.send'); pr.setCustomParameters({login_hint: hint, prompt: 'select_account'});
+      const r = await sec.auth().signInWithPopup(pr); const out = {token: r.credential && r.credential.accessToken, email: String(r.user && r.user.email || '').toLowerCase()};
+      try { await sec.auth().signOut(); } catch (_) {} return out; }};
   USER = {isOwner: async () => owner, canEdit: async () => admin, id: async () => u.uid, can: async () => true};
   document.getElementById('gate').hidden = true;
   ready();
@@ -4052,7 +4058,7 @@ const OPTIONAL = new Set(['motor', 'shade2', 'bottomColour', 'ladderShade', 'pat
 function renderOrders(){
   const groups = orderGroups(), sups = uniq(groups.map(g => g.sup));
   $('#b-orders').innerHTML = !groups.length ? '<div class="empty">Add a blind with its type, height and width first.</div>' : sups.map(sup => `
-    <div class="sec"><div class="sec-h"><h2>${esc(BSUPS[sup])}</h2><div class="dl-pair"><button class="btn solid dl" data-opdf="${sup}" title="Download ${esc(BSUPS[sup])}'s order as a PDF">${DL_ICON}PDF</button>${DD_SUPS.includes(sup) ? `<button class="btn dl" data-omail="${sup}" title="Download the Excel and open an email to ${esc(BSUPS[sup])}">✉ Email</button>` : ''}<button class="btn solid dl" data-xl="${sup}" title="Download ${esc(BSUPS[sup])}'s order as an Excel file">${DL_ICON}Excel</button></div></div>
+    <div class="sec"><div class="sec-h"><h2>${esc(BSUPS[sup])}</h2><div class="dl-pair"><button class="btn solid dl" data-opdf="${sup}" title="Download ${esc(BSUPS[sup])}'s order as a PDF">${DL_ICON}PDF</button>${DD_SUPS.includes(sup) ? `<button class="btn dl" data-omail="${sup}" title="${MAIL_TO[sup] ? `Email the PDF to ${esc(BSUPS[sup])}` : `Download the Excel and open an email to ${esc(BSUPS[sup])}`}">✉ Email</button>` : ''}<button class="btn solid dl" data-xl="${sup}" title="Download ${esc(BSUPS[sup])}'s order as an Excel file">${DL_ICON}Excel</button></div></div>
     ${groups.filter(g => g.sup === sup).map(gr => { const cols = orderCols(gr); return `
       <h3 class="ord-h">${esc(gr.fam)} blinds · ${gr.list.reduce((a, x) => a + x.c.q, 0)}</h3>
       <div class="q-scroll"><table class="pr ord"><thead><tr><th>Sr.</th>${cols.map(c => `<th>${esc(orderHead(gr, c))}</th>`).join('')}</tr></thead><tbody>
@@ -4161,7 +4167,9 @@ $('#b-orders').addEventListener('click', async e => {
     try { await orderPdf(pb_.dataset.opdf); } catch (err) { toast('Could not make the PDF. Check the internet.'); }
     pb_.disabled = false; pb_.innerHTML = old; return; }
   const em = e.target.closest('[data-omail]');
-  if (em) { const sup = em.dataset.omail; em.disabled = true; const old = em.innerHTML; em.textContent = 'Making the file…';
+  if (em) { const sup = em.dataset.omail;
+    if (MAIL_TO[sup]) { orderMailDlg(sup); return; }   // 3 Nov: Sansaar Folio + Express go straight from tatiyaindustries@gmail.com with the PDF
+    em.disabled = true; const old = em.innerHTML; em.textContent = 'Making the file…';
     // 22 Oct (Purvi: "the final form that goes to company also goes in this format on mail"): the Excel is saved, then an email opens with the
     // subject and a short note; the file is attached by hand (a web page can't attach it), and nothing is sent until you press Send.
     try { if (await saveFile(ddFileName(sup, 'xlsx'), await ddOrderXLSX(sup))) {
@@ -4195,6 +4203,73 @@ $('#b-orders').addEventListener('click', async e => {
   } catch (err) { toast('Could not make the Excel file. Check the internet.'); }
   btn.disabled = false; btn.innerHTML = old;
 });
+
+// ---- 3 Nov (Purvi): "whenever there is an order for ss folio or ss express, the company order form mail button should automatically attach
+// the form's pdf and write a simple 1 line message, share the mail to these ids. the id from which this needs to go is tatiyaindustries@gmail.com".
+// Email → a window shows To / Cc / From / the PDF / the line → Send: Google asks once which account (tatiyaindustries, permission to send mail
+// only), the PDF is made and the mail goes through Gmail's own service, so it sits in that account's Sent box. A sent mail can't be taken back,
+// so nothing goes before Send (no Ctrl Z for it, as with WhatsApp). The client's timeline says who sent which form. If Google or the internet
+// says no, Gmail opens in tatiyaindustries with everything filled in and the PDF downloads, to attach by hand.
+const MAIL_FROM = 'tatiyaindustries@gmail.com';
+const MAIL_TO = {SAN: {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'awadhesh.kumar@ddecor.com'], what: 'Sansaar Folio'},
+                 EXP: {to: ['hi-blinds@ddecor.com'], cc: ['ajay.mishra@ddecor.com', 'awadhesh.kumar@ddecor.com'], what: 'Express'}};
+let mailKey = null;   // {token, until}: Google's key lasts an hour, so a second form in the same hour needs no new window
+function orderMailParts(sup){
+  const m = MAIL_TO[sup], house = String(state.house || '').toUpperCase(), n = orderSheets(sup).reduce((a, sh) => a + sh.rows.reduce((x, r) => x + (+r[r.length - 1] || 1), 0), 0);
+  const test = (() => { try { return localStorage.getItem('charpai-mail-test') || ''; } catch (_) { return ''; } })();   // Claude's checks: only to this address
+  return {to: test ? [test] : m.to, cc: test ? [] : m.cc, test, subj: `Blind order (${m.what}) · ${house} · Tatiya Industries, Jodhpur`,
+    line: `Dear Sir, please find attached our ${m.what} blind order for ${house} (${n} blind${n > 1 ? 's' : ''}).`,
+    sign: `${ddWho() ? ddWho() + ', ' : ''}${FIRM.name}, Jodhpur · ${FIRM.phone}`, file: ddFileName(sup, 'pdf')};
+}
+function orderMailDlg(sup){
+  const p = orderMailParts(sup), row = (k, v) => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line,#eee)"><span style="width:64px;flex:none;color:var(--muted,#777)">${k}</span><span style="min-width:0;overflow-wrap:anywhere">${v}</span></div>`;
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Email the order to ${esc(BSUPS[sup])}</h2>${p.test ? `<p class="sub">Test: goes only to ${esc(p.test)}</p>` : ''}
+    <div style="margin:10px 0 14px;font-size:14px">${row('To', esc(p.to.join(', ')))}${p.cc.length ? row('Cc', esc(p.cc.join(', '))) : ''}${row('From', MAIL_FROM)}${row('Subject', esc(p.subj))}${row('Attached', '📄 ' + esc(p.file))}${row('Message', esc(p.line))}</div>
+    <p class="sub">Google may ask which account to use: pick ${MAIL_FROM}.</p>
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Send email</button></div></div>`, false,
+    d => orderMailSend(sup, p, d));
+}
+async function orderMailSend(sup, p, d){
+  const say = t => { const s = d && d.querySelector('.dlg-acts [data-dlg="ok"]'); if (s) s.textContent = t; };
+  let key = mailKey && mailKey.until > Date.now() ? mailKey.token : null;
+  try {
+    if (!key) {   // first thing after the tap, so the phone lets Google's window open
+      if (!PF || !PF.gmailToken) throw new Error('no-google');
+      const g = await PF.gmailToken(MAIL_FROM);
+      if (g.email !== MAIL_FROM) { toast(`That was ${g.email}. Please pick ${MAIL_FROM}.`); return false; }
+      key = g.token; mailKey = {token: key, until: Date.now() + 50 * 60 * 1000};
+    }
+    say('Making the PDF…'); const pdf = await ddOrderPdf(sup);
+    say('Sending…'); await gmailSend(key, p, pdf);
+    toast(`Sent to ${BSUPS[sup]}${p.test ? ' (test)' : ''}`);
+    const c = state.clientId && CL.byId && CL.byId.get(state.clientId);
+    if (shared && db && c && !p.test) addNote(c, `${BSUPS[sup]} blind order form emailed to ${p.to.join(', ')} from ${MAIL_FROM}`, 'log').catch(() => {});
+    return true;
+  } catch (err) {
+    if (err && err.code === 'auth/popup-closed-by-user') return false;   // they closed Google's window: nothing sent
+    if (err && err.status === 401) mailKey = null;
+    console.warn('[order mail]', err);
+    try { await saveFile(p.file, await ddOrderPdf(sup)); } catch (_) {}
+    const u = `https://mail.google.com/mail/?authuser=${encodeURIComponent(MAIL_FROM)}&view=cm&fs=1&to=${encodeURIComponent(p.to.join(','))}&cc=${encodeURIComponent(p.cc.join(','))}&su=${encodeURIComponent(p.subj)}&body=${encodeURIComponent(p.line + '\n\n' + p.sign)}`;
+    window.open(u, '_blank');
+    toast('Could not send it directly. Gmail is open with everything filled in: attach the PDF from Downloads and press Send.');
+    return true;
+  }
+}
+// one email with the PDF attached, through Gmail's own sending service (the mail shows in tatiyaindustries' Sent box)
+async function gmailSend(token, p, pdf){
+  const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+  const utf = t => b64(new TextEncoder().encode(t)), wrap = t => t.replace(/.{76}/g, '$&\r\n'), hdr = t => `=?UTF-8?B?${utf(t)}?=`;
+  const B = 'charpai' + Date.now().toString(36), fname = p.file.replace(/[^\x20-\x7e]/g, '-');
+  const mime = [`From: ${FIRM.name} <${MAIL_FROM}>`, `To: ${p.to.join(', ')}`, ...(p.cc.length ? [`Cc: ${p.cc.join(', ')}`] : []), `Subject: ${hdr(p.subj)}`, 'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${B}"`, '', `--${B}`, 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64', '', wrap(utf(p.line + '\n\n' + p.sign)),
+    `--${B}`, `Content-Type: application/pdf; name="${fname}"`, `Content-Disposition: attachment; filename="${fname}"; filename*=UTF-8''${encodeURIComponent(p.file)}`,
+    'Content-Transfer-Encoding: base64', '', wrap(b64(new Uint8Array(await pdf.arrayBuffer()))), `--${B}--`, ''].join('\r\n');
+  const raw = b64(new TextEncoder().encode(mime)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {method: 'POST', headers: {Authorization: 'Bearer ' + token, 'Content-Type': 'application/json'}, body: JSON.stringify({raw})});
+  if (!r.ok) { const e = new Error('gmail ' + r.status + ' ' + (await r.text()).slice(0, 300)); e.status = r.status; throw e; }
+  return r.json();
+}
 
 // ================= quotation: Purvi's Performa Invoice layout, MRP (GST included), in sections
 const FIRM = {name: 'TATIYA INDUSTRIES', addr: 'E-4 (A) M.I.A, Basni IInd Phase, Near Medipulse Hospital, Jodhpur (Raj.) 342005', phone: '0291-2741087, 9799170170',
@@ -9698,6 +9773,7 @@ const HI = {
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
   'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'The sheet changed after this was confirmed: check before ordering': 'पक्का होने के बाद शीट बदली: ऑर्डर से पहले देखें', 'Changed after sending': 'भेजने के बाद बदला',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
+  'Send email': 'ईमेल भेजें', 'Making the PDF…': 'PDF बन रही है…', 'Sending…': 'भेज रहे हैं…',   // 3 Nov: order form email
   // clients board / list / filters
   'Board': 'बोर्ड', 'List': 'लिस्ट', 'Filters': 'फ़िल्टर', '+ New enquiry': '+ नई इन्क्वायरी', 'New enquiry': 'नई इन्क्वायरी', 'New Enquiry': 'नई इन्क्वायरी',
   'Quotation Given': 'कोटेशन दिया', 'Quotation given': 'कोटेशन दिया', 'Won': 'ऑर्डर मिला', 'Lost': 'नहीं मिला', 'Quoted': 'कोटेशन गया',
@@ -9907,4 +9983,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-114722 -->
+<!-- build 20261103-132039 -->
