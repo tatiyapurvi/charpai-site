@@ -62,6 +62,7 @@ auth.onAuthStateChanged(async u => {
   const owner = email === OWNER || CO_OWNERS.includes(email), admin = owner || p.role === 'admin';
   window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, trial: !!p.trial, job: p.job || '', phone: p.phone || '', admin, owner,
     signOut: () => auth.signOut().then(() => location.reload()),
+    idToken: () => auth.currentUser.getIdToken(),   // 4 Nov: Documents - the Drive helper asks Firebase with this login whether it may open the client
     async createPasswordUser(em, pw){ const sec = firebase.apps.find(a => a.name === 'add') || firebase.initializeApp(FIREBASE_CONFIG, 'add');
       await sec.auth().createUserWithEmailAndPassword(em, pw); await sec.auth().signOut(); },
     // 3 Nov (Purvi): order forms mailed from tatiyaindustries@gmail.com. A second Firebase sign-in (its own app, so the person's own
@@ -178,16 +179,16 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Curtains sheet, 19 Oct (Purvi: on a desktop the side margins were too wide and the table scrolled sideways all the time).
    Only this page: the side margins are the same share of the screen on every size (1.5%, ≥16px), the side panel is 420px
    (was 520px), and the table gets the rest. The header follows, so its edges line up with the sheet. */
-body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) .page,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) .tape,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) .tabs{padding-inline:max(16px,1.5vw)}
-body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-client):not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}   /* + the client page (20 Oct, Purvi): Overview and the 3 buttons in the same place */
+body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-docs,#v-client):not([hidden])) .page,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-docs,#v-client):not([hidden])) .tape,body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-docs,#v-client):not([hidden])) .tabs{padding-inline:max(16px,1.5vw)}
+body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-docs,#v-client):not([hidden])) :is(.page,.tape-in,.tabs-in){max-width:none}   /* + the client page (20 Oct, Purvi): Overview and the 3 buttons in the same place */
 /* 20 Oct (Purvi): every sheet, the measurement sheet view and the quotation share the same margins, and the client bar (Overview ·
    products · View measurement sheet · Measurement sheet · Quotation) stays fixed under the menu while scrolling (laptops/tablets;
    phones keep the screen for the sheet). --tabs-h / --cbar-h are measured (fitTopBars), so the side panels sit just below it. */
 :root{--tabs-h:59px;--cbar-h:100px}
 @media (min-width:761px){
-  body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) .cbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--tabs-h));z-index:15;background:var(--bg);margin-top:-18px;padding-top:14px}
-  body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) :is(.side,.q-sum){top:calc(env(safe-area-inset-top,0px) + var(--tabs-h) + var(--cbar-h) + 4px)}
-  body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet):not([hidden])) :is(#side,#bside){max-height:calc(100dvh - var(--tabs-h) - var(--cbar-h) - 20px)}
+  body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-docs):not([hidden])) .cbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--tabs-h));z-index:15;background:var(--bg);margin-top:-18px;padding-top:14px}
+  body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-docs):not([hidden])) :is(.side,.q-sum){top:calc(env(safe-area-inset-top,0px) + var(--tabs-h) + var(--cbar-h) + 4px)}
+  body:has(:is(#v-measure,#v-blinds,#v-product,#v-quote,#v-msheet,#v-docs):not([hidden])) :is(#side,#bside){max-height:calc(100dvh - var(--tabs-h) - var(--cbar-h) - 20px)}
   /* 20 Oct (Purvi: the table's heading rows "should be fixed even if we are scrolling down"): the sheets scroll with the page only
      (no box inside the page to scroll), and a copy of the heading rows (.fhead, floatHeads) stays under the fixed bar, as Excel's
      frozen top row. */
@@ -821,7 +822,7 @@ table.ord td.gap{color:var(--warn);background:var(--warn-soft);font-size:12px}
 .ctabs-row{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--line)}
 .ctabs{display:flex;gap:2px;overflow-x:auto;flex:1 1 auto;min-width:0;align-items:flex-end;scrollbar-width:none}
 .ctabs::-webkit-scrollbar{display:none}
-@media (max-width:640px){ .ctabs-row{flex-wrap:wrap;column-gap:8px} .ctabs-row .qgos{order:-1;flex:1 0 100%;gap:6px;margin:0} .ctabs-row .qgo{flex:1 1 0;justify-content:center;margin:0 0 6px;font-size:15px;padding:7px 8px;gap:5px} .qgo .q-l{display:none} .qgo .q-s{display:inline} .ctabs-row .ctabs{flex:1 0 100%} }   /* phones: the three buttons on their own line above the tabs, short names */
+@media (max-width:640px){ .ctabs-row{flex-wrap:wrap;column-gap:8px} .ctabs-row .qgos{order:-1;flex:1 0 100%;gap:6px;margin:0} .ctabs-row .qgo{flex:1 1 0;justify-content:center;margin:0 0 6px;font-size:15px;padding:7px 8px;gap:5px} .ctabs-row .qgo .q-l{display:none} .ctabs-row .qgo .q-s{display:inline} .ctabs-row .ctabs{flex:1 0 100%} }   /* phones: the three buttons on their own line above the tabs, short names */
 .ctab-sep{flex:none;width:1px;height:22px;background:var(--line);margin:0 8px 11px}
 .ctab .cnt{display:inline-block;margin-left:6px;min-width:20px;padding:1px 6px;border-radius:10px;background:var(--line2);color:var(--muted);font:600 12px/1.4 var(--body);text-align:center;vertical-align:2px}
 .ctab[aria-selected="true"] .cnt{background:var(--ink);color:var(--paper)}
@@ -1164,6 +1165,172 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .paper.ms-room input.ms-rem:focus{outline:2px solid var(--tape);border-color:var(--tape-ink)}
 .paper-top.ms-top td{font-size:12.5px}
 @media (max-width:999px){ #v-msheet .q-sum{order:-1} }
+/* ===== Documents (4 Nov 2026, Purvi: "super easy … 5th grade … designed by people at notion/figma/anthropic"). Calm: soft fills, no black
+   outlines, one dark button, plain-weight headings in the body font, generous space; big tap targets on phones. */
+#v-docs,.dlg.dk,.dk-lb,.dk-snack{--soft:color-mix(in srgb,var(--ink) 6%,transparent);--soft2:color-mix(in srgb,var(--ink) 10%,transparent);--hair:color-mix(in srgb,var(--ink) 9%,transparent)}
+.dk-wrap{max-width:none;margin:0;padding:6px 0 60px;font-family:var(--body)}
+.dk-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:10px 0 22px;flex-wrap:wrap}
+.dk-ttl h2{font:600 26px/1.15 var(--body);letter-spacing:-.01em;margin:0}
+.dk-ttl p{margin:4px 0 0;color:var(--muted);font-size:14.5px}
+.dk-adds{display:flex;gap:10px}
+.dk-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:11px 18px;background:var(--soft);color:var(--ink);font:600 15px/1.1 var(--body);cursor:pointer;white-space:nowrap;transition:background .15s,transform .08s,opacity .15s;-webkit-tap-highlight-color:transparent}
+.dk-btn:hover{background:var(--soft2)}
+.dk-btn:active{transform:scale(.98)}
+.dk-btn.dark{background:var(--ink);color:var(--paper)}
+.dk-btn.dark:hover{opacity:.9}
+.dk-btn:disabled{opacity:.35;cursor:default;transform:none}
+.dk-btn svg{flex:none}
+.dk-grp{margin:0 0 30px}
+.dk-grp h3{display:flex;align-items:center;gap:8px;font:600 15px/1.2 var(--body);margin:0 0 12px;color:var(--ink)}
+.dk-n{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 6px;border-radius:10px;background:var(--soft);color:var(--muted);font:600 12px/1 var(--body)}
+.dk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
+.dk-card{display:flex;flex-direction:column;text-align:left;border:0;padding:0;background:none;color:var(--ink);cursor:pointer;font-family:var(--body);min-width:0;-webkit-tap-highlight-color:transparent}
+.dk-th{position:relative;display:grid;place-items:center;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:var(--soft);box-shadow:inset 0 0 0 1px var(--hair);transition:box-shadow .15s,transform .15s}
+.dk-th img{width:100%;height:100%;object-fit:cover;display:block}
+.dk-card.plain .dk-th img{object-fit:contain;background:var(--paper)}
+.dk-card:hover .dk-th{box-shadow:inset 0 0 0 1px var(--hair),0 6px 20px rgba(0,0,0,.08);transform:translateY(-1px)}
+.dk-card:focus-visible{outline:none}.dk-card:focus-visible .dk-th{box-shadow:0 0 0 3px var(--tape)}
+.dk-ph{display:grid;place-items:center;color:var(--faint)}
+.dk-ph svg{width:40px;height:40px}
+.dk-tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.6);color:#fff;font:700 10.5px/1 var(--body);letter-spacing:.04em;padding:4px 6px;border-radius:6px}
+.dk-meta{display:flex;flex-direction:column;gap:2px;padding:9px 2px 0;min-width:0}
+.dk-cap{font-size:14.5px;font-weight:500;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-cap.none{color:var(--faint);font-weight:400}
+.dk-by{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-card.up{cursor:default}
+.dk-card.up .dk-th img{filter:saturate(.6) brightness(.9)}
+.dk-st{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--paper) 35%,transparent)}
+.dk-st.err{background:color-mix(in srgb,#E5484D 14%,var(--paper));color:#B42318;text-align:center;font-size:13px;gap:2px;align-content:center;cursor:pointer}
+.dk-st.err b{font-size:14px}
+.dk-card.up:has(.dk-st.err){cursor:pointer}
+.dk-spin{width:26px;height:26px;border-radius:50%;border:2.5px solid color-mix(in srgb,var(--ink) 18%,transparent);border-top-color:var(--ink);animation:dkspin .8s linear infinite;display:block}
+@keyframes dkspin{to{transform:rotate(360deg)}}
+.dk-skel .dk-th,.dk-skel-h{background:linear-gradient(90deg,var(--soft) 0%,var(--soft2) 50%,var(--soft) 100%);background-size:200% 100%;animation:dkshim 1.3s ease-in-out infinite}
+.dk-skel-h{width:120px;height:18px;border-radius:6px}
+.dk-skel .dk-card{cursor:default}
+@keyframes dkshim{to{background-position:-200% 0}}
+.dk-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:48px 20px;border-radius:20px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--hair);color:var(--muted)}
+.dk-empty.first{padding:64px 24px;margin-top:4px}
+.dk-empty h3{font:600 20px/1.2 var(--body);color:var(--ink);margin:6px 0 0}
+.dk-empty p{margin:0;max-width:420px;font-size:15px;line-height:1.5}
+.dk-empty .dk-adds{margin-top:14px}
+.dk-empty .dk-hint{font-size:13px;color:var(--faint);margin-top:2px}
+.dk-art{display:grid;place-items:center;width:64px;height:64px;border-radius:18px;background:var(--tape-soft);color:var(--tape-ink)}
+:root[data-theme="dark"] .dk-art{color:var(--tape)}
+.dk-art svg{width:30px!important;height:30px!important}
+.dk-adds.big .dk-btn{padding:14px 22px;font-size:16px;border-radius:14px}
+.dk-warn{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:14px;margin:0 0 18px}
+.dk-dropcover{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(3px);pointer-events:none}
+.dk-dropcover>div{display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 70px;border-radius:24px;border:2px dashed color-mix(in srgb,var(--ink) 30%,transparent);background:var(--paper);font:600 18px var(--body)}
+.dk-dropcover[hidden]{display:none}
+/* the add window */
+.dlg.dk{width:min(560px,calc(100vw - 32px));border-radius:20px;overflow:hidden}
+.dk-add{display:flex;flex-direction:column;max-height:min(86dvh,760px);font-family:var(--body)}
+.dk-add-top{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 6px 24px}
+.dk-add-top h2{font:600 20px/1.2 var(--body);margin:0}
+.dk-x{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;background:none;color:var(--muted);cursor:pointer}
+.dk-x:hover{background:var(--soft);color:var(--ink)}
+.dk-add-body{padding:8px 24px 18px;overflow:auto}
+.dk-hero{display:grid;place-items:center;border-radius:16px;overflow:hidden;background:var(--soft);height:min(260px,34dvh);margin-bottom:6px}
+.dk-hero img{width:100%;height:100%;object-fit:contain}
+.dk-strip{display:flex;gap:10px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin}
+.dk-sq{position:relative;flex:none;width:92px;height:92px;border-radius:14px;overflow:hidden;background:var(--soft);display:grid;place-items:center}
+.dk-sq img{width:100%;height:100%;object-fit:cover}
+.dk-sqt{position:absolute;left:5px;right:5px;bottom:5px;background:rgba(0,0,0,.62);color:#fff;font:600 10.5px/1.25 var(--body);padding:3px 5px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.dk-sq:not(.typed) .dk-sqt{display:none}
+.dk-q{font:600 15px/1.3 var(--body);margin:16px 0 10px;color:var(--ink)}
+.dk-chips{display:flex;flex-wrap:wrap;gap:8px}
+.dk-chip{border:0;border-radius:999px;padding:9px 15px;background:var(--soft);color:var(--ink);font:500 14.5px/1.1 var(--body);cursor:pointer;transition:background .12s,color .12s;-webkit-tap-highlight-color:transparent}
+.dk-chip:hover{background:var(--soft2)}
+.dk-chip[aria-pressed="true"]{background:var(--tape);color:var(--tape-ink);font-weight:600}
+.dk-capin,#lb-cap{width:100%;box-sizing:border-box;margin-top:16px;border:0;border-radius:12px;background:var(--soft);color:var(--ink);padding:13px 14px;font:400 16px var(--body);outline:none;transition:box-shadow .15s}
+.dk-capin:focus,#lb-cap:focus{box-shadow:0 0 0 2px var(--tape)}
+.dk-more{margin-top:18px;border-radius:14px;background:var(--soft)}
+.dk-more summary{cursor:pointer;padding:12px 14px;font:500 14px var(--body);color:var(--muted);list-style:none}
+.dk-more summary::-webkit-details-marker{display:none}
+.dk-more summary::before{content:'›';display:inline-block;margin-right:8px;transition:transform .15s}
+.dk-more[open] summary::before{transform:rotate(90deg)}
+.dk-rows{padding:0 12px 6px}
+.dk-row{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--hair)}
+.dk-mini{flex:none;width:64px;height:64px;border-radius:12px;overflow:hidden;background:var(--paper);display:grid;place-items:center}
+.dk-mini img{width:100%;height:100%;object-fit:cover}
+.dk-mini .dk-ph svg{width:26px;height:30px}
+.dk-rf{flex:1;min-width:0}
+.dk-rf .dk-chip{padding:6px 11px;font-size:13px}
+.dk-rf .dk-chips{gap:6px}
+.dk-rf .dk-capin{margin-top:8px;background:var(--paper);padding:10px 12px;font-size:15px}
+.dk-add-foot{display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:14px 24px 20px;border-top:1px solid var(--hair)}
+.dk-need{color:var(--muted);font-size:14px;margin-right:auto}
+.dk-add-foot .dk-btn{min-width:130px;padding:13px 22px;font-size:16px}
+/* the viewer */
+html.dk-noscroll,html.dk-noscroll body{overflow:hidden}
+.dk-lb{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:rgb(14,15,15);color:#F4F5F4;font-family:var(--body);padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);animation:dkfade .16s ease-out}
+.dk-lb[hidden]{display:none}
+@keyframes dkfade{from{opacity:0}}
+.lb-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 10px 20px}
+.lb-count{font-size:14px;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums}
+.lb-acts{display:flex;gap:4px}
+.lb-ic{display:inline-flex;align-items:center;gap:7px;border:0;background:none;color:#F4F5F4;border-radius:10px;padding:9px 12px;font:500 14px var(--body);cursor:pointer}
+.lb-ic:hover{background:rgba(255,255,255,.1)}
+.lb-ic:disabled{opacity:.35;cursor:default;background:none}
+.lb-ic.x{padding:9px}
+.lb-stage{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:0 72px}
+.lb-pic{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
+.lb-pic img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:6px;user-select:none;-webkit-user-select:none}
+.lb-pic iframe{width:min(900px,100%);height:100%;border:0;border-radius:8px;background:#fff}
+.lb-pic .dk-ph{color:rgba(255,255,255,.5)}
+.lb-pic .dk-ph svg{width:90px;height:108px}
+.lb-load{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.lb-load .dk-spin{border-color:rgba(255,255,255,.25);border-top-color:#fff}
+.lb-err{background:rgba(0,0,0,.6);padding:10px 14px;border-radius:10px;font-size:14px}
+.lb-openpdf{position:absolute;bottom:18px}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;transition:background .15s}
+.lb-nav:hover{background:rgba(255,255,255,.2)}
+.lb-nav.l{left:14px}.lb-nav.r{right:14px}
+.lb-info{padding:14px 24px 22px;max-width:760px;width:100%;margin:0 auto;box-sizing:border-box;text-align:center}
+.lb-cap{font:500 17px/1.4 var(--body)}
+.lb-none{color:rgba(255,255,255,.45);font-weight:400}
+.lb-sub{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:13.5px;color:rgba(255,255,255,.6)}
+.lb-type{background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:3px 10px;font-weight:600;font-size:12.5px}
+.lb-link{border:0;background:none;color:#fff;text-decoration:underline;text-underline-offset:3px;font:500 13.5px var(--body);cursor:pointer;padding:4px}
+.lb-edit{text-align:left}
+.lb-edit .dk-q{color:#fff;margin-top:0}
+.lb-chips .dk-chip{background:rgba(255,255,255,.1);color:#fff}
+.lb-chips .dk-chip:hover{background:rgba(255,255,255,.18)}
+.lb-chips .dk-chip[aria-pressed="true"]{background:var(--tape);color:var(--tape-ink)}
+#lb-cap{background:rgba(255,255,255,.1);color:#fff;margin-top:12px}
+#lb-cap::placeholder{color:rgba(255,255,255,.45)}
+.lb-eb{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.dk-btn.light{background:#fff;color:#111}
+.dk-btn.ghost{background:none;color:#fff}.dk-btn.ghost:hover{background:rgba(255,255,255,.1)}
+.dk-snack{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:14px;background:var(--ink);color:var(--paper);border-radius:14px;padding:8px 8px 8px 18px;font:500 15px var(--body);box-shadow:0 10px 30px rgba(0,0,0,.25);animation:dkfade .16s ease-out}
+.dk-snack button{border:0;border-radius:10px;padding:9px 14px;background:color-mix(in srgb,var(--paper) 16%,transparent);color:var(--paper);font:600 14.5px var(--body);cursor:pointer}
+/* phones and small tablets */
+@media (max-width:640px){
+  .dk-wrap{padding-top:0}
+  .dk-head{margin:6px 0 18px;gap:14px}
+  .dk-ttl h2{font-size:23px}
+  .dk-head .dk-adds{flex:1 0 100%}
+  .dk-adds .dk-btn{flex:1 1 0;min-width:0;padding:14px 12px;font-size:15.5px;border-radius:14px}
+  .dk-empty .dk-adds{flex-direction:column;align-self:stretch}
+  .dk-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .dk-th{border-radius:12px}
+  .dk-grp{margin-bottom:24px}
+  .dlg.dk.dk-sheet{width:100vw;max-width:100vw;margin:auto 0 0;border-radius:22px 22px 0 0;max-height:92dvh}
+  .dk-add{max-height:92dvh}
+  .dk-add-top{padding:16px 12px 4px 20px}
+  .dk-add-body{padding:8px 20px 16px}
+  .dk-add-foot{padding:12px 20px calc(env(safe-area-inset-bottom,0px) + 16px)}
+  .dk-add-foot .dk-btn{flex:1}
+  .dk-chip{padding:10px 14px;font-size:15px}
+  .lb-stage{padding:0}
+  .lb-nav{display:none}
+  .lb-ic{padding:9px 10px;gap:5px;font-size:13.5px}
+  .lb-ic.x{padding:9px}
+  .lb-top{padding:6px 6px 6px 18px}
+  .lb-info{padding:12px 18px 18px}
+}
+@media (min-width:641px) and (max-width:1000px){ .dk-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))} }
 .qe-open .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:0;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:10px;padding:10px;font-size:15px}
 .qe-open .btn:hover{background:color-mix(in srgb,var(--ink) 12%,transparent)}
 .qe-card{margin:14px 14px 4px;padding:14px 16px;border-radius:12px;background:var(--tape-soft);color:var(--ink)}
@@ -1797,6 +1964,8 @@ button.n-prop:hover{background:var(--soft)}
       <aside class="panel q-sum" id="q-sum"></aside>
     </div>
   </section>
+
+  <section id="v-docs" hidden><div id="docs-body"></div></section>
 
   <section id="v-msheet" hidden>
     <div class="q-grid">
@@ -2442,7 +2611,7 @@ const UNDO = (() => {
     refreshSheet(); if (current === 'msheet' && typeof renderMsheet === 'function') renderMsheet(); save(); base = {cid: p.cid, json};
   }
   const NAMES = {clients: 'client details', todos: 'to-do', notes: 'note', users: 'team list', prices: 'prices', costs: 'prices', qversions: 'quotation', drafts: 'sheet'};
-  const what = e => [...new Set(e.parts.map(p => p.kind === 'sheet' ? 'change on ' + (p.house || 'the sheet') : NAMES[p.path.split('/')[0]] || 'change'))].join(', ');
+  const what = e => [...new Set(e.parts.map(p => p.kind === 'fn' ? p.label : p.kind === 'sheet' ? 'change on ' + (p.house || 'the sheet') : NAMES[p.path.split('/')[0]] || 'change'))].join(', ');
   async function run(dir){
     if (busy) return;
     const from = dir < 0 ? U : R, to = dir < 0 ? R : U, e = from.pop();
@@ -2450,7 +2619,7 @@ const UNDO = (() => {
     const sent = dir < 0 && e.parts.find(p => p.sent);
     if (sent) { toast(`Can't undo: the ${sent.sent} was already sent or downloaded. Ctrl Z again for the step before it.`); return; }
     busy = applying = true; cur = null;
-    try { for (const p of dir < 0 ? [...e.parts].reverse() : e.parts) await (p.kind === 'sheet' ? putSheet(p, dir < 0 ? p.before : p.after) : putDoc(p, dir));
+    try { for (const p of dir < 0 ? [...e.parts].reverse() : e.parts) await (p.kind === 'fn' ? (dir < 0 ? p.undo() : p.redo()) : p.kind === 'sheet' ? putSheet(p, dir < 0 ? p.before : p.after) : putDoc(p, dir));
       to.push(e); toast((dir < 0 ? 'Undone: ' : 'Redone: ') + what(e)); }
     catch (er) { from.push(e); toast(`Could not ${dir < 0 ? 'undo' : 'redo'}: ${er && /permission/i.test(er.code || '') ? 'not allowed for your login' : er && er.message === 'client' ? 'that client could not be opened' : 'check the internet'}.`); }
     busy = applying = false;
@@ -2473,7 +2642,9 @@ const UNDO = (() => {
   }
   // notSent: a version saved without a PDF leaving the app (Won on the sheet's price, 26 Oct), so Ctrl Z may take it back.
   const notSent = async fn => { unsent++; try { return await fn(); } finally { unsent--; } };
-  return {sheet, rebase, wrap, notSent, raw: () => raw || db, undo: () => run(-1), redo: () => run(1), clear(){ U.length = R.length = 0; cur = null; rebase(); }};
+  // act: a step that isn't a Firestore write (4 Nov: Documents in Google Drive), with its own undo / redo; always a step of its own
+  const act = (label, undo, redo) => { if (applying) return; U.push({parts: [{kind: 'fn', label, undo, redo}], evt: -1, el: null}); if (U.length > MAX) U.shift(); R.length = 0; cur = null; };
+  return {sheet, rebase, wrap, notSent, act, raw: () => raw || db, undo: () => run(-1), redo: () => run(1), clear(){ U.length = R.length = 0; cur = null; rebase(); }};
 })();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} UNDO.sheet(); queueDraft(); }   // and, with the shared store, for the team (clients section)
 let state = load() || sample();
@@ -6195,7 +6366,7 @@ function renderCbar(){
   const saveTxt = !here || current === 'client' ? '' : draftErr === 'perm' ? `<span class="cbar-save err">Not saved for the team: ${PF ? 'ask Purvi to check your access' : 'ask Purvi to make you a Contributor'}</span>`
     : draftErr ? '<span class="cbar-save err">Not saved yet (no internet?). Kept on this device.</span>'
     : draftBusy || draftTimer ? '<span class="cbar-save">Saving…</span>' : '<span class="cbar-save">Saved ✓</span>';
-  const nm = esc((here ? state.house : '') || c.name || 'No name'), page = current === 'quote' ? 'View quotation' : current === 'client' ? '' : current === 'msheet' ? 'View measurement sheet' : 'Measurement sheet form';   // names as on the buttons (20 Oct)
+  const nm = esc((here ? state.house : '') || c.name || 'No name'), page = current === 'quote' ? 'View quotation' : current === 'client' ? '' : current === 'msheet' ? 'View measurement sheet' : current === 'docs' ? 'Documents' : 'Measurement sheet form';   // names as on the buttons (20 Oct)
   bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span>${page ? `<button class="crumb" data-ct="client">${nm}</button><span class="sep">/</span><span class="cbar-name">${page}</span>` : `<span class="cbar-name">${nm}</span>`}${c.id && current !== 'client' ? pillHTML(c) : ''}${saveTxt}</div>
     ${ctabsHTML(true)}`;
 }
@@ -6242,7 +6413,7 @@ function ctabsHTML(overview){
   const cid = current === 'client' ? cpId : state.clientId, here = !shared || cid === state.clientId;
   const n = shared && cid && cid !== '__new' ? sheetN(cid) : here ? sheetN(cid) : {};
   const tab = (v, name, subs) => `<button class="ctab" role="tab" data-ct="${v}" aria-selected="${current === v || (subs || []).includes(current)}">${name}${n[v] ? `<span class="cnt">${n[v]}</span>` : ''}</button>`;
-  const inSheet = GATED.includes(current) && current !== 'quote' && current !== 'msheet';   // msheet = View measurement sheet (its own button)
+  const inSheet = GATED.includes(current) && current !== 'quote' && current !== 'msheet' && current !== 'docs';   // msheet = View measurement sheet (its own button)
   if (inSheet) ctLastSheet = current;   // the Measurement sheet button goes back to the product you were on
   const first = ['c-measure', 'b-measure', ...MP_TABS.map(x => x[0])].find(k => n[k]) || 'c-measure';
   // Product tabs only on the Measurement sheet form (20 Oct, Purvi, later the same day; they were briefly on View quotation / View sheet too)
@@ -6251,7 +6422,7 @@ function ctabsHTML(overview){
   const fresh = shared && current === 'client' && (cpId === '__new' || cpFresh === cpId);
   if (fresh) return `<div class="ctabs-row"><div class="ctabs" role="tablist">${tab('client', 'Overview')}</div></div>`;
   return `<div class="ctabs-row"><div class="ctabs" role="tablist">${overview ? tab('client', 'Overview') : ''}${products}</div>
-    <div class="qgos">${overview ? `<button class="qgo" data-ct="${inSheet ? current : ctLastSheet || first}" aria-pressed="${inSheet}">${MS_SVG}<span class="q-l">Measurement sheet form</span><span class="q-s">Form</span></button>` : ''}<button class="qgo" data-ct="msheet" aria-pressed="${current === 'msheet'}">${EYE_ICON}<span class="q-l">View measurement sheet</span><span class="q-s">View sheet</span></button><button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}<span class="q-l">View quotation</span><span class="q-s">Quotation</span></button></div></div>`;
+    <div class="qgos">${canDocs() ? `<button class="qgo" data-ct="docs" aria-pressed="${current === 'docs'}">${DK_DOC_ICON}<span class="q-l">Documents</span><span class="q-s">Docs</span></button>` : ''}${overview ? `<button class="qgo" data-ct="${inSheet ? current : ctLastSheet || first}" aria-pressed="${inSheet}">${MS_SVG}<span class="q-l">Measurement sheet form</span><span class="q-s">Form</span></button>` : ''}<button class="qgo" data-ct="msheet" aria-pressed="${current === 'msheet'}">${EYE_ICON}<span class="q-l">View measurement sheet</span><span class="q-s">View sheet</span></button><button class="qgo" data-ct="quote" aria-pressed="${current === 'quote'}">${QT_SVG}<span class="q-l">View quotation</span><span class="q-s">Quotation</span></button></div></div>`;
   // 20 Oct (Purvi: "maybe they all can be same types of buttons?"; then names: "measurement sheet form, view measurement sheet, view qtn"), one kind
   // of button, yellow = the page you are on; from View measurement sheet, Measurement sheet goes back to the product last open.
 }
@@ -6268,7 +6439,7 @@ $('#cbar').addEventListener('click', async e => {
 });
 $('#v-none').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'new') askNewClient(); else go('clients'); });
 // With the shared store every sheet belongs to a client: the sheet, blinds and quotation show "No client open" without one.
-const GATED = ['c-measure', 'b-measure', 'wallpaper', 'uph', 'flooring', 'mattress', 'bedbath', 'quote', 'msheet'];
+const GATED = ['c-measure', 'b-measure', 'wallpaper', 'uph', 'flooring', 'mattress', 'bedbath', 'quote', 'msheet', 'docs'];   // docs = Documents (4 Nov)
 function gate(){ if (shared && GATED.includes(current)) go(current); }
 function newLocalSheet(){
   state = {house:'', example:false, sel:0, bsel:0, quote:{}, rows:[blank()], blinds:[]}; refreshSheet(); save(); go('c-measure'); $('#house').focus();
@@ -7661,7 +7832,7 @@ const productRows = sheetRows({view: () => !!MP[current] && current === mpCur, t
   suggestOnly: new Set(['room', 'wall']), label: r => r.room || r.p || ''});
 
 // ================= tabs, copy, start
-const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'purchase': 'purchase', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote', 'msheet': 'msheet',
+const VIEWS = {'dash': 'dash', 'people': 'people', 'todo': 'todo', 'purchase': 'purchase', 'settings': 'settings', 'clients': 'clients', 'client': 'client', 'none': 'none', 'c-measure': 'measure', 'c-prices': 'prices', 'b-measure': 'blinds', 'b-prices': 'bprices', 'quote': 'quote', 'msheet': 'msheet', 'docs': 'docs',
   'wallpaper': 'product', 'flooring': 'product', 'mattress': 'product', 'uph': 'product', 'bedbath': 'product'};   // the four product sheets share one section (3 Oct)
 const OLD_VIEW = {measure: 'c-measure', blinds: 'b-measure', prices: 'c-prices', quote: 'quote', fabric: 'uph', foam: 'uph', hcp: 'mattress'};   // Fabric and Foam became Upholstery (6 Oct)   // tab names before 30 Sep
 let current = 'c-measure', lastMain = 'c';
@@ -7669,7 +7840,8 @@ function go(v){
   v = OLD_VIEW[v] || v; if (!VIEWS[v] || v === 'none') v = 'c-measure';
   if (v === 'client' && !cpId) v = 'clients';
   if ((v === 'people' && !(PF && IS_ADMIN)) || ((v === 'dash' || v === 'purchase') && !PF) || (v === 'purchase' && !canPurchase())) v = 'clients';
-  if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';   // Purvi, 1 Oct: sales don't see the Prices page
+  if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';
+  if (v === 'docs' && !canDocs()) v = cpId ? 'client' : 'clients';   // 4 Nov: Documents not for trial logins (Jaydurga) or Rudresh   // Purvi, 1 Oct: sales don't see the Prices page
   current = v;
   navWrite(v);   // the address remembers where you are (reload opens the same page, Purvi 2 Oct); a new page = a new history step (18 Oct)
   const noClient = shared && !state.clientId && GATED.includes(v);   // every sheet belongs to a client
@@ -7700,6 +7872,7 @@ function go(v){
   if (v === 'b-prices') renderBPrices();
   if (v === 'b-measure') renderBlinds();
   if (v === 'msheet') renderMsheet();
+  if (v === 'docs') renderDocs();
   if (v === 'c-measure') { state.rows.forEach(updateRow); renderTotals(); renderSide(); }
   if (MP[v]) renderProduct(v);
   try { localStorage.setItem(TKEY, v); } catch(_){}
@@ -7718,7 +7891,7 @@ let lastPrices = 'c-prices';
 // ← with no earlier page of ours (opened from a link or reloaded) goes one level up instead: sheet / quotation → client → Clients.
 const BACK_SVG = '<svg viewBox="0 0 20 20" width="18" height="18" style="width:18px;height:18px" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 let navPop = false;   // true while a Back is being shown: nothing is written to the history then
-const pageKey = v => /prices$/.test(v) ? 'prices' : GATED.includes(v) && v !== 'quote' ? 'sheet' : v;
+const pageKey = v => /prices$/.test(v) ? 'prices' : GATED.includes(v) && v !== 'quote' && v !== 'docs' ? 'sheet' : v;
 function navWrite(v){
   if (navPop) return;
   try {
@@ -9939,6 +10112,10 @@ const HI = {
   'visits, calls, quotations': 'विज़िट, कॉल, कोटेशन', 'Settings': 'सेटिंग्स', 'your account': 'आपका अकाउंट', 'prices, people': 'रेट, टीम',
   'Sign out': 'साइन आउट', 'Admin': 'एडमिन', 'Sales': 'सेल्स', '☀ Light': '☀ लाइट', '☾ Dark': '☾ डार्क', 'Overview': 'जानकारी',
   'Measurement sheet form': 'नाप का फ़ॉर्म', 'View measurement sheet': 'नाप शीट देखें', 'View quotation': 'कोटेशन देखें',
+  'Documents': 'डॉक्यूमेंट', 'Docs': 'डॉक्यूमेंट', '+ Add photos or PDFs': '+ फ़ोटो या PDF जोड़ें', 'No documents yet': 'अभी कोई डॉक्यूमेंट नहीं',   // 4 Nov: Documents
+  "Photos and PDFs for this client, saved in Charpai's Google Drive.": 'इस क्लाइंट की फ़ोटो और PDF, Charpai की Google Drive में।',
+  'Noting sheet': 'नोटिंग शीट', 'Site': 'साइट', 'Window / wall': 'खिड़की / दीवार', 'Fabric chosen': 'चुना हुआ कपड़ा', 'Reference': 'रेफ़रेंस', 'Measurement paper': 'नाप का कागज़', 'Payment': 'पेमेंट', 'Other': 'और कुछ',
+  'Uploading…': 'अपलोड हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
   'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'The sheet changed after this was confirmed: check before ordering': 'पक्का होने के बाद शीट बदली: ऑर्डर से पहले देखें', 'Changed after sending': 'भेजने के बाद बदला',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
@@ -10131,6 +10308,334 @@ function langSwitch(){
   if (on) hiSet(true); paint();
 }
 
+// ================= Documents (Purvi, 4 Nov 2026): "another button which says documents, it has to be the first button … from any device
+// i should be able to upload photos (of different relevant things) … see all uploaded photos with captions and be able to upload more …
+// all this needs to be saved in google drive not firebase … my employees should get access (not yashnas and rudresh)".
+// Then: "it should be super easy to use, anyone in 5th grade should also be able to understand it on all device types. make it seem like it
+// has been designed by people at notion/figma/anthropic". So: one job per control. Phone = two big buttons (Take photo · Choose); laptop =
+// one button + drop files anywhere. Adding asks one question ("What is this?") with big chips, caption optional. Viewing = a full-screen
+// dark viewer (swipe / arrows), caption under the photo.
+// Photos + PDFs (videos later: phones can't shrink them, 15 GB fills fast). Saved in charpai.docs@gmail.com's Google Drive through a
+// small helper (docs-helper/Code.gs, Google Apps Script running as charpai.docs). The app sends the person's own Firebase login with
+// every request; the helper asks Firebase whether that login may open the client, so the same rules as everywhere else decide who sees
+// what. Nothing about documents is kept in Firebase. Photos are made smaller on the phone first (long side 2000 px, JPEG) so they go up
+// in 1–3 s on 4G; the grid shows small pictures Drive makes itself. Trial logins and Rudresh never see the button (and the helper refuses).
+const DOCS_URL = 'https://script.google.com/macros/s/AKfycbwc2slXX9D2jU0dpk9vbNa-lwwCUN2r8ixWzqoWCXSSJaH3Rpi8gWAWaid2PkUcSs8q/exec';   // the helper on charpai.docs (deployed 4 Nov, version 1; project "Charpai Documents helper")
+const DOC_TYPES = ['Noting sheet', 'Site', 'Window / wall', 'Fabric chosen', 'Reference', 'Measurement paper', 'Payment', 'Other'];   // Purvi 4 Nov: Noting sheet first
+const DOC_MAX = 20 * 1024 * 1024;
+const DOCS_FAKE = !window.CHARPAI_PLATFORM && /^(localhost|127\.)/.test(location.hostname);   // the test page on this Mac: an in-memory Drive
+const canDocs = () => DOCS_FAKE || (!!PF && !meTrial() && !HIDDEN.has(ME_EMAIL));
+const dkPhone = () => matchMedia('(pointer: coarse)').matches;
+const dkSv = (d, w = 20, sw = 1.6) => `<svg viewBox="0 0 20 20" width="${w}" height="${w}" style="width:${w}px;height:${w}px" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const DK_DOC_ICON = dkSv('<rect x="2.5" y="4" width="15" height="12" rx="2.2"/><circle cx="7.3" cy="8.3" r="1.5"/><path d="M3 14.2l4.2-3.6 3 2.6 2.6-2.2 4.2 3.4"/>', 17);
+const DK_CAM_ICON = dkSv('<path d="M3 7.2c0-.9.7-1.6 1.6-1.6h1.8l1.3-2h4.6l1.3 2h1.8c.9 0 1.6.7 1.6 1.6v7.6c0 .9-.7 1.6-1.6 1.6H4.6c-.9 0-1.6-.7-1.6-1.6z"/><circle cx="10" cy="10.6" r="3"/>', 22);
+const DK_PICK_ICON = dkSv('<rect x="2.5" y="4" width="15" height="12" rx="2.2"/><circle cx="7.3" cy="8.3" r="1.5"/><path d="M3 14.2l4.2-3.6 3 2.6 2.6-2.2 4.2 3.4"/>', 22);
+const DK_PLUS_ICON = dkSv('<path d="M10 4.5v11M4.5 10h11"/>', 18, 1.9);
+const DK_X_ICON = dkSv('<path d="M5 5l10 10M15 5L5 15"/>', 22, 1.8);
+const DK_L_ICON = dkSv('<path d="M12.5 4.5L7 10l5.5 5.5"/>', 26, 1.8), DK_R_ICON = dkSv('<path d="M7.5 4.5L13 10l-5.5 5.5"/>', 26, 1.8);
+const DK_DL_ICON = dkSv('<path d="M10 3.5v9M6 8.8l4 4 4-4M4 16.2h12"/>', 18), DK_BIN_ICON = dkSv('<path d="M4 6h12M8 6V4.5h4V6M5.5 6l.8 10h7.4l.8-10"/>', 18), DK_OPEN_ICON = dkSv('<path d="M11 4h5v5M16 4l-7 7M14 11.5V16H4V6h4.5"/>', 18);
+const DK_PDF_ICON = '<svg viewBox="0 0 40 48" width="40" height="48" aria-hidden="true"><path d="M7 2h19l10 10v31a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3z" fill="var(--paper)" stroke="currentColor" stroke-opacity=".35" stroke-width="1.6"/><path d="M26 2v8a2 2 0 0 0 2 2h8" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.6"/><rect x="9" y="27" width="22" height="11" rx="2.5" fill="#E5484D"/><text x="20" y="35.2" text-anchor="middle" font-size="8" font-weight="700" fill="#fff" font-family="system-ui">PDF</text></svg>';
+const DK = {lists: new Map(), err: new Map(), loading: new Set(), up: [], full: new Map(), running: 0, lastType: '', snack: null, seq: 0, done: {}};
+try { DK.lastType = localStorage.getItem('charpai-doc-type') || ''; } catch (_) {}
+
+const DOC_ERR = {'not-your-client': "This client isn't yours, so its documents don't open for your login.", 'not-allowed': "Your login can't open documents. Ask Purvi.",
+  'no-client': 'This client is not saved yet. Go back and open it again.', 'bad-login': 'Your login has expired. Reload the page and sign in again.',
+  'not-set-up': 'Documents are being set up. Ask Purvi.', 'too-big': 'Too big: the most is 20 MB per file.', 'bad-type': 'Only photos and PDFs can be added.',
+  'not-yours': 'Only the person who added it (or an admin) can change or delete it.', 'no-file': 'That file is no longer there.'};
+const docErr = er => DOC_ERR[er && er.message] || (er && /fetch|network|load failed/i.test(er.message || '') ? 'No internet? Try again.' : "Google Drive didn't answer. Try again.");
+
+async function docsCall(op, body = {}){
+  if (DOCS_FAKE) return docsFake(op, body);
+  if (!DOCS_URL) throw new Error('not-set-up');
+  const token = await PF.idToken();
+  // text/plain on purpose: a "simple" request, so the browser sends it straight (Apps Script answers no pre-flight check)
+  const r = await fetch(DOCS_URL, {method: 'POST', body: JSON.stringify(Object.assign({op, token, cid: state.clientId}, body))});
+  const j = await r.json(); if (!j.ok) throw new Error(j.error || 'failed'); return j;
+}
+// The test page: the same answers from memory (nothing leaves this Mac)
+const DK_FAKE = new Map();
+async function docsFake(op, b){
+  await new Promise(r => setTimeout(r, op === 'put' ? 900 : 300));
+  const cid = b.cid || state.clientId, L = DK_FAKE.get(cid) || []; DK_FAKE.set(cid, L);
+  const me = ME_EMAIL || 'test@charpai', find = () => { const f = [...DK_FAKE.values()].flat().find(x => x.id === b.id); if (!f || f.cid !== cid) throw new Error('no-file'); return f; };
+  const pub = f => Object.assign({}, f, {data: undefined, canEdit: true});
+  if (op === 'list') return {files: L.filter(f => !f.trashed).map(pub)};
+  if (op === 'put') { const f = {id: 'f' + Date.now() + Math.random().toString(36).slice(2, 8), cid, name: b.name, mime: b.mime, size: Math.round(b.data.length * .75), caption: b.caption || '', type: b.type,
+    by: me, byName: b.byName, at: new Date().toISOString(), thumb: b.thumb || '', data: b.data}; L.unshift(f); return {file: pub(f)}; }
+  if (op === 'get') { const f = find(); return {mime: f.mime, name: f.name, data: f.data}; }
+  if (op === 'trash' || op === 'untrash') { const f = find(); f.trashed = op === 'trash'; return {file: pub(f)}; }
+  if (op === 'edit') { const f = find(); if (b.caption != null) f.caption = b.caption; if (b.type != null) f.type = b.type; return {file: pub(f)}; }
+  throw new Error('bad-op');
+}
+
+// ---- the page: a header with the add button(s), then the documents grouped by what they are
+function docsLoad(cid, quiet){
+  if (!cid || DK.loading.has(cid)) return;
+  DK.loading.add(cid); if (!quiet) DK.err.delete(cid);
+  docsCall('list', {cid}).then(r => { DK.lists.set(cid, r.files || []); DK.err.delete(cid); })
+    .catch(er => { if (!DK.lists.has(cid) || !quiet) DK.err.set(cid, docErr(er)); })
+    .finally(() => { DK.loading.delete(cid); if (current === 'docs' && state.clientId === cid) renderDocs(); });
+}
+const docWho = f => (f.by && f.by === ME_EMAIL ? 'You' : f.byName || (f.by || '').split('@')[0] || '');
+const docSort = (a, b) => String(b.at || '').localeCompare(String(a.at || ''));
+const docDay = iso => { if (!iso) return ''; const d = new Date(iso), t = new Date(); const same = (a, b) => a.toDateString() === b.toDateString();
+  const y = new Date(t); y.setDate(t.getDate() - 1);
+  return same(d, t) ? 'Today' : same(d, y) ? 'Yesterday' : d.toLocaleDateString('en-IN', {day: 'numeric', month: 'short', ...(d.getFullYear() !== t.getFullYear() ? {year: 'numeric'} : {})}); };
+const dkIsPdf = f => /pdf/i.test(f.mime || '') || /\.pdf$/i.test(f.name || '');
+function docCard(f, up){
+  const pdf = dkIsPdf(f), th = f.thumb || (up && up.thumb) || '';
+  const pic = th ? `<img src="${esc(th)}" alt="" loading="lazy" draggable="false">` : `<span class="dk-ph">${pdf ? DK_PDF_ICON : DK_DOC_ICON}</span>`;
+  const st = up ? (up.state === 'err' ? `<span class="dk-st err"><b>Didn't upload</b><span>Tap to try again</span></span>` : `<span class="dk-st"><i class="dk-spin"></i></span>`) : '';
+  const cap = f.caption || (pdf ? (f.name || '').replace(/\.pdf$/i, '') : '');
+  return `<button class="dk-card${up ? ' up' : ''}${th && !pdf ? '' : ' plain'}" data-dk="${up ? (up.state === 'err' ? 'retry' : 'wait') : 'open'}" data-id="${esc(up ? up.key : f.id)}" title="${esc(cap)}">
+    <span class="dk-th">${pic}${pdf ? '<span class="dk-tag">PDF</span>' : ''}${st}</span>
+    <span class="dk-meta"><span class="dk-cap${cap ? '' : ' none'}">${esc(cap || 'No caption')}</span>
+    <span class="dk-by">${esc(up ? (up.state === 'err' ? up.err : 'Uploading…') : docWho(f) + ' · ' + docDay(f.at))}</span></span></button>`;
+}
+function docAddBtns(big){
+  return dkPhone()
+    ? `<div class="dk-adds${big ? ' big' : ''}"><button class="dk-btn dark" data-dk="cam">${DK_CAM_ICON}<span>Take photo</span></button><button class="dk-btn" data-dk="add">${DK_PICK_ICON}<span>${big ? 'Choose photos or PDFs' : 'Choose files'}</span></button></div>`
+    : `<div class="dk-adds${big ? ' big' : ''}"><button class="dk-btn dark" data-dk="add">${DK_PLUS_ICON}<span>Add photos or PDFs</span></button></div>`;
+}
+function renderDocs(){
+  const root = $('#docs-body'); if (!root) return;
+  const cid = state.clientId;
+  if (!canDocs()) { root.innerHTML = `<div class="dk-wrap"><div class="dk-empty"><p>Documents are not open for your login.</p></div></div>`; return; }
+  const list = DK.lists.get(cid), err = DK.err.get(cid), ups = DK.up.filter(u => u.cid === cid);
+  if (!list && !err) docsLoad(cid); else if (list && !DK.loading.has(cid) && (DK._seen || '') !== cid) docsLoad(cid, true);   // shown from memory, refreshed behind
+  DK._seen = cid;
+  const n = (list || []).length, upN = ups.filter(u => u.state !== 'err').length;
+  const types = DOC_TYPES.concat([...new Set((list || []).map(f => f.type))].filter(t => !DOC_TYPES.includes(t)));
+  const groups = types.map(t => {
+    const fs = (list || []).filter(f => (f.type || 'Other') === t).sort(docSort), us = ups.filter(u => u.type === t);
+    if (!fs.length && !us.length) return '';
+    return `<section class="dk-grp"><h3>${esc(t)}<span class="dk-n">${fs.length + us.length}</span></h3><div class="dk-grid">${us.map(u => docCard({mime: u.mime, caption: u.caption, name: u.name}, u)).join('')}${fs.map(f => docCard(f)).join('')}</div></section>`;
+  }).join('');
+  const body = err && !list ? `<div class="dk-empty"><p>${esc(err)}</p><button class="dk-btn" data-dk="reload">Try again</button></div>`
+    : !list && !ups.length ? `<section class="dk-grp"><h3 class="dk-skel-h">&nbsp;</h3><div class="dk-grid dk-skel">${'<span class="dk-card"><span class="dk-th"></span><span class="dk-meta"><span class="dk-cap none">&nbsp;</span></span></span>'.repeat(dkPhone() ? 4 : 6)}</div></section>`
+    : !n && !ups.length ? `<div class="dk-empty first"><span class="dk-art">${DK_PICK_ICON}</span><h3>No documents yet</h3><p>Add photos of the noting sheet, the site, the windows or the fabric chosen. PDFs work too.</p>${docAddBtns(true)}${dkPhone() ? '' : '<p class="dk-hint">or drop files anywhere on this page</p>'}</div>`
+    : groups;
+  root.innerHTML = `<div class="dk-wrap"><header class="dk-head"><div class="dk-ttl"><h2>Documents</h2><p>${n ? `${n} ${n > 1 ? 'files' : 'file'}` : 'Photos and PDFs for this client'}${upN ? ` · uploading ${upN}` : ''}</p></div>${n || ups.length ? docAddBtns(false) : ''}</header>
+    ${err && list ? `<p class="dk-warn">${esc(err)} Showing what was there before.</p>` : ''}${body}</div>
+    <input type="file" id="dk-file" accept="image/*,application/pdf,.heic,.heif,.pdf" multiple hidden><input type="file" id="dk-cam" accept="image/*" capture="environment" hidden>
+    <div class="dk-dropcover" hidden><div>${DK_PLUS_ICON}<b>Drop to add</b></div></div>`;
+}
+$('#docs-body').addEventListener('click', e => {
+  const b = e.target.closest('[data-dk]'); if (!b) return;
+  const a = b.dataset.dk;
+  if (a === 'add' || a === 'cam') { const i = $(a === 'cam' ? '#dk-cam' : '#dk-file'); i.value = ''; i.click(); }
+  if (a === 'reload') { DK.err.delete(state.clientId); docsLoad(state.clientId); renderDocs(); }
+  if (a === 'open') docView(b.dataset.id);
+  if (a === 'retry') { const u = DK.up.find(x => x.key === b.dataset.id); if (u) { u.state = 'wait'; u.err = ''; renderDocs(); docsPump(); } }
+});
+$('#docs-body').addEventListener('change', e => { if ((e.target.id === 'dk-file' || e.target.id === 'dk-cam') && e.target.files.length) docAddDlg([...e.target.files]); });
+// Laptop: drop files anywhere on the Documents page
+(() => { let depth = 0; const on = () => current === 'docs' && canDocs() && !dlg.open, cover = () => $('#docs-body .dk-dropcover');
+  const files = e => [...(e.dataTransfer && e.dataTransfer.types || [])].includes('Files');
+  addEventListener('dragenter', e => { if (!on() || !files(e)) return; depth++; const c = cover(); if (c) c.hidden = false; });
+  addEventListener('dragleave', () => { if (!on()) return; depth = Math.max(0, depth - 1); if (!depth) { const c = cover(); if (c) c.hidden = true; } });
+  addEventListener('dragover', e => { if (on() && files(e)) e.preventDefault(); });
+  addEventListener('drop', e => { if (!on() || !files(e)) return; e.preventDefault(); depth = 0; const c = cover(); if (c) c.hidden = true; if (e.dataTransfer.files.length) docAddDlg([...e.dataTransfer.files]); });
+})();
+
+// ---- adding: pick → one window ("What is this?", big chips, caption optional) → uploads in the background, 3 at a time
+let DK_NEW = [];
+function docAddDlg(files){
+  const pdfF = f => /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
+  const bad = files.filter(f => !/^image\//.test(f.type) && !pdfF(f) && !/\.(heic|heif)$/i.test(f.name));
+  const big = files.filter(f => pdfF(f) && f.size > DOC_MAX);
+  files = files.filter(f => !bad.includes(f) && !big.includes(f));
+  if (bad.length || big.length) toast([bad.length ? `${bad.length} not added: only photos and PDFs` : '', big.length ? `${big.length} PDF${big.length > 1 ? 's' : ''} over 20 MB not added` : ''].filter(Boolean).join(' · '));
+  if (!files.length) return;
+  const t0 = DOC_TYPES.includes(DK.lastType) ? DK.lastType : '';
+  DK_NEW = files.map((f, i) => ({i, file: f, type: t0, caption: '', pdf: pdfF(f), url: /^image\//.test(f.type) && !/hei[cf]/i.test(f.type) ? URL.createObjectURL(f) : ''}));
+  const one = files.length === 1;
+  const chips = (k, sel) => `<div class="dk-chips" data-k="${k}">${DOC_TYPES.map(t => `<button type="button" class="dk-chip" data-dkt="${esc(t)}" aria-pressed="${t === sel}">${esc(t)}</button>`).join('')}</div>`;
+  const mini = x => x.url ? `<img src="${x.url}" alt="">` : `<span class="dk-ph">${x.pdf ? DK_PDF_ICON : DK_DOC_ICON}</span>`;
+  openDlg(`<div class="dk-add">
+    <div class="dk-add-top"><h2 id="dlg-title">${one ? 'Add 1 file' : `Add ${files.length} files`}</h2><button class="dk-x" data-dlg="close" aria-label="Close">${DK_X_ICON}</button></div>
+    <div class="dk-add-body">
+      ${one ? `<div class="dk-hero">${mini(DK_NEW[0])}</div>` : `<div class="dk-strip">${DK_NEW.map(x => `<span class="dk-sq" data-i="${x.i}">${mini(x)}<span class="dk-sqt">${esc(x.type)}</span></span>`).join('')}</div>`}
+      <p class="dk-q">${one ? 'What is this?' : 'What are these?'}</p>${chips('all', t0)}
+      ${one ? `<input class="dk-capin" data-i="0" placeholder="Add a caption (optional)" maxlength="200" enterkeyhint="done" autocomplete="off">`
+        : `<details class="dk-more"><summary>Different types or captions for each?</summary><div class="dk-rows">${DK_NEW.map(x => `<div class="dk-row" data-i="${x.i}"><span class="dk-mini">${mini(x)}</span><div class="dk-rf">${chips(x.i, x.type)}<input class="dk-capin" data-i="${x.i}" placeholder="Caption (optional)" maxlength="200" enterkeyhint="done" autocomplete="off"></div></div>`).join('')}</div></details>`}
+    </div>
+    <div class="dk-add-foot"><span class="dk-need" ${t0 ? 'hidden' : ''}>Pick what ${one ? 'it is' : 'they are'} first</span><button class="dk-btn dark" data-dlg="ok" ${t0 ? '' : 'disabled'}>Upload${one ? '' : ' ' + files.length}</button></div></div>`, false, () => docStart());
+  dlg.classList.add('dk', 'dk-sheet');
+}
+function docSync(){   // chips, the little labels and the Upload button follow DK_NEW
+  dlg.querySelectorAll('.dk-chips').forEach(g => { const k = g.dataset.k, x = DK_NEW[+k];
+    g.querySelectorAll('.dk-chip').forEach(b => b.setAttribute('aria-pressed', String(k === 'all' ? DK_NEW.every(y => y.type === b.dataset.dkt) : !!x && x.type === b.dataset.dkt))); });
+  dlg.querySelectorAll('.dk-sq').forEach(s => { const x = DK_NEW[+s.dataset.i]; s.querySelector('.dk-sqt').textContent = x.type; s.classList.toggle('typed', !!x.type); });
+  const ok = DK_NEW.every(x => x.type), b = dlg.querySelector('[data-dlg="ok"]'), n = dlg.querySelector('.dk-need');
+  if (b) b.disabled = !ok; if (n) n.hidden = ok;
+}
+dlg.addEventListener('click', e => {
+  const c = e.target.closest('.dk-chip[data-dkt]'); if (!c || !DK_NEW.length) return;
+  const k = c.closest('.dk-chips').dataset.k;
+  for (const x of DK_NEW) if (k === 'all' || String(x.i) === k) x.type = c.dataset.dkt;
+  docSync();
+});
+dlg.addEventListener('input', e => { if (e.target.classList.contains('dk-capin')) { const x = DK_NEW[+e.target.dataset.i]; if (x) x.caption = e.target.value; } });
+function docStart(){
+  if (!DK_NEW.every(x => x.type)) return false;
+  const cid = state.clientId, batch = 'b' + (++DK.seq);
+  for (const x of DK_NEW) { if (x.url) URL.revokeObjectURL(x.url);
+    DK.up.push({key: batch + '_' + x.i, batch, cid, file: x.file, name: x.file.name, mime: x.pdf ? 'application/pdf' : x.file.type || 'image/jpeg', type: x.type, caption: x.caption.trim(), state: 'wait', thumb: '', err: ''}); }
+  DK.lastType = DK_NEW[DK_NEW.length - 1].type; try { localStorage.setItem('charpai-doc-type', DK.lastType); } catch (_) {}
+  DK_NEW = []; renderDocs(); docsPump();
+}
+addEventListener('beforeunload', e => { if (DK.up.some(u => u.state !== 'err')) { e.preventDefault(); e.returnValue = ''; } });   // still uploading: ask before leaving
+function docsPump(){
+  while (DK.running < 3) {
+    const u = DK.up.find(x => x.state === 'wait'); if (!u) break;
+    DK.running++; u.state = 'prep'; docUpload(u).finally(() => { DK.running--; docsPump(); });
+  }
+}
+async function docUpload(u){
+  const redraw = () => { if (current === 'docs' && state.clientId === u.cid) renderDocs(); };
+  try {
+    const p = await docPrep(u.file); u.thumb = p.thumb; u.state = 'up'; redraw();
+    if (p.blob.size > DOC_MAX) throw new Error('too-big');
+    const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => no(r.error); r.readAsDataURL(p.blob); });
+    const r = await docsCall('put', {cid: u.cid, name: p.name, mime: p.mime, data, type: u.type, caption: u.caption, byName: myName(), thumb: DOCS_FAKE ? p.thumb : undefined});
+    const f = Object.assign(r.file, {thumb: r.file.thumb || p.thumb});
+    DK.lists.set(u.cid, [f, ...(DK.lists.get(u.cid) || [])]);
+    DK.up.splice(DK.up.indexOf(u), 1); u.file = null;
+    DK.done[u.batch] = [...(DK.done[u.batch] || []), f];
+    if (!DK.up.some(x => x.batch === u.batch)) { docBatchDone(u.cid, DK.done[u.batch]); delete DK.done[u.batch]; }
+  } catch (er) { u.state = 'err'; u.err = docErr(er); }
+  redraw();
+}
+// Photos: made smaller on the phone (long side 2000 px, JPEG 82 %): a 4 MB camera photo → ~300 KB, still sharp. PDFs go as they are.
+async function docPrep(file){
+  if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)) return {blob: file, mime: 'application/pdf', name: file.name, thumb: ''};
+  const base = (file.name || 'photo').replace(/\.[^.]+$/, '');
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(), u = URL.createObjectURL(file); i.onload = () => { URL.revokeObjectURL(u); ok(i); }; i.onerror = () => { URL.revokeObjectURL(u); no(new Error('decode')); }; i.src = u; });
+    const shrink = max => { const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * s)); c.height = Math.max(1, Math.round(img.naturalHeight * s));
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height); return c; };
+    const blob = await new Promise(ok => shrink(2000).toBlob(ok, 'image/jpeg', .82));
+    const thumb = shrink(480).toDataURL('image/jpeg', .72);
+    const keep = /jpe?g/i.test(file.type) && file.size <= (blob ? blob.size : 0);   // already small: keep the original
+    return {blob: keep || !blob ? file : blob, mime: keep || !blob ? file.type : 'image/jpeg', name: base + '.jpg', thumb};
+  } catch (_) {   // this phone can't open it (some HEIC on older Android): send it as it is
+    if (file.size > DOC_MAX) throw new Error('too-big');
+    return {blob: file, mime: /hei[cf]/i.test(file.type + file.name) ? 'image/heic' : file.type || 'image/jpeg', name: file.name, thumb: ''};
+  }
+}
+function docBatchDone(cid, files){
+  const c = CL.byId.get(cid), by = {};
+  for (const f of files) by[f.type] = (by[f.type] || 0) + 1;
+  const what = Object.entries(by).map(([t, k]) => `${k} ${t}`).join(', ');
+  toast(`${files.length > 1 ? files.length + ' files' : 'File'} added ✓`);
+  if (shared && db && c && !DOCS_FAKE) addNote(c, `Added ${files.length > 1 ? files.length + ' documents' : 'a document'}: ${what}`, 'log').catch(() => {});
+  // Ctrl Z takes the upload back (to Drive's bin, 30 days), Ctrl Shift Z brings it back again
+  UNDO.act(files.length > 1 ? files.length + ' documents' : 'document', () => docTrash(cid, files, true), () => docTrash(cid, files, false));
+}
+async function docTrash(cid, files, off){
+  for (const f of files) await docsCall(off ? 'trash' : 'untrash', {cid, id: f.id});
+  const L = (DK.lists.get(cid) || []).filter(x => !files.some(f => f.id === x.id));
+  DK.lists.set(cid, off ? L : [...files, ...L]);
+  if (current === 'docs' && state.clientId === cid) renderDocs();
+}
+
+// ---- the viewer: full screen, dark, like Photos. ‹ › / swipe / arrow keys; caption + type under the picture; Esc or × closes.
+const DKLB = {el: null, cid: '', order: [], at: 0, editing: false};
+function docOrder(cid){ const L = DK.lists.get(cid) || [];
+  return DOC_TYPES.flatMap(t => L.filter(x => x.type === t).sort(docSort)).concat(L.filter(x => !DOC_TYPES.includes(x.type)).sort(docSort)); }
+function docView(id){
+  const cid = state.clientId, order = docOrder(cid), at = order.findIndex(x => x.id === id); if (at < 0) return;
+  if (!DKLB.el) { DKLB.el = document.createElement('div'); DKLB.el.className = 'dk-lb'; DKLB.el.setAttribute('role', 'dialog'); DKLB.el.setAttribute('aria-modal', 'true'); document.body.appendChild(DKLB.el); lbWire(); }
+  Object.assign(DKLB, {cid, order, at, editing: false}); DKLB.el.hidden = false; document.documentElement.classList.add('dk-noscroll'); lbDraw();
+}
+function lbClose(){ if (!DKLB.el) return; DKLB.el.hidden = true; DKLB.el.innerHTML = ''; document.documentElement.classList.remove('dk-noscroll'); }
+function lbDraw(){
+  const f = DKLB.order[DKLB.at]; if (!f) return lbClose();
+  const pdf = dkIsPdf(f), many = DKLB.order.length > 1, ed = f.canEdit, wide = !dkPhone();
+  DKLB.el.innerHTML = `<div class="lb-top"><span class="lb-count">${many ? `${DKLB.at + 1} / ${DKLB.order.length}` : ''}</span>
+      <div class="lb-acts">${pdf ? `<button class="lb-ic" data-lb="open" title="Open PDF" disabled>${DK_OPEN_ICON}<span>Open</span></button>` : ''}<button class="lb-ic" data-lb="dl" title="Download" disabled>${DK_DL_ICON}<span>Download</span></button>${ed ? `<button class="lb-ic" data-lb="del" title="Delete">${DK_BIN_ICON}<span>Delete</span></button>` : ''}<button class="lb-ic x" data-lb="close" aria-label="Close" title="Close (Esc)">${DK_X_ICON}</button></div></div>
+    <div class="lb-stage">${many ? `<button class="lb-nav l" data-lb="prev" aria-label="Previous">${DK_L_ICON}</button>` : ''}
+      <div class="lb-pic${pdf ? ' pdf' : ''}">${f.thumb ? `<img src="${esc(f.thumb)}" alt="" draggable="false">` : `<span class="dk-ph">${pdf ? DK_PDF_ICON : DK_DOC_ICON}</span>`}<span class="lb-load"><i class="dk-spin"></i></span></div>
+      ${many ? `<button class="lb-nav r" data-lb="next" aria-label="Next">${DK_R_ICON}</button>` : ''}</div>
+    <div class="lb-info">${DKLB.editing ? `<div class="lb-edit"><p class="dk-q">What is this?</p><div class="dk-chips lb-chips">${DOC_TYPES.map(t => `<button type="button" class="dk-chip" data-lbt="${esc(t)}" aria-pressed="${t === DKLB.type}">${esc(t)}</button>`).join('')}</div>
+        <input id="lb-cap" value="${esc(f.caption)}" placeholder="Add a caption (optional)" maxlength="200" enterkeyhint="done" autocomplete="off"><div class="lb-eb"><button class="dk-btn ghost" data-lb="cancel">Cancel</button><button class="dk-btn light" data-lb="save">Save</button></div></div>`
+      : `<div class="lb-cap">${f.caption ? esc(f.caption) : `<span class="lb-none">No caption</span>`}</div><div class="lb-sub"><span class="lb-type">${esc(f.type)}</span>${esc(docWho(f))} · ${esc(whenTxt(f.at))}${ed ? `<button class="lb-link" data-lb="edit">Edit</button>` : ''}</div>`}</div>`;
+  const id = f.id;
+  docFull(DKLB.cid, f).then(u => { if (DKLB.el.hidden || !DKLB.order[DKLB.at] || DKLB.order[DKLB.at].id !== id) return;
+    DKLB.el.querySelectorAll('[data-lb="dl"], [data-lb="open"]').forEach(b => b.disabled = false);
+    const p = DKLB.el.querySelector('.lb-pic'); const l = p.querySelector('.lb-load'); if (l) l.remove();
+    if (pdf) { if (wide) p.innerHTML = `<iframe src="${u.url}" title="PDF"></iframe>`; else p.insertAdjacentHTML('beforeend', `<button class="dk-btn light lb-openpdf" data-lb="open">${DK_OPEN_ICON}<span>Open PDF</span></button>`); }
+    else { const im = p.querySelector('img') || p.appendChild(document.createElement('img')); im.draggable = false; im.src = u.url; const ph = p.querySelector('.dk-ph'); if (ph) ph.remove(); }
+  }).catch(er => { const l = !DKLB.el.hidden && DKLB.el.querySelector('.lb-load'); if (l) l.innerHTML = `<span class="lb-err">${esc(docErr(er))}</span>`; });
+  // the next one starts loading now, so ‹ › feels instant
+  const nx = DKLB.order[(DKLB.at + 1) % DKLB.order.length]; if (nx && nx !== f && !dkIsPdf(nx)) docFull(DKLB.cid, nx).catch(() => {});
+}
+async function docFull(cid, f){
+  if (DK.full.has(f.id)) return DK.full.get(f.id);
+  const r = await docsCall('get', {cid, id: f.id});
+  const bin = atob(r.data), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  const v = {url: URL.createObjectURL(new Blob([a], {type: r.mime})), name: r.name, mime: r.mime};
+  DK.full.set(f.id, v); if (DK.full.size > 40) { const [k, o] = DK.full.entries().next().value; URL.revokeObjectURL(o.url); DK.full.delete(k); }
+  return v;
+}
+function lbStep(d){ if (DKLB.order.length < 2 || DKLB.editing) return; DKLB.at = (DKLB.at + d + DKLB.order.length) % DKLB.order.length; lbDraw(); }
+function lbWire(){
+  const el = DKLB.el;
+  el.addEventListener('click', e => {
+    const c = e.target.closest('.dk-chip[data-lbt]'); if (c) { DKLB.type = c.dataset.lbt; el.querySelectorAll('.dk-chip[data-lbt]').forEach(b => b.setAttribute('aria-pressed', String(b === c))); return; }
+    const b = e.target.closest('[data-lb]');
+    if (!b) { if (e.target.classList.contains('lb-stage') || e.target.classList.contains('lb-pic')) lbClose(); return; }   // tap on the dark around the photo
+    const a = b.dataset.lb, f = DKLB.order[DKLB.at]; if (!f) return;
+    if (a === 'close') lbClose();
+    if (a === 'prev') lbStep(-1); if (a === 'next') lbStep(1);
+    if (a === 'edit') { DKLB.editing = true; DKLB.type = f.type; lbDraw(); const i = el.querySelector('#lb-cap'); if (i && !dkPhone()) i.focus(); }
+    if (a === 'cancel') { DKLB.editing = false; lbDraw(); }
+    if (a === 'save') docSave(f);
+    if (a === 'del') docDelete(DKLB.cid, f);
+    if (a === 'dl' || a === 'open') { const u = DK.full.get(f.id); if (!u) return;
+      if (a === 'open') { window.open(u.url, '_blank'); return; }
+      const l = document.createElement('a'); l.href = u.url; l.download = u.name || f.name; document.body.appendChild(l); l.click(); l.remove(); }
+  });
+  el.addEventListener('keydown', e => { if (e.target.id === 'lb-cap' && e.key === 'Enter') { e.preventDefault(); const f = DKLB.order[DKLB.at]; if (f) docSave(f); } });
+  document.addEventListener('keydown', e => {
+    if (!DKLB.el || DKLB.el.hidden || dlg.open) return;
+    if (e.key === 'Escape') { e.preventDefault(); if (DKLB.editing) { DKLB.editing = false; lbDraw(); } else lbClose(); return; }
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight') lbStep(1); if (e.key === 'ArrowLeft') lbStep(-1);
+  });
+  let x0 = null, y0 = 0;   // swipe left / right on phones
+  el.addEventListener('touchstart', e => { if (e.touches.length === 1 && e.target.closest('.lb-stage')) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; } }, {passive: true});
+  el.addEventListener('touchend', e => { if (x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) lbStep(dx < 0 ? 1 : -1); else if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) lbClose(); }, {passive: true});
+}
+addEventListener('popstate', () => lbClose());   // the phone's Back closes the viewer with the page
+async function docSave(f){
+  const inp = DKLB.el.querySelector('#lb-cap'), cap = inp ? inp.value.trim() : f.caption, type = DKLB.type || f.type, was = {caption: f.caption, type: f.type}, cid = DKLB.cid;
+  if (cap === f.caption && type === f.type) { DKLB.editing = false; lbDraw(); return; }
+  const b = DKLB.el.querySelector('[data-lb="save"]'); if (b) { b.disabled = true; b.textContent = 'Saving…'; }
+  try { await docsCall('edit', {cid, id: f.id, caption: cap, type}); Object.assign(f, {caption: cap, type});
+    DKLB.editing = false; DKLB.order = docOrder(cid); DKLB.at = Math.max(0, DKLB.order.findIndex(x => x.id === f.id)); lbDraw(); renderDocs(); toast('Saved ✓');
+    const put = v => docsCall('edit', Object.assign({cid, id: f.id}, v)).then(() => { Object.assign(f, v); renderDocs(); });
+    UNDO.act('document caption', () => put(was), () => put({caption: cap, type}));
+  } catch (er) { toast(docErr(er)); if (b) { b.disabled = false; b.textContent = 'Save'; } }
+}
+function docDelete(cid, f){
+  confirmDlg('Delete this file?', `“${esc(f.caption || f.type)}” will be removed for everyone. You can bring it back with Undo.`, 'Delete', async () => {
+    try { await docTrash(cid, [f], true); UNDO.act('document', () => docTrash(cid, [f], false), () => docTrash(cid, [f], true));
+      DKLB.order = docOrder(cid); if (!DKLB.order.length) lbClose(); else { DKLB.at = Math.min(DKLB.at, DKLB.order.length - 1); lbDraw(); } docSnack(cid, f); }
+    catch (er) { toast(docErr(er)); }
+  });
+}
+function docSnack(cid, f){   // phones have no Ctrl Z: an Undo button for 7 seconds
+  if (DK.snack) DK.snack.remove();
+  const s = DK.snack = document.createElement('div'); s.className = 'dk-snack'; s.innerHTML = '<span>File deleted</span><button>Undo</button>';
+  s.querySelector('button').onclick = async () => { s.remove(); try { await docTrash(cid, [f], false); if (!DKLB.el.hidden) { DKLB.order = docOrder(cid); lbDraw(); } toast('Brought back ✓'); } catch (er) { toast(docErr(er)); } };
+  document.body.appendChild(s); setTimeout(() => s.remove(), 7000);
+}
+dlg.addEventListener('close', () => { if (dlg.open) return; DK_NEW.forEach(x => x.url && URL.revokeObjectURL(x.url)); DK_NEW = []; });
+
 function toast(m){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 
 // Light / dark switch in the yellow bar (Purvi, 2 Oct). Starts from the phone or laptop's own setting; a tap is remembered on this device.
@@ -10157,4 +10662,4 @@ connectPrices();
 </body>
 </html>
 
-<!-- build 20261103-200020 -->
+<!-- build 20261104-145509 -->
