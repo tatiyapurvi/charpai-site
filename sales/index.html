@@ -1315,6 +1315,8 @@ html.dk-noscroll,html.dk-noscroll body{overflow:hidden}
   .dk-head .dk-adds{flex:1 0 100%}
   .dk-adds .dk-btn{flex:1 1 0;min-width:0;padding:14px 12px;font-size:15.5px;border-radius:14px}
   .dk-empty .dk-adds{flex-direction:column;align-self:stretch}
+  .dk-adds.three .dk-btn{flex-direction:column;gap:6px;padding:12px 6px;font-size:14.5px}   /* phones: Camera · Gallery · Files side by side, icon above the word */
+  .dk-empty .dk-adds.three{flex-direction:row}
   .dk-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .dk-th{border-radius:12px}
   .dk-grp{margin-bottom:24px}
@@ -10132,7 +10134,7 @@ const HI = {
   'Documents': 'डॉक्यूमेंट', 'Docs': 'डॉक्यूमेंट', '+ Add photos or PDFs': '+ फ़ोटो या PDF जोड़ें', 'No documents yet': 'अभी कोई डॉक्यूमेंट नहीं',   // 4 Nov: Documents
   "Photos and PDFs for this client, saved in Charpai's Google Drive.": 'इस क्लाइंट की फ़ोटो और PDF, Charpai की Google Drive में।',
   'Noting sheet': 'नोटिंग शीट', 'Site': 'साइट', 'Window / wall': 'खिड़की / दीवार', 'Fabric chosen': 'चुना हुआ कपड़ा', 'Reference': 'रेफ़रेंस', 'Measurement paper': 'नाप का कागज़', 'Payment': 'पेमेंट', 'Other': 'और कुछ',
-  'Uploading…': 'अपलोड हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
+  'Uploading…': 'अपलोड हो रहा है…', 'Camera': 'कैमरा', 'Gallery': 'गैलरी', 'Files': 'फ़ाइलें', 'Saving…': 'सेव हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
   'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'The sheet changed after this was confirmed: check before ordering': 'पक्का होने के बाद शीट बदली: ऑर्डर से पहले देखें', 'Changed after sending': 'भेजने के बाद बदला',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
@@ -10347,6 +10349,7 @@ const dkSv = (d, w = 20, sw = 1.6) => `<svg viewBox="0 0 20 20" width="${w}" hei
 const DK_DOC_ICON = dkSv('<rect x="2.5" y="4" width="15" height="12" rx="2.2"/><circle cx="7.3" cy="8.3" r="1.5"/><path d="M3 14.2l4.2-3.6 3 2.6 2.6-2.2 4.2 3.4"/>', 17);
 const DK_CAM_ICON = dkSv('<path d="M3 7.2c0-.9.7-1.6 1.6-1.6h1.8l1.3-2h4.6l1.3 2h1.8c.9 0 1.6.7 1.6 1.6v7.6c0 .9-.7 1.6-1.6 1.6H4.6c-.9 0-1.6-.7-1.6-1.6z"/><circle cx="10" cy="10.6" r="3"/>', 22);
 const DK_PICK_ICON = dkSv('<rect x="2.5" y="4" width="15" height="12" rx="2.2"/><circle cx="7.3" cy="8.3" r="1.5"/><path d="M3 14.2l4.2-3.6 3 2.6 2.6-2.2 4.2 3.4"/>', 22);
+const DK_FILE_ICON = dkSv('<path d="M5.5 2.5h6l3.5 3.5v11.5h-9.5z"/><path d="M11.5 2.5V6H15"/><path d="M8 10.5h5M8 13.5h5"/>', 22);
 const DK_PLUS_ICON = dkSv('<path d="M10 4.5v11M4.5 10h11"/>', 18, 1.9);
 const DK_X_ICON = dkSv('<path d="M5 5l10 10M15 5L5 15"/>', 22, 1.8);
 const DK_L_ICON = dkSv('<path d="M12.5 4.5L7 10l5.5 5.5"/>', 26, 1.8), DK_R_ICON = dkSv('<path d="M7.5 4.5L13 10l-5.5 5.5"/>', 26, 1.8);
@@ -10417,7 +10420,9 @@ function docCard(f, up){
 }
 function docAddBtns(big){
   return dkPhone()
-    ? `<div class="dk-adds${big ? ' big' : ''}"><button class="dk-btn dark" data-dk="cam">${DK_CAM_ICON}<span>Take photo</span></button><button class="dk-btn" data-dk="add">${DK_PICK_ICON}<span>${big ? 'Choose photos or PDFs' : 'Choose files'}</span></button></div>`
+    // 4 Nov (Purvi: "unable to upload photos from gallery, it is only showing option for files and camera"): Android opens its
+    // Gallery only when the picker asks for photos alone, so Gallery (photos only) and Files (PDFs + anything) are separate buttons.
+    ? `<div class="dk-adds three${big ? ' big' : ''}"><button class="dk-btn dark" data-dk="cam">${DK_CAM_ICON}<span>Camera</span></button><button class="dk-btn" data-dk="gal">${DK_PICK_ICON}<span>Gallery</span></button><button class="dk-btn" data-dk="add">${DK_FILE_ICON}<span>Files</span></button></div>`
     : `<div class="dk-adds${big ? ' big' : ''}"><button class="dk-btn dark" data-dk="add">${DK_PLUS_ICON}<span>Add photos or PDFs</span></button></div>`;
 }
 function renderDocs(){
@@ -10436,22 +10441,22 @@ function renderDocs(){
   }).join('');
   const body = err && !list ? `<div class="dk-empty"><p>${esc(err)}</p><button class="dk-btn" data-dk="reload">Try again</button></div>`
     : !list && !ups.length ? `<section class="dk-grp"><h3 class="dk-skel-h">&nbsp;</h3><div class="dk-grid dk-skel">${'<span class="dk-card"><span class="dk-th"></span><span class="dk-meta"><span class="dk-cap none">&nbsp;</span></span></span>'.repeat(dkPhone() ? 4 : 6)}</div></section>`
-    : !n && !ups.length ? `<div class="dk-empty first"><span class="dk-art">${DK_PICK_ICON}</span><h3>No documents yet</h3><p>Add photos of the noting sheet, the site, the windows or the fabric chosen. PDFs work too.</p>${docAddBtns(true)}${dkPhone() ? '' : '<p class="dk-hint">or drop files anywhere on this page</p>'}</div>`
+    : !n && !ups.length ? `<div class="dk-empty first"><span class="dk-art">${DK_PICK_ICON}</span><h3>No documents yet</h3><p>Add photos of the noting sheet, the site, the windows or the fabric chosen. PDFs work too (Files).</p>${docAddBtns(true)}${dkPhone() ? '' : '<p class="dk-hint">or drop files anywhere on this page</p>'}</div>`
     : groups;
   root.innerHTML = `<div class="dk-wrap"><header class="dk-head"><div class="dk-ttl"><h2>Documents</h2><p>${n ? `${n} ${n > 1 ? 'files' : 'file'}` : 'Photos and PDFs for this client'}${upN ? ` · uploading ${upN}` : ''}</p></div>${n || ups.length ? docAddBtns(false) : ''}</header>
     ${err && list ? `<p class="dk-warn">${esc(err)} Showing what was there before.</p>` : ''}${body}</div>
-    <input type="file" id="dk-file" accept="image/*,application/pdf,.heic,.heif,.pdf" multiple hidden><input type="file" id="dk-cam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="dk-file" accept="image/*,application/pdf,.heic,.heif,.pdf" multiple hidden><input type="file" id="dk-cam" accept="image/*" capture="environment" hidden><input type="file" id="dk-gal" accept="image/*" multiple hidden>
     <div class="dk-dropcover" hidden><div>${DK_PLUS_ICON}<b>Drop to add</b></div></div>`;
 }
 $('#docs-body').addEventListener('click', e => {
   const b = e.target.closest('[data-dk]'); if (!b) return;
   const a = b.dataset.dk;
-  if (a === 'add' || a === 'cam') { const i = $(a === 'cam' ? '#dk-cam' : '#dk-file'); i.value = ''; i.click(); }
+  if (a === 'add' || a === 'cam' || a === 'gal') { const i = $(a === 'cam' ? '#dk-cam' : a === 'gal' ? '#dk-gal' : '#dk-file'); i.value = ''; i.click(); }
   if (a === 'reload') { DK.err.delete(state.clientId); docsLoad(state.clientId); renderDocs(); }
   if (a === 'open') docView(b.dataset.id);
   if (a === 'retry') { const u = DK.up.find(x => x.key === b.dataset.id); if (u) { u.state = 'wait'; u.err = ''; renderDocs(); docsPump(); } }
 });
-$('#docs-body').addEventListener('change', e => { if ((e.target.id === 'dk-file' || e.target.id === 'dk-cam') && e.target.files.length) docAddDlg([...e.target.files]); });
+$('#docs-body').addEventListener('change', e => { if (/^dk-(file|cam|gal)$/.test(e.target.id) && e.target.files.length) docAddDlg([...e.target.files]); });
 // Laptop: drop files anywhere on the Documents page
 (() => { let depth = 0; const on = () => current === 'docs' && canDocs() && !dlg.open, cover = () => $('#docs-body .dk-dropcover');
   const files = e => [...(e.dataTransfer && e.dataTransfer.types || [])].includes('Files');
@@ -10751,4 +10756,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261104-155310 -->
+<!-- build 20261104-160837 -->
