@@ -1541,6 +1541,7 @@ html.dk-noscroll,html.dk-noscroll body{overflow:hidden}
 .card-h{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
 .card-h h3{margin:0}
 .card-h .btn{display:inline-flex;gap:6px;align-items:center}
+.cpf-kind{display:flex;align-items:center;gap:12px;margin:0 0 14px;flex-wrap:wrap}.cpf-kind>span{font-weight:600;color:var(--muted);font-size:14px}   /* 4 Nov: Person | Company */
 .cpf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}
 .cpf-grid.two{grid-template-columns:1fr 1fr}   /* 19 Oct: Reference · mobile, Architect · mobile, a name and its number side by side */
 @media (max-width:520px){.cpf-grid.two{grid-template-columns:1fr}}
@@ -6076,7 +6077,7 @@ const CFILTERS = [
   {k: 'why', chip: v => 'Lost: ' + v, match: (c, v) => statusOf(c) === 'lost' && ((c.outcome || {}).reason || 'No reason given') === v},
 ];
 const cfActive = () => CFILTERS.filter(f => has(CF[f.k]) && CF[f.k] !== '');
-const cfSearch = (c, ql) => !ql || [c.name, c.no, c.exec, c.phone, c.addr, c.city].join(' ').toLowerCase().includes(ql);
+const cfSearch = (c, ql) => !ql || [c.name, c.contact, c.no, c.exec, c.phone, c.addr, c.city].join(' ').toLowerCase().includes(ql);   // + contact person (4 Nov)
 function cfQuery(){ const p = new URLSearchParams(); for (const k in CF0) if (CF[k] !== CF0[k] && k !== 'q') p.set(k, CF[k]); const s = p.toString(); return s ? '?' + s : ''; }
 function cfFromQuery(qs){ CF = Object.assign({}, CF0); try { new URLSearchParams(qs || '').forEach((v, k) => { if (k in CF0 && k !== 'q') CF[k] = v; }); } catch(_){} }
 function cfSet(patch){ Object.assign(CF, patch); try { history.replaceState(null, '', '#clients' + cfQuery()); } catch(_){} renderClients(); }
@@ -8161,14 +8162,15 @@ clb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classLi
 
 // ---- New enquiry: the customer page opens empty; the client is created on the first thing typed
 const NEW = '__new';
-let creating = null, cpFresh = null;   // cpFresh: the enquiry made on this visit keeps the simple form (nothing moves while typing)
+let creating = null, cpFresh = null, cpKindNew = 'person';   // cpKindNew: Person or Company picked on a new enquiry before anything is typed (4 Nov)   // cpFresh: the enquiry made on this visit keeps the simple form (nothing moves while typing)
 let cpEditing = null;   // 21 Oct (Purvi): "Edit client" opens the new-enquiry form for a saved client; Done goes back to their page
-function newEnquiry(){ if (!shared) { newLocalSheet(); return; } cpId = NEW; cpFresh = null; go('client'); setTimeout(() => { const n = $('#cpf-name'); if (n) n.focus(); }, 50); }
+function newEnquiry(){ if (!shared) { newLocalSheet(); return; } cpId = NEW; cpFresh = null; cpKindNew = 'person'; go('client'); setTimeout(() => { const n = $('#cpf-name'); if (n) n.focus(); }, 50); }
 async function ensureClient(){
   if (cpId !== NEW) return cpId;
   if (!creating) creating = (async () => {
     const f = cpVals();
     const id = await createClient({name: f.name || '', phone: f.phone || '', addr: f.addr || '', city: tidyCity(f.city || ''), exec: ''}, {stay: true});
+    if (cpKindNew === 'company') await Store.mergeClient(id, {ctype: 'company'});
     cpId = id; cpFresh = id; if (ADR && ADR.cid === NEW) ADR.cid = id; try { history.replaceState(Object.assign({}, history.state, {k: 'client|' + id, cid: id}), '', '#client/' + id); } catch(_){}
     await quiet(addTodo({cid: id, cname: f.name || '', type: 'make', due: dayPlus(2), note: 'Measure and send the quotation', auto: 'new'}));
     return id;
@@ -8180,7 +8182,7 @@ function cpVals(){ const v = {}; document.querySelectorAll('#cp-body [data-k]').
 
 // ---- saving one field of the customer page. Name, phone, address, city and executive also live in the sheet (they fill the
 // quotation), so they go through the sheet like "Edit details" did; the rest are on the client card only.
-const CORE = {name: 'house', phone: 'phone', addr: 'addr', city: 'city', exec: 'exec'};
+const CORE = {name: 'house', phone: 'phone', addr: 'addr', city: 'city', exec: 'exec', contact: 'contact'};   // 4 Nov: a company's contact person = the quotation's Contact Person
 const cpTimers = {};
 function cpQueue(k, v, wait = 700){ clearTimeout(cpTimers[k]); cpSaving(true); cpTimers[k] = setTimeout(() => { delete cpTimers[k]; saveField(k, v); }, wait); }
 async function cpFlush(){
@@ -8458,10 +8460,15 @@ function renderEnquiryPage(){
     ${TD.state === 'error' ? '<p class="hint" style="margin:0">To-dos are not switched on yet.</p>' : Topen.length ? Topen.map(tdRow).join('') : '<p class="hint" style="margin:0">Nothing planned.</p>'}
     ${Tdone.length ? `<details class="tdone"><summary>Done (${Tdone.length})</summary>${Tdone.map(tdRow).join('')}</details>` : ''}</div>`;
   const arch = c.arch || {};
+  // 4 Nov (Purvi: "let people decide if it is a person or a company, if person then normal format continues, if company then let them
+  // type company name and contact person name and number"). Company: name = the company (lists, search, quotation), contact = the person.
+  const co = (cpId === NEW ? cpKindNew : c.ctype || (cpFresh === cpId ? cpKindNew : 'person')) === 'company';   // a just-made client: the pick holds until its card comes back
   const details = `<div class="card"><div class="card-h"><h3>Details</h3><span class="hint">Nothing here is compulsory. Fill in what you know, add the rest later.</span></div>
+    <div class="cpf-kind"><span>Who is it?</span><div class="seg" role="group" aria-label="Person or company"><button type="button" data-ctype="person" aria-pressed="${!co}">Person</button><button type="button" data-ctype="company" aria-pressed="${co}">Company</button></div></div>
     <div class="cpf-grid">
-      ${cpField('name', 'Name', c.name, 'placeholder="e.g. Kavita Sharma"')}
-      ${cpField('phone', 'Mobile', c.phone, 'inputmode="tel" placeholder="98290 12345"')}
+      ${co ? cpField('name', 'Company name', c.name, 'placeholder="e.g. Hotel Ajit Bhawan"') + cpField('contact', 'Contact person', c.contact, 'placeholder="e.g. Rajesh Mehta"')
+        : cpField('name', 'Name', c.name, 'placeholder="e.g. Kavita Sharma"')}
+      ${cpField('phone', co ? 'Contact number' : 'Mobile', c.phone, 'inputmode="tel" placeholder="98290 12345"')}
       ${cpField('email', 'Email', c.email, 'inputmode="email" placeholder="name@gmail.com"')}
       ${isNew ? '' : cpField('city', 'City', c.city, 'list="citylist" placeholder="e.g. Jodhpur"')}
       ${isNew ? '' : `<label class="cpf wide"><span>Address</span><input data-k="addr" id="cpf-addr" value="${esc(c.addr || '')}" autocomplete="off" placeholder="House, street, area"></label>`}
@@ -8500,6 +8507,12 @@ function renderEnquiryPage(){
   if (isNew) adrMini();
 }
 const cpb = $('#cp-body');
+cpb.addEventListener('click', async e => {   // 4 Nov: Person / Company; what is typed so far is saved first, so nothing is lost when the boxes change
+  const kb = e.target.closest('[data-ctype]'); if (!kb) return;
+  const v = kb.dataset.ctype, focus = () => { const n = $('#cpf-name'); if (n) n.focus(); };
+  if (cpId === NEW) { cpKindNew = v; renderClientPage(); focus(); return; }
+  await cpFlush(); const c = CL.byId.get(cpId); if (c) c.ctype = v; renderClientPage(); focus(); saveField('ctype', v);
+});
 cpb.addEventListener('input', e => {
   const a = e.target.closest('[data-a]'); if (a) { adrInput(a); return; }   // 21 Oct: flat no., building / area, landmark
   const x = e.target.closest('[data-k]'); if (!x) return; const k = x.dataset.k;
@@ -8589,7 +8602,7 @@ function cpHead(c){
   return `<header class="n-head">
     <div class="n-headtop"><span class="n-av">${esc(initials(c.name))}</span><span class="n-topr"><button class="n-btn n-edit" data-cpedit="1">${cpIcon('edit', 16)}Edit client</button>${cpMoreMenu(c)}</span></div>
     ${name}
-    <div class="n-sub"><span class="n-stat ${s}">${CP_STAT[s]}${s === 'won' && c.outcome ? ', v' + c.outcome.n : ''}</span>${starsHTML(c.stars || 0, true)}${cpQSum(c)}<span id="cp-saved" class="n-saved">Saved</span></div>
+    <div class="n-sub">${c.ctype === 'company' ? `<span class="n-chip">Company${c.contact ? ' · ' + esc(c.contact) : ''}</span>` : ''}<span class="n-stat ${s}">${CP_STAT[s]}${s === 'won' && c.outcome ? ', v' + c.outcome.n : ''}</span>${starsHTML(c.stars || 0, true)}${cpQSum(c)}<span id="cp-saved" class="n-saved">Saved</span></div>
     ${c.latest && c.dsig && c.dsig !== c.sig && statusOf(c) !== 'won' && statusOf(c) !== 'lost' ? `<p class="n-asked n-changed"><span class="n-dot"></span><span>The sheet has changed since v${c.latest} was sent. Open <b>Quotation</b> and download the PDF to send v${c.latest + 1}.</span></p>` : ''}
     ${changeAsked(c) ? `<p class="n-asked"><span class="n-dot"></span><span>They asked for changes${c.changeReq.note ? ': ' + esc(c.changeReq.note) : ''} <small>${esc(agoTxt(c.changeReq.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></span><button class="n-link" data-act="unask">Remove</button></p>` : ''}
     <nav class="n-round">${tel ? round('phone', 'Call', '', 'tel:' + tel) : ''}${wa ? round('wa', 'WhatsApp', `target="${WA_TAB}"`, wa) : ''}${round('todo', 'To-do', `data-sched="${esc(c.id)}"`)}${addr || mapLink(c) ? round('map', 'Map', 'target="_blank" rel="noopener"', mapLink(c)) : ''}</nav>
@@ -8621,8 +8634,10 @@ const cpInp = (k, val, attrs = '') => `<input data-k="${k}" id="cpf-${k}" value=
 function cpProps(c){
   const arch = c.arch || {}, admin = PF && IS_ADMIN;
   const ints = (c.interest || []).map(v => cpLbl(INTEREST, v)).filter(Boolean), pts = (c.ptype || []).map(v => v === 'other' && c.ptypeOther ? c.ptypeOther : cpLbl(PTYPES, v)).filter(Boolean);
+  const co = c.ctype === 'company';
   const P = [
-    ['phone', 'phone', 'Mobile', esc(c.phone || ''), () => cpInp('phone', c.phone, 'inputmode="tel" placeholder="98290 12345"')],
+    ...(co ? [['contact', 'user', 'Contact person', esc(c.contact || ''), () => cpInp('contact', c.contact, 'placeholder="e.g. Rajesh Mehta"')]] : []),
+    ['phone', 'phone', co ? 'Contact number' : 'Mobile', esc(c.phone || ''), () => cpInp('phone', c.phone, 'inputmode="tel" placeholder="98290 12345"')],
     ['email', 'mail', 'Email', esc(c.email || ''), () => cpInp('email', c.email, 'inputmode="email" placeholder="name@gmail.com"')],
     ['city', 'city', 'City', esc(c.city || ''), () => cpInp('city', c.city, 'list="citylist" placeholder="Jodhpur"') + cityList()],
     ['addr', 'home', 'Address', esc(c.addr || ''), () => cpInp('addr', c.addr, 'placeholder="House, street, area"')],
@@ -10173,7 +10188,7 @@ const HI = {
   'Documents': 'डॉक्यूमेंट', 'Docs': 'डॉक्यूमेंट', '+ Add photos or PDFs': '+ फ़ोटो या PDF जोड़ें', 'No documents yet': 'अभी कोई डॉक्यूमेंट नहीं',   // 4 Nov: Documents
   "Photos and PDFs for this client, saved in Charpai's Google Drive.": 'इस क्लाइंट की फ़ोटो और PDF, Charpai की Google Drive में।',
   'Noting sheet': 'नोटिंग शीट', 'Site': 'साइट', 'Window / wall': 'खिड़की / दीवार', 'Fabric chosen': 'चुना हुआ कपड़ा', 'Reference': 'रेफ़रेंस', 'Measurement paper': 'नाप का कागज़', 'Payment': 'पेमेंट', 'Other': 'और कुछ',
-  'Uploading…': 'अपलोड हो रहा है…', 'Camera': 'कैमरा', 'Your password': 'आपका पासवर्ड', 'Set password': 'पासवर्ड बनाएँ', 'Change password': 'पासवर्ड बदलें', 'New password': 'नया पासवर्ड', 'Type it again': 'फिर से लिखें', 'Gallery': 'गैलरी', 'Files': 'फ़ाइलें', 'Saving…': 'सेव हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
+  'Uploading…': 'अपलोड हो रहा है…', 'Camera': 'कैमरा', 'Your password': 'आपका पासवर्ड', 'Who is it?': 'कौन है?', 'Person': 'व्यक्ति', 'Company': 'कंपनी', 'Company name': 'कंपनी का नाम', 'Contact person': 'संपर्क व्यक्ति', 'Contact number': 'संपर्क नंबर', 'Set password': 'पासवर्ड बनाएँ', 'Change password': 'पासवर्ड बदलें', 'New password': 'नया पासवर्ड', 'Type it again': 'फिर से लिखें', 'Gallery': 'गैलरी', 'Files': 'फ़ाइलें', 'Saving…': 'सेव हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
   'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'The sheet changed after this was confirmed: check before ordering': 'पक्का होने के बाद शीट बदली: ऑर्डर से पहले देखें', 'Changed after sending': 'भेजने के बाद बदला',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
@@ -10822,4 +10837,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261104-171340 -->
+<!-- build 20261104-173742 -->
