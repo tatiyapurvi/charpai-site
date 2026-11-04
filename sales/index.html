@@ -1203,6 +1203,8 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .dk-st.err{background:color-mix(in srgb,#E5484D 14%,var(--paper));color:#B42318;text-align:center;font-size:13px;gap:2px;align-content:center;cursor:pointer}
 .dk-st.err b{font-size:14px}
 .dk-card.up:has(.dk-st.err){cursor:pointer}
+.dk-stin{display:flex;flex-direction:column;align-items:center;gap:6px}
+.dk-pct{font:600 13px/1 var(--body);color:var(--ink);font-variant-numeric:tabular-nums;min-height:13px}
 .dk-spin{width:26px;height:26px;border-radius:50%;border:2.5px solid color-mix(in srgb,var(--ink) 18%,transparent);border-top-color:var(--ink);animation:dkspin .8s linear infinite;display:block}
 @keyframes dkspin{to{transform:rotate(360deg)}}
 .dk-skel .dk-th,.dk-skel-h{background:linear-gradient(90deg,var(--soft) 0%,var(--soft2) 50%,var(--soft) 100%);background-size:200% 100%;animation:dkshim 1.3s ease-in-out infinite}
@@ -10337,7 +10339,7 @@ function langSwitch(){
 // in 1–3 s on 4G; the grid shows small pictures Drive makes itself. Trial logins and Rudresh never see the button (and the helper refuses).
 const DOCS_URL = 'https://script.google.com/macros/s/AKfycbwc2slXX9D2jU0dpk9vbNa-lwwCUN2r8ixWzqoWCXSSJaH3Rpi8gWAWaid2PkUcSs8q/exec';   // the helper on charpai.docs (deployed 4 Nov, version 1; project "Charpai Documents helper")
 const DOC_TYPES = ['Noting sheet', 'Site', 'Window / wall', 'Fabric chosen', 'Reference', 'Measurement paper', 'Payment', 'Other'];   // Purvi 4 Nov: Noting sheet first
-const DOC_MAX = 20 * 1024 * 1024;
+const DOC_MAX = 20 * 1024 * 1024, DOC_DIRECT = 2 * 1024 * 1024;   // over 2 MB: straight to Drive (4 Nov)
 const DOCS_FAKE = !window.CHARPAI_PLATFORM && /^(localhost|127\.)/.test(location.hostname);   // the test page on this Mac: an in-memory Drive
 const canDocs = () => DOCS_FAKE || (!!PF && !meTrial() && !HIDDEN.has(ME_EMAIL));
 const dkPhone = () => matchMedia('(pointer: coarse)').matches;
@@ -10359,10 +10361,16 @@ const DOC_ERR = {'not-your-client': "This client isn't yours, so its documents d
   'not-yours': 'Only the person who added it (or an admin) can change or delete it.', 'no-file': 'That file is no longer there.'};
 const docErr = er => DOC_ERR[er && er.message] || (er && /fetch|network|load failed/i.test(er.message || '') ? 'No internet? Try again.' : "Google Drive didn't answer. Try again.");
 
-async function docsCall(op, body = {}){
+async function docsCall(op, body = {}, onPct){
   if (DOCS_FAKE) return docsFake(op, body);
   if (!DOCS_URL) throw new Error('not-set-up');
   const token = await PF.idToken();
+  if (onPct) return new Promise((ok, no) => {   // an upload: XHR, so the card can show how much has gone
+    const x = new XMLHttpRequest(); x.open('POST', DOCS_URL); x.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+    let last = 0; x.upload.onprogress = e => { if (!e.lengthComputable) return; const t = Date.now(); if (t - last > 250 || e.loaded === e.total) { last = t; onPct(Math.round(e.loaded / e.total * 100)); } };
+    x.onload = () => { try { const j = JSON.parse(x.responseText); if (j.ok) ok(j); else no(new Error(j.error || 'failed')); } catch (_) { no(new Error('failed')); } };
+    x.onerror = () => no(new Error('network')); x.send(JSON.stringify(Object.assign({op, token, cid: state.clientId}, body)));
+  });
   // text/plain on purpose: a "simple" request, so the browser sends it straight (Apps Script answers no pre-flight check)
   const r = await fetch(DOCS_URL, {method: 'POST', body: JSON.stringify(Object.assign({op, token, cid: state.clientId}, body))});
   const j = await r.json(); if (!j.ok) throw new Error(j.error || 'failed'); return j;
@@ -10400,7 +10408,7 @@ const dkIsPdf = f => /pdf/i.test(f.mime || '') || /\.pdf$/i.test(f.name || '');
 function docCard(f, up){
   const pdf = dkIsPdf(f), th = f.thumb || (up && up.thumb) || '';
   const pic = th ? `<img src="${esc(th)}" alt="" loading="lazy" draggable="false">` : `<span class="dk-ph">${pdf ? DK_PDF_ICON : DK_DOC_ICON}</span>`;
-  const st = up ? (up.state === 'err' ? `<span class="dk-st err"><b>Didn't upload</b><span>Tap to try again</span></span>` : `<span class="dk-st"><i class="dk-spin"></i></span>`) : '';
+  const st = up ? (up.state === 'err' ? `<span class="dk-st err"><b>Didn't upload</b><span>Tap to try again</span></span>` : `<span class="dk-st"><span class="dk-stin"><i class="dk-spin"></i><b class="dk-pct">${up.state === 'up' ? dkPctTxt(up) : ''}</b></span></span>`) : '';
   const cap = f.caption || (pdf ? (f.name || '').replace(/\.pdf$/i, '') : '');
   return `<button class="dk-card${up ? ' up' : ''}${th && !pdf ? '' : ' plain'}" data-dk="${up ? (up.state === 'err' ? 'retry' : 'wait') : 'open'}" data-id="${esc(up ? up.key : f.id)}" title="${esc(cap)}">
     <span class="dk-th">${pic}${pdf ? '<span class="dk-tag">PDF</span>' : ''}${st}</span>
@@ -10510,11 +10518,21 @@ function docsPump(){
 async function docUpload(u){
   const redraw = () => { if (current === 'docs' && state.clientId === u.cid) renderDocs(); };
   try {
-    const p = await docPrep(u.file); u.thumb = p.thumb; u.state = 'up'; redraw();
+    const p = await docPrep(u.file); u.thumb = p.thumb; u.state = 'up'; u.pct = 0; redraw();
     if (p.blob.size > DOC_MAX) throw new Error('too-big');
-    const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => no(r.error); r.readAsDataURL(p.blob); });
-    const r = await docsCall('put', {cid: u.cid, name: p.name, mime: p.mime, data, type: u.type, caption: u.caption, byName: myName(), thumb: DOCS_FAKE ? p.thumb : undefined});
-    const f = Object.assign(r.file, {thumb: r.file.thumb || p.thumb});
+    const meta = {cid: u.cid, name: p.name, mime: p.mime, type: u.type, caption: u.caption, byName: myName()};
+    let f = null;
+    // 4 Nov, measured live: straight to Drive wins only for big files (5 MB PDF 9.3 s vs 10.8 s); a 330 KB photo is quicker through
+    // the helper (4.2 s vs 7 s: Drive's upload slot takes ~2 s to open and answers slowly). So over 2 MB direct, else the helper.
+    if (!DOCS_FAKE && p.blob.size > DOC_DIRECT) {   // any trouble on the way → the helper route below
+      try { f = await docDirect(u, p, meta, redraw); }
+      catch (er) { if (DOC_ERR[er && er.message] && er.message !== 'no-file') throw er; f = null; }
+    }
+    if (!f) {
+      const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => no(r.error); r.readAsDataURL(p.blob); });
+      f = (await docsCall('put', Object.assign({data, thumb: DOCS_FAKE ? p.thumb : undefined}, meta), pct => { u.pct = pct; docPct(u); })).file;
+    }
+    f = Object.assign(f, {thumb: f.thumb || p.thumb});
     DK.lists.set(u.cid, [f, ...(DK.lists.get(u.cid) || [])]);
     DK.up.splice(DK.up.indexOf(u), 1); u.file = null;
     DK.done[u.batch] = [...(DK.done[u.batch] || []), Object.assign(f, {_n: +u.key.split('_')[1]})];
@@ -10522,6 +10540,23 @@ async function docUpload(u){
   } catch (er) { u.state = 'err'; u.err = docErr(er); }
   redraw();
 }
+// The helper checks the login and opens a Drive upload slot with the details already set (client, type, who); the bytes then go
+// from this device straight to Google (XHR, so the card can show how far it has got).
+async function docDirect(u, p, meta, redraw){
+  const s = await docsCall('start', Object.assign({size: p.blob.size, origin: location.origin}, meta));
+  const raw = await new Promise((ok, no) => {
+    const x = new XMLHttpRequest(); x.open('PUT', s.url); x.setRequestHeader('Content-Type', p.mime);
+    let last = 0; x.upload.onprogress = e => { if (!e.lengthComputable) return; u.pct = Math.round(e.loaded / e.total * 100); const t = Date.now(); if (t - last > 250) { last = t; docPct(u); } };
+    x.onload = () => { if (x.status >= 200 && x.status < 300) { try { ok(JSON.parse(x.responseText)); } catch (_) { no(new Error('direct-bad-answer')); } } else no(new Error('direct-' + x.status)); };
+    x.onerror = () => no(new Error('direct-network')); x.send(p.blob);
+  });
+  docsCall('done', {cid: u.cid}).catch(() => {});   // the helper forgets its remembered list (no need to wait)
+  const a = raw.appProperties || {};
+  return {id: raw.id, name: raw.name, mime: raw.mimeType, size: +raw.size || p.blob.size, caption: raw.description || '', type: a.type || meta.type,
+    by: a.by || ME_EMAIL || '', byName: a.byName || meta.byName, at: a.at || raw.createdTime, thumb: '', canEdit: true};
+}
+const dkPctTxt = u => !u.pct ? '' : u.pct >= 100 ? 'Saving…' : u.pct + '%';   // 100 % sent: Drive is filing it
+function docPct(u){ const c = document.querySelector(`#docs-body .dk-card[data-id="${u.key}"] .dk-pct`); if (c) c.textContent = dkPctTxt(u); }   // just the number, no redraw
 // Photos: made smaller on the phone (long side 2000 px, JPEG 82 %): a 4 MB camera photo → ~300 KB, still sharp. PDFs go as they are.
 async function docPrep(file){
   if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)) return {blob: file, mime: 'application/pdf', name: file.name, thumb: ''};
@@ -10714,4 +10749,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261104-151826 -->
+<!-- build 20261104-154643 -->
