@@ -66,6 +66,7 @@ auth.onAuthStateChanged(async u => {
     // 4 Nov (Purvi, after Aabid signed in once with Google and Firebase dropped his password): set or change your own password.
     // No password yet (Google only) → link one to the same account; already has one → change it. pw = Purvi allows password sign-in.
     pw: !!p.pw,
+    emailVerified: () => !!auth.currentUser && auth.currentUser.emailVerified,
     hasPassword: () => !!auth.currentUser && auth.currentUser.providerData.some(x => x.providerId === 'password'),
     async setPassword(pw){ const cu = auth.currentUser, has = cu.providerData.some(x => x.providerId === 'password');
       if (has) await cu.updatePassword(pw); else await cu.linkWithCredential(firebase.auth.EmailAuthProvider.credential(cu.email, pw));
@@ -6506,6 +6507,7 @@ const unpack = d => { const x = d.data(); return x && typeof x.json === 'string'
 function setupPlatform(){
   PF = window.CHARPAI_PLATFORM || null; if (!PF) return;
   ME_EMAIL = PF.email; IS_ADMIN = !!PF.admin;
+  setTimeout(() => { if (typeof loginHeal === 'function') loginHeal(); }, 3000);   // 4 Nov: the email marked verified, so Google can never drop the password
   // the sheet left on this device by someone else (or from before 25 Oct, owner unknown) is not shown to this login: a clean one
   try { const was = localStorage.getItem(WHOKEY); if (was !== ME_EMAIL) { if (was || state.clientId || state.house) { state = {house: '', example: false, sel: 0, bsel: 0, quote: {}, rows: [blank()], blinds: []}; ensureMore(true); keepLocal(); refreshSheet(); }
     localStorage.setItem(WHOKEY, ME_EMAIL); UNDO.clear(); } } catch(_){}
@@ -6611,7 +6613,7 @@ function renderPeople(){
       <td class="hide-s">${canLogin(id) ? `${esc(id)}<div class="hint">${p.pw ? 'email + password' : 'Google'}</div>` : '<span class="none">No email yet: can’t sign in</span>'}</td>
       <td class="hide-s">${canLogin(id) ? (trialP(id) ? 'Own clients · <span class="pill">Jaydurga</span>' : p.role === 'admin' ? 'Every client' : 'Own clients') : '<span class="none">—</span>'}</td>
       <td class="hide-s mono">${trialP(id) ? CL.trial.filter(c => c.ownerEmail === id).length : counts.get(id) || 0}</td>
-      <td class="r"><button class="btn" data-act="edit" data-e="${esc(id)}">Edit</button>${id === ME_EMAIL ? '' : ` <button class="btn" data-act="toggle" data-e="${esc(id)}">${p.active === false ? 'Switch on' : 'Switch off'}</button>`}</td></tr>`).join('')}
+      <td class="r">${PF && PF.owner && canLogin(id) && id !== ME_EMAIL && p.active !== false ? `<button class="btn" data-act="setpw" data-e="${esc(id)}">Set password</button> ` : ''}<button class="btn" data-act="edit" data-e="${esc(id)}">Edit</button>${id === ME_EMAIL ? '' : ` <button class="btn" data-act="toggle" data-e="${esc(id)}">${p.active === false ? 'Switch on' : 'Switch off'}</button>`}</td></tr>`).join('')}
     </tbody></table></div>
     ${PF && PF.owner ? `<div class="card" style="margin-top:14px"><h3>Bring in a file from Claude</h3><p class="hint" style="margin:0 0 10px">Adds or replaces supplier lists, prices or costs from a file Claude made for you (for example a new price list). Only the lists in the file change; clients are not touched.</p>
       <label class="btn solid" style="display:inline-block">Choose the file<input type="file" id="imp" accept=".json,application/json" hidden></label> <span class="hint" id="imp-msg"></span></div>` : ''}</div>`;
@@ -6621,6 +6623,7 @@ $('#people-body') && $('#people-body').addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'add') return askPerson();
   if (b.dataset.act === 'edit') return askPerson(b.dataset.e);
+  if (b.dataset.act === 'setpw') return askSetPw(b.dataset.e);
   if (b.dataset.act === 'seed') {
     b.disabled = true; const byKey = new Map([...PEOPLE].map(([id, p]) => [nameKey(p.name), [id, p]]));
     try {
@@ -6685,6 +6688,7 @@ function askPerson(id){
     try {
       await db.doc('users/' + newId).set(data);
       if (pass) { try { await PF.createPasswordUser(email, pass); } catch (er) { if (!(er && er.code === 'auth/email-already-in-use')) { if (newId !== id) await db.doc('users/' + newId).delete(); return msg('Could not create the login: ' + (er && er.message || er)); } } }
+      if (pass) docsCall('verifyUser', {email}).catch(() => {});   // 4 Nov: verified at once, so a Google sign-in can't drop this password
       if (id && newId !== id) {   // an email added for someone who had none: their clients follow them, then the old entry goes
         for (const c of CL.all.filter(c => c.ownerEmail === id)) await reassign(c.id, newId);
         await db.doc('users/' + id).delete();
@@ -10762,6 +10766,33 @@ function docSnack(cid, f){   // phones have no Ctrl Z: an Undo button for 7 seco
 }
 dlg.addEventListener('close', () => { if (dlg.open) return; DK_NEW.forEach(x => x.url && URL.revokeObjectURL(x.url)); DK_NEW = []; });
 
+// ================= logins (4 Nov, Purvi: "irrespective of whether these people log in through google or password, both should work
+// everytime, please make sure this is not a problem cause again"). Firebase drops a password when someone signs in with Google on an
+// email that was never verified (Aabid). Every sign-in now asks the helper to mark the email verified until it is; then Google is
+// simply added to the account and the password stays. Purvi can also give anyone a password from People (Set password).
+let healTried = false;
+async function loginHeal(){
+  if (healTried || !PF || !DOCS_URL || DOCS_FAKE || !PF.emailVerified || PF.emailVerified()) return;
+  healTried = true;
+  try { await docsCall('verifyMe'); } catch (_) {}   // quietly: tried again at the next sign-in
+}
+function askSetPw(email){
+  const p = PEOPLE.get(email) || {};
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Set a password for ${esc(p.name || email)}</h2>
+    <p class="sub">They sign in with <b>${esc(email)}</b> and this password. Google sign-in keeps working too. Nobody gets an email: tell them the password yourself.</p>
+    <label class="f" for="sp-pw">New password <small>(at least 6 letters or numbers)</small></label><input type="text" id="sp-pw" autocomplete="off" autofocus>
+    <p class="hint" id="sp-msg" style="color:var(--warn)"></p>
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Set password</button></div></div>`, false, async d => {
+    const pw = d.querySelector('#sp-pw').value.trim(), msg = t => { d.querySelector('#sp-msg').textContent = t; return false; };
+    if (pw.length < 6) return msg('At least 6 letters or numbers.');
+    msg('Saving…');
+    try { await docsCall('setPw', {email, password: pw}); if (!p.pw) await db.doc('users/' + email).update({pw: true}); }
+    catch (er) { return msg(er && er.message === 'no-auth-admin' ? 'Not switched on yet: charpai.docs needs the login roles in Google Cloud (ask Claude).' : 'Could not set it (' + (er && er.message || 'error') + ').'); }
+    closeDlg(); toast(`Password set for ${p.name || email}`);
+    renderPeople();
+  });
+}
+
 function toast(m){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 
 // Light / dark switch in the yellow bar (Purvi, 2 Oct). Starts from the phone or laptop's own setting; a tap is remembered on this device.
@@ -10791,4 +10822,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261104-165303 -->
+<!-- build 20261104-171340 -->
