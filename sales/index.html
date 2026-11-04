@@ -1656,6 +1656,8 @@ button.n-prop:hover{background:var(--soft)}
 .n-evbtn{all:unset;cursor:pointer;flex:1;display:grid;gap:2px;padding-top:3px;border-radius:6px}
 .n-evbtn:hover p{text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .n-evm p{margin:0;font-size:15.5px}
+.n-doclink{color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 30%,transparent);text-underline-offset:3px;text-decoration-thickness:1.5px;cursor:pointer;border-radius:4px;transition:text-decoration-color .15s,background .15s}
+.n-doclink:hover{text-decoration-color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}   /* 4 Nov: document names on the timeline */
 .n-evn{display:block;color:var(--muted);font-size:14px}
 .n-evm small{color:var(--muted);font-size:13.5px}
 .n-evb{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
@@ -7908,7 +7910,8 @@ addEventListener('popstate', async e => {
   navPop = true;
   try {
     if (h === 'clients') cfFromQuery(qs);
-    if (/^client\/./.test(h)) { cpId = h.slice(7); go('client'); }
+    if (/^doc\/[^/]+\/./.test(h)) { const [, c1, f1] = h.split('/'); cpId = c1; go('client'); docOpenLink(c1, f1); }
+    else if (/^client\/./.test(h)) { cpId = h.slice(7); go('client'); }
     else if (VIEWS[h] || OLD_VIEW[h]) { const v = OLD_VIEW[h] || h;
       if (shared && GATED.includes(v) && st.cid && st.cid !== state.clientId) await openClient(st.cid, v);   // that page belonged to another client
       else go(v); }
@@ -8647,9 +8650,9 @@ function watchNotes(cid){
   } catch (e) { NT.state = 'error'; }
 }
 const cpTyping = () => { const a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.closest('#cp-body') && a.id !== 'cp-note'); };
-async function addNote(c, text, kind = 'note'){
+async function addNote(c, text, kind = 'note', extra){   // extra: e.g. {docs: [{id, name, type}]} (4 Nov: document links)
   const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await db.doc('notes/' + id).set(clone({cid: c.id, ownerEmail: c.ownerEmail || null, by: String(ME_EMAIL || UID || '').toLowerCase(), who: myName(), at: new Date().toISOString(), text, kind}));
+  await db.doc('notes/' + id).set(clone(Object.assign({}, extra || {}, {cid: c.id, ownerEmail: c.ownerEmail || null, by: String(ME_EMAIL || UID || '').toLowerCase(), who: myName(), at: new Date().toISOString(), text, kind})));
 }
 // links typed in a note become tappable; everything else stays plain text
 function linkify(t){
@@ -8760,7 +8763,7 @@ function cpActivity(c, V){
   const item = e => {
     if (e.k === 'note') { const n = e.n;
       return `<li class="n-ev note"><span class="n-evd who" title="${esc(n.who || '')}">${esc(initials(n.who || n.by))}</span><div class="n-evm"><div class="n-bub">${linkify(n.text || '')}</div><small>${esc(n.who || n.by || '')}, ${esc(agoTxt(n.at))}${mineNote(n) ? ` <button class="n-link sm" data-delnote="${esc(n.id)}">Delete</button>` : ''}</small></div></li>`; }
-    if (e.k === 'log') return `<li class="n-ev"><span class="n-evd">${cpIcon('user', 13)}</span><div class="n-evm"><p>${esc(e.n.text || '')}</p><small>${esc(agoTxt(e.n.at))}${e.n.who ? ', ' + esc(e.n.who) : ''}</small></div></li>`;
+    if (e.k === 'log') return `<li class="n-ev"><span class="n-evd">${cpIcon('user', 13)}</span><div class="n-evm"><p>${logText(e.n, c)}</p><small>${esc(agoTxt(e.n.at))}${e.n.who ? ', ' + esc(e.n.who) : ''}</small></div></li>`;
     if (e.k === 'v') { const x = e.v, fin = s === 'won' && o.n === x.n;
       return `<li class="n-ev n-ver"><span class="n-evd v${fin ? ' fin' : ''}">v${x.n}</span><div class="n-evm">
         <div class="n-vh"><p class="n-vt">Quotation v${x.n} ${fin && o.unsent ? 'saved at Won, not sent' : 'sent'} <b>${rs(x.total)}</b>${fin ? ' <span class="n-stat won">Accepted</span>' : ''}</p>
@@ -8792,6 +8795,17 @@ function cpActivity(c, V){
     ${!c.latest ? '<p class="n-tip">Each quotation PDF you download is kept here as v1, v2 and so on, with what changed.</p>' : V === 'error' ? '<p class="n-tip">Could not load the quotations. Open the client again.</p>' : !Array.isArray(V) ? '<p class="n-tip">Loading quotations…</p>' : ''}
     <ol class="n-tl">${ev.map(item).join('')}</ol></section>`;
 }
+// 4 Nov (Purvi): "Added 2 documents: Bedroom window, Site photo" - each name a real link to #doc/<client>/<file>: a plain click opens
+// the viewer right here; right-click → Open in new tab, ⌘/Ctrl-click and middle-click open the app on that file, like any link.
+function logText(n, c){
+  if (!Array.isArray(n.docs) || !n.docs.length || typeof canDocs !== 'function' || !canDocs()) return esc(n.text || '');
+  const L = n.docs.map(d => `<a class="n-doclink" href="#doc/${encodeURIComponent(c.id)}/${encodeURIComponent(d.id)}" data-doc="${esc(d.id)}" data-cid="${esc(c.id)}" title="${esc(d.type || '')}">${esc(d.name || 'Document')}</a>`);
+  return `Added ${n.docs.length > 1 ? n.docs.length + ' documents' : 'a document'}: ${L.join(', ')}`;
+}
+cpb.addEventListener('click', e => {
+  const a = e.target.closest('a[data-doc]'); if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // new tab / window: the browser's own way
+  e.preventDefault(); docOpenLink(a.dataset.cid, a.dataset.doc);
+});
 // the note box: Post (or Ctrl / ⌘ + Enter); the text survives redraws while you type
 cpb.addEventListener('input', e => { if (e.target.id !== 'cp-note') return; cpNoteDraft = e.target.value;
   const p = cpb.querySelector('[data-cpnote]'); if (p) { const on = !!cpNoteDraft.trim(); p.disabled = !on; p.classList.toggle('dark', on); } });
@@ -8809,6 +8823,7 @@ cpb.addEventListener('click', e => {
 });
 
 function renderClientPage(){
+  if (typeof docsPrefetch === 'function' && cpId && PF) docsPrefetch(cpId);   // 4 Nov: Documents list ready before Docs is tapped
   if (cpFresh && cpFresh !== cpId) cpFresh = null;
   if (cpId === NEW || cpFresh === cpId) return renderEnquiryPage();
   const el = $('#cp-body'), c = CL.byId.get(cpId); if (!c) return renderEnquiryPage();
@@ -10372,7 +10387,7 @@ async function docsFake(op, b){
 function docsLoad(cid, quiet){
   if (!cid || DK.loading.has(cid)) return;
   DK.loading.add(cid); if (!quiet) DK.err.delete(cid);
-  docsCall('list', {cid}).then(r => { DK.lists.set(cid, r.files || []); DK.err.delete(cid); })
+  docsCall('list', {cid}).then(r => { DK.lists.set(cid, r.files || []); DK.err.delete(cid); docsPreloadFull(cid); })
     .catch(er => { if (!DK.lists.has(cid) || !quiet) DK.err.set(cid, docErr(er)); })
     .finally(() => { DK.loading.delete(cid); if (current === 'docs' && state.clientId === cid) renderDocs(); });
 }
@@ -10502,8 +10517,8 @@ async function docUpload(u){
     const f = Object.assign(r.file, {thumb: r.file.thumb || p.thumb});
     DK.lists.set(u.cid, [f, ...(DK.lists.get(u.cid) || [])]);
     DK.up.splice(DK.up.indexOf(u), 1); u.file = null;
-    DK.done[u.batch] = [...(DK.done[u.batch] || []), f];
-    if (!DK.up.some(x => x.batch === u.batch)) { docBatchDone(u.cid, DK.done[u.batch]); delete DK.done[u.batch]; }
+    DK.done[u.batch] = [...(DK.done[u.batch] || []), Object.assign(f, {_n: +u.key.split('_')[1]})];
+    if (!DK.up.some(x => x.batch === u.batch)) { docBatchDone(u.cid, DK.done[u.batch].sort((a, b) => a._n - b._n)); delete DK.done[u.batch]; }   // the order they were picked in
   } catch (er) { u.state = 'err'; u.err = docErr(er); }
   redraw();
 }
@@ -10528,11 +10543,40 @@ async function docPrep(file){
 function docBatchDone(cid, files){
   const c = CL.byId.get(cid), by = {};
   for (const f of files) by[f.type] = (by[f.type] || 0) + 1;
-  const what = Object.entries(by).map(([t, k]) => `${k} ${t}`).join(', ');
   toast(`${files.length > 1 ? files.length + ' files' : 'File'} added ✓`);
-  if (shared && db && c && !DOCS_FAKE) addNote(c, `Added ${files.length > 1 ? files.length + ' documents' : 'a document'}: ${what}`, 'log').catch(() => {});
+  // 4 Nov (Purvi): each name on the timeline is a link: a click opens it on the spot, Open in new tab opens the app on that file
+  const docs = docLabels(files);
+  if (shared && db && c) addNote(c, `Added ${files.length > 1 ? files.length + ' documents' : 'a document'}: ${docs.map(d => d.name).join(', ')}`, 'log', {docs}).catch(() => {});
   // Ctrl Z takes the upload back (to Drive's bin, 30 days), Ctrl Shift Z brings it back again
   UNDO.act(files.length > 1 ? files.length + ' documents' : 'document', () => docTrash(cid, files, true), () => docTrash(cid, files, false));
+}
+// What each file is called on the timeline: its caption, a PDF's file name, or "Site photo" (numbered when there are several)
+function docLabels(files){
+  const base = f => f.caption || (dkIsPdf(f) ? (f.name || 'PDF').replace(/\.pdf$/i, '') : `${f.type || 'Other'} photo`);
+  const n = {}, k = {}; files.forEach(f => { n[base(f)] = (n[base(f)] || 0) + 1; });
+  return files.map(f => { const b = base(f); k[b] = (k[b] || 0) + 1; return {id: f.id, name: (n[b] > 1 && !f.caption ? `${b} ${k[b]}` : b).slice(0, 80), type: f.type || 'Other'}; });
+}
+// A document link (timeline, or a new tab on #doc/<client>/<file>): the viewer opens on that file; the list is fetched first if needed
+async function docOpenLink(cid, fid){
+  if (!canDocs()) { toast(DOC_ERR['not-allowed']); return; }
+  const have = () => (DK.lists.get(cid) || []).find(f => f.id === fid);
+  if (!have()) { toast('Opening…');
+    try { const r = await docsCall('list', {cid}); DK.lists.set(cid, r.files || []); } catch (er) { toast(docErr(er)); return; } }
+  if (!have()) { toast('That file was deleted.'); return; }
+  docView(fid, cid);
+}
+// Faster (4 Nov): wake the helper when the app opens; fetch a client's list when their page opens, so Docs shows at once;
+// then the newest photos' full size in the background (not on "save data" connections).
+let dkWarm = false;
+function docsWarm(){ if (dkWarm || DOCS_FAKE || !DOCS_URL || !canDocs()) return; dkWarm = true; fetch(DOCS_URL + '?ping=1', {mode: 'no-cors'}).catch(() => {}); }
+function docsPrefetch(cid){
+  if (!cid || cid === '__new' || !canDocs()) return; docsWarm();
+  if (!DK.lists.has(cid) && !DK.loading.has(cid)) docsLoad(cid, true);
+}
+function docsPreloadFull(cid){
+  const c = navigator.connection; if (c && (c.saveData || /2g/.test(c.effectiveType || ''))) return;
+  const L = (DK.lists.get(cid) || []).filter(f => !dkIsPdf(f) && !DK.full.has(f.id)).sort(docSort).slice(0, 4);
+  (async () => { for (const f of L) { try { await docFull(cid, f); } catch (_) { return; } } })();
 }
 async function docTrash(cid, files, off){
   for (const f of files) await docsCall(off ? 'trash' : 'untrash', {cid, id: f.id});
@@ -10545,8 +10589,8 @@ async function docTrash(cid, files, off){
 const DKLB = {el: null, cid: '', order: [], at: 0, editing: false};
 function docOrder(cid){ const L = DK.lists.get(cid) || [];
   return DOC_TYPES.flatMap(t => L.filter(x => x.type === t).sort(docSort)).concat(L.filter(x => !DOC_TYPES.includes(x.type)).sort(docSort)); }
-function docView(id){
-  const cid = state.clientId, order = docOrder(cid), at = order.findIndex(x => x.id === id); if (at < 0) return;
+function docView(id, cid = state.clientId){
+  const order = docOrder(cid), at = order.findIndex(x => x.id === id); if (at < 0) return;
   if (!DKLB.el) { DKLB.el = document.createElement('div'); DKLB.el.className = 'dk-lb'; DKLB.el.setAttribute('role', 'dialog'); DKLB.el.setAttribute('aria-modal', 'true'); document.body.appendChild(DKLB.el); lbWire(); }
   Object.assign(DKLB, {cid, order, at, editing: false}); DKLB.el.hidden = false; document.documentElement.classList.add('dk-noscroll'); lbDraw();
 }
@@ -10572,8 +10616,13 @@ function lbDraw(){
   // the next one starts loading now, so ‹ › feels instant
   const nx = DKLB.order[(DKLB.at + 1) % DKLB.order.length]; if (nx && nx !== f && !dkIsPdf(nx)) docFull(DKLB.cid, nx).catch(() => {});
 }
-async function docFull(cid, f){
-  if (DK.full.has(f.id)) return DK.full.get(f.id);
+const DK_FLY = new Map();
+function docFull(cid, f){
+  if (DK.full.has(f.id)) return Promise.resolve(DK.full.get(f.id));
+  if (!DK_FLY.has(f.id)) DK_FLY.set(f.id, docFullGet(cid, f).finally(() => DK_FLY.delete(f.id)));
+  return DK_FLY.get(f.id);
+}
+async function docFullGet(cid, f){
   const r = await docsCall('get', {cid, id: f.id});
   const bin = atob(r.data), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
   const v = {url: URL.createObjectURL(new Blob([a], {type: r.mime})), name: r.name, mime: r.mime};
@@ -10610,7 +10659,7 @@ function lbWire(){
   el.addEventListener('touchend', e => { if (x0 == null) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) lbStep(dx < 0 ? 1 : -1); else if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) lbClose(); }, {passive: true});
 }
-addEventListener('popstate', () => lbClose());   // the phone's Back closes the viewer with the page
+addEventListener('popstate', () => { if (!/^#doc\//.test(location.hash)) lbClose(); });   // the phone's Back closes the viewer with the page (not when Back lands on a document link)
 async function docSave(f){
   const inp = DKLB.el.querySelector('#lb-cap'), cap = inp ? inp.value.trim() : f.caption, type = DKLB.type || f.type, was = {caption: f.caption, type: f.type}, cid = DKLB.cid;
   if (cap === f.caption && type === f.type) { DKLB.editing = false; lbDraw(); return; }
@@ -10654,12 +10703,15 @@ fillLists(); renderNote(); renderTable(); renderTotals(); renderSide();
 // 26 Oct (Purvi): "anytime the link is opened, first dashboard, similar to how other software open home pages first". The plain link
 // (or one this page doesn't know) opens Home; a link to a page (#clients, #client/…, a reload) still opens that page. Without a login Home falls back to Clients (go).
 let startTab = 'dash';
-try { const [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); if (h === 'clients') cfFromQuery(qs); if (/^client\/./.test(h)) { cpId = h.slice(7); startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'dash'; } catch(_){}
+let startDoc = null;   // 4 Nov: #doc/<client>/<file> = a document link opened in a new tab
+try { const [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); if (h === 'clients') cfFromQuery(qs); if (/^doc\/[^/]+\/./.test(h)) { const [, c1, f1] = h.split('/'); cpId = c1; startTab = 'client'; startDoc = [c1, f1]; } else if (/^client\/./.test(h)) { cpId = h.slice(7); startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'dash'; } catch(_){}
 go(startTab);
 connectPrices();
+if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'ready' && CL.byId.has(startDoc[0])); i++) await new Promise(r => setTimeout(r, 250));   // wait for the login + clients
+  if (CL.byId.has(startDoc[0])) { cpId = startDoc[0]; go('client'); docOpenLink(startDoc[0], startDoc[1]); } else toast("This client isn't open for your login."); })();
 </script>
 
 </body>
 </html>
 
-<!-- build 20261104-145509 -->
+<!-- build 20261104-151826 -->
