@@ -10530,7 +10530,9 @@ async function docUpload(u){
     }
     if (!f) {
       const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => no(r.error); r.readAsDataURL(p.blob); });
-      f = (await docsCall('put', Object.assign({data, thumb: DOCS_FAKE ? p.thumb : undefined}, meta), pct => { u.pct = pct; docPct(u); })).file;
+      // no percentage here: listening to upload progress makes the browser ask Google's helper address for permission first
+      // (a CORS pre-flight), which Apps Script never answers, so the upload fails (found live 4 Nov). Photos are quick anyway.
+      f = (await docsCall('put', Object.assign({data, thumb: DOCS_FAKE ? p.thumb : undefined}, meta))).file;
     }
     f = Object.assign(f, {thumb: f.thumb || p.thumb});
     DK.lists.set(u.cid, [f, ...(DK.lists.get(u.cid) || [])]);
@@ -10749,4 +10751,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261104-154643 -->
+<!-- build 20261104-155310 -->
