@@ -62,7 +62,14 @@ auth.onAuthStateChanged(async u => {
   const owner = email === OWNER || CO_OWNERS.includes(email), admin = owner || p.role === 'admin';
   window.CHARPAI_PLATFORM = {email, name: p.name || u.displayName || email, role: p.role, trial: !!p.trial, job: p.job || '', phone: p.phone || '', admin, owner,
     signOut: () => auth.signOut().then(() => location.reload()),
-    idToken: () => auth.currentUser.getIdToken(),   // 4 Nov: Documents - the Drive helper asks Firebase with this login whether it may open the client
+    idToken: () => auth.currentUser.getIdToken(),
+    // 4 Nov (Purvi, after Aabid signed in once with Google and Firebase dropped his password): set or change your own password.
+    // No password yet (Google only) → link one to the same account; already has one → change it. pw = Purvi allows password sign-in.
+    pw: !!p.pw,
+    hasPassword: () => !!auth.currentUser && auth.currentUser.providerData.some(x => x.providerId === 'password'),
+    async setPassword(pw){ const cu = auth.currentUser, has = cu.providerData.some(x => x.providerId === 'password');
+      if (has) await cu.updatePassword(pw); else await cu.linkWithCredential(firebase.auth.EmailAuthProvider.credential(cu.email, pw));
+      await cu.reload(); return has ? 'changed' : 'set'; },   // 4 Nov: Documents - the Drive helper asks Firebase with this login whether it may open the client
     async createPasswordUser(em, pw){ const sec = firebase.apps.find(a => a.name === 'add') || firebase.initializeApp(FIREBASE_CONFIG, 'add');
       await sec.auth().createUserWithEmailAndPassword(em, pw); await sec.auth().signOut(); },
     // 3 Nov (Purvi): order forms mailed from tatiyaindustries@gmail.com. A second Firebase sign-in (its own app, so the person's own
@@ -1660,6 +1667,8 @@ button.n-prop:hover{background:var(--soft)}
 .n-evbtn{all:unset;cursor:pointer;flex:1;display:grid;gap:2px;padding-top:3px;border-radius:6px}
 .n-evbtn:hover p{text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .n-evm p{margin:0;font-size:15.5px}
+.set-pwrow{display:flex;gap:8px;flex-wrap:wrap}.set-pwrow input{flex:1 1 160px;min-width:0;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:16px var(--body);background:var(--field);color:var(--ink)}
+.set-pwshow{display:inline-flex;gap:6px;align-items:center;margin-top:8px;font-size:14px;color:var(--muted)}.set-pwmsg{margin:8px 0 0;font-size:14.5px;font-weight:600;min-height:1em}   /* 4 Nov: Your password */
 .n-doclink{color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 30%,transparent);text-underline-offset:3px;text-decoration-thickness:1.5px;cursor:pointer;border-radius:4px;transition:text-decoration-color .15s,background .15s}
 .n-doclink:hover{text-decoration-color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}   /* 4 Nov: document names on the timeline */
 .n-evn{display:block;color:var(--muted);font-size:14px}
@@ -9067,6 +9076,7 @@ function renderSettings(){
   el.innerHTML = `<div class="set">
     <div class="cl-head"><h2>Settings</h2></div>
     ${PF ? `<div class="card set-me"><span class="av big">${esc(initials(PF.name || PF.email))}</span><div><b>${esc(PF.name || '')}</b><span class="hint">${esc(PF.email)} · ${IS_ADMIN ? 'Admin' : 'Sales executive'}</span></div><button class="btn" data-set="out">Sign out</button></div>` : ''}
+    ${setPwCard()}
     <div class="card"><h3>Screen</h3><p class="hint" style="margin:0 0 10px">Light or dark. Remembered on this phone or laptop.</p><div class="set-theme"></div></div>
     ${admin ? `<div class="set-grid">
       <button class="bigb" data-set="c-prices"><b>Prices</b><span>Stitching, linings, tracks, motors, installation, blinds price lists.</span></button>
@@ -9075,7 +9085,32 @@ function renderSettings(){
   const sw = document.querySelector('.tape .theme-sw');
   if (sw) { const c = sw.cloneNode(true); c.onclick = e => { const b = e.target.closest('button'); if (b) { sw.querySelector(`[data-t="${b.dataset.t}"]`).click(); renderSettings(); } }; el.querySelector('.set-theme').appendChild(c); }
 }
-$('#settings-body').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (!b) return; const v = b.dataset.set; if (v === 'out') { if (PF) signOutHere(); return; } go(v === 'c-prices' ? lastPrices : v); });
+// 4 Nov (Purvi: "do option B, add set a password option"): signing in once with the Google button made Firebase drop Aabid's
+// password (same Gmail, Google counts as proof). Here anyone signed in sets or changes their own password; Google keeps working too.
+function setPwCard(){
+  if (!PF || !PF.setPassword) return '';
+  if (PF.owner && ME_EMAIL === OWNER_EMAIL) return '';   // Purvi signs in with Google only (shell rule)
+  if (!PF.pw) return `<div class="card"><h3>Your password</h3><p class="hint" style="margin:0">Password sign-in is not switched on for you. Ask Purvi (People → your name).</p></div>`;
+  const has = PF.hasPassword();
+  return `<div class="card set-pw"><h3>Your password</h3>
+    <p class="hint" style="margin:0 0 12px">${has ? 'You can sign in with your email and password. Change it here.' : "<b>You don't have a password yet</b> (you signed in with Google). Set one here, then you can sign in with your email and password."}</p>
+    <div class="set-pwrow"><input type="password" id="set-pw1" placeholder="New password" autocomplete="new-password" minlength="6"><input type="password" id="set-pw2" placeholder="Type it again" autocomplete="new-password" minlength="6">
+      <button class="btn solid" data-set="pw">${has ? 'Change password' : 'Set password'}</button></div>
+    <label class="set-pwshow"><input type="checkbox" id="set-pwshow"> Show</label><p class="set-pwmsg" id="set-pwmsg" role="status"></p></div>`;
+}
+async function setPwSave(btn){
+  const a = $('#set-pw1').value, b = $('#set-pw2').value, msg = t => { $('#set-pwmsg').textContent = t; };
+  if (a.length < 6) return msg('At least 6 letters or numbers.');
+  if (a !== b) return msg("The two don't match. Type them again.");
+  btn.disabled = true; msg('Saving…');
+  try { const r = await PF.setPassword(a); renderSettings(); $('#set-pwmsg').textContent = r === 'set' ? 'Password set ✓ Next time sign in with your email and this password.' : 'Password changed ✓'; toast(r === 'set' ? 'Password set' : 'Password changed'); }
+  catch (er) { btn.disabled = false; const c = er && er.code || '';
+    msg(c === 'auth/requires-recent-login' ? 'For safety, sign out, sign in again, then set it right away.' : c === 'auth/weak-password' ? 'Too easy to guess. Use at least 6 letters or numbers.'
+      : c === 'auth/network-request-failed' ? 'No internet? Try again.' : 'Could not save it (' + (c || 'error') + '). Ask Purvi.'); }
+}
+$('#settings-body').addEventListener('change', e => { if (e.target.id === 'set-pwshow') ['set-pw1', 'set-pw2'].forEach(id => { $('#' + id).type = e.target.checked ? 'text' : 'password'; }); });
+$('#settings-body').addEventListener('keydown', e => { if (e.key === 'Enter' && /^set-pw[12]$/.test(e.target.id)) { e.preventDefault(); const b = $('[data-set="pw"]'); if (b) setPwSave(b); } });
+$('#settings-body').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (!b) return; const v = b.dataset.set; if (v === 'out') { if (PF) signOutHere(); return; } if (v === 'pw') { setPwSave(b); return; } go(v === 'c-prices' ? lastPrices : v); });
 
 // ---- a sales executive's Home: what to do today (overdue first), then their numbers (renderDash)
 function todayRows(){   // the signed-in login's open to-dos due today or late (3 Nov: shared by the old Today card and the dashboard)
@@ -10134,7 +10169,7 @@ const HI = {
   'Documents': 'डॉक्यूमेंट', 'Docs': 'डॉक्यूमेंट', '+ Add photos or PDFs': '+ फ़ोटो या PDF जोड़ें', 'No documents yet': 'अभी कोई डॉक्यूमेंट नहीं',   // 4 Nov: Documents
   "Photos and PDFs for this client, saved in Charpai's Google Drive.": 'इस क्लाइंट की फ़ोटो और PDF, Charpai की Google Drive में।',
   'Noting sheet': 'नोटिंग शीट', 'Site': 'साइट', 'Window / wall': 'खिड़की / दीवार', 'Fabric chosen': 'चुना हुआ कपड़ा', 'Reference': 'रेफ़रेंस', 'Measurement paper': 'नाप का कागज़', 'Payment': 'पेमेंट', 'Other': 'और कुछ',
-  'Uploading…': 'अपलोड हो रहा है…', 'Camera': 'कैमरा', 'Gallery': 'गैलरी', 'Files': 'फ़ाइलें', 'Saving…': 'सेव हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
+  'Uploading…': 'अपलोड हो रहा है…', 'Camera': 'कैमरा', 'Your password': 'आपका पासवर्ड', 'Set password': 'पासवर्ड बनाएँ', 'Change password': 'पासवर्ड बदलें', 'New password': 'नया पासवर्ड', 'Type it again': 'फिर से लिखें', 'Gallery': 'गैलरी', 'Files': 'फ़ाइलें', 'Saving…': 'सेव हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
   'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'The sheet changed after this was confirmed: check before ordering': 'पक्का होने के बाद शीट बदली: ऑर्डर से पहले देखें', 'Changed after sending': 'भेजने के बाद बदला',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
@@ -10756,4 +10791,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261104-160837 -->
+<!-- build 20261104-165303 -->
