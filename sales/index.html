@@ -4791,7 +4791,7 @@ function qmUndo(k){
   save();
 }
 // 6 Nov: units to pick from on View quotation (our own list; anything else can still be typed) and the one a new line starts with
-const QUNITS = ['MTR', 'SQ FT', 'RFT', 'PCS', 'NOS', 'SET', 'PAIR', 'ROLL', 'BOX', 'KG'];
+const QUNITS = ['MTR', 'SQ FT', 'SQ MTR', 'RFT', 'PCS', 'NOS', 'SET', 'PAIR', 'PANEL', 'ROLL', 'BOX', 'KG'];   // 6 Nov: + SQ MTR, PANEL (Purvi)
 const QUNIT0 = {fabric: 'MTR', blinds: 'SQ FT', flooring: 'SQ FT', wallpaper: 'ROLL'};
 const QADD_SECS = ['fabric', 'stitch', 'blinds', 'wallpaper', 'flooring', 'other'];
 function qmAdd(sec){ const q = state.quote || (state.quote = {}), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5); (q.add || (q.add = [])).push({id, sec, area: '', product: '', what: '', qty: 1, unit: QUNIT0[sec] || 'PCS'}); save(); return 'add|' + id; }
@@ -11051,4 +11051,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261106-183409 -->
+<!-- build 20261106-184638 -->
