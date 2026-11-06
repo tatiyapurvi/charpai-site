@@ -535,6 +535,8 @@ svg text{font-family:var(--num);fill:var(--ink)}
 .how b.n{display:inline;font-size:inherit;color:var(--ink);font-weight:700;margin:0}
 .empty{padding:40px 16px;text-align:center;color:var(--muted)}
 /* empty quotation (Purvi, 17 Oct): icon, one line, one button straight to the measurement sheet */
+.q-empty-acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.q-empty-h{margin:2px 0 0}
+.qadd-all td{padding:10px 8px!important}.qadd-all .qadd-l{font-weight:600;margin-right:8px;color:var(--muted)}.qadd-all .qh{margin:3px 6px 3px 0}
 .q-empty{display:flex;flex-direction:column;align-items:center;gap:14px;padding:64px 16px;text-align:center}
 .q-empty-i{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--muted)}
 .q-empty b{font-size:20px;color:var(--ink)}
@@ -2888,11 +2890,26 @@ function dlOpen(input){
   sugg.style.width = Math.max(input.offsetWidth, 220) + 'px';
   placeSugg(input);
 }
+// 6 Nov (Purvi: "how can we let them pick the unit"): every unit on one short list, the one in the box marked; typing anything else still works
+var unitPicked = 0;   // a pick redraws the line and puts the cursor back in the box: don't open the list again for that
+function unitOpen(input, typed){
+  if (!typed && Date.now() - unitPicked < 600) return;
+  const cur = input.value.trim().toUpperCase();
+  // typing narrows the list; a unit that isn't on it closes the list, so Enter keeps exactly what was typed
+  const L = typed ? QUNITS.filter(x => cur && x.startsWith(cur)) : QUNITS.includes(cur) || !cur ? QUNITS : [cur, ...QUNITS];
+  if (!L.length) { closeSugg(); return; }
+  suggFor = {input, dl: true, pick: x => { unitPicked = Date.now(); input.value = x; input.dispatchEvent(new Event('change', {bubbles: true})); }};   // change only: an input event would open the list again
+  suggItems = L; suggOn = typed ? 0 : Math.max(0, L.indexOf(cur));
+  sugg.innerHTML = '<div class="q">Pick a unit, or type your own</div>' + L.map((x, i) => `<div class="it${i === suggOn ? ' on' : ''}${x === cur ? ' cur' : ''}" data-i="${i}"><span><b>${esc(x)}</b></span><span></span></div>`).join('');
+  sugg.style.width = '180px'; placeSugg(input);
+}
+document.addEventListener('input', e => { if (e.target.dataset && e.target.dataset.qm === 'unit') unitOpen(e.target, true); });
 function suggOpener(el){
   if (!el || !el.dataset) return null;
   if (ourSelect(el)) return () => selOpen(el);
   if (el.tagName === 'INPUT' && (el.getAttribute('list') || el.dataset.dl)) return () => dlOpen(el);
-  if (el.dataset.adr) return () => adrOpen(el);   // 21 Oct: address boxes on the new enquiry (crm.js)
+  if (el.dataset.adr) return () => adrOpen(el);
+  if (el.dataset.qm === 'unit') return () => unitOpen(el);   // 6 Nov: the Unit box on View quotation   // 21 Oct: address boxes on the new enquiry (crm.js)
   if (el.dataset.f === 'fabric') return () => openSugg(el, rowById(el.closest('tr').dataset.id));
   if (wpDesignInput(el)) return () => wpOpenSugg(el);
   if (uphFabInput(el)) return () => uphOpenSugg(el);
@@ -2933,6 +2950,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape' || e.key === 'Tab') closeSugg();
 });
 document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.f === 'fabric') { const r = rowById(e.target.closest('tr').dataset.id); openSugg(e.target, r); }
+  else if (e.target.dataset && e.target.dataset.qm === 'unit') unitOpen(e.target);   // 6 Nov
   else if (wpDesignInput(e.target)) wpOpenSugg(e.target);
   else if (uphFabInput(e.target)) uphOpenSugg(e.target);
   else if (bRomanFabInput(e.target)) bOpenRomanFab(e.target, state.blinds[state.bsel]);
@@ -4772,7 +4790,11 @@ function qmUndo(k){
   }
   save();
 }
-function qmAdd(sec){ const q = state.quote || (state.quote = {}), id = Date.now().toString(36); (q.add || (q.add = [])).push({id, sec, area: '', product: '', what: '', qty: 1, unit: 'PCS'}); save(); return 'add|' + id; }
+// 6 Nov: units to pick from on View quotation (our own list; anything else can still be typed) and the one a new line starts with
+const QUNITS = ['MTR', 'SQ FT', 'RFT', 'PCS', 'NOS', 'SET', 'PAIR', 'ROLL', 'BOX', 'KG'];
+const QUNIT0 = {fabric: 'MTR', blinds: 'SQ FT', flooring: 'SQ FT', wallpaper: 'ROLL'};
+const QADD_SECS = ['fabric', 'stitch', 'blinds', 'wallpaper', 'flooring', 'other'];
+function qmAdd(sec){ const q = state.quote || (state.quote = {}), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5); (q.add || (q.add = [])).push({id, sec, area: '', product: '', what: '', qty: 1, unit: QUNIT0[sec] || 'PCS'}); save(); return 'add|' + id; }
 function qmRemove(k){ const q = state.quote || {}; q.add = qAdds().filter(a => 'add|' + a.id !== k); if (!q.add.length) delete q.add; save(); }
 // after a box is left, draw again and put the cursor back in the box that was clicked or tabbed to
 function reTyped(render){ setTimeout(() => { const a = document.activeElement, d = (a && a.dataset) || {}, esc_ = v => CSS.escape(v || '');
@@ -4990,15 +5012,17 @@ function paperHTML(q, house, t, showC, ro, ed){
     body += (P ? P.map(p => `<tr class="secrow part"${on ? '' : ' data-off'}><td colspan="${ncol}">${no}${p.ab} · ${p.n}</td>${tailE}</tr>` + p.L.map(row).join('') + sumRow('subrow', `${p.n} total`, inr(subOf(p.L)), undefined, !on)).join('')
       : F.map(row).join('')) + (ed && !secOff ? `<tr class="qadd"><td colspan="${ncol}"><button class="qh show" data-qadd="${k}">+ Add a line in ${esc(name)}</button></td>${tailE}</tr>` : '') + sumRow('subrow', `${name} total`, inr(t.sub[k] || 0), undefined, !on);
   });
-  if (ed && !(S.other || []).length) body += `<tr class="qadd"><td colspan="${ncol}"><button class="qh show" data-qadd="other">+ Add a line for something else</button></td>${tailE}</tr>`;
+  // 6 Nov (Purvi: "create qtn manually … type in whatever they want … add new rows"): every section without lines can get one here.
+  // The section decides the heading and the GST (curtain fabric 5 %, the rest 18 %), so the first choice is what the line is.
+  if (ed) { const none = QADD_SECS.filter(k => !(S[k] || []).length); if (none.length) body += `<tr class="qadd qadd-all"><td colspan="${ncol}"><span class="qadd-l">${body ? 'Add a line in' : 'What do you want to add?'}</span>${none.map(k => `<button class="qh show" data-qadd="${k}">+ ${esc(k === 'other' ? 'Something else' : SECTIONS.find(x => x[0] === k)[1])}</button>`).join('')}</td>${tailE}</tr>`; }
   const empty = !body, allHid = empty && !ed && t.hid;
   const hdr = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
   return allHid ? `<div class="q-empty"><b>Everything is hidden from this quotation</b>${ro ? '' : '<button class="btn solid" data-qedit="1">Edit quotation</button>'}</div>`
     : empty ? `<div class="q-empty"><span class="q-empty-i">${MS_SVG.replace(/1[57]px/g, '30px').replace(/"17"/g, '"30"')}</span><b>Nothing measured yet</b>
-    ${ro ? '' : '<button class="btn solid" data-qempty>Open measurement sheet</button>'}</div>` : `
+    ${ro ? '' : `<div class="q-empty-acts"><button class="btn solid" data-qempty>Open measurement sheet</button>${waOnApp() ? '' : '<button class="btn" data-qmanual>Create quotation manually</button>'}</div>${waOnApp() ? '' : '<p class="hint q-empty-h">Or type the quotation yourself: add lines, quantities and rates.</p>'}`}</div>` : `
     <table class="paper-top"><tr><th colspan="2" class="pi">PERFORMA INVOICE</th></tr>
       <tr><td colspan="2" class="firm"><b>${FIRM.name}</b><br>${FIRM.addr}<br>Phone : ${FIRM.phone}<br>Email : ${FIRM.email} , GSTIN : ${FIRM.gstin}</td></tr>
-      ${hdr(`<b>Billing Name :</b> ${esc(house || '')}`, `<b>Performa invoice :</b> ${esc(q.no || '')}`)}
+      ${hdr(`<b>Billing Name :</b> ${esc(house || '')}`, `<b>Performa invoice :</b> ${esc(q.no || '')}`)}${qProj(q) ? hdr(`<b>Project :</b> ${esc(qProj(q))}`, '') : ''}
       ${hdr(`<b>Contact Person :</b> ${esc(q.contact || '')}`, `<b>Date :</b> ${q.date ? q.date.split('-').reverse().join('-') : ''}`)}
       ${hdr(`<b>Contact Number :</b> ${esc(q.phone || '')}`, `<b>Executive :</b> ${esc(q.exec || '')}`)}
       ${hdr(`<b>Delivery Address :</b> ${esc(q.addr || '')}`, `<b>Delivery Date (After Booking) :</b> ${esc(ddateTxt(q.ddate))}`)}
@@ -5104,7 +5128,8 @@ document.addEventListener('change', e => { const x = e.target.closest('input[dat
 document.addEventListener('change', e => { const x = e.target.closest('input[data-qm]'); if (!x) return; qmSet(x.dataset.k, x.dataset.qm, x.value); reTyped(renderPaper); });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches && e.target.matches('input.qin, input.ms-in')) e.target.blur(); });
 document.addEventListener('click', e => {
-  const a = e.target.closest('[data-qadd]'); if (a) { const k = qmAdd(a.dataset.qadd); renderPaper(); const n = document.querySelector(`[data-qm="product"][data-k="${CSS.escape(k)}"]`); if (n) n.focus(); return; }
+  if (e.target.closest('[data-qmanual]')) { qEdit = true; renderPaper(); const f = document.querySelector('.qadd-all'); if (f) f.scrollIntoView({block: 'center'}); return; }   // 6 Nov: Create quotation manually
+  const a = e.target.closest('[data-qadd]'); if (a) { const k = qmAdd(a.dataset.qadd); renderPaper(); const n = document.querySelector(`[data-qm="area"][data-k="${CSS.escape(k)}"]`) || document.querySelector(`[data-qm="product"][data-k="${CSS.escape(k)}"]`); if (n) n.focus(); return; }
   const u = e.target.closest('[data-qmu]'); if (u) { qmUndo(u.dataset.qmu); renderPaper(); return; }
   const r = e.target.closest('[data-qmr]'); if (r) { qmRemove(r.dataset.qmr); renderPaper(); }
 });
@@ -5204,7 +5229,7 @@ async function quoteXLSX(){
   const pair = (a, b) => { r++; mrg(1, mid); mrg(mid + 1, NC);
     [[1, a], [mid + 1, b]].forEach(([col, [k, v]]) => { const c = ws.getCell(r, col); c.value = {richText: [{text: k ? k + ' : ' : '', font: {name: 'Arial', size: 9, bold: true}}, {text: v || '', font: {name: 'Arial', size: 9}}]}; c.alignment = {vertical: 'middle', wrapText: true}; });
     for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = 16; };
-  pair(['Billing Name', house], ['Performa invoice', q.no]);
+  pair(['Billing Name', house], ['Performa invoice', q.no]); if (qProj(q)) pair(['Project', qProj(q)], ['', '']);
   pair(['Contact Person', q.contact], ['Date', q.date ? q.date.split('-').reverse().join('-') : '']);
   pair(['Contact Number', q.phone], ['Executive', q.exec]);
   pair(['Delivery Address', q.addr], ['Delivery Date (After Booking)', ddateTxt(q.ddate)]);
@@ -5290,7 +5315,7 @@ const sharePdfOk = () => { try { return waOnApp() && !!navigator.canShare && nav
 function waMessage(v, t){
   const q = state.quote || {}, who = q.contact || state.house || '', amt = (t.cols || QALL).includes('amt');
   const what = t.hid ? SECTIONS.filter(([k]) => (t.S[k] || []).length).map(([, n]) => n.toLowerCase()) : [];   // a part quotation says what it is for
-  return [`Namaste${who ? ' ' + who : ''},`, `Here is your quotation${what.length ? ' for ' + listTxt(what) : ''} from Charpai.`, `Performa Invoice ${q.no || ''} · v${v}`, ...(amt ? [`Final: ₹${inr(t.final)} (GST included)`] : [])].join('\n');
+  return [`Namaste${who ? ' ' + who : ''},`, `Here is your quotation${what.length ? ' for ' + listTxt(what) : ''}${qProj(q) ? ' (' + qProj(q) + ')' : ''} from Charpai.`, `Performa Invoice ${q.no || ''} · v${v}`, ...(amt ? [`Final: ₹${inr(t.final)} (GST included)`] : [])].join('\n');
 }
 // on the timeline; quiet if notes are not switched on yet. What a part quotation left out is under its version (yellow note), not repeated here.
 function waSent(c, v){ if (shared && db && c) addNote(c, `Quotation v${v} sent on WhatsApp`, 'log').catch(() => {}); }
@@ -5356,11 +5381,16 @@ function quoteSig(t){
 // With the shared client list, it alone counts versions (a client's first saved PDF is v1); without it, this device's memory does.
 function lastSaved(){ if (shared) { const c = state.clientId && CL.byId.get(state.clientId); return c ? {n: c.latest, sig: c.sig} : {n: 0}; } return (state.quote || {}).pdf || {n: 0}; }
 function nextVersion(t){ const P = lastSaved(); return !P.n ? 1 : P.sig === quoteSig(t) ? P.n : P.n + 1; }
-function quoteFileName(v, house = state.house, no = state.quote.no, d = new Date()){
+// 6 Nov (Purvi): a client with 2+ projects gets "Project : Office" on its own line under Billing Name, and the project in the file name.
+// Live quotation: the project of the open client now; a saved version: what was saved with it (q.proj), nothing for versions from before.
+function qProj(q){ if (!q) return ''; if (q.proj != null) return String(q.proj); if (q !== state.quote || !state.clientId || typeof projOf !== 'function') return '';
+  return projOf(CL.byId.get(state.clientId)) || ''; }
+function quoteFileName(v, house = state.house, no = state.quote.no, d = new Date(), proj = qProj(state.quote)){
   const clean = x => String(x || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/^-+|-+$/g, '').replace(/\s+/g, ' ').trim();
   const name = String(house || '').replace(/[\\/:*?"<>|,.;]+/g, ' ').trim().split(/\s+/).filter(Boolean).join('_');   // "Mansarovar Sharma" → Mansarovar_Sharma
   const day = d.getDate() + d.toLocaleDateString('en-GB', {month: 'short'}).toLowerCase().slice(0, 3) + String(d.getFullYear()).slice(2);   // 1oct26
-  return ['v' + v, name, clean(no), day].filter(Boolean).join('_') + '.pdf';
+  const pj = String(proj || '').replace(/[\\/:*?"<>|,.;]+/g, ' ').trim().split(/\s+/).filter(Boolean).join('_');   // v2_Rakesh_Mehta_Office_…
+  return ['v' + v, name, pj, clean(no), day].filter(Boolean).join('_') + '.pdf';
 }
 function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()}){   // v = version, printed beside the invoice no.; d = a saved version
   const {jsPDF} = window.jspdf, doc = new jsPDF({unit: 'pt', format: 'a4'}), q = d.q, t = d.t, house = d.house;
@@ -5371,7 +5401,7 @@ function quotePDF(v, d = {q: state.quote, house: state.house, t: quoteTotals()})
     [{content: 'PERFORMA INVOICE', colSpan: 2, styles: {halign: 'center', fontStyle: 'bold', fontSize: 12, fillColor: blue}}],
     [{content: FIRM.name, colSpan: 2, styles: {halign: 'center', fontStyle: 'bold', fontSize: 14, lineWidth: {top: .6, left: .6, right: .6, bottom: 0}}}],
     [{content: `${FIRM.addr}\nPhone : ${FIRM.phone}\nEmail : ${FIRM.email} , GSTIN : ${FIRM.gstin}`, colSpan: 2, styles: {halign: 'center', fontSize: 9}}],
-    two(`Billing Name : ${house || ''}`, `Performa invoice : ${q.no || ''}${v ? `   ·   Version : v${v}` : ''}`),
+    two(`Billing Name : ${house || ''}`, `Performa invoice : ${q.no || ''}${v ? `   ·   Version : v${v}` : ''}`), ...(qProj(q) ? [two(`Project : ${qProj(q)}`, '')] : []),
     two(`Contact Person : ${q.contact || ''}`, `Date : ${q.date ? q.date.split('-').reverse().join('-') : ''}`),
     two(`Contact Number : ${q.phone || ''}`, `Executive : ${q.exec || ''}`),
     two(`Delivery Address : ${q.addr || ''}`, `Delivery Date (AFTER BOOKING) : ${ddateTxt(q.ddate)}`),
@@ -6017,6 +6047,7 @@ async function syncOpenDraft(){
 async function openClient(cid, view){
   cpId = cid;
   if (cid !== state.clientId) {
+    qEdit = false;   // 6 Nov: another client's quotation opens normally (edit mode used to carry over from the last client)
     await flushDraft();
     let d = null; try { d = await Store.getDraft(cid); } catch (e) { toast('Could not open this client. Check the internet.'); return; }
     if (d) applyDraft(d, false);
@@ -6063,7 +6094,7 @@ async function recordVersion(v, sig, t){
   if (!state.clientId) { state.clientId = newClientId(); keepLocal(); watchDraft(); }
   const cid = state.clientId, c = CL.byId.get(cid);
   if (c && c.latest === v && c.sig === sig) return true;   // the same version downloaded again
-  const q = clone(state.quote); delete q.pdf;
+  const q = clone(state.quote); delete q.pdf; { const pj = qProj(state.quote); if (pj) q.proj = pj; }   // 6 Nov: the project, frozen with the version
   const strip = l => { const x = Object.assign({}, l); delete x.cost; delete x.camt; return x; };   // our costs never go into the shared list
   const S = Object.fromEntries(Object.entries(t.S).map(([k, L]) => [k, L.map(strip)]));
   const at = new Date().toISOString(), name = state.house || '', total = t.final;
@@ -6250,7 +6281,7 @@ async function downloadVersion(x, btn){
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
-    await saveFile(quoteFileName(x.n, x.snap.house, x.snap.q.no, new Date(x.at)), quotePDF(x.n, {q: x.snap.q, house: x.snap.house, t: x.snap.t}));
+    await saveFile(quoteFileName(x.n, x.snap.house, x.snap.q.no, new Date(x.at), x.snap.q.proj || ''), quotePDF(x.n, {q: x.snap.q, house: x.snap.house, t: x.snap.t}));
   } catch (err) { toast('Could not make the PDF. Check the internet.'); }
   if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || 'PDF'; }
 }
@@ -9469,7 +9500,7 @@ function msSig(D){
 }
 function msLast(){ if (shared) { const c = state.clientId && CL.byId.get(state.clientId); return c ? {n: c.mlatest || 0, sig: c.msig} : {n: 0}; } return (state.quote || {}).mpdf || {n: 0}; }
 function msNext(D){ const P = msLast(); return !P.n ? 1 : P.sig === msSig(D) ? P.n : P.n + 1; }
-const msFileName = (n, house = state.house, d = new Date()) => quoteFileName(n, house, '', d).replace(/^v(\d+)_/, 'M$1_Measurement_');
+const msFileName = (n, house = state.house, d = new Date(), proj) => quoteFileName(n, house, '', d, proj === undefined ? qProj(state.quote) : proj).replace(/^v(\d+)_/, 'M$1_Measurement_');
 
 // ---- the team's own layout (Purvi, 20 Oct 2026: "my team is used to seeing the measurement sheet in this format … everything is
 // clubbed roomwise not product wise, first roomwise then in room productwise"; her answers: Sr. No separate for main and sheer;
@@ -9689,7 +9720,7 @@ async function msRecord(n, sig, D){
   await flushDraft();
   const cid = state.clientId, c = CL.byId.get(cid); if (!cid) return;
   if (c && c.mlatest === n && c.msig === sig) return;
-  const q = clone(state.quote || {}); delete q.pdf; delete q.mpdf;
+  const q = clone(state.quote || {}); delete q.pdf; delete q.mpdf; { const pj = qProj(state.quote); if (pj) q.proj = pj; }   // 6 Nov: the project, frozen with the sheet
   const at = new Date().toISOString(), name = state.house || '';
   try {
     if (await Store.sheetExists(cid, n)) { toast(`Someone saved M${n} a moment ago. Download again to save yours as M${n + 1}.`); delete CL.msv[cid]; return; }
@@ -9738,7 +9769,7 @@ function msShowVersion(c, x){
 }
 async function msDownloadVersion(x, b){
   if (b) { b.disabled = true; b.textContent = 'Making…'; }
-  try { await msLibs(); await saveFile(msFileName(x.n, x.snap.house, new Date(x.at)), msPDF(x.n, {q: x.snap.q, house: x.snap.house, D: msUnpack(x.snap.D)})); }
+  try { await msLibs(); await saveFile(msFileName(x.n, x.snap.house, new Date(x.at), (x.snap.q || {}).proj || ''), msPDF(x.n, {q: x.snap.q, house: x.snap.house, D: msUnpack(x.snap.D)})); }
   catch (err) { toast('Could not make the PDF. Check the internet.'); }
   if (b) { b.disabled = false; b.textContent = 'PDF'; }
 }
@@ -10368,6 +10399,8 @@ const HI = {
   "Photos and PDFs for this client, saved in Charpai's Google Drive.": 'इस क्लाइंट की फ़ोटो और PDF, Charpai की Google Drive में।',
   'Noting sheet': 'नोटिंग शीट', 'Site': 'साइट', 'Window / wall': 'खिड़की / दीवार', 'Fabric chosen': 'चुना हुआ कपड़ा', 'Reference': 'रेफ़रेंस', 'Measurement paper': 'नाप का कागज़', 'Payment': 'पेमेंट', 'Other': 'और कुछ',
   'Uploading…': 'अपलोड हो रहा है…', 'Camera': 'कैमरा', 'Your password': 'आपका पासवर्ड', 'Who is it?': 'कौन है?', 'Person': 'व्यक्ति', 'Company': 'कंपनी', 'Company name': 'कंपनी का नाम', 'Contact person': 'संपर्क व्यक्ति', 'Contact number': 'संपर्क नंबर', 'Set password': 'पासवर्ड बनाएँ', 'Change password': 'पासवर्ड बदलें', 'New password': 'नया पासवर्ड', 'Type it again': 'फिर से लिखें', 'Gallery': 'गैलरी', 'Files': 'फ़ाइलें', 'Saving…': 'सेव हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
+  // 6 Nov: manual quotation + units
+  'Create quotation manually': 'ख़ुद कोटेशन बनाएँ', 'Or type the quotation yourself: add lines, quantities and rates.': 'या कोटेशन ख़ुद लिखें: लाइन, मात्रा और रेट डालें।', 'What do you want to add?': 'क्या जोड़ना है?', 'Add a line in': 'लाइन जोड़ें', '+ Something else': '+ कुछ और', 'Pick a unit, or type your own': 'यूनिट चुनें, या ख़ुद लिखें',
   // 6 Nov: projects
   '+ New project': '+ नया प्रोजेक्ट', 'New project': 'नया प्रोजेक्ट', 'Projects': 'प्रोजेक्ट', 'All projects': 'सारे प्रोजेक्ट', 'Project name': 'प्रोजेक्ट का नाम', 'Nothing quoted yet': 'अभी कोटेशन नहीं बना', 'Its own documents, sheet and quotation': 'इसके अपने डॉक्यूमेंट, शीट और कोटेशन', 'What is this project?': 'यह कौन सा प्रोजेक्ट है?', 'Create project': 'प्रोजेक्ट बनाएँ', 'Creating…': 'बन रहा है…', 'Site address': 'साइट का पता', 'Same as before': 'पहले वाला', 'Different': 'अलग', 'It gets its own documents, measurement sheet and quotation. Name and phone stay the same.': 'इसके अपने डॉक्यूमेंट, नाप की शीट और कोटेशन होंगे। नाम और फ़ोन वही रहेंगे।', 'Project added. Start with Documents or the Measurement sheet form.': 'प्रोजेक्ट बन गया। डॉक्यूमेंट या नाप की शीट से शुरू करें।', 'Their other projects stay.': 'उनके बाक़ी प्रोजेक्ट रहेंगे।',
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
@@ -11018,4 +11051,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261106-181004 -->
+<!-- build 20261106-183409 -->
