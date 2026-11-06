@@ -1564,6 +1564,40 @@ html.dk-noscroll,html.dk-noscroll body{overflow:hidden}
 #cp-body{--soft:color-mix(in srgb,var(--ink) 6%,transparent);--soft2:color-mix(in srgb,var(--ink) 10%,transparent);--r:16px}
 .n-page{display:grid;gap:16px;font-family:var(--body);grid-template-columns:minmax(0,1fr)}
 .n-card{background:var(--paper);border:1px solid var(--line2);border-radius:var(--r);padding:28px}
+/* projects (6 Nov): one client, several projects. Calm cards, one dark button (+ New project) on the projects page */
+.pj-page{display:grid;gap:20px;font-family:var(--body);width:100%;box-sizing:border-box}
+.pj-head{display:grid;gap:10px}
+.pj-ph{color:var(--muted);font-size:15px}
+.pj-head .n-round{justify-content:flex-start!important;gap:22px!important}
+.pj-h{margin:0 0 12px;font:600 18px var(--body);display:flex;gap:8px;align-items:baseline}
+.pj-h span{color:var(--faint);font-weight:500;font-size:15px}
+.pj-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.pj-card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;min-height:168px;padding:20px 22px;background:var(--paper);border:1px solid var(--line2);border-radius:var(--r);cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+.pj-card:hover{border-color:var(--faint);box-shadow:0 6px 20px rgba(0,0,0,.06);transform:translateY(-1px)}
+.pj-card:focus-visible{outline:2px solid var(--dim);outline-offset:2px}
+.pj-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.pj-name{font:600 20px/1.2 var(--body);overflow-wrap:anywhere}
+.pj-amt{font:700 24px var(--num);letter-spacing:.01em;margin-top:2px}
+.pj-amt.none{font:500 15px var(--body);color:var(--faint)}
+.pj-sub{color:var(--muted);font-size:14px}
+.pj-foot{margin-top:auto;color:var(--muted);font-size:13.5px;display:flex;align-items:center;gap:6px}
+.pj-foot>span{display:inline-flex;align-items:center;gap:6px}.pj-foot svg{flex:none;display:inline-block}.pj-foot .late{color:var(--warn)}
+.pj-add{align-items:center;justify-content:center;text-align:center;border-style:dashed;background:transparent;color:var(--muted)}
+.pj-add b{color:var(--ink);font:600 16px var(--body)}
+.pj-plus{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--soft);font:400 26px/1 var(--body);color:var(--ink)}
+.pj-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 -2px}
+.pj-tab{display:inline-flex;align-items:center;gap:6px;border:0;background:var(--soft);color:var(--muted);border-radius:20px;padding:6px 13px;font:500 14px var(--body);cursor:pointer}
+.pj-tab:hover{background:var(--soft2);color:var(--ink)}
+.pj-tab[aria-current="page"]{background:var(--tape-soft);color:var(--tape-ink);font-weight:600}
+.pj-tab svg{width:15px;height:15px}
+.kc-proj{display:flex;align-items:center;gap:5px;margin-top:2px;color:var(--muted);font:600 13.5px var(--body)}
+.kc-proj svg{width:14px;height:14px}
+.cproj{font:500 13px var(--body);color:var(--muted);background:color-mix(in srgb,var(--ink) 6%,transparent);border-radius:6px;padding:1px 8px}
+.pj-dlg .pj-picks{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 8px}
+.pj-dlg input[type=text]{width:100%;box-sizing:border-box}
+.pj-dlg .pj-addr{margin-top:4px}
+.pj-dlg .pj-addrtxt{margin:6px 0 0}
+@media (max-width:760px){.pj-grid{grid-template-columns:1fr}.pj-card{min-height:0;padding:16px 18px}.pj-amt{font-size:21px}.n-topr .n-edit[data-pjnew]{padding:7px 10px}}
 .n-i{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
 /* buttons: soft by default; one dark button per screen */
 .n-btn{border:0;background:var(--soft);color:var(--ink);border-radius:10px;padding:9px 16px;font:500 15px var(--body);cursor:pointer;white-space:nowrap;transition:background .15s}
@@ -5792,6 +5826,7 @@ const Store = {
 };
 const CL = {state: 'none', list: [], all: [], practice: [], trial: [], byId: new Map(), vers: {}, msv: {}};   // msv: measurement sheet versions per client
 let cpId = null, UID = null;
+var cpHub = null, hubNext = false;   // 6 Nov: cpHub = the client whose projects page is open (cpId); hubNext = the next go('client') opens that page
 const newClientId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const DEV = (() => { try { let d = localStorage.getItem('charpai-device'); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem('charpai-device', d); } return d; } catch(_) { return 'x' + Math.random().toString(36).slice(2, 8); } })();
 const whenTxt = iso => { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}) + ', ' + d.toLocaleTimeString('en-IN', {hour: 'numeric', minute: '2-digit'}); };
@@ -5884,6 +5919,9 @@ async function saveDraft(){
     draftLast = body; draftSeen = at; state.savedAt = at; keepLocal();
     await Store.mergeClient(cid, Object.assign({name: sheet.house, no: q.no || '', exec: q.exec || '', phone: q.phone || '', addr: q.addr || '', edited: at, dsig, total, cats: sheetCats(sheet)}, q.city ? {city: q.city} : {}), true);
     draftErr = '';
+    // 6 Nov: name / phone / contact person changed on this project's sheet → the client's other projects get it too
+    if (c && typeof famSync === 'function') { const ch = {}; if ((sheet.house || '') !== (c.name || '')) ch.name = sheet.house || ''; if ((q.phone || '') !== (c.phone || '')) ch.phone = q.phone || ''; if (q.contact != null && (q.contact || '') !== (c.contact || '')) ch.contact = q.contact || '';
+      if (Object.keys(ch).length) famSync(cid, ch).catch(() => {}); }
   } catch (e) { draftErr = e && e.code === 'invalid_argument' ? 'perm' : 'net'; }
   draftBusy = false; renderCbar(); renderNote();
 }
@@ -6077,7 +6115,7 @@ const CFILTERS = [
   {k: 'why', chip: v => 'Lost: ' + v, match: (c, v) => statusOf(c) === 'lost' && ((c.outcome || {}).reason || 'No reason given') === v},
 ];
 const cfActive = () => CFILTERS.filter(f => has(CF[f.k]) && CF[f.k] !== '');
-const cfSearch = (c, ql) => !ql || [c.name, c.contact, c.no, c.exec, c.phone, c.addr, c.city].join(' ').toLowerCase().includes(ql);   // + contact person (4 Nov)
+const cfSearch = (c, ql) => !ql || [c.name, c.contact, c.pname, c.no, c.exec, c.phone, c.addr, c.city].join(' ').toLowerCase().includes(ql);   // + contact person (4 Nov)
 function cfQuery(){ const p = new URLSearchParams(); for (const k in CF0) if (CF[k] !== CF0[k] && k !== 'q') p.set(k, CF[k]); const s = p.toString(); return s ? '?' + s : ''; }
 function cfFromQuery(qs){ CF = Object.assign({}, CF0); try { new URLSearchParams(qs || '').forEach((v, k) => { if (k in CF0 && k !== 'q') CF[k] = v; }); } catch(_){} }
 function cfSet(patch){ Object.assign(CF, patch); try { history.replaceState(null, '', '#clients' + cfQuery()); } catch(_){} renderClients(); }
@@ -6128,7 +6166,7 @@ function renderClients(){
   const chips = act.length ? `<div class="fchips">${act.map(f => `<button class="fchip" data-clear="${f.k}" title="Remove this filter">${esc(f.chip(CF[f.k]))}<span aria-hidden="true">×</span></button>`).join('')}<button class="linkbtn" data-clear="*">Clear all</button></div>` : '';
   const row = c => { const city = cityOf(c), addr = c.addr && city && String(c.addr).toLowerCase().includes(city.toLowerCase()) ? c.addr : [c.addr, city].filter(Boolean).join(', ');
     return (canDelete() ? '<div class="crow-wrap">' : '') + `<button class="crow" data-cid="${esc(c.id)}">
-      <span class="cmain"><span class="cname">${esc(c.name || 'No name')}</span>
+      <span class="cmain"><span class="cname">${esc(c.name || 'No name')}${projOf(c) ? `<span class="cproj">${esc(projOf(c))}</span>` : ''}</span>
         <span class="csub">${[c.phone, addr, admin ? (c.ownerEmail ? personName(c.ownerEmail) : 'Not assigned') : c.exec].filter(Boolean).map(esc).join(' · ') || 'No details yet'}</span></span>
       <span class="cmeta">${pillHTML(c)}<span class="camt">${amountOf(c) ? rs(amountOf(c)) : ''}</span><span class="cago">${esc(agoTxt(c.edited || c.at || c.created))}</span></span></button>` + (canDelete() ? `<button class="cdel" data-del="${esc(c.id)}" title="Delete ${esc(c.name || 'this client')}" aria-label="Delete ${esc(c.name || 'this client')}">${BIN_SVG}</button></div>` : ''); };
   if (board) return renderBoard(el, base, admin, `${top}
@@ -6180,12 +6218,12 @@ const canDelete = () => !!(PF && PF.owner);
 const BIN_SVG = '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5.5M11.5 8.5v5.5"/></svg>';
 function askDelete(c){
   if (!canDelete()) return;
-  const n = c.latest || 0;
-  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Delete ${esc(c.name || 'this client')}?</h2>
-    <p class="sub">This removes the client, their measurements${n ? ` and ${n === 1 ? 'the quotation' : `all ${n} quotations`} sent (v1${n > 1 ? '–v' + n : ''})` : ''}. <b>It can't be undone.</b>${n ? ' Download any PDF you still need first.' : ''}</p>
+  const n = c.latest || 0, pj = projOf(c), rest = famOf(c.id).filter(x => x.id !== c.id);   // 6 Nov: with projects, only this project goes; the others stay
+  openDlg(`<div class="dlg-in"><h2 id="dlg-title">Delete ${pj ? `the ${esc(pj)} project of ${esc(c.name || 'this client')}` : esc(c.name || 'this client')}?</h2>
+    <p class="sub">This removes ${pj ? 'this project' : 'the client'}, ${pj ? 'its' : 'their'} measurements${n ? ` and ${n === 1 ? 'the quotation' : `all ${n} quotations`} sent (v1${n > 1 ? '–v' + n : ''})` : ''}. <b>It can't be undone.</b>${n ? ' Download any PDF you still need first.' : ''}${pj ? ' Their other projects stay.' : ''}</p>
     <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid danger-solid" data-dlg="ok">Delete for good</button></div></div>`, false, async () => {
     try { await deleteClient(c.id); } catch (e) { toast('Not deleted: ' + (e && e.message || 'check the internet')); return false; }
-    toast(`${c.name || 'Client'} deleted`); if (current === 'client') go('clients'); else renderClients();
+    toast(`${pj ? pj + ' project' : c.name || 'Client'} deleted`); if (current === 'client') { if (rest.length) { hubNext = rest.length > 1; cpId = rest[0].id; go('client'); } else go('clients'); } else renderClients();
   });
 }
 async function deleteClient(cid){
@@ -6384,7 +6422,12 @@ function renderCbar(){
     : draftErr ? '<span class="cbar-save err">Not saved yet (no internet?). Kept on this device.</span>'
     : draftBusy || draftTimer ? '<span class="cbar-save">Saving…</span>' : '<span class="cbar-save">Saved ✓</span>';
   const nm = esc((here ? state.house : '') || c.name || 'No name'), page = current === 'quote' ? 'View quotation' : current === 'client' ? '' : current === 'msheet' ? 'View measurement sheet' : current === 'docs' ? 'Documents' : 'Measurement sheet form';   // names as on the buttons (20 Oct)
-  bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span>${page ? `<button class="crumb" data-ct="client">${nm}</button><span class="sep">/</span><span class="cbar-name">${page}</span>` : `<span class="cbar-name">${nm}</span>`}${c.id && current !== 'client' ? pillHTML(c) : ''}${saveTxt}</div>
+  // 6 Nov: a client with projects: My Clients / Mehta (→ projects page) / Office / page
+  const pj = c.id && typeof projOf === 'function' ? projOf(c) : '', hubOn = current === 'client' && cpHub && cpHub === cid && pj;
+  if (hubOn) { bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span><span class="cbar-name">${nm}</span><span class="pill">${famOf(cid).length} projects</span></div>`; return; }
+  const crumbs = pj ? `<button class="crumb" data-ct="hub">${nm}</button><span class="sep">/</span>${page ? `<button class="crumb" data-ct="client">${esc(pj)}</button><span class="sep">/</span><span class="cbar-name">${page}</span>` : `<span class="cbar-name">${esc(pj)}</span>`}`
+    : page ? `<button class="crumb" data-ct="client">${nm}</button><span class="sep">/</span><span class="cbar-name">${page}</span>` : `<span class="cbar-name">${nm}</span>`;
+  bar.innerHTML = `<div class="cbar-top">${back}<span class="sep">/</span>${crumbs}${c.id && current !== 'client' ? pillHTML(c) : ''}${saveTxt}</div>
     ${ctabsHTML(true)}`;
 }
 // Overview | (inside the sheet only) the products, each with how many it has | Measurement sheet · Quotation on the right.
@@ -6451,6 +6494,7 @@ $('#cbar').addEventListener('click', async e => {
   if (!shared) { go(v); return; }
   if (current === 'client' && cpId === '__new') { if (v === 'client') return; await cpFlush(); await ensureClient(); }   // a tab on a new enquiry: make the client first
   const cid = current === 'client' ? cpId : state.clientId;
+  if (v === 'hub') { await flushDraft(); openHub(cid); return; }   // 6 Nov: the client's projects page
   if (v === 'client') { cpId = cid; go('client'); return; }
   if (cid === state.clientId) go(v); else await openClient(cid, v);
 });
@@ -6580,7 +6624,7 @@ function renderDash(){
     </tbody></table></div><p class="hint" style="margin:8px 0 0">Tap an executive to see their clients. Quoted counts clients whose latest quotation went out in this period.</p></div>`}
     <div class="dash-2">
       <div class="card"><h3>Why we lost</h3>${why.size ? [...why].sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="bar-r"><span>${esc(k)}</span><span class="hbar"><i style="width:${n / maxWhy * 100}%"></i></span><b>${n}</b></div>`).join('') : '<p class="hint" style="margin:0">Nothing lost in this period.</p>'}</div>
-      <div class="card"><h3>Follow up <small class="hint">quoted, no change for 7+ days</small></h3>${follow.length ? follow.slice(0, 10).map(c => `<button class="crow fu" data-cid="${esc(c.id)}"><span class="cmain"><span class="cname">${esc(c.name || 'No name')}</span><span class="csub">${[personName(c.ownerEmail) || c.exec || 'Not assigned', 'v' + c.latest].map(esc).join(' · ')}</span></span><span class="cmeta"><span class="camt">${rs(c.total)}</span><span class="cago">${esc(agoTxt(c.edited || c.at))}</span></span></button>`).join('') : '<p class="hint" style="margin:0">Nobody waiting. Good.</p>'}</div>
+      <div class="card"><h3>Follow up <small class="hint">quoted, no change for 7+ days</small></h3>${follow.length ? follow.slice(0, 10).map(c => `<button class="crow fu" data-cid="${esc(c.id)}"><span class="cmain"><span class="cname">${esc(c.name || 'No name')}${projOf(c) ? `<span class="cproj">${esc(projOf(c))}</span>` : ''}</span><span class="csub">${[personName(c.ownerEmail) || c.exec || 'Not assigned', 'v' + c.latest].map(esc).join(' · ')}</span></span><span class="cmeta"><span class="camt">${rs(c.total)}</span><span class="cago">${esc(agoTxt(c.edited || c.at))}</span></span></button>`).join('') : '<p class="hint" style="margin:0">Nobody waiting. Good.</p>'}</div>
     </div></div>`;
 }
 document.addEventListener('click', e => {
@@ -7859,6 +7903,7 @@ let current = 'c-measure', lastMain = 'c';
 function go(v){
   v = OLD_VIEW[v] || v; if (!VIEWS[v] || v === 'none') v = 'c-measure';
   if (v === 'client' && !cpId) v = 'clients';
+  cpHub = v === 'client' && hubNext ? cpId : null; hubNext = false;   // any other way into a client opens the project itself
   if ((v === 'people' && !(PF && IS_ADMIN)) || ((v === 'dash' || v === 'purchase') && !PF) || (v === 'purchase' && !canPurchase())) v = 'clients';
   if (/prices$/.test(v) && PF && !IS_ADMIN) v = 'clients';
   if (v === 'docs' && !canDocs()) v = cpId ? 'client' : 'clients';   // 4 Nov: Documents not for trial logins (Jaydurga) or Rudresh   // Purvi, 1 Oct: sales don't see the Prices page
@@ -7915,8 +7960,9 @@ const pageKey = v => /prices$/.test(v) ? 'prices' : GATED.includes(v) && v !== '
 function navWrite(v){
   if (navPop) return;
   try {
-    const h = '#' + (v === 'client' && cpId === '__new' ? 'clients' : v === 'client' && cpId ? 'client/' + cpId : v === 'clients' ? 'clients' + cfQuery() : v);
-    const cid = v === 'client' ? cpId : GATED.includes(v) ? state.clientId || '' : '', k = pageKey(v) + '|' + cid, st = history.state || {};
+    const hub = v === 'client' && cpHub && cpHub === cpId;   // 6 Nov: the projects page is its own step (Back from a project goes to it)
+    const h = '#' + (v === 'client' && cpId === '__new' ? 'clients' : v === 'client' && cpId ? 'client/' + cpId + (hub ? '/projects' : '') : v === 'clients' ? 'clients' + cfQuery() : v);
+    const cid = v === 'client' ? cpId : GATED.includes(v) ? state.clientId || '' : '', k = pageKey(v) + '|' + cid + (hub ? '|all' : ''), st = history.state || {};
     if (st.k == null || st.k === k) { if (st.k !== k || location.hash !== h) history.replaceState({n: st.n || 0, k, cid}, '', h); }
     else history.pushState({n: (st.n || 0) + 1, k, cid}, '', h);
   } catch(_){}
@@ -7929,7 +7975,7 @@ addEventListener('popstate', async e => {
   try {
     if (h === 'clients') cfFromQuery(qs);
     if (/^doc\/[^/]+\/./.test(h)) { const [, c1, f1] = h.split('/'); cpId = c1; go('client'); docOpenLink(c1, f1); }
-    else if (/^client\/./.test(h)) { cpId = h.slice(7); go('client'); }
+    else if (/^client\/./.test(h)) { const [c1, sub] = h.slice(7).split('/'); cpId = c1; hubNext = sub === 'projects'; go('client'); }
     else if (VIEWS[h] || OLD_VIEW[h]) { const v = OLD_VIEW[h] || h;
       if (shared && GATED.includes(v) && st.cid && st.cid !== state.clientId) await openClient(st.cid, v);   // that page belonged to another client
       else go(v); }
@@ -8086,7 +8132,7 @@ function cardDate(c, s){
 function boardCard(c, admin, showWhy = true){
   const s = statusOf(c), nx = openTodos(c.id)[0], city = cityOf(c), amt = amountOf(c);
   return `<div class="kc${changeAsked(c) ? ' asked' : ''}${s === 'lost' ? ' lost' : ''}" data-cid="${esc(c.id)}" role="button" tabindex="0"${s === 'quoted' ? ' draggable="true"' : ''}>
-    <div class="kc-top"><b class="kc-name">${esc(c.name || mobile(c.phone) || 'No name yet')}</b>${c.stars ? starsHTML(c.stars) : ''}</div>
+    <div class="kc-top"><b class="kc-name">${esc(c.name || mobile(c.phone) || 'No name yet')}</b>${c.stars ? starsHTML(c.stars) : ''}</div>${projOf(c) ? `<div class="kc-proj">${PJ_ICON}${esc(projOf(c))}</div>` : ''}
     ${changeAsked(c) ? '<span class="kc-tag">Changes asked</span>' : ''}${wonChanged(c) ? `<span class="kc-tag" title="The sheet now: ${rs(c.total || 0)}">${wonChangedAfter(c) ? 'Changed after Won' : 'Changed after sending'}</span>` : ''}
     <div class="kc-sub">${[city, c.phone && c.name ? c.phone : ''].filter(Boolean).map(esc).join(' · ') || '&nbsp;'}</div>
     ${interestTxt(c) ? `<div class="kc-int">${esc(interestTxt(c))}</div>` : ''}
@@ -8206,6 +8252,7 @@ async function saveField(k, v){
       else { const dr = await Store.getDraft(cid); if (dr) { dr.sheet = dr.sheet || {}; if (k === 'name') dr.sheet.house = v; else dr.sheet.quote = Object.assign(dr.sheet.quote || {}, {[k]: v}); dr.at = new Date().toISOString(); dr.dev = DEV; await Store.setDraft(cid, clone(dr)); } }
       await Store.mergeClient(cid, {[k]: v});
     } else await Store.mergeClient(cid, {[k]: v});
+    if (FAM_SHARED.includes(k)) await famSync(cid, {[k]: v});   // 6 Nov: the same name / phone / reference on every project
     if (k === 'city') try { localStorage.setItem('charpai-city', v); } catch(_){}
     cpBusy--; cpSaving(false);
   } catch (e) { cpBusy--; cpSaving(false, true); }
@@ -8556,8 +8603,9 @@ cpb.addEventListener('click', async e => {
 });
 cpb.addEventListener('change', e => {
   if (e.target.id !== 'cp-owner') return; const c = CL.byId.get(cpId), to = e.target.value; if (!c || !to) { renderClientPage(); return; }
-  confirmDlg(`Hand ${esc(c.name)} to ${esc(personName(to))}?`, `${esc(personName(to))} will see this client, their sheet, every quotation sent and their open to-dos. ${c.ownerEmail ? esc(personName(c.ownerEmail)) + ' will no longer see them.' : ''}`, 'Hand over', async () => {
-    try { const from = ownerName(c) || 'nobody'; await reassign(c.id, to); for (const t of openTodos(c.id)) await quiet(setTodo(t.id, {ownerEmail: to})); await quiet(addNote(Object.assign({}, c, {ownerEmail: to}), `Handed over from ${from} to ${personName(to)}`, 'log')); toast('Handed over'); } catch (er) { toast('Not saved. Check the internet.'); } renderClientPage(); });
+  const fam = famOf(c.id);   // 6 Nov: every project of the client goes together
+  confirmDlg(`Hand ${esc(c.name)} to ${esc(personName(to))}?`, `${esc(personName(to))} will see this client${fam.length > 1 ? ` and all ${fam.length} projects` : ''}, their sheet, every quotation sent and their open to-dos. ${c.ownerEmail ? esc(personName(c.ownerEmail)) + ' will no longer see them.' : ''}`, 'Hand over', async () => {
+    try { const from = ownerName(c) || 'nobody'; for (const p of fam) { await reassign(p.id, to); for (const t of openTodos(p.id)) await quiet(setTodo(t.id, {ownerEmail: to})); } await quiet(addNote(Object.assign({}, c, {ownerEmail: to}), `Handed over from ${from} to ${personName(to)}`, 'log')); toast('Handed over'); } catch (er) { toast('Not saved. Check the internet.'); } renderClientPage(); });
   setTimeout(() => { if (!dlg.open) renderClientPage(); }, 0);
 });
 // ================= the customer page (Purvi, 18 Oct 2026; picked "Option 2: two panes" after two rounds of rendered options)
@@ -8600,8 +8648,8 @@ function cpHead(c){
   const name = cpEd === 'name' ? `<div class="n-nameed" data-grp="name"><input data-k="name" id="cpf-name" value="${esc(c.name || '')}" placeholder="Name" autocomplete="off"><button class="n-btn dark" data-cpdone="1">Done</button></div>`
     : `<h1 class="n-name"><button data-cped="name" title="Change the name">${esc(c.name || mobile(c.phone) || 'No name yet')}</button></h1>`;
   return `<header class="n-head">
-    <div class="n-headtop"><span class="n-av">${esc(initials(c.name))}</span><span class="n-topr"><button class="n-btn n-edit" data-cpedit="1">${cpIcon('edit', 16)}Edit client</button>${cpMoreMenu(c)}</span></div>
-    ${name}
+    <div class="n-headtop"><span class="n-av">${esc(initials(c.name))}</span><span class="n-topr"><button class="n-btn n-edit" data-pjnew="1" title="A new project for ${esc(c.name || 'this client')}: its own documents, sheet and quotation">+ New project</button><button class="n-btn n-edit" data-cpedit="1">${cpIcon('edit', 16)}Edit client</button>${cpMoreMenu(c)}</span></div>
+    ${pjTabs(c)}${name}
     <div class="n-sub">${c.ctype === 'company' ? `<span class="n-chip">Company${c.contact ? ' · ' + esc(c.contact) : ''}</span>` : ''}<span class="n-stat ${s}">${CP_STAT[s]}${s === 'won' && c.outcome ? ', v' + c.outcome.n : ''}</span>${starsHTML(c.stars || 0, true)}${cpQSum(c)}<span id="cp-saved" class="n-saved">Saved</span></div>
     ${c.latest && c.dsig && c.dsig !== c.sig && statusOf(c) !== 'won' && statusOf(c) !== 'lost' ? `<p class="n-asked n-changed"><span class="n-dot"></span><span>The sheet has changed since v${c.latest} was sent. Open <b>Quotation</b> and download the PDF to send v${c.latest + 1}.</span></p>` : ''}
     ${changeAsked(c) ? `<p class="n-asked"><span class="n-dot"></span><span>They asked for changes${c.changeReq.note ? ': ' + esc(c.changeReq.note) : ''} <small>${esc(agoTxt(c.changeReq.at))}${c.changeReq.who ? ', ' + esc(c.changeReq.who) : ''}</small></span><button class="n-link" data-act="unask">Remove</button></p>` : ''}
@@ -8636,6 +8684,7 @@ function cpProps(c){
   const ints = (c.interest || []).map(v => cpLbl(INTEREST, v)).filter(Boolean), pts = (c.ptype || []).map(v => v === 'other' && c.ptypeOther ? c.ptypeOther : cpLbl(PTYPES, v)).filter(Boolean);
   const co = c.ctype === 'company';
   const P = [
+    ...(multiP(c) ? [['pname', 'ptype', 'Project name', esc(c.pname || 'Project 1'), () => cpInp('pname', c.pname, 'placeholder="e.g. Home, Office"')]] : []),   // 6 Nov
     ...(co ? [['contact', 'user', 'Contact person', esc(c.contact || ''), () => cpInp('contact', c.contact, 'placeholder="e.g. Rajesh Mehta"')]] : []),
     ['phone', 'phone', co ? 'Contact number' : 'Mobile', esc(c.phone || ''), () => cpInp('phone', c.phone, 'inputmode="tel" placeholder="98290 12345"')],
     ['email', 'mail', 'Email', esc(c.email || ''), () => cpInp('email', c.email, 'inputmode="email" placeholder="name@gmail.com"')],
@@ -8858,7 +8907,10 @@ function renderClientPage(){
   if (typeof docsPrefetch === 'function' && cpId && PF) docsPrefetch(cpId);   // 4 Nov: Documents list ready before Docs is tapped
   if (cpFresh && cpFresh !== cpId) cpFresh = null;
   if (cpId === NEW || cpFresh === cpId) return renderEnquiryPage();
-  const el = $('#cp-body'), c = CL.byId.get(cpId); if (!c) return renderEnquiryPage();
+  const el = $('#cp-body'), c = CL.byId.get(cpId);
+  if (!c) { famOf(''); const r = PJ_ROOT.get(cpId), L = r ? CL.all.filter(x => famRoot(x) === r) : [];   // 6 Nov: this project is gone, its client is not
+    if (L.length) { hubNext = L.length > 1; cpId = L[0].id; go('client'); return; } return renderEnquiryPage(); }
+  if (cpHub && cpHub === cpId && multiP(c)) return renderProjectsPage(c);   // 6 Nov: the projects page
   const keepFocus = document.activeElement && document.activeElement.closest('#cp-body') && document.activeElement.id;
   const V = CL.vers[c.id];
   if (c.latest && !V) versionsOf(c.id).then(() => { if (current === 'client' && cpId === c.id) renderClientPage(); });
@@ -9008,7 +9060,7 @@ function showTodo(t){
   openDlg(`<div class="dlg-in tdshow"><div class="tdshow-h">${tdIcon(t.type, 22)}<h2 id="dlg-title">${esc(tdName(t.type))}</h2><button class="xbtn" data-dlg="close" aria-label="Close">×</button></div>
     <p class="sub"><b class="${overdue(t) ? 'late' : ''}">${esc(dueTxt(t))}</b>${t.ownerEmail ? ' · ' + esc(personName(t.ownerEmail)) : ''}</p>
     ${t.note ? `<p class="tdnote">${esc(t.note)}</p>` : ''}
-    ${c ? `<div class="tdcl"><b>${esc(c.name || 'No name yet')}</b>${addr ? `<span>${esc(addr)}</span>` : ''}${c.phone ? `<span>${esc(c.phone)}</span>` : ''}
+    ${c ? `<div class="tdcl"><b>${esc(nameWithProj(c))}</b>${addr ? `<span>${esc(addr)}</span>` : ''}${c.phone ? `<span>${esc(c.phone)}</span>` : ''}
       <div class="cp-acts">${tel ? `<a class="btn" href="tel:${esc(tel)}">Call</a>` : ''}${wa ? `<a class="btn" href="${esc(wa)}" target="${WA_TAB}">WhatsApp</a>` : ''}${addr ? `<a class="btn" href="${esc(mapLink(c))}" target="_blank" rel="noopener">Map</a>` : ''}
         <button class="btn" data-tdo="client">Open client</button>${t.type === 'visit' ? '<button class="btn" data-tdo="sheet">Measurement sheet</button>' : ''}</div></div>`
       : t.cname && (t.cphone || t.caddr) ? `<div class="tdcl"><b>${esc(t.cname)}</b>${addr ? `<span>${esc(addr)}</span>` : ''}${ph ? `<span>${esc(ph)}</span>` : ''}
@@ -9052,7 +9104,7 @@ function renderTodo(){
   const card = t => { const c = CL.byId.get(t.cid);
     return `<div class="kc tc${t.state === 'done' ? ' done' : ''}" data-tid="${esc(t.id)}" role="button" tabindex="0" draggable="true">
       <div class="tc-type">${tdIcon(t.type, 15)}<span>${esc(tdName(t.type))}</span></div>
-      <b class="kc-name">${esc(c ? c.name || mobile(c.phone) || 'No name yet' : t.cname || (t.note ? '' : 'To-do'))}</b>
+      <b class="kc-name">${esc(c ? nameWithProj(c) : t.cname || (t.note ? '' : 'To-do'))}</b>
       ${t.note ? `<div class="kc-sub tc-note">${esc(t.note)}</div>` : ''}
       <div class="kc-foot"><span class="kc-next${overdue(t) ? ' late' : ''}">${t.state === 'done' ? 'Done ' + esc(agoTxt(t.doneAt)) + (t.doneByName ? ' · ' + esc(t.doneByName.split(' ')[0]) : '') : esc(dueTxt(t))}</span>
         <span class="kc-r">${c && cityOf(c) ? `<span class="hint">${esc(cityOf(c))}</span>` : ''}${(admin || t.ownerEmail !== ME_EMAIL) && t.ownerEmail ? `<span class="av" title="${esc(personName(t.ownerEmail))}">${esc(initials(personName(t.ownerEmail)))}</span>` : ''}</span></div></div>`; };
@@ -9135,7 +9187,7 @@ $('#settings-body').addEventListener('click', e => { const b = e.target.closest(
 function todayRows(){   // the signed-in login's open to-dos due today or late (3 Nov: shared by the old Today card and the dashboard)
   const today = dayPlus(0), L = TD.state === 'error' ? [] : TD.list.filter(t => t.state !== 'done' && t.ownerEmail === ME_EMAIL && t.due <= today && !practiceCid(t.cid)).sort(tdSort);
   const row = t => { const c = CL.byId.get(t.cid);
-    return `<button class="tdrow" data-hometodo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}${c || t.cname ? ' · ' + esc(c ? c.name || mobile(c.phone) : t.cname) : ''}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${esc(dueTxt(t))}</span></button>`; };
+    return `<button class="tdrow" data-hometodo="${esc(t.id)}">${tdIcon(t.type)}<span class="tdr-m"><b>${esc(tdName(t.type))}${c || t.cname ? ' · ' + esc(c ? nameWithProj(c) : t.cname) : ''}</b>${t.note ? `<small>${esc(t.note)}</small>` : ''}</span><span class="tdr-d${overdue(t) ? ' late' : ''}">${esc(dueTxt(t))}</span></button>`; };
   return {n: L.length, html: L.map(row).join('')};
 }
 function todayCard(){
@@ -9148,6 +9200,133 @@ document.addEventListener('click', e => {
   const t = e.target.closest('[data-hometodo]'); if (t) { const x = TD.list.find(y => y.id === t.dataset.hometodo); if (x) showTodo(x); return; }
   const h = e.target.closest('[data-hometo]'); if (h) if (h.dataset.hometo === 'clients') { CF = Object.assign({}, CF0, {when: dashP}); go('clients'); } else go('todo');
 });
+
+// ================= Projects (Purvi, 6 Nov 2026: "a single customer can have multiple projects, each project has a separate document tab,
+// measurement sheet form, measurement sheet view and qtn view … by default the current working is perfect … one plus button on top right
+// side which says add a new project … if a client has more than one projects when i open their card, the project cards should come up").
+// A project is one more clients/<id> card with parent = the first card's id and pname = its name ("Home", "Office"). Everything that
+// already belongs to one card id (drafts/<id>, qversions/<id>_v<n>, purchase/<id>_v<n>, the Documents folder, notes, to-dos) is therefore
+// separate per project with no new collection and no Firebase rule change. A client with one card looks exactly as before.
+// Shared between a client's projects (typed once, copied to all): FAM_SHARED. Per project: address, city, stage, stars, interest, remarks.
+// Board + List: one card / row per project (Purvi picked "One card per project", 6 Nov). The projects page (cpHub) lists them all.
+const FAM_SHARED = ['name', 'phone', 'email', 'ctype', 'contact', 'refHow', 'refBy', 'refPhone', 'arch'];
+const famRoot = c => c ? c.parent || c.id : '';
+let FAMA = null, FAMI = null;   // index of CL.all by family, rebuilt when the client list changes
+const PJ_ROOT = new Map();   // every card id seen → its family, so a project that just went (undo, delete on another device) can fall back to its client
+function famOf(cid){
+  if (FAMA !== CL.all) { FAMA = CL.all; FAMI = new Map();
+    for (const x of CL.all) { const r = famRoot(x); PJ_ROOT.set(x.id, r); if (!FAMI.has(r)) FAMI.set(r, []); FAMI.get(r).push(x); }
+    const t = x => String(x.created || x.at || x.edited || '');
+    for (const L of FAMI.values()) L.sort((a, b) => (a.parent ? 1 : 0) - (b.parent ? 1 : 0) || t(a).localeCompare(t(b))); }
+  const c = CL.byId.get(cid); return c ? FAMI.get(famRoot(c)) || [c] : [];
+}
+const multiP = c => !!c && famOf(c.id).length > 1;
+const projOf = c => multiP(c) ? c.pname || 'Project 1' : '';
+const nameWithProj = c => !c ? '' : (c.name || mobile(c.phone) || 'No name yet') + (projOf(c) ? ' · ' + projOf(c) : '');
+const PJ_ICON = '<svg class="n-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5M5.5 9v10.5h13V9"/><path d="M10 19.5v-5h4v5"/></svg>';
+
+// shared details typed on one project go to the others (their card, and their sheet's quotation header for name / phone / contact)
+async function famSync(cid, patch){
+  const sib = famOf(cid).filter(x => x.id !== cid); if (!sib.length) return;
+  const keys = Object.keys(patch).filter(k => FAM_SHARED.includes(k)); if (!keys.length) return;
+  const P = {}; for (const k of keys) P[k] = patch[k] == null ? '' : patch[k];
+  const core = keys.filter(k => CORE[k]);
+  for (const s of sib) {
+    if (!keys.some(k => JSON.stringify(s[k] == null ? '' : s[k]) !== JSON.stringify(P[k]))) continue;
+    try {
+      if (core.length) {
+        if (s.id === state.clientId) { for (const k of core) { if (k === 'name') state.house = P[k]; else state.quote[k] = P[k]; } save(); await flushDraft(); }
+        else { const dr = await Store.getDraft(s.id); if (dr) { dr.sheet = dr.sheet || {}; for (const k of core) { if (k === 'name') dr.sheet.house = P[k]; else dr.sheet.quote = Object.assign(dr.sheet.quote || {}, {[k]: P[k]}); } dr.at = new Date().toISOString(); dr.dev = DEV; await Store.setDraft(s.id, clone(dr)); } }
+      }
+      await Store.mergeClient(s.id, P);
+    } catch (_) {}
+  }
+}
+
+// ---- + New project
+function askProject(c){
+  if (!c) return;
+  const L = famOf(c.id), first = L[0], firstNamed = !!first.pname || L.length > 1;
+  const PICKS = ['Home', 'Office', 'Shop', 'Flat', 'Farmhouse'];
+  const chips = id => `<div class="pj-picks" data-for="${id}">${PICKS.map(p => `<button type="button" class="chipbtn" data-pjpick="${p}" aria-pressed="false">${p}</button>`).join('')}</div>`;
+  const addr = c.addr || '';
+  openDlg(`<div class="dlg-in pj-dlg"><h2 id="dlg-title">New project for ${esc(c.name || 'this client')}</h2>
+    <p class="sub">It gets its own documents, measurement sheet and quotation. Name and phone stay the same.</p>
+    <label class="f" for="pj-name">What is this project?</label>${chips('pj-name')}
+    <input type="text" id="pj-name" placeholder="Or type a name, e.g. Second flat" autocomplete="off">
+    ${firstNamed ? '' : `<label class="f" for="pj-first">And what do you call the first one? <small>(optional)</small></label>${chips('pj-first')}<input type="text" id="pj-first" placeholder="Project 1" autocomplete="off">`}
+    ${addr ? `<label class="f">Site address</label><div class="seg pj-addr" role="group" aria-label="Site address"><button type="button" data-pjaddr="same" aria-pressed="false">Same as before</button><button type="button" data-pjaddr="new" aria-pressed="true">Different</button></div><p class="hint pj-addrtxt" hidden>${esc(addr)}</p>` : ''}
+    <div class="dlg-acts"><button class="btn" data-dlg="close">Cancel</button><button class="btn solid" data-dlg="ok">Create project</button></div></div>`, false, async d => {
+    const v = id => ((d.querySelector('#' + id) || {}).value || '').trim();
+    const same = !!d.querySelector('[data-pjaddr="same"][aria-pressed="true"]');
+    const ok = d.querySelector('[data-dlg="ok"]'); ok.disabled = true; ok.textContent = 'Creating…';
+    let id; try { id = await createProject(c, v('pj-name') || `Project ${L.length + 1}`, firstNamed ? '' : v('pj-first') || 'Project 1', same); }
+    catch (e) { ok.disabled = false; ok.textContent = 'Create project'; toast('Not created. Check the internet.'); return false; }
+    for (let i = 0; i < 30 && !CL.byId.has(id); i++) await new Promise(r => setTimeout(r, 100));   // the new card comes back from the store
+    hubNext = false; cpId = id; cpEd = null; go('client'); toast('Project added. Start with Documents or the Measurement sheet form.');
+  });
+  dlg.addEventListener('click', pjDlgClick);
+  setTimeout(() => { const n = dlg.querySelector('#pj-name'); if (n) n.focus(); }, 30);
+}
+function pjDlgClick(e){
+  const p = e.target.closest('[data-pjpick]');
+  if (p) { const box = p.closest('[data-for]'), inp = dlg.querySelector('#' + box.dataset.for), on = p.getAttribute('aria-pressed') !== 'true';
+    box.querySelectorAll('[data-pjpick]').forEach(b => b.setAttribute('aria-pressed', String(b === p && on))); if (inp) inp.value = on ? p.dataset.pjpick : ''; return; }
+  const a = e.target.closest('[data-pjaddr]');
+  if (a) { dlg.querySelectorAll('[data-pjaddr]').forEach(b => b.setAttribute('aria-pressed', String(b === a))); const t = dlg.querySelector('.pj-addrtxt'); if (t) t.hidden = a.dataset.pjaddr !== 'same'; }
+}
+dlg.addEventListener('input', e => { if (e.target.id !== 'pj-name' && e.target.id !== 'pj-first') return;   // typing un-picks a chip that no longer matches
+  const box = dlg.querySelector(`[data-for="${e.target.id}"]`); if (box) box.querySelectorAll('[data-pjpick]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pjpick === e.target.value.trim()))); });
+dlg.addEventListener('close', () => dlg.removeEventListener('click', pjDlgClick));
+async function createProject(c, pname, firstName, same){
+  await cpFlush(); await flushDraft();
+  const L = famOf(c.id), first = L[0], id = newClientId(), at = new Date().toISOString(), owner = c.ownerEmail || (ME_EMAIL || null);
+  if (!first.pname) { let named = false; try { const f = await Store.getClient(first.id); named = !!(f && f.pname); } catch (_) {}   // read fresh: a second project made a moment later must not rename the first
+    if (!named) await Store.mergeClient(first.id, {pname: firstName || 'Project 1'}); }
+  const sh = {}; for (const k of FAM_SHARED) if (c[k] != null && c[k] !== '') sh[k] = clone(c[k]);
+  const place = same ? Object.assign({addr: c.addr || '', city: c.city || ''}, c.adr ? {adr: clone(c.adr)} : {}) : c.city ? {city: c.city} : {};
+  const card = Object.assign({latest: 0, sig: '', at: '', created: at, by: UID || ''}, owner ? {ownerEmail: owner} : {}, sh, place,
+    {parent: famRoot(c), pname, exec: c.exec || '', edited: at, total: 0, cats: []}, stampMe());
+  await db.doc('clients/' + id).set(clone(card));
+  const quote = Object.assign({phone: c.phone || '', addr: place.addr || '', city: place.city || '', exec: c.exec || ''}, c.contact ? {contact: c.contact} : {});
+  await db.doc('drafts/' + id).set(clone(Object.assign({cid: id, at, dev: DEV, by: UID || '', sheet: {house: c.name || '', rows: [blank()], blinds: [], quote}}, stampMe(), owner ? {ownerEmail: owner} : {})));
+  await quiet(addTodo({cid: id, cname: c.name || '', type: 'make', due: dayPlus(2), note: `Measure and send the quotation (${pname})`, owner, auto: 'new'}));
+  return id;
+}
+
+// ---- the projects page: who the client is + one card per project + "+ New project"
+function openHub(cid){ const L = famOf(cid); if (!L.length) return; cpId = L[0].id; hubNext = true; go('client'); }
+function renderProjectsPage(c){
+  const L = famOf(c.id), el = $('#cp-body'), tel = mobile(c.phone), wa = waLink(c.phone);
+  const round = (k, label, attrs, href) => href ? `<a class="n-rb" href="${esc(href)}" ${attrs}><span>${cpIcon(k, 20)}</span>${label}</a>` : '';
+  const card = p => { const s = statusOf(p), amt = amountOf(p), nx = openTodos(p.id)[0], d = cardDate(p, s), place = [p.addr && String(p.addr).split(',')[0], cityOf(p)].filter(Boolean).join(', ');
+    return `<button class="pj-card" data-pj="${esc(p.id)}">
+      <span class="pj-top"><b class="pj-name">${esc(p.pname || 'Project 1')}</b><span class="n-stat ${s}">${CP_STAT[s]}${s === 'won' && p.outcome ? ', v' + p.outcome.n : ''}</span></span>
+      <span class="pj-amt${amt ? '' : ' none'}">${amt ? rs(amt) : 'Nothing quoted yet'}</span>
+      ${place ? `<span class="pj-sub">${esc(place)}</span>` : ''}
+      <span class="pj-foot">${nx ? `<span class="${overdue(nx) ? 'late' : ''}">${tdIcon(nx.type, 14)}${esc(TD_SHORT[nx.type] || 'To-do')} · ${esc(dueTxt(nx))}</span>` : d ? esc(d.txt) : ''}</span></button>`; };
+  el.innerHTML = `<div class="pj-page">
+    <header class="n-card pj-head">
+      <div class="n-headtop"><span class="n-av">${esc(initials(c.name))}</span><span class="n-topr"><button class="n-btn dark" data-pjnew="1">+ New project</button></span></div>
+      <h1 class="n-name">${esc(c.name || mobile(c.phone) || 'No name yet')}</h1>
+      <div class="n-sub">${c.ctype === 'company' ? `<span class="n-chip">Company${c.contact ? ' · ' + esc(c.contact) : ''}</span>` : ''}${c.phone ? `<span class="pj-ph">${esc(c.phone)}</span>` : ''}${PF && IS_ADMIN && c.ownerEmail ? `<span class="pj-ph">${esc(ownerName(c))}</span>` : ''}</div>
+      ${tel || wa ? `<nav class="n-round">${round('phone', 'Call', '', tel ? 'tel:' + tel : '')}${round('wa', 'WhatsApp', `target="${WA_TAB}"`, wa)}</nav>` : ''}
+    </header>
+    <section class="pj-sec"><h2 class="pj-h">Projects <span>${L.length}</span></h2>
+      <div class="pj-grid">${L.map(card).join('')}<button class="pj-card pj-add" data-pjnew="1"><span class="pj-plus" aria-hidden="true">+</span><b>New project</b><span class="pj-sub">Its own documents, sheet and quotation</span></button></div>
+    </section></div>`;
+  renderCbar();
+}
+cpb.addEventListener('click', e => {
+  if (e.target.closest('[data-pjnew]')) { const c = CL.byId.get(cpId); if (c) askProject(c); return; }
+  const p = e.target.closest('[data-pj]'); if (p) { hubNext = false; cpId = p.dataset.pj; cpEd = null; go('client'); return; }
+  const h = e.target.closest('[data-pjhub]'); if (h) { openHub(cpId); }
+});
+// the row of project chips on a project's page: tap one to switch, "All projects" opens the projects page
+function pjTabs(c){
+  if (!multiP(c)) return '';
+  return `<nav class="pj-tabs" aria-label="Projects">${famOf(c.id).map(p => `<button class="pj-tab" data-pj="${esc(p.id)}" aria-current="${p.id === c.id ? 'page' : 'false'}">${PJ_ICON}${esc(p.pname || 'Project 1')}</button>`).join('')}<button class="n-link sm" data-pjhub="1">All projects</button></nav>`;
+}
 
 // ================= Measurement sheet download (Purvi, 19 Oct 2026: "similar to how our qtn looks, i need a button to download a similar
 // looking measurement sheet (same blue white excel table format) … an option to … hide or unhide rows/columns/sections … downloads
@@ -9977,7 +10156,7 @@ async function puDoc(c){   // the document for a Won client: its confirmed versi
   }
   const marks = {};   // ticks made on the first Purchase page (29 Oct morning, kept on the client) come along
   for (const [k, v] of Object.entries(c.po || {})) if (v) marks[k] = {o: v};
-  return Object.assign({cid: c.id, n: x.n, name: c.name || x.snap.house || 'Client', ownerEmail: c.ownerEmail || '', ownerName: personName(c.ownerEmail) || c.ownerName || '', amount: amountOf(c) || 0,
+  return Object.assign({cid: c.id, n: x.n, name: (c.name || x.snap.house || 'Client') + (projOf(c) ? ' · ' + projOf(c) : ''),   /* 6 Nov: which project */ ownerEmail: c.ownerEmail || '', ownerName: personName(c.ownerEmail) || c.ownerName || '', amount: amountOf(c) || 0,
     confirmedAt: c.outcome.at || '', no: (x.snap.q || {}).no || '', active: true, practice: isPractice(c), items}, Object.keys(marks).length ? {marks} : {});
 }
 // make every Won client this login can see have its document, and retire the ones that are no longer Won (re-Won on a new version, Undo)
@@ -10189,6 +10368,8 @@ const HI = {
   "Photos and PDFs for this client, saved in Charpai's Google Drive.": 'इस क्लाइंट की फ़ोटो और PDF, Charpai की Google Drive में।',
   'Noting sheet': 'नोटिंग शीट', 'Site': 'साइट', 'Window / wall': 'खिड़की / दीवार', 'Fabric chosen': 'चुना हुआ कपड़ा', 'Reference': 'रेफ़रेंस', 'Measurement paper': 'नाप का कागज़', 'Payment': 'पेमेंट', 'Other': 'और कुछ',
   'Uploading…': 'अपलोड हो रहा है…', 'Camera': 'कैमरा', 'Your password': 'आपका पासवर्ड', 'Who is it?': 'कौन है?', 'Person': 'व्यक्ति', 'Company': 'कंपनी', 'Company name': 'कंपनी का नाम', 'Contact person': 'संपर्क व्यक्ति', 'Contact number': 'संपर्क नंबर', 'Set password': 'पासवर्ड बनाएँ', 'Change password': 'पासवर्ड बदलें', 'New password': 'नया पासवर्ड', 'Type it again': 'फिर से लिखें', 'Gallery': 'गैलरी', 'Files': 'फ़ाइलें', 'Saving…': 'सेव हो रहा है…', 'Getting ready…': 'तैयार हो रहा है…', 'Download': 'डाउनलोड', 'Open PDF': 'PDF खोलें', 'Delete': 'डिलीट', 'Save': 'सेव',
+  // 6 Nov: projects
+  '+ New project': '+ नया प्रोजेक्ट', 'New project': 'नया प्रोजेक्ट', 'Projects': 'प्रोजेक्ट', 'All projects': 'सारे प्रोजेक्ट', 'Project name': 'प्रोजेक्ट का नाम', 'Nothing quoted yet': 'अभी कोटेशन नहीं बना', 'Its own documents, sheet and quotation': 'इसके अपने डॉक्यूमेंट, शीट और कोटेशन', 'What is this project?': 'यह कौन सा प्रोजेक्ट है?', 'Create project': 'प्रोजेक्ट बनाएँ', 'Creating…': 'बन रहा है…', 'Site address': 'साइट का पता', 'Same as before': 'पहले वाला', 'Different': 'अलग', 'It gets its own documents, measurement sheet and quotation. Name and phone stay the same.': 'इसके अपने डॉक्यूमेंट, नाप की शीट और कोटेशन होंगे। नाम और फ़ोन वही रहेंगे।', 'Project added. Start with Documents or the Measurement sheet form.': 'प्रोजेक्ट बन गया। डॉक्यूमेंट या नाप की शीट से शुरू करें।', 'Their other projects stay.': 'उनके बाक़ी प्रोजेक्ट रहेंगे।',
   'Curtains': 'पर्दे', 'Blinds': 'ब्लाइंड्स', 'Wallpaper': 'वॉलपेपर', 'Upholstery': 'अपहोल्स्टरी', 'Flooring': 'फ़्लोरिंग', 'Mattress': 'गद्दे',
   'Changed after Won': 'Won के बाद बदला', 'Pick the final quotation': 'फ़ाइनल कोटेशन चुनें', 'The sheet changed after this was confirmed: check before ordering': 'पक्का होने के बाद शीट बदली: ऑर्डर से पहले देखें', 'Changed after sending': 'भेजने के बाद बदला',
   'Back': 'वापस', 'Close': 'बंद करें', 'More': 'और',
@@ -10827,7 +11008,7 @@ fillLists(); renderNote(); renderTable(); renderTotals(); renderSide();
 // (or one this page doesn't know) opens Home; a link to a page (#clients, #client/…, a reload) still opens that page. Without a login Home falls back to Clients (go).
 let startTab = 'dash';
 let startDoc = null;   // 4 Nov: #doc/<client>/<file> = a document link opened in a new tab
-try { const [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); if (h === 'clients') cfFromQuery(qs); if (/^doc\/[^/]+\/./.test(h)) { const [, c1, f1] = h.split('/'); cpId = c1; startTab = 'client'; startDoc = [c1, f1]; } else if (/^client\/./.test(h)) { cpId = h.slice(7); startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'dash'; } catch(_){}
+try { const [h, qs] = decodeURIComponent(location.hash.slice(1)).split('?'); if (h === 'clients') cfFromQuery(qs); if (/^doc\/[^/]+\/./.test(h)) { const [, c1, f1] = h.split('/'); cpId = c1; startTab = 'client'; startDoc = [c1, f1]; } else if (/^client\/./.test(h)) { const [c1, sub] = h.slice(7).split('/'); cpId = c1; hubNext = sub === 'projects'; startTab = 'client'; } else startTab = (VIEWS[h] || OLD_VIEW[h]) ? h : 'dash'; } catch(_){}
 go(startTab);
 connectPrices();
 if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'ready' && CL.byId.has(startDoc[0])); i++) await new Promise(r => setTimeout(r, 250));   // wait for the login + clients
@@ -10837,4 +11018,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261104-173742 -->
+<!-- build 20261106-181004 -->
