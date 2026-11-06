@@ -10629,7 +10629,7 @@ try { DK.lastType = localStorage.getItem('charpai-doc-type') || ''; } catch (_) 
 const DOC_ERR = {'not-your-client': "This client isn't yours, so its documents don't open for your login.", 'not-allowed': "Your login can't open documents. Ask Purvi.",
   'no-client': 'This client is not saved yet. Go back and open it again.', 'bad-login': 'Your login has expired. Reload the page and sign in again.',
   'not-set-up': 'Documents are being set up. Ask Purvi.', 'too-big': 'Too big: the most is 20 MB per file.', 'bad-type': 'Only photos and PDFs can be added.',
-  'not-yours': 'Only the person who added it (or an admin) can change or delete it.', 'no-file': 'That file is no longer there.'};
+  'not-yours': 'Only the person who added it (or an admin) can change or delete it.', 'no-file': 'That file is no longer there.', 'no-preview': "Google Drive is still making this photo's preview. Try again in a minute."};
 const docErr = er => DOC_ERR[er && er.message] || (er && /fetch|network|load failed/i.test(er.message || '') ? 'No internet? Try again.' : "Google Drive didn't answer. Try again.");
 
 async function docsCall(op, body = {}, onPct){
@@ -10833,11 +10833,14 @@ async function docDirect(u, p, meta, redraw){
 const dkPctTxt = u => !u.pct ? '' : u.pct >= 100 ? 'Saving…' : u.pct + '%';   // 100 % sent: Drive is filing it
 function docPct(u){ const c = document.querySelector(`#docs-body .dk-card[data-id="${u.key}"] .dk-pct`); if (c) c.textContent = dkPctTxt(u); }   // just the number, no redraw
 // Photos: made smaller on the phone (long side 2000 px, JPEG 82 %): a 4 MB camera photo → ~300 KB, still sharp. PDFs go as they are.
+// 6 Nov: HEIC photos the phone's browser can't open go up as they are (turning them into JPEG on the phone took 12 s for a 12 MP photo on
+// a Mac, far longer on a phone); the viewer shows Drive's own JPEG copy of them (dkPrev, helper v6).
 async function docPrep(file){
   if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)) return {blob: file, mime: 'application/pdf', name: file.name, thumb: ''};
   const base = (file.name || 'photo').replace(/\.[^.]+$/, '');
+  const decode = src => new Promise((ok, no) => { const i = new Image(), u = URL.createObjectURL(src); i.onload = () => { URL.revokeObjectURL(u); ok(i); }; i.onerror = () => { URL.revokeObjectURL(u); no(new Error('decode')); }; i.src = u; });
   try {
-    const img = await new Promise((ok, no) => { const i = new Image(), u = URL.createObjectURL(file); i.onload = () => { URL.revokeObjectURL(u); ok(i); }; i.onerror = () => { URL.revokeObjectURL(u); no(new Error('decode')); }; i.src = u; });
+    const img = await decode(file);
     const shrink = max => { const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
       c.width = Math.max(1, Math.round(img.naturalWidth * s)); c.height = Math.max(1, Math.round(img.naturalHeight * s));
       const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height); return c; };
@@ -10932,8 +10935,10 @@ function docFull(cid, f){
   if (!DK_FLY.has(f.id)) DK_FLY.set(f.id, docFullGet(cid, f).finally(() => DK_FLY.delete(f.id)));
   return DK_FLY.get(f.id);
 }
+// 6 Nov: HEIC (Chrome can't draw it) or a photo over 3 MB → Drive's own 2000 px JPEG copy (helper v6, prev); the raw bytes failed for a 9 MB HEIC
+const dkPrev = f => /hei[cf]/i.test((f.mime || '') + (f.name || '')) || (/^image\//.test(f.mime || '') && (+f.size || 0) > 3 * 1024 * 1024);
 async function docFullGet(cid, f){
-  const r = await docsCall('get', {cid, id: f.id});
+  const r = await docsCall('get', Object.assign({cid, id: f.id}, dkPrev(f) ? {prev: 1} : {}));
   const bin = atob(r.data), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
   const v = {url: URL.createObjectURL(new Blob([a], {type: r.mime})), name: r.name, mime: r.mime};
   DK.full.set(f.id, v); if (DK.full.size > 40) { const [k, o] = DK.full.entries().next().value; URL.revokeObjectURL(o.url); DK.full.delete(k); }
@@ -11051,4 +11056,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261106-184638 -->
+<!-- build 20261106-191127 -->
