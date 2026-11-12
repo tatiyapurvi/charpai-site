@@ -1174,6 +1174,28 @@ th .qh{display:block;margin:6px auto 0;font-size:11.5px;padding:3px 8px}
 .paper.ms-room input.ms-rem{width:100%;min-width:110px;border:1px solid #9bb7d4;border-radius:4px;padding:5px 6px;font:600 12.5px var(--body);color:#C00000;background:#fffdf3}
 .paper.ms-room input.ms-rem:focus{outline:2px solid var(--tape);border-color:var(--tape-ink)}
 .paper-top.ms-top td{font-size:12.5px}
+/* 12 Nov: tabs inside View measurement sheet + the store's accessories sheet */
+.ms-tabs{display:flex;padding:0 0 4px}
+.ms-tabs .seg button{padding:7px 16px}
+.paper.acc-pick{width:auto;min-width:340px;max-width:560px;margin-top:14px;border-top:1px solid #333}
+.paper.acc-pick th{background:#DDEBF7;text-align:center;font-size:11.5px}
+.paper.acc-pick th.acc-ph{font-size:12.5px;letter-spacing:.04em}
+.paper.acc-pick td{font-size:13px;padding:6px 10px}
+.paper.acc-pick td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.acc-tick{width:34px;text-align:center}
+.acc-box{display:inline-block;width:13px;height:13px;border:1.4px solid #333;border-radius:2px;vertical-align:middle}
+.paper.acc-tab td.acc-on b{font-size:13.5px}
+.paper.acc-tab td.acc-todo{background:#FFF4E0}
+.paper.acc-tab td.acc-with{color:#777;font-size:11px;font-style:italic}
+.paper.acc-tab td.acc-off{cursor:pointer;position:relative}
+.paper.acc-tab td.acc-off:hover{background:#EEF4FB}
+.paper.acc-tab td.acc-off:hover::after{content:"Move here";position:absolute;inset:0;display:grid;place-items:center;font-size:10.5px;color:#3A6EA5}
+.paper.acc-tab td[data-accbrk].acc-on{cursor:pointer}
+.paper.acc-tab tr.acc-kid td{background:#FAFBFC;font-size:12px;color:#333}
+.paper.acc-tab .acc-arrow{color:#3A6EA5;margin:0 4px 0 10px}
+.paper.acc-tab .acc-miss{color:#B45309;font-weight:600}
+.paper.acc-tab tr.acc-tot td{background:#F2F2F2;font-weight:700}
+@media print{ .acc-box{border-color:#000} #print-root .paper.acc-pick{width:auto;min-width:0;max-width:60%} }
 @media (max-width:999px){ #v-msheet .q-sum{order:-1} }
 /* ===== Documents (4 Nov 2026, Purvi: "super easy … 5th grade … designed by people at notion/figma/anthropic"). Calm: soft fills, no black
    outlines, one dark button, plain-weight headings in the body font, generous space; big tap targets on phones. */
@@ -5196,7 +5218,8 @@ function fillPrint(){
   let root = document.getElementById('print-root');
   if (!root) { root = document.createElement('div'); root.id = 'print-root'; document.body.appendChild(root); }
   root.className = current === 'msheet' ? 'ms' : '';   // 20 Oct: the measurement sheet prints too, A4 landscape (its own page style)
-  if (current === 'msheet') { const D = msShown(); root.innerHTML = msPaperHTML(state.quote || {}, state.house, D, msNext(D)); }
+  if (current === 'msheet' && msTab === 'acc') root.innerHTML = accPaperHTML(state.quote || {}, state.house, false);   // 12 Nov: the accessories sheet prints from its own tab
+  else if (current === 'msheet') { const D = msShown(); root.innerHTML = msPaperHTML(state.quote || {}, state.house, D, msNext(D)); }
   else root.innerHTML = paperHTML(state.quote, state.house, quoteTotals(), false, true);
   document.body.classList.add('printing');
 }
@@ -9569,8 +9592,14 @@ function msPaperHTML(q, house, D, n, ed){
 function renderMsheet(){
   if (current !== 'msheet') return;
   renderQuoteHead();   // fills today's date, the executive from People and the invoice no., as the quotation page does
-  const D = msShown(), q = state.quote || (state.quote = {}), P = msLast(), n = msNext(D), phone = qmOn();
-  $('#ms-paper').innerHTML = msPaperHTML(q, state.house, D, n, msEdit && !phone);
+  if (msTabCid !== state.clientId) { msTabCid = state.clientId; msTab = 'ms'; }
+  const q = state.quote || (state.quote = {}), phone = qmOn();
+  if (msTab === 'acc' || msTab === 'tail') {   // 12 Nov: the Accessories and Tailor tabs
+    $('#ms-paper').innerHTML = msTabsHTML() + (msTab === 'acc' ? accPaperHTML(q, state.house, true) : tailPaperHTML());
+    $('#ms-sum').innerHTML = msTab === 'acc' ? accSide() : '<p class="hint" style="padding:14px">The tailor sheet is not made yet.</p>';
+    return; }
+  const D = msShown(), P = msLast(), n = msNext(D);
+  $('#ms-paper').innerHTML = msTabsHTML() + msPaperHTML(q, state.house, D, n, msEdit && !phone);
   const ver = !P.n ? 'The first download will be <b>M1</b>.' : n === P.n ? `Last saved as <b>M${P.n}</b>. Nothing has changed since.` : `Changed since <b>M${P.n}</b>, so the next download will be <b>M${n}</b>.`;
   const ban = D.hid ? `<div class="qe-ban"><b>Part sheet.</b> ${esc(D.hid)}<div class="qe-acts"><button class="btn" data-msall="1">Show everything</button></div></div>` : '';
   // 20 Oct (Purvi): the same four buttons as View quotation (PDF · Excel · Print · Send on WhatsApp), at the top of the panel
@@ -9777,6 +9806,184 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-msv]'); if (!b) return;
   const c = CL.byId.get(cpId), M = Array.isArray(CL.msv[cpId]) ? CL.msv[cpId] : [], x = M.find(v => v.n === +b.dataset.n); if (!c || !x) return;
   if (b.dataset.msv === 'view') msShowVersion(c, x); else msDownloadVersion(x, b);
+});
+
+// ================= Tabs inside View measurement sheet: Measurement sheet · Accessories · Tailor sheet (Purvi, 12 Nov 2026: "the default view is
+// measurement sheet only, then the next two tabs are for Accessories sheet and Tailor sheet … this will majorly be used by the store guy to give
+// out the accessories for each client"). The accessories sheet is worked out from the Curtains sheet every time it is drawn (nothing new is
+// saved except a bracket type someone changed by hand: row.brk = 'C' | 'S' | 'D'). It is for the store, so it has no version number and is
+// never sent to the client. Eyelet curtains are left out for now (Purvi: "we will figure out eyelet later").
+let msTab = 'ms', msTabCid = null;   // Measurement sheet is the default; another client opens on it again
+const MS_TABS = [['ms', 'Measurement sheet'], ['acc', 'Accessories'], ['tail', 'Tailor sheet']];
+const msTabsHTML = () => `<div class="ms-tabs"><div class="seg" role="tablist" aria-label="Which sheet">${MS_TABS.map(([k, l]) => `<button role="tab" data-mstab="${k}" aria-selected="${k === msTab}" aria-pressed="${k === msTab}">${l}</button>`).join('')}</div></div>`;
+const ACC_GAP_FT = 2.5, ACC_RUN = 6;   // a bracket every 2–2½ ft (we use 2½) + one at each end; 6 runners per panel; S hooks = runners
+const ACC_BRK = [['C', 'CEILING'], ['S', 'SINGLE WALL'], ['D', 'DOUBLE WALL']];
+const accBrkN = ft => Math.max(2, Math.ceil(ft / ACC_GAP_FT - 1e-9) + 1);
+function accData(){
+  const L = [], skip = {eyelet: 0, notrack: 0};
+  state.rows.forEach(r => { if (!(+r.W || +r.H)) return; const {res, ok} = calc(r); if (!ok) return;
+    const t = TRACKS.find(x => x.n === r.track);
+    if (!t || !t.k || !res.track) { skip.notrack++; return; }
+    if (baseStyle(r.style) === 'Eyelet') { skip.eyelet++; return; }
+    const mot = t.k === 'motor', kit = mot ? kitSize(res.track, res.kitMin) : null, ft = mot ? (+kit || res.track) * 3.281 : res.track;
+    const parts = parseInt(String(r.parts || '').trim(), 10) || PARTS_DEFAULT, kids = [];
+    if (mot) { const brand = (/\((.*?) motor\)/.exec(r.track) || [])[1] || '';
+      kids.push({k: 'motor', name: r.motor || `${brand} motor`.trim(), q: 1});
+      kids.push(r.remote === NO_REMOTE ? {k: 'remote', name: "uses another curtain's remote", q: 0}
+        : r.remote ? {k: 'remote', name: r.remote, q: 1} : {k: 'remote', name: 'not picked yet', q: 0, todo: 1}); }
+    L.push({r, key: r.id, room: r.room || '', layer: r.layer === 'Sheer' ? 'SHEER' : 'MAIN', mot, kids,
+      product: mot ? trackShort(r.track) + ' motor track' : r.track, W: msNum(r.W), len: mot ? (kit ? kit + ' m kit' : 'over 9 m') : cpF(res.track) + ' ft',
+      pcs: mot ? 1 : res.trackPieces || 1, ft, tft: res.track, n: accBrkN(ft), face: /^Face/.test(r.fixing || ''), nofix: !r.fixing,
+      caps: 2, run: res.panels * ACC_RUN, ov: parts >= 2 ? 1 : 0}); });
+  // brackets: ceiling fixing → ceiling; face fixing → single wall, except a main + a sheer in the same room share double wall brackets
+  // (counted once, on the main). A type changed by hand (row.brk) wins and is left out of the pairing.
+  L.forEach(x => { x.kind = x.r.brk || (x.face ? 'S' : 'C'); x.bn = x.n; x.with = false; });
+  const rooms = new Map(); L.filter(x => x.face && (!x.r.brk || x.r.brk === 'D')).forEach(x => { const k = roomKey(x.room); rooms.set(k, (rooms.get(k) || []).concat(x)); });
+  rooms.forEach(G => { const M = G.filter(x => x.layer === 'MAIN'), S = G.filter(x => x.layer === 'SHEER');
+    M.forEach((m, i) => { const s = S[i]; if (!s) return; m.kind = s.kind = 'D'; m.bn = Math.max(m.n, s.n); s.bn = 0; s.with = true; }); });
+  const lines = byRoom(L, x => x.room), G = []; let cur = null;
+  lines.forEach(x => { const k = roomKey(x.room); if (!cur || cur.k !== k) G.push(cur = {k, room: x.room, rows: []}); cur.rows.push(x); });
+  const T = {C: 0, S: 0, D: 0, caps: 0, run: 0, hook: 0, ov: 0}, tracks = new Map(), mot = new Map(), rem = new Map(), add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
+  L.forEach(x => { T[x.kind] += x.bn; T.caps += x.caps; T.run += x.run; T.hook += x.run; T.ov += x.ov;
+    if (x.mot) add(tracks, `${x.product} · ${x.len}`, 1); else { const o = tracks.get(x.product) || {ft: 0, pcs: 0}; o.ft += x.tft; o.pcs += x.pcs; tracks.set(x.product, o); }
+    x.kids.forEach(c => { if (c.q) add(c.k === 'motor' ? mot : rem, c.name, c.q); }); });
+  // the store's pick list, top to bottom: tracks, brackets, small parts, motors, remotes (nothing with 0)
+  const P = [];
+  tracks.forEach((v, k) => P.push(typeof v === 'number' ? [k, `${v} kit${v > 1 ? 's' : ''}`] : [k, `${cpF(v.ft)} ft · ${v.pcs} pc${v.pcs > 1 ? 's' : ''}`]));
+  [['C', 'Ceiling bracket'], ['S', 'Single wall bracket'], ['D', 'Double wall bracket']].forEach(([k, l]) => T[k] && P.push([l, String(T[k])]));
+  [['caps', 'End cap'], ['run', 'Runner'], ['hook', 'S hook']].forEach(([k, l]) => T[k] && P.push([l, String(T[k])]));
+  if (T.ov) P.push(['Overlap (master carrier)', `${T.ov} set${T.ov > 1 ? 's' : ''}`]);
+  mot.forEach((v, k) => P.push([k, String(v)])); rem.forEach((v, k) => P.push([k, String(v)]));
+  return {G, L, T, P, skip, nofix: L.filter(x => x.nofix && !x.r.brk).length, remTodo: L.filter(x => x.kids.some(c => c.todo)).length};
+}
+const accNotes = A => ['Brackets: one every 2½ ft, plus one at each end. Runners: 6 per panel. S hooks = runners. Overlap: 1 set for a curtain made in 2 parts.',
+  A.nofix ? `${A.nofix} curtain${A.nofix > 1 ? 's have' : ' has'} no fixing picked on the sheet, so ${A.nofix > 1 ? 'they are' : 'it is'} counted as ceiling.` : '',
+  A.skip.eyelet ? `${A.skip.eyelet} eyelet curtain${A.skip.eyelet > 1 ? 's are' : ' is'} not on this sheet yet.` : ''].filter(Boolean);
+function accPaperHTML(q, house, ed){
+  const A = accData();
+  if (!A.L.length) return `<div class="q-empty"><b>No curtain tracks yet</b><span class="hint">${A.skip.eyelet ? `Eyelet curtains (${A.skip.eyelet}) are not on this sheet yet. ` : ''}Pick a track on the Curtains sheet and the accessories show up here.</span>${ed ? '<button class="btn solid" data-qempty>Open measurement sheet</button>' : ''}</div>`;
+  const top = `<table class="paper-top ms-top"><tr><th colspan="3" class="pi">ACCESSORIES SHEET</th></tr>
+      <tr><td colspan="3" class="firm"><b>${FIRM.name}</b> · ${FIRM.phone}</td></tr>
+      <tr><td colspan="3"><b>DATE :</b> ${esc(msDateTxt(q))}</td></tr>
+      <tr><td><b>CUSTOMER NAME :</b> ${esc(house || '')}${qProj(q) ? ` · ${esc(qProj(q))}` : ''}</td><td><b>EXECUTIVE :</b> ${esc(q.exec || '')}</td><td><b>MEASURED BY :</b> ${esc(msMeasurer(q))}</td></tr></table>`;
+  const pick = `<table class="paper acc-pick"><thead><tr><th colspan="3" class="acc-ph">TOTAL TO GIVE OUT</th></tr><tr><th>ITEM</th><th>QTY</th><th class="acc-tick">✓</th></tr></thead>
+      <tbody>${A.P.map(([i, n]) => `<tr><td>${esc(i)}</td><td class="r"><b>${esc(n)}</b></td><td class="acc-tick"><span class="acc-box"></span></td></tr>`).join('')}</tbody></table>`;
+  let sr = 0;
+  const brk = x => ACC_BRK.map(([k]) => { const on = x.kind === k;
+    if (on && x.with) return `<td class="c acc-with" title="Hangs on the main curtain's double brackets">with main</td>`;
+    if (on) return `<td class="r acc-on${x.nofix && !x.r.brk ? ' acc-todo' : ''}"${x.nofix && !x.r.brk ? ' title="No fixing picked on the sheet"' : ''}${ed ? ` data-accbrk="${k}" data-k="${x.key}"` : ''}><b>${x.bn}</b></td>`;
+    return ed ? `<td class="acc-off" data-accbrk="${k}" data-k="${x.key}" title="Fixed here instead? Tap"></td>` : '<td></td>'; }).join('');
+  const body = A.G.map(g => { const n = g.rows.reduce((a, x) => a + 1 + x.kids.length, 0); let first = true;
+    return g.rows.map(x => { const area = first ? `<td class="ms-area" rowspan="${n}">${esc(String(g.room || '—').toUpperCase())}</td>` : ''; first = false;
+      return `<tr><td class="c">${++sr}</td>${area}<td><b>${esc(x.product)}</b></td><td class="c">${x.layer}</td><td class="r">${esc(x.W)}</td><td class="r">${esc(x.len)}</td><td class="r"><b>${x.pcs}</b></td>${brk(x)}<td class="r">${x.caps}</td><td class="r">${x.run}</td><td class="r">${x.run}</td><td class="r">${x.ov || ''}</td></tr>`
+        + x.kids.map(c => `<tr class="acc-kid"><td></td><td colspan="4"><span class="acc-arrow">↳</span> ${c.k === 'motor' ? 'Motor' : 'Remote'} · <span class="${c.todo ? 'acc-miss' : ''}">${esc(c.name)}</span></td><td class="r"><b>${c.q || '—'}</b></td><td colspan="7"></td></tr>`).join(''); }).join(''); }).join('');
+  const T = A.T, tot = `<tr class="acc-tot"><td colspan="6" class="r">TOTAL</td><td class="r">${A.L.reduce((a, x) => a + x.pcs, 0)}</td><td class="r">${T.C || ''}</td><td class="r">${T.S || ''}</td><td class="r">${T.D || ''}</td><td class="r">${T.caps}</td><td class="r">${T.run}</td><td class="r">${T.hook}</td><td class="r">${T.ov || ''}</td></tr>`;
+  return top + pick + `<div class="q-scroll"><table class="paper ms-room acc-tab"><thead><tr><th rowspan="2" class="qc-no">SR.NO</th><th rowspan="2">AREA</th><th rowspan="2">PRODUCT</th><th rowspan="2">PATTERN</th><th rowspan="2">SIZE<br>(WIDTH ″)</th><th rowspan="2">TRACK LENGTH</th><th rowspan="2">QTY<br>(PCS)</th><th colspan="3">BRACKET QTY</th><th rowspan="2">END CAPS</th><th rowspan="2">RUNNERS</th><th rowspan="2">S HOOKS</th><th rowspan="2">OVERLAP<br>(SET)</th></tr>
+      <tr>${ACC_BRK.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${body}${tot}</tbody></table></div>
+    <div class="paper-foot ms-foot">${accNotes(A).map(t => `<p>${esc(t)}</p>`).join('')}
+      <div class="sign"><span>GIVEN BY (STORE)</span><span>RECEIVED BY</span><span>${FIRM.name}.</span></div></div>`;
+}
+const tailPaperHTML = () => `<div class="q-empty"><b>Tailor sheet</b><span class="hint">Coming next. Tell Claude what your tailor needs on it.</span></div>`;
+function accSide(){
+  const A = accData();
+  return `<div class="q-acts"><button class="btn solid dl" id="acc-pdf">${DL_ICON}PDF</button><button class="btn solid dl" id="acc-xlsx">${DL_ICON}Excel</button>
+      <button class="btn dl" id="acc-print" title="Print on A4 (landscape)">${PRINT_ICON}Print</button><span class="hint">For the store. It is not sent to the client.</span></div>
+    ${A.L.length ? `<p class="hint" style="margin:0 14px 10px">Fixed somewhere else? <b>Tap an empty bracket box</b> on the row to move the count there.</p>` : ''}
+    ${A.remTodo ? `<p class="hint" style="margin:0 14px 10px;color:#B45309">${A.remTodo} motorised curtain${A.remTodo > 1 ? 's have' : ' has'} no remote picked yet.</p>` : ''}`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-mstab]');
+  if (t) { msTab = t.dataset.mstab; msEdit = false; renderMsheet(); return; }
+  const b = e.target.closest('[data-accbrk]');
+  if (b) { const r = state.rows.find(x => x.id === +b.dataset.k); if (!r) return; const k = b.dataset.accbrk, had = r.brk;
+    delete r.brk; const x = accData().L.find(y => y.key === r.id), auto = x && !x.with ? x.kind : null;   // what the sheet says without a hand-picked type
+    if (k !== auto) r.brk = k;
+    if (r.brk !== had) save(); renderMsheet(); return; }
+  if (e.target.closest('#acc-print')) { fillPrint(); print(); }
+});
+// PDF (A4 landscape) and Excel: the same two tables, as on screen
+function accPDF(d = {q: state.quote || {}, house: state.house}){
+  const {jsPDF} = window.jspdf, doc = new jsPDF({unit: 'pt', format: 'a4', orientation: 'landscape'}), q = d.q, A = accData();
+  const M = 22, blue = [221, 235, 247], line = {lineColor: [0, 0, 0], lineWidth: .6, textColor: [0, 0, 0]};
+  const base = {theme: 'grid', margin: {left: M, right: M}, styles: Object.assign({fontSize: 8.5, cellPadding: 3, valign: 'middle'}, line)};
+  const b = t => ({content: pdfTxt(t), styles: {fontStyle: 'bold'}}), proj = qProj(q);
+  doc.autoTable(Object.assign({}, base, {startY: M, body: [
+    [{content: 'ACCESSORIES SHEET', colSpan: 3, styles: {halign: 'center', fontStyle: 'bold', fontSize: 12, fillColor: blue}}],
+    [{content: `${FIRM.name} · ${FIRM.phone}`, colSpan: 3, styles: {halign: 'center', fontStyle: 'bold', fontSize: 10}}],
+    [{content: `DATE : ${msDateTxt(q)}`, colSpan: 3, styles: {fontStyle: 'bold'}}],
+    [b(`CUSTOMER NAME : ${d.house || ''}${proj ? ' · ' + proj : ''}`), b(`EXECUTIVE : ${q.exec || ''}`), b(`MEASURED BY : ${msMeasurer(q)}`)]]}));
+  doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 8, tableWidth: 330,
+    head: [[{content: 'TOTAL TO GIVE OUT', colSpan: 3}], ['ITEM', 'QTY', 'OK']], body: A.P.map(([i, n]) => [pdfTxt(i), b(n), '']),
+    headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center'}, line), columnStyles: {1: {halign: 'right', cellWidth: 80}, 2: {cellWidth: 28}}}));
+  const h1 = ['SR.NO', 'AREA', 'PRODUCT', 'PATTERN', 'SIZE (WIDTH ")', 'TRACK LENGTH', 'QTY (PCS)'].map(t => ({content: t, rowSpan: 2})).concat([{content: 'BRACKET QTY', colSpan: 3}],
+    ['END CAPS', 'RUNNERS', 'S HOOKS', 'OVERLAP (SET)'].map(t => ({content: t, rowSpan: 2}))), h2 = ACC_BRK.map(c => c[1]);
+  const body = []; let sr = 0;
+  A.G.forEach(g => { const n = g.rows.reduce((a, x) => a + 1 + x.kids.length, 0); g.rows.forEach((x, i) => {
+    const row = [++sr]; if (!i) row.push({content: pdfTxt(String(g.room || '-').toUpperCase()), rowSpan: n, styles: {fontStyle: 'bold', halign: 'center'}});
+    row.push(b(x.product), x.layer, x.W, x.len, b(String(x.pcs)), ...ACC_BRK.map(([k]) => x.kind !== k ? '' : x.with ? {content: 'with main', styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}} : b(String(x.bn))),
+      x.caps, x.run, x.run, x.ov || '');
+    body.push(row);
+    x.kids.forEach(c => body.push(['', {content: pdfTxt(`   > ${c.k === 'motor' ? 'Motor' : 'Remote'} · ${c.name}`), colSpan: 4}, b(c.q ? String(c.q) : '-'), {content: '', colSpan: 7}])); }); });
+  const T = A.T; body.push([{content: 'TOTAL', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}}, ...[A.L.reduce((a, x) => a + x.pcs, 0), T.C || '', T.S || '', T.D || '', T.caps, T.run, T.hook, T.ov || ''].map(v => ({content: String(v), styles: {fontStyle: 'bold', fillColor: [242, 242, 242]}}))]);
+  const cs = {0: {halign: 'center', cellWidth: 30}, 1: {cellWidth: 70}, 2: {cellWidth: 130}, 3: {halign: 'center'}};
+  for (let i = 4; i <= 13; i++) cs[i] = {halign: 'right'};
+  doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 10, head: [h1, h2], body, headStyles: Object.assign({fillColor: blue, fontStyle: 'bold', halign: 'center', fontSize: 7.5}, line), columnStyles: cs}));
+  doc.autoTable(Object.assign({}, base, {startY: doc.lastAutoTable.finalY + 8, pageBreak: 'avoid', body: [
+    ...accNotes(A).map(t => [{content: pdfTxt(t), styles: {fontSize: 8}}]),
+    [{content: `GIVEN BY (STORE)                                                  RECEIVED BY                                                  ${FIRM.name}.`, styles: {fontStyle: 'bold', minCellHeight: 46, valign: 'bottom'}}]]}));
+  return doc.output('blob');
+}
+async function accXLSX(d = {q: state.quote || {}, house: state.house}){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+  const q = d.q, A = accData(), NC = 14, proj = qProj(q);
+  const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Accessories', {views: [{showGridLines: false}],
+    pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: {left: .4, right: .4, top: .5, bottom: .55, header: .25, footer: .25}}});
+  ws.headerFooter.oddFooter = '&L&8Tatiya Industries · Accessories sheet&R&8Page &P of &N';
+  ws.columns = [7, 16, 28, 10, 10, 13, 9, 10, 10, 10, 9, 9, 9, 10].map(width => ({width}));
+  const thin = {style: 'thin', color: {argb: 'FF000000'}}, box = {top: thin, left: thin, bottom: thin, right: thin}, fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: c}});
+  const F = (o = {}) => Object.assign({name: 'Arial', size: 9}, o), BLUE = 'FFDDEBF7';
+  let r = 0;
+  const cell = (row, col, v, o = {}) => { const c = ws.getCell(row, col); c.value = v; c.font = F(o.font); c.alignment = {vertical: 'middle', wrapText: true, horizontal: o.h || 'left'}; if (o.fill) c.fill = fill(o.fill); c.border = box; return c; };
+  const band = (parts, o = {}) => { r++; let col = 1; parts.forEach(([txt, span]) => { const to = col + span - 1; if (to > col) ws.mergeCells(r, col, r, to); cell(r, col, txt, {font: Object.assign({bold: true}, o.font), h: o.center ? 'center' : 'left', fill: o.fill}); col = to + 1; });
+    for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = box; ws.getRow(r).height = o.h || 18; };
+  band([['ACCESSORIES SHEET', NC]], {center: true, fill: BLUE, font: {size: 12}, h: 20});
+  band([[`${FIRM.name} · ${FIRM.phone}`, NC]], {center: true, font: {size: 11}});
+  band([[`DATE : ${msDateTxt(q)}`, NC]]);
+  band([[`CUSTOMER NAME : ${d.house || ''}${proj ? ' · ' + proj : ''}`, 6], [`EXECUTIVE : ${q.exec || ''}`, 4], [`MEASURED BY : ${msMeasurer(q)}`, 4]]);
+  r++;   // a gap, then the pick list in columns B–E
+  r++; ws.mergeCells(r, 2, r, 5); cell(r, 2, 'TOTAL TO GIVE OUT', {font: {bold: true}, h: 'center', fill: BLUE});
+  r++; ws.mergeCells(r, 2, r, 3); cell(r, 2, 'ITEM', {font: {bold: true}, h: 'center', fill: BLUE}); cell(r, 4, 'QTY', {font: {bold: true}, h: 'center', fill: BLUE}); cell(r, 5, 'OK', {font: {bold: true}, h: 'center', fill: BLUE});
+  A.P.forEach(([i, n]) => { r++; ws.mergeCells(r, 2, r, 3); cell(r, 2, i); cell(r, 4, /^\d+$/.test(n) ? +n : n, {font: {bold: true}, h: 'right'}); cell(r, 5, ''); });
+  r++;
+  const r1 = ++r, r2 = ++r, hd = (row, col, t) => cell(row, col, t, {font: {bold: true}, h: 'center', fill: BLUE});
+  ['SR.NO', 'AREA', 'PRODUCT', 'PATTERN', 'SIZE (WIDTH ″)', 'TRACK LENGTH', 'QTY (PCS)'].forEach((t, i) => { hd(r1, i + 1, t); hd(r2, i + 1, ''); ws.mergeCells(r1, i + 1, r2, i + 1); });
+  hd(r1, 8, 'BRACKET QTY'); hd(r1, 9, ''); hd(r1, 10, ''); ws.mergeCells(r1, 8, r1, 10); ACC_BRK.forEach(([, l], i) => hd(r2, 8 + i, l));
+  ['END CAPS', 'RUNNERS', 'S HOOKS', 'OVERLAP (SET)'].forEach((t, i) => { hd(r1, 11 + i, t); hd(r2, 11 + i, ''); ws.mergeCells(r1, 11 + i, r2, 11 + i); });
+  ws.getRow(r1).height = 20; ws.getRow(r2).height = 20;
+  let sr = 0;
+  A.G.forEach(g => { const top = r + 1;
+    g.rows.forEach(x => { r++; cell(r, 1, ++sr, {h: 'center'}); cell(r, 2, '');
+      cell(r, 3, x.product, {font: {bold: true}}); cell(r, 4, x.layer, {h: 'center'}); cell(r, 5, +x.W || x.W, {h: 'right'}); cell(r, 6, x.len, {h: 'right'}); cell(r, 7, x.pcs, {h: 'right', font: {bold: true}});
+      ACC_BRK.forEach(([k], i) => cell(r, 8 + i, x.kind !== k ? '' : x.with ? 'with main' : x.bn, {h: x.with ? 'center' : 'right', font: x.with ? {italic: true, color: {argb: 'FF666666'}} : {bold: true}}));
+      [x.caps, x.run, x.run, x.ov || ''].forEach((v, i) => cell(r, 11 + i, v, {h: 'right'}));
+      x.kids.forEach(c => { r++; cell(r, 1, ''); cell(r, 2, ''); ws.mergeCells(r, 3, r, 6); cell(r, 3, `   ↳ ${c.k === 'motor' ? 'Motor' : 'Remote'} · ${c.name}`); cell(r, 7, c.q || '—', {h: 'right', font: {bold: true}});
+        for (let i = 8; i <= NC; i++) cell(r, i, ''); }); });
+    if (r > top) ws.mergeCells(top, 2, r, 2); cell(top, 2, String(g.room || '—').toUpperCase(), {font: {bold: true}, h: 'center'}); });
+  r++; ws.mergeCells(r, 1, r, 6); cell(r, 1, 'TOTAL', {font: {bold: true}, h: 'right', fill: 'FFF2F2F2'});
+  const T = A.T; [A.L.reduce((a, x) => a + x.pcs, 0), T.C || '', T.S || '', T.D || '', T.caps, T.run, T.hook, T.ov || ''].forEach((v, i) => cell(r, 7 + i, v, {font: {bold: true}, h: 'right', fill: 'FFF2F2F2'}));
+  accNotes(A).forEach(t => band([[t, NC]], {font: {bold: false}}));
+  r++; [[1, 5, 'GIVEN BY (STORE)', 'left'], [6, 10, 'RECEIVED BY', 'center'], [11, NC, FIRM.name + '.', 'right']].forEach(([x, y, t, h]) => { ws.mergeCells(r, x, r, y); const c = ws.getCell(r, x); c.value = t; c.font = F({bold: true}); c.alignment = {horizontal: h, vertical: 'bottom'}; });
+  for (let i = 1; i <= NC; i++) ws.getCell(r, i).border = {left: i === 1 ? thin : undefined, right: i === NC ? thin : undefined, bottom: thin};
+  ws.getRow(r).height = 48;
+  return new Blob([await wb.xlsx.writeBuffer()], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('#acc-pdf, #acc-xlsx'); if (!btn) return;
+  btn.disabled = true; const old = btn.innerHTML, xl = btn.id === 'acc-xlsx'; btn.textContent = xl ? 'Making the Excel…' : 'Making the PDF…';
+  try { if (!xl) await msLibs(); const name = msFileName(0).replace(/^M0_Measurement_/, 'Accessories_').replace(/\.pdf$/, xl ? '.xlsx' : '.pdf');
+    await saveFile(name, xl ? await accXLSX() : accPDF()); }
+  catch (err) { console.warn(err); toast('Could not make the file. Check the internet.'); }
+  btn.disabled = false; btn.innerHTML = old;
 });
 
 // ================= Admin dashboard (Purvi, 25 Oct 2026): "my father wants to start looking at a dashboard … he will mostly looking
@@ -10471,7 +10678,7 @@ const HI = {
   'Drag a card here, or tap it and press Start.': 'कार्ड यहाँ खींचें, या टैप करके "शुरू करें" दबाएँ।', 'Finished to-dos stay here for 7 days.': 'पूरे हुए काम यहाँ 7 दिन रहते हैं।',
   'Nothing due today. Plan your next visits and calls from My Clients.': 'आज कुछ बाकी नहीं। "मेरे क्लाइंट" से अगली विज़िट और कॉल प्लान करें।',
   'Nothing to do here. Good.': 'यहाँ कोई काम नहीं। बढ़िया।', 'Priority': 'ज़रूरी', 'Sections': 'हिस्से', 'Type': 'किस तरह का', 'Added': 'जोड़ा',
-  'Back to To do': 'वापस "करना है" में', 'Quotation': 'कोटेशन', 'Visit': 'विज़िट', 'Revise': 'कोटेशन बदलना', 'Follow-up': 'फ़ॉलो-अप', 'Not done yet': 'अभी नहीं हुआ', 'Measurement sheet': 'नाप शीट',
+  'Back to To do': 'वापस "करना है" में', 'Quotation': 'कोटेशन', 'Visit': 'विज़िट', 'Revise': 'कोटेशन बदलना', 'Follow-up': 'फ़ॉलो-अप', 'Not done yet': 'अभी नहीं हुआ', 'Measurement sheet': 'नाप शीट', 'Accessories': 'एक्सेसरीज़', 'Tailor sheet': 'टेलर शीट',
   'just now': 'अभी', 'Light or dark screen': 'लाइट या डार्क स्क्रीन', 'Yesterday': 'कल (बीता)', 'No date': 'तारीख़ नहीं',
   // admin dashboard (25 Oct, dash.js): every card asks a plain question
   'How much did we sell?': 'हमने कितना बेचा?', 'client said yes': 'क्लाइंट ने हाँ कहा', 'clients said yes': 'क्लाइंट ने हाँ कहा', 'Average sale': 'औसत बिक्री',
@@ -11056,4 +11263,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261106-191127 -->
+<!-- build 20261112-121313 -->
