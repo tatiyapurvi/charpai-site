@@ -9837,14 +9837,15 @@ function accData(){
       caps: 2, run: res.panels * ACC_RUN, ov: parts >= 2 ? 1 : 0}); });
   // brackets: ceiling fixing → ceiling; face fixing → single wall, except a main + a sheer in the same room share double wall brackets
   // (counted once, on the main). A type changed by hand (row.brk) wins and is left out of the pairing.
-  L.forEach(x => { x.kind = x.r.brk || (x.face ? 'S' : 'C'); x.bn = x.n; x.with = false; });
-  const rooms = new Map(); L.filter(x => x.face && (!x.r.brk || x.r.brk === 'D')).forEach(x => { const k = roomKey(x.room); rooms.set(k, (rooms.get(k) || []).concat(x)); });
+  // 12 Nov (Purvi): "motor kits come with brackets" → a motor track has no bracket count and is never paired
+  L.forEach(x => { x.kind = x.mot ? null : x.r.brk || (x.face ? 'S' : 'C'); x.bn = x.mot ? 0 : x.n; x.with = false; });
+  const rooms = new Map(); L.filter(x => !x.mot && x.face && (!x.r.brk || x.r.brk === 'D')).forEach(x => { const k = roomKey(x.room); rooms.set(k, (rooms.get(k) || []).concat(x)); });
   rooms.forEach(G => { const M = G.filter(x => x.layer === 'MAIN'), S = G.filter(x => x.layer === 'SHEER');
     M.forEach((m, i) => { const s = S[i]; if (!s) return; m.kind = s.kind = 'D'; m.bn = Math.max(m.n, s.n); s.bn = 0; s.with = true; }); });
   const lines = byRoom(L, x => x.room), G = []; let cur = null;
   lines.forEach(x => { const k = roomKey(x.room); if (!cur || cur.k !== k) G.push(cur = {k, room: x.room, rows: []}); cur.rows.push(x); });
   const T = {C: 0, S: 0, D: 0, caps: 0, run: 0, hook: 0, ov: 0}, tracks = new Map(), mot = new Map(), rem = new Map(), add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
-  L.forEach(x => { T[x.kind] += x.bn; T.caps += x.caps; T.run += x.run; T.hook += x.run; T.ov += x.ov;
+  L.forEach(x => { if (x.kind) T[x.kind] += x.bn; T.caps += x.caps; T.run += x.run; T.hook += x.run; T.ov += x.ov;
     if (x.mot) add(tracks, `${x.product} · ${x.len}`, 1); else { const o = tracks.get(x.product) || {ft: 0, pcs: 0}; o.ft += x.tft; o.pcs += x.pcs; tracks.set(x.product, o); }
     x.kids.forEach(c => { if (c.q) add(c.k === 'motor' ? mot : rem, c.name, c.q); }); });
   // the store's pick list, top to bottom: tracks, brackets, small parts, motors, remotes (nothing with 0)
@@ -9854,9 +9855,9 @@ function accData(){
   [['caps', 'End cap'], ['run', 'Runner'], ['hook', 'S hook']].forEach(([k, l]) => T[k] && P.push([l, String(T[k])]));
   if (T.ov) P.push(['Overlap (master carrier)', `${T.ov} set${T.ov > 1 ? 's' : ''}`]);
   mot.forEach((v, k) => P.push([k, String(v)])); rem.forEach((v, k) => P.push([k, String(v)]));
-  return {G, L, T, P, skip, nofix: L.filter(x => x.nofix && !x.r.brk).length, remTodo: L.filter(x => x.kids.some(c => c.todo)).length};
+  return {G, L, T, P, skip, nofix: L.filter(x => !x.mot && x.nofix && !x.r.brk).length, remTodo: L.filter(x => x.kids.some(c => c.todo)).length};
 }
-const accNotes = A => ['Brackets: one every 2½ ft, plus one at each end. Runners: 6 per panel. S hooks = runners. Overlap: 1 set for a curtain made in 2 parts.',
+const accNotes = A => ['Brackets: one every 2½ ft, plus one at each end; motor kits come with their own. Runners: 6 per panel. S hooks = runners. Overlap: 1 set for a curtain made in 2 parts.',
   A.nofix ? `${A.nofix} curtain${A.nofix > 1 ? 's have' : ' has'} no fixing picked on the sheet, so ${A.nofix > 1 ? 'they are' : 'it is'} counted as ceiling.` : '',
   A.skip.eyelet ? `${A.skip.eyelet} eyelet curtain${A.skip.eyelet > 1 ? 's are' : ' is'} not on this sheet yet.` : ''].filter(Boolean);
 function accPaperHTML(q, house, ed){
@@ -9869,7 +9870,7 @@ function accPaperHTML(q, house, ed){
   const pick = `<table class="paper acc-pick"><thead><tr><th colspan="3" class="acc-ph">TOTAL TO GIVE OUT</th></tr><tr><th>ITEM</th><th>QTY</th><th class="acc-tick">✓</th></tr></thead>
       <tbody>${A.P.map(([i, n]) => `<tr><td>${esc(i)}</td><td class="r"><b>${esc(n)}</b></td><td class="acc-tick"><span class="acc-box"></span></td></tr>`).join('')}</tbody></table>`;
   let sr = 0;
-  const brk = x => ACC_BRK.map(([k]) => { const on = x.kind === k;
+  const brk = x => x.mot ? '<td colspan="3" class="c acc-with">comes with the kit</td>' : ACC_BRK.map(([k]) => { const on = x.kind === k;
     if (on && x.with) return `<td class="c acc-with" title="Hangs on the main curtain's double brackets">with main</td>`;
     if (on) return `<td class="r acc-on${x.nofix && !x.r.brk ? ' acc-todo' : ''}"${x.nofix && !x.r.brk ? ' title="No fixing picked on the sheet"' : ''}${ed ? ` data-accbrk="${k}" data-k="${x.key}"` : ''}><b>${x.bn}</b></td>`;
     return ed ? `<td class="acc-off" data-accbrk="${k}" data-k="${x.key}" title="Fixed here instead? Tap"></td>` : '<td></td>'; }).join('');
@@ -9920,7 +9921,7 @@ function accPDF(d = {q: state.quote || {}, house: state.house}){
   const body = []; let sr = 0;
   A.G.forEach(g => { const n = g.rows.reduce((a, x) => a + 1 + x.kids.length, 0); g.rows.forEach((x, i) => {
     const row = [++sr]; if (!i) row.push({content: pdfTxt(String(g.room || '-').toUpperCase()), rowSpan: n, styles: {fontStyle: 'bold', halign: 'center'}});
-    row.push(b(x.product), x.layer, x.W, x.len, b(String(x.pcs)), ...ACC_BRK.map(([k]) => x.kind !== k ? '' : x.with ? {content: 'with main', styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}} : b(String(x.bn))),
+    row.push(b(x.product), x.layer, x.W, x.len, b(String(x.pcs)), ...(x.mot ? [{content: 'comes with the kit', colSpan: 3, styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}}] : ACC_BRK.map(([k]) => x.kind !== k ? '' : x.with ? {content: 'with main', styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}} : b(String(x.bn)))),
       x.caps, x.run, x.run, x.ov || '');
     body.push(row);
     x.kids.forEach(c => body.push(['', {content: pdfTxt(`   > ${c.k === 'motor' ? 'Motor' : 'Remote'} · ${c.name}`), colSpan: 4}, b(c.q ? String(c.q) : '-'), {content: '', colSpan: 7}])); }); });
@@ -9964,7 +9965,8 @@ async function accXLSX(d = {q: state.quote || {}, house: state.house}){
   A.G.forEach(g => { const top = r + 1;
     g.rows.forEach(x => { r++; cell(r, 1, ++sr, {h: 'center'}); cell(r, 2, '');
       cell(r, 3, x.product, {font: {bold: true}}); cell(r, 4, x.layer, {h: 'center'}); cell(r, 5, +x.W || x.W, {h: 'right'}); cell(r, 6, x.len, {h: 'right'}); cell(r, 7, x.pcs, {h: 'right', font: {bold: true}});
-      ACC_BRK.forEach(([k], i) => cell(r, 8 + i, x.kind !== k ? '' : x.with ? 'with main' : x.bn, {h: x.with ? 'center' : 'right', font: x.with ? {italic: true, color: {argb: 'FF666666'}} : {bold: true}}));
+      if (x.mot) { ws.mergeCells(r, 8, r, 10); cell(r, 8, 'comes with the kit', {h: 'center', font: {italic: true, color: {argb: 'FF666666'}}}); }
+      else ACC_BRK.forEach(([k], i) => cell(r, 8 + i, x.kind !== k ? '' : x.with ? 'with main' : x.bn, {h: x.with ? 'center' : 'right', font: x.with ? {italic: true, color: {argb: 'FF666666'}} : {bold: true}}));
       [x.caps, x.run, x.run, x.ov || ''].forEach((v, i) => cell(r, 11 + i, v, {h: 'right'}));
       x.kids.forEach(c => { r++; cell(r, 1, ''); cell(r, 2, ''); ws.mergeCells(r, 3, r, 6); cell(r, 3, `   ↳ ${c.k === 'motor' ? 'Motor' : 'Remote'} · ${c.name}`); cell(r, 7, c.q || '—', {h: 'right', font: {bold: true}});
         for (let i = 8; i <= NC; i++) cell(r, i, ''); }); });
@@ -11263,4 +11265,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261112-121313 -->
+<!-- build 20261112-121755 -->
