@@ -2977,7 +2977,8 @@ function suggOpener(el){
   if (flProductInput(el)) return () => flOpenSugg(el);
   if (el.dataset.bfam) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bFamSugg(el, b); };
   if (el.dataset.bcoll) return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bCollSugg(el, b); };
-  if (el.dataset.b === 'shade') return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (b) bShadeSugg(el, b); };
+  if (el.dataset.bshade2) return () => { const b = bOf(el); if (b) bDNSugg(el, b, 'bottom'); };   // 13 Nov: the Bottom box opens on a click too
+  if (el.dataset.b === 'shade') return () => { const b = state.blinds.find(x => x.id === +el.closest('tr').dataset.id); if (!b) return; if (bDN(b) && dnPairs(b).length) bDNSugg(el, b, 'top'); else bShadeSugg(el, b); };
   if (el.dataset.bpick) return () => { const b = bOf(el); if (b) bOpenSugg(el, b, el.dataset.bpick); };   // 13 Nov: on the right side now
   if (el.dataset.cpick) return () => { const r = rowById(el.closest('tr').dataset.id); if (r) cOpenSugg(el, r); };
   return null;
@@ -3722,7 +3723,7 @@ const BSHORT = {SAN: 'SS', EXP: 'Express', FC: 'FabriCare', AP: 'AP', MV: 'Marve
 const BCODE = {SAN: 'DD', EXP: 'DD', FC: 'DD', AP: 'AP', MV: 'MARVEL', LOC: ''};   // LOC: no company name for the client (24 Oct, Purvi: never "local" on the quotation)   // how Purvi's quotations name the company ("DD GRAPHIC 10197")
 const BL = {state: 'none', rows: [], byId: new Map(), addons: [], info: {}, shades: {}, cost: new Map(), costDocs: []};   // cost: what we pay (catcost/blinds-*, owner only), per m² or per add-on unit
 const SQFT = 10.7639;
-const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti']);   // sq ft in a sq m
+const B_OPTIONAL = new Set(['bottomColour', 'ladderShade', 'patti', 'remoteType']);   // 13 Nov: remoteType empty = shares another blind's remote   // sq ft in a sq m
 const uniq = a => [...new Set(a)];
 const mmOf = inch => Math.round(inch * 25.4);
 const r2 = v => Math.round(v * 100) / 100;
@@ -4009,6 +4010,7 @@ function bFabTyped(b, v){
 function bMissing(b){
   if (!b.fam) return 'Pick the blind';
   if (bRomanRow(b) && !b.pid) return 'Pick the making →';
+  if (bDN(b) && !b.pid && dnPairs(b).length) return 'Pick top + bottom';
   if (!bRomanRow(b) && !b.shade && !bDesignOf(b)) return 'Pick the fabric';
   if (!b.sys && uniq(bFamRows(b).map(r => r.sys)).length > 1) return `Pick the ${(B_MODEL_LABEL[b.fam] || 'model').toLowerCase()} →`;
   return 'no price yet';
@@ -4047,7 +4049,7 @@ function bSetFam(b, v){
 const B_FAM_SAYS = {'Sheer Horizon': 'zebra', 'Duplex': 'zebra', 'Romex': 'roman in blind fabric', 'Roman (making)': 'roman in curtain fabric', 'Wooden': 'wood slats'};
 function bFamSugg(input, b){
   const q = input.value.trim() === b.fam ? '' : input.value.trim().toLowerCase();
-  const L = bFams(b.sup).filter(f => !q || f.toLowerCase().includes(q)).sort((x, y) => q ? x.toLowerCase().startsWith(q) ? -1 : y.toLowerCase().startsWith(q) ? 1 : 0 : 0);
+  const L = bFams(b.sup).filter(f => !q || f.toLowerCase().includes(q)).sort((x, y) => q ? (y.toLowerCase() === q) - (x.toLowerCase() === q) || y.toLowerCase().startsWith(q) - x.toLowerCase().startsWith(q) : 0);   // 13 Nov: the exact name first (Honeycomb before Honeycomb Skylight)
   const info = f => { const rs_ = BL.rows.filter(r => r.sup === b.sup && r.fam === f); if (!rs_.length) return ['', '']; const lo = Math.min(...rs_.map(r => Math.round(r.sqm * (1 + r.gst / 100) / SQFT)));
     return [`${uniq(rs_.map(r => r.coll || r.design)).length} collections · ${uniq(rs_.map(r => r.sys)).length} system${uniq(rs_.map(r => r.sys)).length > 1 ? 's' : ''}`, `from ₹${lo}`]; };
   suggFor = {input, row: b, restore: () => { input.value = b.fam; }, pick: f => { input.value = f; bSetFam(b, f); }};
@@ -4120,29 +4122,35 @@ function bDNSugg(input, b, which){
   if (!P.length) { if (which === 'top') return bShadeSugg(input, b, true); return bShadeSugg(input, b, true, true); }
   const o = b.o || (b.o = {}), title = s => s.charAt(0).toUpperCase() + s.slice(1), v = input.value.trim();
   const q = dnKey(v) === dnKey(which === 'top' ? b.shade : o.shade2) && !input._typed ? '' : v.toLowerCase();   // a click shows the whole list; typing narrows it
-  let L;
-  if (which === 'top') {
-    const m = new Map(); for (const x of P) { const k = dnKey(x.top); if (!m.has(k)) m.set(k, {name: title(k), n: 0, lo: Infinity}); const e = m.get(k); e.n++; e.lo = Math.min(e.lo, bRate(x.r)); }
-    L = [...m.values()].filter(e => !q || e.name.toLowerCase().includes(q) || dnKey(b.shade) === dnKey(e.name));
-    suggFor = {input, row: b, restore: () => { input.value = b.shade; }, pick: e => {
-      b.shade = e.name; input.value = e.name;
-      const keep = P.find(x => dnKey(x.top) === dnKey(e.name) && dnKey(x.bot) === dnKey(o.shade2));   // the bottom still goes with it?
-      if (keep) { b.pid = keep.r.id; b.coll = keep.r.coll; } else { o.shade2 = ''; b.pid = ''; }
-      bRedraw(b); const nx = $('#btb').querySelector(`tr[data-id="${b.id}"] [data-bshade2]`); if (nx && !keep) setTimeout(() => nx.focus(), 0); }};
-    suggItems = L; suggOn = Math.max(0, L.findIndex(e => dnKey(e.name) === dnKey(b.shade)));
-    sugg.innerHTML = L.length ? `<div class="msg" style="padding:6px 12px">Top (light) fabric · then pick the bottom</div>` + L.map((e, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(e.name)}</b><br><small>${e.n} bottom fabric${e.n > 1 ? 's' : ''} go with it</small></span><span class="pr">from ₹${e.lo}</span></div>`).join('')
-      : `<div class="msg">No top fabric “${esc(input.value.trim())}”.</div>`;
-  } else {
-    if (!b.shade) { suggFor = {input, row: b}; suggItems = []; sugg.innerHTML = '<div class="msg">Pick the top (light) fabric first: the bottom list depends on it.</div>'; placeSugg(input); return; }
-    const mine = P.filter(x => dnKey(x.top) === dnKey(b.shade));
-    L = mine.filter(x => !q || x.bot.toLowerCase().includes(q) || dnKey(x.bot) === dnKey(o.shade2)).sort((x, y) => bRate(x.r) - bRate(y.r));
-    suggFor = {input, row: b, restore: () => { input.value = o.shade2 || ''; }, pick: x => {
-      o.shade2 = title(dnKey(x.bot)); input.value = o.shade2; b.pid = x.r.id; b.pidAuto = false; b.coll = x.r.coll; bRedraw(b); }};
-    suggItems = L; suggOn = Math.max(0, L.findIndex(x => dnKey(x.bot) === dnKey(o.shade2)));
-    sugg.innerHTML = L.length ? `<div class="msg" style="padding:6px 12px">${mine.length} bottom fabric${mine.length > 1 ? 's' : ''} with ${esc(b.shade)}</div>` + L.map((x, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(title(dnKey(x.bot)))}</b><br><small>${esc(x.r.extra || '')}</small></span><span class="pr">₹${bRate(x.r)}</span></div>`).join('')
-      : mine.length ? `<div class="msg">No bottom “${esc(input.value.trim())}” with ${esc(b.shade)}.</div>` : `<div class="msg">${esc(b.shade)} isn't a top fabric in D'Decor's Day & Night list: pick the top from its list.</div>`;
-  }
+  // 13 Nov (Purvi: "when i have selected day and night it is not showing a list of bottom fabric options"): either box can be filled first.
+  // The other box then lists only its partners; a pair picks the price row; a box with only one partner fills it by itself.
+  const other = which === 'top' ? o.shade2 : b.shade, mine = x => which === 'top' ? x.top : x.bot, theirs = x => which === 'top' ? x.bot : x.top;
+  const fits = other ? P.filter(x => dnKey(theirs(x)) === dnKey(other)) : P;
+  const m = new Map(); for (const x of fits) { const k = dnKey(mine(x)); if (!m.has(k)) m.set(k, {name: title(k), n: 0, lo: Infinity, R: []}); const e = m.get(k); e.n++; e.lo = Math.min(e.lo, bRate(x.r)); e.R.push(x); }
+  const L = [...m.values()].filter(e => !q || e.name.toLowerCase().includes(q)).sort((x, y) => x.lo - y.lo);
+  suggFor = {input, row: b, restore: () => { input.value = which === 'top' ? b.shade : o.shade2 || ''; }, pick: e => {
+    if (which === 'top') b.shade = e.name; else o.shade2 = e.name;
+    const P2 = P.filter(x => dnKey(mine(x)) === dnKey(e.name)), pair = P2.find(x => dnKey(theirs(x)) === dnKey(other || ''));
+    if (pair) { b.pid = pair.r.id; b.coll = pair.r.coll; }
+    else { const partners = uniq(P2.map(x => dnKey(theirs(x))));
+      if (partners.length === 1) { const x = P2[0]; if (which === 'top') o.shade2 = title(dnKey(x.bot)); else b.shade = title(dnKey(x.top)); b.pid = x.r.id; b.coll = x.r.coll; }
+      else { if (which === 'top') o.shade2 = ''; else b.shade = ''; b.pid = ''; } }
+    b.pidAuto = false; bRedraw(b);
+    if (!b.pid) setTimeout(() => { const nx = $('#btb').querySelector(`tr[data-id="${b.id}"] ${which === 'top' ? '[data-bshade2]' : '[data-b=shade]'}`); if (nx) nx.focus(); }, 0); }};
+  suggItems = L; suggOn = Math.max(0, L.findIndex(e => dnKey(e.name) === dnKey(which === 'top' ? b.shade : o.shade2)));
+  const head = which === 'top' ? (other ? `Top (light) fabrics that go with ${esc(other)}` : 'Top (light) fabric · the bottom list follows it') : (other ? `Bottom (dark) fabrics that go with ${esc(other)}` : 'Bottom (dark) fabric · the top list follows it');
+  sugg.innerHTML = L.length ? `<div class="msg" style="padding:6px 12px">${head}</div>` + L.map((e, i) => `<div class="it${i === suggOn ? ' on' : ''}" data-i="${i}"><span><b>${esc(e.name)}</b><br><small>${other ? esc(e.R[0].r.extra || '') : `goes with ${e.n} ${which === 'top' ? 'bottom' : 'top'} fabric${e.n > 1 ? 's' : ''}`}</small></span><span class="pr">${other ? '' : 'from '}₹${e.lo}<small>a sq ft</small></span></div>`).join('')
+    : `<div class="msg">${other && !fits.length ? `${esc(other)} isn't in D'Decor's Day & Night list as a ${which === 'top' ? 'bottom' : 'top'} fabric: clear it and pick from its list.` : `Nothing called “${esc(v)}”.`}</div>`;
   placeSugg(input); const on = sugg.querySelector('.it.on'); if (on) on.scrollIntoView({block: 'nearest'});
+}
+// 13 Nov: a blind turned into Day & Night: a fabric picked before goes into the box it belongs to (Expedia = a bottom fabric)
+function bDNFit(b){
+  if (!bDN(b)) return; const P = dnPairs(b); if (!P.length) return; const o = b.o || (b.o = {});
+  const isTop = n => P.some(x => dnKey(x.top) === dnKey(n)), isBot = n => P.some(x => dnKey(x.bot) === dnKey(n)), title = s => s.charAt(0).toUpperCase() + s.slice(1);
+  if (b.shade && !isTop(b.shade)) { if (isBot(b.shade) && !o.shade2) o.shade2 = title(dnKey(b.shade)); b.shade = ''; }
+  if (o.shade2 && !isBot(o.shade2)) o.shade2 = '';
+  const pair = b.shade && o.shade2 && P.find(x => dnKey(x.top) === dnKey(b.shade) && dnKey(x.bot) === dnKey(o.shade2));
+  b.pid = pair ? pair.r.id : ''; if (pair) b.coll = pair.r.coll; b.design = ''; b.pidAuto = false;
 }
 // Shade numbers in the curtain-fabric style box (7 Oct): the company's shade list for this type, matching what is typed.
 // dn / bottom (20 Oct): a Day & Night box with no pair list: the same list; the bottom box fills the bottom shade only.
@@ -4157,7 +4165,17 @@ function bShadeSugg(input, b, dn, bottom){
   sugg.innerHTML = L.length ? L.map(([c, n], i) => `<div class="it${i ? '' : ' on'}" data-i="${i}"><span><b>${esc(c)}</b><br><small>${esc(n)}</small></span><span class="pr"></span></div>`).join('') : `<div class="msg">No shade “${esc(input.value.trim())}” in ${esc(BSUPS[b.sup])}'s ${esc(b.fam)} list.</div>`;
   placeSugg(input);
 }
+// 13 Nov (Purvi: "when i click on motor, it asks motor type and remote twice"): D'Decor's honeycomb form has its own Motor type / Remote
+// type columns. The motor and remote picked on the right fill them, so they are not asked again.
+function bMotorCols(b){
+  const t = blindType(b.sup, b.fam); if (!t || !bHasF(t, 'motorType') || !BL.addons.some(a => a.sup === b.sup)) return;
+  const o = b.o || (b.o = {}), A = (b.adds || []).map(x => BL.addons.find(y => y.key === x.k)).filter(Boolean);
+  const m = A.find(a => bAddKind(a) === 'motor'), r = A.find(a => bAddKind(a) === 'remote'), was = n => !!n && BL.addons.some(a => a.sup === b.sup && (a.name === n || a.name.split(' · ')[0] === n));
+  if (m) o.motorType = m.name.split(' · ')[0]; else if (was(o.motorType)) o.motorType = '';
+  if (r) o.remoteType = r.name; else if (was(o.remoteType)) o.remoteType = '';
+}
 function bRedraw(b, focusKind){
+  bMotorCols(b);
   const i = state.blinds.indexOf(b), tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (!tr) return;
   tr.outerHTML = bRowHTML(b, i); bMarkSel(); bUpdateRow(b); bTotal(); if (b === state.blinds[state.bsel]) renderBSide(); if (!$('#b-orders').hidden) renderOrders(); save();
   if (focusKind === 'extra') { const f = $('#bside').querySelector('[data-bpick=extra]'); if (f) setTimeout(() => f.focus(), 0); }   // 13 Nov: extras live on the right
@@ -4456,7 +4474,8 @@ function bMoreHTML(b, c){
   const t = c.t, o = b.o || {}, mot = bIsMotor(b), out = [];
   for (const f of t.fields) {
     if (f.when && !f.when(o)) continue;
-    if (f.k === 'bracket' || (f.auto && (f.k !== 'ladder' || ddAuto(f.k, b.sys, c.p)))) continue;   // the row, the Model and the making cards already say these
+    if (f.k === 'bracket' || (f.auto && (f.k !== 'ladder' || ddAuto(f.k, b.sys, c.p)))) continue;
+    if ((f.k === 'motorType' || f.k === 'remoteType') && BL.addons.some(a => a.sup === b.sup)) continue;   // filled by the Motor / Remote picked below   // the row, the Model and the making cards already say these
     if (f.k === 'control' && !mot) continue;   // L / R in the row
     if (f.k === 'op' && (mot || bManualOp(b, t) || (t.key === 'wooden' && t.dd) || (bHasF(t, 'control') && !has(o.control)))) continue;   // said by Works by; asked only when there are several ways by hand
     const v = o[f.k] || '', label = f.k === 'control' ? 'Motor on which side' : f.k === 'op' ? 'Worked by (hand)' : f.label.replace(/ \((?:L \/ R|Wall \/ Ceiling)\)$/, '');
@@ -4477,7 +4496,7 @@ function bSumHTML(b, c){
   const t = c.t, o = b.o || {}, L = [];
   if (c.ok) L.push(['Size', `${c.mmW} × ${c.mmH} mm (width × drop)${c.parts > 1 ? `, ${c.parts} parts of ${c.partMm} mm` : ''}`]);
   if (c.p && c.ok) L.push(['Rate', `₹${c.mrp} a sq ft × ${cpF(c.charge * c.q)} sq ft${c.minApplied ? ' (minimum)' : ''}, incl. ${c.one ? 'fabric · 18' : c.p.gst}% GST`]);
-  const nm = bShadeName(b, c.p); if (nm || c.p) L.push(['Fabric', [c.p ? c.p.coll : bCollOf(b), c.rom && c.rom.x ? c.rom.x.n : nm].filter(Boolean).join(' · ')]);
+  const nm = bShadeName(b, c.p); if (nm || c.p) L.push(['Fabric', [c.p ? c.p.coll : bCollOf(b), c.rom && c.rom.x ? c.rom.x.n : bShadeTxt(b, nm)].filter(Boolean).join(' · ')]);
   for (const f of t.fields) { if (f.when && !f.when(o)) continue; if (f.k === 'shade2') continue; const v = (f.auto && ddAuto(f.k, b.sys, c.p)) || o[f.k];
     L.push([f.label.replace(/ \((?:L \/ R|Wall \/ Ceiling)\)$/, ''), has(v) ? v : B_OPTIONAL.has(f.k) ? 'matching' : null]); }
   return `<div class="bsum"><h4>${b.sup === 'LOC' ? 'For our tailor' : `Goes on ${esc(BSUPS[b.sup])}'s order form`}</h4>${L.map(([k, v]) => `<div><span>${esc(k)}</span>${v == null ? '<i>not filled</i>' : `<b>${esc(v)}</b>`}</div>`).join('')}</div>`;
@@ -4516,11 +4535,11 @@ $('#bside').addEventListener('click', e => {
   const b = state.blinds[state.bsel]; if (!b) return;
   const bx = e.target.closest('[data-bx]'); if (bx) { b.adds.splice(+bx.dataset.bx, 1); bRedraw(b); return; }
   const cd = e.target.closest('.bcard'); if (!cd) return; const d = cd.dataset, o = b.o || (b.o = {}), t = blindType(b.sup, b.fam);
-  if (d.bsys != null) { b.sys = b.sys === d.bsys ? '' : d.bsys; if (bDesignOf(b) || b.shade) bRepick(b); else { b.pid = ''; b.pidAuto = false; }
+  if (d.bsys != null) { b.sys = b.sys === d.bsys ? '' : d.bsys; if (bDN(b)) bDNFit(b); else if (bDesignOf(b) || b.shade) bRepick(b); else { b.pid = ''; b.pidAuto = false; }
     if (!bIsMotor(b) && has(o.control)) o.op = bManualOp(b, t) || o.op; }
   else if (d.brm) rmSet(b, d.brm, d.v);
   else if (d.bpid) { const r = BL.byId.get(d.bpid); if (b.pid === d.bpid) { b.pid = ''; } else if (r) { b.pid = r.id; b.coll = r.coll; b.shade = r.design; } b.pidAuto = false; }
-  else if (d.bo) { o[d.bo] = o[d.bo] === d.v ? '' : d.v; }
+  else if (d.bo) { o[d.bo] = o[d.bo] === d.v ? '' : d.v; if (d.bo === 'kind') bDNFit(b); }
   else return;
   const y = $('#bside').scrollTop; bRedraw(b); $('#bside').scrollTop = y;
   if (d.bo === 'kind') { const tr = $('#btb').querySelector(`tr[data-id="${b.id}"]`); if (tr) { tr.outerHTML = bRowHTML(b, state.blinds.indexOf(b)); bMarkSel(); bUpdateRow(b); } }   // Day & Night: two shade boxes
@@ -11502,4 +11521,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261113-163413 -->
+<!-- build 20261113-164334 -->
