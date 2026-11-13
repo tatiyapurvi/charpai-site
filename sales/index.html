@@ -2664,8 +2664,12 @@ function load(){
 const UNDO = (() => {
   const U = [], R = [], MAX = 200; let evt = 0, cur = null, applying = false, busy = false, base = null, raw = null, unsent = 0;
   const txt = el => !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|file|range|color)$/i.test(el.type)) || !!el.isContentEditable);
-  document.addEventListener('pointerdown', () => { evt++; }, true);
-  document.addEventListener('keydown', e => { if (!/^(Control|Meta|Shift|Alt)$/.test(e.key)) evt++; }, true);
+  // 13 Nov (Purvi: "i moved here the brackets and then tried to undo it, it said nothing to undo"): after a reload, or a client opened
+  // without a rebase, the first change became the starting copy instead of a step. Now every click / key press first makes sure the
+  // starting copy is this client's sheet as it is right now, so the first change is a step like any other.
+  const sync = () => { if (applying) return; try { if (!base || base.cid !== (state.clientId || '')) rebase(); } catch (_) {} };
+  document.addEventListener('pointerdown', () => { sync(); evt++; }, true);
+  document.addEventListener('keydown', e => { if (!/^(Control|Meta|Shift|Alt)$/.test(e.key)) { sync(); evt++; } }, true);
   document.addEventListener('focusin', e => { const t = e.target; if (t && 'value' in t) t._fv = t.value; if (cur && cur.el !== t) cur = null; }, true);
   function entry(ev){   // the step this change belongs to: the same click / key press, or more typing in the same box
     const a = document.activeElement, top = U[U.length - 1];
@@ -11498,4 +11502,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261113-162945 -->
+<!-- build 20261113-163413 -->
