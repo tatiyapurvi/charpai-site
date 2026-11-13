@@ -4927,11 +4927,10 @@ function qSections(){
     else add('wallpaper', {srcs: g.srcs, area: roomsTxt(g.rooms), product: g.mural ? 'Wallpaper mural' : 'Wallpaper', what, hsn: H.wallpaper || '', qty: g.mural ? r2(g.sqft) : g.rolls, unit: g.mural ? 'SQ FT' : 'ROLL',
       rate: null, gst: 18, cost: null, fix: 'wpick'});
   }
-  // 13 Nov (Purvi): "the wallpaper will also have a line for installation and per roll installation charges are 500 rs". One line at the end
-  // of Wallpaper: the rolls that go on the walls (not rounded up to boxes) × the rate in Prices → Installation. Murals (sq ft) are not counted.
-  { const G2 = [...wp.values()].filter(g => !g.mural && g.rolls > 0), rolls = G2.reduce((a, g) => a + g.rolls, 0);
-    if (rolls && !(state.quote || {}).noInstall) add('wallpaper', {srcs: G2.flatMap(g => g.srcs), area: roomsTxt(new Set(G2.flatMap(g => [...g.rooms]))), product: 'Installation', what: 'Wallpaper', hsn: H.install || '', qty: rolls, unit: 'ROLL',
-      rate: inst.wall, gst: +G.install, cost: instC.wall, incl: gstIncl('install'), fix: 'install'}); }
+  // 13 Nov (Purvi): "the wallpaper will also have a line for installation and per roll installation charges are 500 rs", then "installation should
+  // also come under accessories and installation section": counted here, added below with the other installation lines. The rolls that go on the
+  // walls (not rounded up to boxes) × the rate in Prices → Installation. Murals (sq ft) are not counted.
+  const wpG = [...wp.values()].filter(g => !g.mural && g.rolls > 0), wpRolls = wpG.reduce((a, g) => a + g.rolls, 0);
   // Flooring (Purvi, 6 Oct): one line per product, rooms of the same product clubbed; quantity = sq ft to order (area + wastage).
   // A product from a company list is priced per sq ft (RRP + GST); anything else shows its sq ft with no price yet. Skirting is not priced yet.
   const fl = new Map();
@@ -4971,6 +4970,7 @@ function qSections(){
   motor.forEach(l => add('hw', l));
   if (!(state.quote || {}).noInstall) {
     if (pieces) add('hw', {grp: 'man', area: 'All Rooms', product: 'Installation', what: 'All track & blinds', hsn: H.install || '', qty: pieces, unit: 'NOS', rate: inst.piece, gst: +G.install, cost: instC.piece, incl: gstIncl('install'), fix: 'install'});
+    if (wpRolls) add('hw', {grp: 'man', srcs: wpG.flatMap(g => g.srcs), area: roomsTxt(new Set(wpG.flatMap(g => [...g.rooms]))), product: 'Installation', what: 'Wallpaper', hsn: H.install || '', qty: wpRolls, unit: 'ROLL', rate: inst.wall, gst: +G.install, cost: instC.wall, incl: gstIncl('install'), fix: 'install'});   // 13 Nov
     if (kits) add('hw', {grp: 'mot', area: 'All Rooms', product: 'Installation', what: 'All motorised track', hsn: H.install || '', qty: kits, unit: 'NOS', rate: inst.motor, gst: +G.install, cost: instC.motor, incl: gstIncl('install'), fix: 'install'});
   }
   S.hw = S.hw.filter(l => l.grp !== 'mot').concat(S.hw.filter(l => l.grp === 'mot'));   // manual first, then motorised
@@ -5714,7 +5714,7 @@ function installSec(){
   const I = Object.assign({piece: 200, motor: 1000, wall: 500}, prices.install || {}), C = costs.install || {}, g = gstRates().install;
   const row = (k, n, u) => { const m = mg(I[k], C[k]); return `<tr><td class="st"><b>${n}</b></td><td>${u}</td>${canSeeCost ? `<td>${moneyIn(C[k], 'pay', `data-p="install" data-side="cost" data-k="${k}" aria-label="${n}: we pay"`)}</td>` : ''}
     <td>${moneyIn(I[k], 'chg', `data-p="install" data-side="sale" data-k="${k}" aria-label="${n}: we charge"`)}</td>${canSeeCost ? `<td class="mg${m.bad ? ' bad' : ''}">${m.t}</td>` : ''}</tr>`; };
-  return `<div class="sec" id="sec-install"><div class="sec-h"><h2>Installation</h2><p>Tracks and blinds: one line at the end of the quotation. Wallpaper: one line at the end of Wallpaper. The same rates show on the Curtains and Blinds prices pages.</p>${gstSwitch('install')}</div>
+  return `<div class="sec" id="sec-install"><div class="sec-h"><h2>Installation</h2><p>One line each at the end of the quotation, under Accessories and installation. The same rates show on the Curtains and Blinds prices pages.</p>${gstSwitch('install')}</div>
     <div class="q-scroll"><table class="pr"><thead><tr><th>What</th><th>Unit</th>${canSeeCost ? '<th class="pay">We pay</th>' : ''}<th class="chg">We charge${gstIncl('install') ? ', GST included' : ', before GST'}</th>${canSeeCost ? '<th style="text-align:right">Margin</th>' : ''}</tr></thead>
     <tbody>${row('piece', 'Each track and each blind', 'per piece')}${row('motor', 'Each motorised track', 'per track')}${row('wall', 'Each wallpaper roll', 'per roll')}</tbody></table></div></div>`;
 }
@@ -11500,4 +11500,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261113-151149 -->
+<!-- build 20261113-160016 -->
