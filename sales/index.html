@@ -10074,9 +10074,8 @@ function accData(){
   // (counted once, on the main). A type changed by hand (row.brk) wins and is left out of the pairing.
   // 12 Nov (Purvi): "motor kits come with brackets" → a motor track has no bracket count and is never paired
   L.forEach(x => { x.kind = x.mot ? null : x.r.brk || (x.face ? 'S' : 'C'); x.bn = x.mot ? 0 : x.n; x.with = false; });
-  const rooms = new Map(); L.filter(x => !x.mot && x.face && (!x.r.brk || x.r.brk === 'D')).forEach(x => { const k = roomKey(x.room); rooms.set(k, (rooms.get(k) || []).concat(x)); });
-  rooms.forEach(G => { const M = G.filter(x => x.layer === 'MAIN'), S = G.filter(x => x.layer === 'SHEER');
-    M.forEach((m, i) => { const s = S[i]; if (!s) return; m.kind = s.kind = 'D'; m.bn = Math.max(m.n, s.n); s.bn = 0; s.with = true; }); });
+  // 13 Nov (Purvi): "sheer and main will always have separate tracks, so doesnt matter, all will have different accessories": no automatic
+  // double wall pairing any more. A Double wall bracket only when someone taps that box on the row (row.brk = 'D').
   const lines = byRoom(L, x => x.room), G = []; let cur = null;
   lines.forEach(x => { const k = roomKey(x.room); if (!cur || cur.k !== k) G.push(cur = {k, room: x.room, rows: []}); cur.rows.push(x); });
   const T = {C: 0, S: 0, D: 0, caps: 0, run: 0, hook: 0, ov: 0}, tracks = new Map(), mot = new Map(), rem = new Map(), add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
@@ -10092,7 +10091,7 @@ function accData(){
   mot.forEach((v, k) => P.push([k, String(v)])); rem.forEach((v, k) => P.push([k, String(v)]));
   return {G, L, T, P, skip, nofix: L.filter(x => !x.mot && x.nofix && !x.r.brk).length, remTodo: L.filter(x => x.kids.some(c => c.todo)).length};
 }
-const accNotes = A => ['Brackets: one every 2½ ft, plus one at each end. Runners: 6 per panel. S hooks = runners. Overlap: 1 set for a curtain made in 2 parts. Motor kits come with their own brackets, end caps, runners, S hooks and overlap: none counted for them.',
+const accNotes = A => ['Brackets: one every 2½ ft, plus one at each end; every curtain its own (face fixing = single wall, ceiling fixing = ceiling). Runners: 6 per panel. S hooks = runners. Overlap: 1 set for a curtain made in 2 parts. Motor kits come with their own brackets, end caps, runners, S hooks and overlap: none counted for them.',
   A.nofix ? `${A.nofix} curtain${A.nofix > 1 ? 's have' : ' has'} no fixing picked on the sheet, so ${A.nofix > 1 ? 'they are' : 'it is'} counted as ceiling.` : '',
   A.skip.eyelet ? `${A.skip.eyelet} eyelet curtain${A.skip.eyelet > 1 ? 's are' : ' is'} not on this sheet yet.` : ''].filter(Boolean);
 function accPaperHTML(q, house, ed){
@@ -11499,4 +11498,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261113-162544 -->
+<!-- build 20261113-162945 -->
