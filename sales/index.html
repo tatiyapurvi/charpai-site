@@ -4970,7 +4970,7 @@ function qSections(){
   motor.forEach(l => add('hw', l));
   if (!(state.quote || {}).noInstall) {
     if (pieces) add('hw', {grp: 'man', area: 'All Rooms', product: 'Installation', what: 'All track & blinds', hsn: H.install || '', qty: pieces, unit: 'NOS', rate: inst.piece, gst: +G.install, cost: instC.piece, incl: gstIncl('install'), fix: 'install'});
-    if (wpRolls) add('hw', {grp: 'man', srcs: wpG.flatMap(g => g.srcs), area: roomsTxt(new Set(wpG.flatMap(g => [...g.rooms]))), product: 'Installation', what: 'Wallpaper', hsn: H.install || '', qty: wpRolls, unit: 'ROLL', rate: inst.wall, gst: +G.install, cost: instC.wall, incl: gstIncl('install'), fix: 'install'});   // 13 Nov
+    if (wpRolls) add('hw', {grp: 'man', area: roomsTxt(new Set(wpG.flatMap(g => [...g.rooms]))), product: 'Installation', what: 'Wallpaper', hsn: H.install || '', qty: wpRolls, unit: 'ROLL', rate: inst.wall, gst: +G.install, cost: instC.wall, incl: gstIncl('install'), fix: 'install'});   // 13 Nov. No srcs (like the track line): with one wall, srcs made typing on this line land on the wallpaper row, so both lines showed it (Ajay Chowdhary)
     if (kits) add('hw', {grp: 'mot', area: 'All Rooms', product: 'Installation', what: 'All motorised track', hsn: H.install || '', qty: kits, unit: 'NOS', rate: inst.motor, gst: +G.install, cost: instC.motor, incl: gstIncl('install'), fix: 'install'});
   }
   S.hw = S.hw.filter(l => l.grp !== 'mot').concat(S.hw.filter(l => l.grp === 'mot'));   // manual first, then motorised
@@ -11500,4 +11500,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261113-160016 -->
+<!-- build 20261113-161837 -->
