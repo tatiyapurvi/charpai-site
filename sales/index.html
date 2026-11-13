@@ -4862,7 +4862,7 @@ function byRoom(list, roomOf = x => x.room){
   return list.map((x, i) => [x, i]).sort((a, b) => first.get(roomKey(roomOf(a[0]))) - first.get(roomKey(roomOf(b[0]))) || a[1] - b[1]).map(a => a[0]);
 }
 function qSections(){
-  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], mattress: [], bedbath: [], uph: [], foam: [], other: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000}, prices.install || {}), instC = costs.install || {};
+  const G = gstRates(), H = prices.hsn || {}, S = {fabric: [], stitch: [], blinds: [], wallpaper: [], flooring: [], mattress: [], bedbath: [], uph: [], foam: [], other: [], hw: []}, inst = Object.assign({piece: 200, motor: 1000, wall: 500}, prices.install || {}), instC = costs.install || {};
   // Supplier list prices (fabric RRP, blinds per m²) are before GST, so GST is added. Our own tables follow their GST switch (gstIncl).
   const add = (sec, l) => { l.mrp = l.incl ? (has(l.rate) ? Math.round(l.rate) : null) : mrpOf2(l.rate, l.gst); l.amt = l.mrp == null ? null : Math.round(l.qty * l.mrp); l.camt = has(l.cost) ? l.qty * l.cost : null; S[sec].push(l); };
   const stitch = new Map(); let pieces = 0, kits = 0;
@@ -4927,6 +4927,11 @@ function qSections(){
     else add('wallpaper', {srcs: g.srcs, area: roomsTxt(g.rooms), product: g.mural ? 'Wallpaper mural' : 'Wallpaper', what, hsn: H.wallpaper || '', qty: g.mural ? r2(g.sqft) : g.rolls, unit: g.mural ? 'SQ FT' : 'ROLL',
       rate: null, gst: 18, cost: null, fix: 'wpick'});
   }
+  // 13 Nov (Purvi): "the wallpaper will also have a line for installation and per roll installation charges are 500 rs". One line at the end
+  // of Wallpaper: the rolls that go on the walls (not rounded up to boxes) × the rate in Prices → Installation. Murals (sq ft) are not counted.
+  { const G2 = [...wp.values()].filter(g => !g.mural && g.rolls > 0), rolls = G2.reduce((a, g) => a + g.rolls, 0);
+    if (rolls && !(state.quote || {}).noInstall) add('wallpaper', {srcs: G2.flatMap(g => g.srcs), area: roomsTxt(new Set(G2.flatMap(g => [...g.rooms]))), product: 'Installation', what: 'Wallpaper', hsn: H.install || '', qty: rolls, unit: 'ROLL',
+      rate: inst.wall, gst: +G.install, cost: instC.wall, incl: gstIncl('install'), fix: 'install'}); }
   // Flooring (Purvi, 6 Oct): one line per product, rooms of the same product clubbed; quantity = sq ft to order (area + wastage).
   // A product from a company list is priced per sq ft (RRP + GST); anything else shows its sq ft with no price yet. Skirting is not priced yet.
   const fl = new Map();
@@ -5334,7 +5339,7 @@ function renderQuoteSum(t = quoteTotals()){
       <div class="srow"><label for="q-odiscAmt">or discount ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>
       ${t.disc2 ? `<div class="srow"><span>${esc(t.disc2Txt)}</span><b>− ${rs(t.disc2)}</b></div>` : ''}
     </div>
-    <label class="switch"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>
+    <label class="switch"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track, blind and wallpaper roll, from Prices.</span></label>
     ${canSeeCost ? `<label class="switch"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
       ${showCost ? `<div class="margin"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}${t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : ''}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price (blinds have no dealer price yet).</div>` : ''}${marginHowHTML(t)}</div>` : ''}` : ''}
 `;
@@ -5417,7 +5422,7 @@ function renderQuoteSumM(t){
         <div class="srow"><label for="q-discAmt">or ₹</label><input id="q-discAmt" inputmode="decimal" value="${esc(q.discAmt || '')}" placeholder="0" style="width:100px"></div>
         <div class="srow"><label for="q-odisc">On the whole quotation %</label><input id="q-odisc" inputmode="decimal" value="${esc(q.odisc || '')}" placeholder="0"${parseFloat(q.odiscAmt) > 0 ? ' disabled' : ''}></div>
         <div class="srow"><label for="q-odiscAmt">or ₹</label><input id="q-odiscAmt" inputmode="decimal" value="${esc(q.odiscAmt || '')}" placeholder="0" style="width:100px"></div>`)}
-      ${row('inst', 'Installation', q.noInstall ? 'Not added' : 'Added', `<label class="switch" style="padding:0"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track and blind, from Prices.</span></label>`)}
+      ${row('inst', 'Installation', q.noInstall ? 'Not added' : 'Added', `<label class="switch" style="padding:0"><input type="checkbox" id="q-inst"${q.noInstall ? '' : ' checked'}> Add installation <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">Per track, blind and wallpaper roll, from Prices.</span></label>`)}
       ${canSeeCost ? row('cost', 'Our cost and margin', showCost ? rs(marginNet) + (t.netAfter ? ` · ${Math.round(marginNet / t.netAfter * 100)}%` : '') : 'Hidden', `<label class="switch" style="padding:0"><input type="checkbox" id="q-cost"${showCost ? ' checked' : ''}> Show our cost and margin <span class="hint" style="font-weight:400;flex-basis:100%;padding-left:26px">For us only. Never in the PDF or WhatsApp.</span></label>
         ${showCost ? `<div class="margin" style="margin-top:8px"><div class="srow"><span>Our cost, before GST</span><b>${rs(t.cost)}</b></div><div class="srow"><span>Margin before GST, after discount</span><b>${rs(marginNet)}</b></div>${t.costMissing ? `<div class="hint">${t.costMissing} line${t.costMissing > 1 ? 's' : ''} without a cost price.</div>` : ''}${marginHowHTML(t)}</div>` : ''}`) : ''}
     </div>`;
@@ -5706,12 +5711,12 @@ document.addEventListener('click', e => {
   priceChanged(); if (current === 'c-prices') renderPrices(); if (current === 'b-prices') renderBPrices();
 });
 function installSec(){
-  const I = Object.assign({piece: 200, motor: 1000}, prices.install || {}), C = costs.install || {}, g = gstRates().install;
+  const I = Object.assign({piece: 200, motor: 1000, wall: 500}, prices.install || {}), C = costs.install || {}, g = gstRates().install;
   const row = (k, n, u) => { const m = mg(I[k], C[k]); return `<tr><td class="st"><b>${n}</b></td><td>${u}</td>${canSeeCost ? `<td>${moneyIn(C[k], 'pay', `data-p="install" data-side="cost" data-k="${k}" aria-label="${n}: we pay"`)}</td>` : ''}
     <td>${moneyIn(I[k], 'chg', `data-p="install" data-side="sale" data-k="${k}" aria-label="${n}: we charge"`)}</td>${canSeeCost ? `<td class="mg${m.bad ? ' bad' : ''}">${m.t}</td>` : ''}</tr>`; };
-  return `<div class="sec" id="sec-install"><div class="sec-h"><h2>Installation</h2><p>One line at the end of the quotation. The same rates show on the Curtains and Blinds prices pages.</p>${gstSwitch('install')}</div>
+  return `<div class="sec" id="sec-install"><div class="sec-h"><h2>Installation</h2><p>Tracks and blinds: one line at the end of the quotation. Wallpaper: one line at the end of Wallpaper. The same rates show on the Curtains and Blinds prices pages.</p>${gstSwitch('install')}</div>
     <div class="q-scroll"><table class="pr"><thead><tr><th>What</th><th>Unit</th>${canSeeCost ? '<th class="pay">We pay</th>' : ''}<th class="chg">We charge${gstIncl('install') ? ', GST included' : ', before GST'}</th>${canSeeCost ? '<th style="text-align:right">Margin</th>' : ''}</tr></thead>
-    <tbody>${row('piece', 'Each track and each blind', 'per piece')}${row('motor', 'Each motorised track', 'per track')}</tbody></table></div></div>`;
+    <tbody>${row('piece', 'Each track and each blind', 'per piece')}${row('motor', 'Each motorised track', 'per track')}${row('wall', 'Each wallpaper roll', 'per roll')}</tbody></table></div></div>`;
 }
 // Upholstery material rates (Purvi, 6 Oct night: "I'll type them in Prices"). Each has its own unit, HSN and GST %.
 function uphSec(){
@@ -5874,7 +5879,7 @@ function priceInput(e){
   if (t.dataset.p === 'hsn') { prices.hsn = Object.assign({}, prices.hsn || {}, {[t.dataset.k]: t.value.trim()}); priceChanged(); return; }
   if (t.dataset.p === 'remotes') { prices.remotes = Object.assign(remoteDefault(), prices.remotes || {}); if (!costs.remotes) costs.remotes = {}; }
   if (t.dataset.p === 'motors') { prices.motors = Object.assign(motorDefault(), prices.motors || {}); if (!costs.motors) costs.motors = {}; }
-  if (t.dataset.p === 'install') { if (!prices.install) prices.install = {piece: 200, motor: 1000}; if (!costs.install) costs.install = {}; }
+  if (t.dataset.p === 'install') { if (!prices.install) prices.install = {piece: 200, motor: 1000, wall: 500}; if (!costs.install) costs.install = {}; }
   if (t.dataset.p === 'uph') { if (!prices.uph) prices.uph = {}; if (!costs.uph) costs.uph = {}; }
   if (t.dataset.swm) {   // Sleepwell dealer margins (owner only)
     const S = costs.swm = Object.assign({m: {}}, costs.swm || {}); S.m = S.m || {};
@@ -11495,4 +11500,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261113-143609 -->
+<!-- build 20261113-151149 -->
