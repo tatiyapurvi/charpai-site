@@ -10069,7 +10069,7 @@ function accData(){
     L.push({r, key: r.id, room: r.room || '', layer: r.layer === 'Sheer' ? 'SHEER' : 'MAIN', mot, kids,
       product: mot ? trackShort(r.track) + ' motor track' : r.track, W: msNum(r.W), len: mot ? (kit ? kit + ' m kit' : 'over 9 m') : cpF(res.track) + ' ft',
       pcs: mot ? 1 : res.trackPieces || 1, ft, tft: res.track, n: accBrkN(ft), face: /^Face/.test(r.fixing || ''), nofix: !r.fixing,
-      caps: 2, run: res.panels * ACC_RUN, ov: parts >= 2 ? 1 : 0}); });
+      caps: mot ? 0 : 2, run: mot ? 0 : res.panels * ACC_RUN, ov: !mot && parts >= 2 ? 1 : 0}); });   // 13 Nov (Purvi): "for motorised kits … end caps runners s hooks and overlaps all are covered in the kit … dont count them in the totals"
   // brackets: ceiling fixing → ceiling; face fixing → single wall, except a main + a sheer in the same room share double wall brackets
   // (counted once, on the main). A type changed by hand (row.brk) wins and is left out of the pairing.
   // 12 Nov (Purvi): "motor kits come with brackets" → a motor track has no bracket count and is never paired
@@ -10092,7 +10092,7 @@ function accData(){
   mot.forEach((v, k) => P.push([k, String(v)])); rem.forEach((v, k) => P.push([k, String(v)]));
   return {G, L, T, P, skip, nofix: L.filter(x => !x.mot && x.nofix && !x.r.brk).length, remTodo: L.filter(x => x.kids.some(c => c.todo)).length};
 }
-const accNotes = A => ['Brackets: one every 2½ ft, plus one at each end; motor kits come with their own. Runners: 6 per panel. S hooks = runners. Overlap: 1 set for a curtain made in 2 parts.',
+const accNotes = A => ['Brackets: one every 2½ ft, plus one at each end. Runners: 6 per panel. S hooks = runners. Overlap: 1 set for a curtain made in 2 parts. Motor kits come with their own brackets, end caps, runners, S hooks and overlap: none counted for them.',
   A.nofix ? `${A.nofix} curtain${A.nofix > 1 ? 's have' : ' has'} no fixing picked on the sheet, so ${A.nofix > 1 ? 'they are' : 'it is'} counted as ceiling.` : '',
   A.skip.eyelet ? `${A.skip.eyelet} eyelet curtain${A.skip.eyelet > 1 ? 's are' : ' is'} not on this sheet yet.` : ''].filter(Boolean);
 function accPaperHTML(q, house, ed){
@@ -10105,13 +10105,13 @@ function accPaperHTML(q, house, ed){
   const pick = `<table class="paper acc-pick"><thead><tr><th colspan="3" class="acc-ph">TOTAL TO GIVE OUT</th></tr><tr><th>ITEM</th><th>QTY</th><th class="acc-tick">✓</th></tr></thead>
       <tbody>${A.P.map(([i, n]) => `<tr><td>${esc(i)}</td><td class="r"><b>${esc(n)}</b></td><td class="acc-tick"><span class="acc-box"></span></td></tr>`).join('')}</tbody></table>`;
   let sr = 0;
-  const brk = x => x.mot ? '<td colspan="3" class="c acc-with">comes with the kit</td>' : ACC_BRK.map(([k]) => { const on = x.kind === k;
+  const brk = x => x.mot ? '<td colspan="7" class="c acc-with">comes with the kit</td>' : ACC_BRK.map(([k]) => { const on = x.kind === k;
     if (on && x.with) return `<td class="c acc-with" title="Hangs on the main curtain's double brackets">with main</td>`;
     if (on) return `<td class="r acc-on${x.nofix && !x.r.brk ? ' acc-todo' : ''}"${x.nofix && !x.r.brk ? ' title="No fixing picked on the sheet"' : ''}${ed ? ` data-accbrk="${k}" data-k="${x.key}"` : ''}><b>${x.bn}</b></td>`;
     return ed ? `<td class="acc-off" data-accbrk="${k}" data-k="${x.key}" title="Fixed here instead? Tap"></td>` : '<td></td>'; }).join('');
   const body = A.G.map(g => { const n = g.rows.reduce((a, x) => a + 1 + x.kids.length, 0); let first = true;
     return g.rows.map(x => { const area = first ? `<td class="ms-area" rowspan="${n}">${esc(String(g.room || '—').toUpperCase())}</td>` : ''; first = false;
-      return `<tr><td class="c">${++sr}</td>${area}<td><b>${esc(x.product)}</b></td><td class="c">${x.layer}</td><td class="r">${esc(x.W)}</td><td class="r">${esc(x.len)}</td><td class="r"><b>${x.pcs}</b></td>${brk(x)}<td class="r">${x.caps}</td><td class="r">${x.run}</td><td class="r">${x.run}</td><td class="r">${x.ov || ''}</td></tr>`
+      return `<tr><td class="c">${++sr}</td>${area}<td><b>${esc(x.product)}</b></td><td class="c">${x.layer}</td><td class="r">${esc(x.W)}</td><td class="r">${esc(x.len)}</td><td class="r"><b>${x.pcs}</b></td>${brk(x)}${x.mot ? '' : `<td class="r">${x.caps}</td><td class="r">${x.run}</td><td class="r">${x.run}</td><td class="r">${x.ov || ''}</td>`}</tr>`
         + x.kids.map(c => `<tr class="acc-kid"><td></td><td colspan="4"><span class="acc-arrow">↳</span> ${c.k === 'motor' ? 'Motor' : 'Remote'} · <span class="${c.todo ? 'acc-miss' : ''}">${esc(c.name)}</span></td><td class="r"><b>${c.q || '—'}</b></td><td colspan="7"></td></tr>`).join(''); }).join(''); }).join('');
   const T = A.T, tot = `<tr class="acc-tot"><td colspan="6" class="r">TOTAL</td><td class="r">${A.L.reduce((a, x) => a + x.pcs, 0)}</td><td class="r">${T.C || ''}</td><td class="r">${T.S || ''}</td><td class="r">${T.D || ''}</td><td class="r">${T.caps}</td><td class="r">${T.run}</td><td class="r">${T.hook}</td><td class="r">${T.ov || ''}</td></tr>`;
   return top + pick + `<div class="q-scroll"><table class="paper ms-room acc-tab"><thead><tr><th rowspan="2" class="qc-no">SR.NO</th><th rowspan="2">AREA</th><th rowspan="2">PRODUCT</th><th rowspan="2">PATTERN</th><th rowspan="2">SIZE<br>(WIDTH ″)</th><th rowspan="2">TRACK LENGTH</th><th rowspan="2">QTY<br>(PCS)</th><th colspan="3">BRACKET QTY</th><th rowspan="2">END CAPS</th><th rowspan="2">RUNNERS</th><th rowspan="2">S HOOKS</th><th rowspan="2">OVERLAP<br>(SET)</th></tr>
@@ -10156,8 +10156,7 @@ function accPDF(d = {q: state.quote || {}, house: state.house}){
   const body = []; let sr = 0;
   A.G.forEach(g => { const n = g.rows.reduce((a, x) => a + 1 + x.kids.length, 0); g.rows.forEach((x, i) => {
     const row = [++sr]; if (!i) row.push({content: pdfTxt(String(g.room || '-').toUpperCase()), rowSpan: n, styles: {fontStyle: 'bold', halign: 'center'}});
-    row.push(b(x.product), x.layer, x.W, x.len, b(String(x.pcs)), ...(x.mot ? [{content: 'comes with the kit', colSpan: 3, styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}}] : ACC_BRK.map(([k]) => x.kind !== k ? '' : x.with ? {content: 'with main', styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}} : b(String(x.bn)))),
-      x.caps, x.run, x.run, x.ov || '');
+    row.push(b(x.product), x.layer, x.W, x.len, b(String(x.pcs)), ...(x.mot ? [{content: 'comes with the kit', colSpan: 7, styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}}] : ACC_BRK.map(([k]) => x.kind !== k ? '' : x.with ? {content: 'with main', styles: {fontSize: 7, textColor: [90, 90, 90], halign: 'center'}} : b(String(x.bn))).concat([x.caps, x.run, x.run, x.ov || ''])));
     body.push(row);
     x.kids.forEach(c => body.push(['', {content: pdfTxt(`   > ${c.k === 'motor' ? 'Motor' : 'Remote'} · ${c.name}`), colSpan: 4}, b(c.q ? String(c.q) : '-'), {content: '', colSpan: 7}])); }); });
   const T = A.T; body.push([{content: 'TOTAL', colSpan: 6, styles: {halign: 'right', fontStyle: 'bold'}}, ...[A.L.reduce((a, x) => a + x.pcs, 0), T.C || '', T.S || '', T.D || '', T.caps, T.run, T.hook, T.ov || ''].map(v => ({content: String(v), styles: {fontStyle: 'bold', fillColor: [242, 242, 242]}}))]);
@@ -10200,9 +10199,9 @@ async function accXLSX(d = {q: state.quote || {}, house: state.house}){
   A.G.forEach(g => { const top = r + 1;
     g.rows.forEach(x => { r++; cell(r, 1, ++sr, {h: 'center'}); cell(r, 2, '');
       cell(r, 3, x.product, {font: {bold: true}}); cell(r, 4, x.layer, {h: 'center'}); cell(r, 5, +x.W || x.W, {h: 'right'}); cell(r, 6, x.len, {h: 'right'}); cell(r, 7, x.pcs, {h: 'right', font: {bold: true}});
-      if (x.mot) { ws.mergeCells(r, 8, r, 10); cell(r, 8, 'comes with the kit', {h: 'center', font: {italic: true, color: {argb: 'FF666666'}}}); }
-      else ACC_BRK.forEach(([k], i) => cell(r, 8 + i, x.kind !== k ? '' : x.with ? 'with main' : x.bn, {h: x.with ? 'center' : 'right', font: x.with ? {italic: true, color: {argb: 'FF666666'}} : {bold: true}}));
-      [x.caps, x.run, x.run, x.ov || ''].forEach((v, i) => cell(r, 11 + i, v, {h: 'right'}));
+      if (x.mot) { for (let i = 9; i <= NC; i++) cell(r, i, ''); ws.mergeCells(r, 8, r, NC); cell(r, 8, 'comes with the kit', {h: 'center', font: {italic: true, color: {argb: 'FF666666'}}}); }   // 13 Nov: brackets → overlap
+      else { ACC_BRK.forEach(([k], i) => cell(r, 8 + i, x.kind !== k ? '' : x.with ? 'with main' : x.bn, {h: x.with ? 'center' : 'right', font: x.with ? {italic: true, color: {argb: 'FF666666'}} : {bold: true}}));
+        [x.caps, x.run, x.run, x.ov || ''].forEach((v, i) => cell(r, 11 + i, v, {h: 'right'})); }
       x.kids.forEach(c => { r++; cell(r, 1, ''); cell(r, 2, ''); ws.mergeCells(r, 3, r, 6); cell(r, 3, `   ↳ ${c.k === 'motor' ? 'Motor' : 'Remote'} · ${c.name}`); cell(r, 7, c.q || '—', {h: 'right', font: {bold: true}});
         for (let i = 8; i <= NC; i++) cell(r, i, ''); }); });
     if (r > top) ws.mergeCells(top, 2, r, 2); cell(top, 2, String(g.room || '—').toUpperCase(), {font: {bold: true}, h: 'center'}); });
@@ -11500,4 +11499,4 @@ if (startDoc) (async () => { for (let i = 0; i < 60 && !(PF && CL.state === 'rea
 </body>
 </html>
 
-<!-- build 20261113-161837 -->
+<!-- build 20261113-162544 -->
